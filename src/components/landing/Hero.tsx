@@ -2,13 +2,16 @@
 
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Mail, } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { AuroraBackground } from "@/components/ui/aurora-background";
+import { VideoModal } from "@/components/ui/video-modal";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { useState } from "react";
 
 export function Hero() {
   const { isSignedIn } = useUser();
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   
   return (
     <AuroraBackground auroraPosition="30%_70%">
@@ -63,10 +66,12 @@ export function Hero() {
           <Button
             variant="outline"
             size="lg"
-            className="border-gray-300 px-8 py-3 text-lg text-black hover:bg-gray-50"
+            className="px-6 sm:px-8 py-4 sm:py-6 text-base sm:text-lg  transition-all duration-300 w-full sm:w-auto"
+            onClick={() => setIsVideoModalOpen(true)}
           >
-            <Mail className="mr-2 h-5 w-5" />
-            View Demo
+            <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Watch Demo</span>
+            <span className="sm:hidden">Demo</span>
           </Button>
         </motion.div>
 
@@ -94,6 +99,12 @@ export function Hero() {
           </div>
         </motion.div>
       </motion.div>
+      
+      <VideoModal
+        videoSrc="/Vectormail.mp4"
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
     </AuroraBackground>
   );
 }
