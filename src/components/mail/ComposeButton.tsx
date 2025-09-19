@@ -2,10 +2,7 @@
 import { Button } from "@/components/ui/button"
 import {
     Drawer,
-    DrawerClose,
     DrawerContent,
-    DrawerDescription,
-    DrawerFooter,
     DrawerHeader,
     DrawerTitle,
     DrawerTrigger,
@@ -31,7 +28,7 @@ const ComposeButton = () => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'c' && (event.ctrlKey || event.metaKey) && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '')) {
                 event.preventDefault();
-                setOpen(true);
+                setOpen(prev => !prev);
             }
         };
 

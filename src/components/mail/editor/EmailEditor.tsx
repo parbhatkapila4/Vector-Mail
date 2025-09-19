@@ -87,6 +87,17 @@ const EmailEditor = ({
           }
           return true;
         },
+        "Alt-j": () => {
+          const currentText = this.editor.getText();
+          if (currentText.trim()) {
+            aiGenerate(currentText);
+          } else {
+            toast.info(
+              "Please write some text first to generate AI suggestions",
+            );
+          }
+          return true;
+        },
       };
     },
   });
@@ -100,8 +111,8 @@ const EmailEditor = ({
         placeholder: "Write your email here...",
       },
     },
-    onUpdate: ({ editor, transaction }) => {
-      setValue(editor.getHTML());
+    onUpdate: () => {
+      // Editor content is managed internally by TipTap
     },
   });
 
@@ -137,7 +148,6 @@ const EmailEditor = ({
     setGeneration("");
   }, [generation, editor]);
 
-  const [value, setValue] = React.useState("");
 
   return (
     <div className="flex h-full flex-col">
@@ -149,14 +159,14 @@ const EmailEditor = ({
         {expanded && (
           <>
             <TagInput
-              suggestions={suggestions?.map((s: any) => s.address) || []}
+              suggestions={suggestions?.map((s: { address: string }) => s.address) || []}
               value={toValues}
               placeholder="Add tags"
               label="To"
               onChange={onToChange}
             />
             <TagInput
-              suggestions={suggestions?.map((s: any) => s.address) || []}
+              suggestions={suggestions?.map((s: { address: string }) => s.address) || []}
               value={ccValues}
               placeholder="Add tags"
               label="Cc"
@@ -200,7 +210,7 @@ const EmailEditor = ({
         <span className="text-muted-foreground text-sm">
           Tip: Press{" "}
           <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
-            Cmd + J
+            {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd + J' : 'Alt + J'}
           </kbd>{" "}
           for AI autocomplete
         </span>
@@ -209,7 +219,6 @@ const EmailEditor = ({
             const content = editor?.getHTML() || "";
             await handleSend(content);
             editor?.commands.clearContent();
-            setValue("");
           }}
           disabled={isSending}
           className="ml-4"
