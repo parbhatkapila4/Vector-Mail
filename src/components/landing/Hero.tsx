@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Mail, Sparkles } from "lucide-react";
+import { ArrowRight, Mail, } from "lucide-react";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
