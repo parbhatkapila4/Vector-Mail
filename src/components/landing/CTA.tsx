@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 
 export function CTA() {
+
   return (
     <section className="py-20 bg-white">
       <div className="max-w-4xl mx-auto px-4 text-center">
@@ -27,22 +27,27 @@ export function CTA() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
+          className="mb-12"
         >
-          <Button 
-            size="lg" 
-            className="bg-black text-white hover:bg-gray-800 px-8 py-3 text-lg"
-          >
-            Start Free Trial
-            <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="lg"
-            className="border-gray-300 text-black hover:bg-gray-50 px-8 py-3 text-lg"
-          >
-            Schedule Demo
-          </Button>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 sm:p-6 md:p-8 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+              <span className="text-xs sm:text-sm font-medium text-gray-600">Live Demo Available</span>
+            </div>
+            <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-3 sm:mb-4 text-center leading-relaxed">
+              See Vector Mail in action with our interactive demo
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-600">
+              <span className="flex items-center gap-1.5 sm:gap-2">
+                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                <span className="text-center sm:text-left">Real-time AI assistance</span>
+              </span>
+              <span className="flex items-center gap-1.5 sm:gap-2">
+                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                <span className="text-center sm:text-left">Smart email organization</span>
+              </span>
+            </div>
+          </div>
         </motion.div>
 
         <motion.div

@@ -29,7 +29,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-black text-center mb-4 sm:mb-6 px-4 mt-40 sm:mt-36 md:mt-40"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-black text-center mb-4 sm:mb-6 px-4 mt-32 sm:mt-32 md:mt-36"
         >
           <span className="block">
             <span className="text-black">Smart Email</span>

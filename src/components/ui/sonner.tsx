@@ -17,6 +17,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-border": "var(--border)",
         } as React.CSSProperties
       }
+      position="bottom-right"
+      offset="80px"
+      toastOptions={{
+        style: {
+          zIndex: 9999,
+          marginRight: "0px",
+        },
+      }}
       {...props}
     />
   )
