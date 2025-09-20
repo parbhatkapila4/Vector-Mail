@@ -59,11 +59,11 @@ export function CTA() {
         >
           <div className="flex items-center justify-center md:justify-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-500" />
-            <span className="text-gray-700">14-day free trial</span>
+            <span className="text-gray-700">No credit card required</span>
           </div>
           <div className="flex items-center justify-center md:justify-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-500" />
-            <span className="text-gray-700">No credit card required</span>
+            <span className="text-gray-700">14-day free trial</span>
           </div>
           <div className="flex items-center justify-center md:justify-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-500" />
