@@ -13,7 +13,6 @@ export function Navigation() {
 
   const navItems = [
     { name: "Features", href: "#features" },
-    { name: "Testimonials", href: "#testimonials" },
     { name: "Pricing", href: "#pricing" },
     { name: "Contact", href: "#contact" }
   ];
@@ -26,12 +25,12 @@ export function Navigation() {
       className="fixed top-0 left-0 right-0  z-50"
     >
       <div className="max-w-6xl mx-auto px-4 mt-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-center h-16 relative">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="flex items-center gap-2"
+            className="absolute left-0 flex items-center gap-2"
           >
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">V</span>
@@ -58,7 +57,7 @@ export function Navigation() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="hidden md:flex items-center gap-4"
+            className="absolute right-0 hidden md:flex items-center gap-4"
           >
             {isSignedIn ? (
               <Link href="/mail">
