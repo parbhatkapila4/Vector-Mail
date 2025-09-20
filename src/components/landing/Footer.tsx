@@ -23,7 +23,7 @@ export function Footer() {
             © 2025 VectorMail AI. All rights reserved.
           </p>
           <p className="text-gray-400 text-sm mt-2 md:mt-0">
-            Made with ❤️ for better email communication
+            Made for better email conversation
           </p>
         </motion.div>
       </div>

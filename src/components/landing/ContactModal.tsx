@@ -9,13 +9,13 @@ const contactInfo = [
     icon: Mail,
     title: "Email Support",
     description: "Get in touch with our support team",
-    contact: "support@vectormail.ai",
+    contact: "help@vectormail.ai",
     color: "from-blue-500 to-cyan-500",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200"
   },
   {
-    icon: MessageSquare,
+    icon: Mail,
     title: "General Inquiries",
     description: "For business partnerships and general questions",
     contact: "hello@vectormail.ai",
@@ -171,7 +171,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed text-center sm:text-left">{contact.description}</p>
                             <a 
                               href={`mailto:${contact.contact}`}
-                              className="block w-full text-center sm:inline-flex sm:w-auto items-center justify-center gap-2 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl border border-white/50 text-blue-600 hover:text-blue-800 font-semibold text-xs sm:text-sm transition-all duration-200 hover:bg-white hover:shadow-md group-hover:scale-105 break-all sm:break-normal"
+                              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl border border-white/50 text-blue-600 hover:text-blue-800 font-semibold text-xs sm:text-sm transition-all duration-200 hover:bg-white hover:shadow-md group-hover:scale-105 break-all sm:break-normal"
                             >
                               <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                               <span className="truncate">{contact.contact}</span>
@@ -226,8 +226,9 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                           <h4 className="font-bold text-gray-800 mb-2 text-sm sm:text-base">General</h4>
                           <a 
                             href="mailto:hello@vectormail.ai" 
-                            className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs sm:text-sm break-all"
+                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs sm:text-sm break-all"
                           >
+                            <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                             hello@vectormail.ai
                           </a>
                         </motion.div>
@@ -237,14 +238,15 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                           className="bg-white/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/50 hover:bg-white/80 transition-all duration-300"
                         >
                           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                            <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                           </div>
                           <h4 className="font-bold text-gray-800 mb-2 text-sm sm:text-base">Support</h4>
                           <a 
-                            href="mailto:support@vectormail.ai" 
-                            className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs sm:text-sm break-all"
+                            href="mailto:help@vectormail.ai" 
+                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs sm:text-sm break-all"
                           >
-                            support@vectormail.ai
+                            <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            help@vectormail.ai
                           </a>
                         </motion.div>
                         
@@ -258,8 +260,9 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                           <h4 className="font-bold text-gray-800 mb-2 text-sm sm:text-base">Sales</h4>
                           <a 
                             href="mailto:sales@vectormail.ai" 
-                            className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs sm:text-sm break-all"
+                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs sm:text-sm break-all"
                           >
+                            <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                             sales@vectormail.ai
                           </a>
                         </motion.div>

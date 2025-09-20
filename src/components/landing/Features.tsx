@@ -1,8 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, Zap, Shield, Search, Bot, BarChart3, ArrowRight } from "lucide-react";
+import { ArrowRight, Bot } from "lucide-react";
 import Image from "next/image";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 
 
@@ -16,6 +18,17 @@ const companies = [
 ];
 
 export function Features() {
+  const { isSignedIn } = useUser();
+  const router = useRouter();
+
+  const handleClick = () => {
+    if (isSignedIn) {
+      router.push('/mail');
+    } else {
+      router.push('/sign-in');
+    }
+  };
+
   return (
     <section className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
@@ -113,20 +126,101 @@ export function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 1.2 }}
                 viewport={{ once: true }}
+                className="relative"
               >
-                <button className="group relative bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white px-8 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
-                  <span className="flex items-center">
-                    Try It Now
-                    <motion.div
-                      className="ml-2"
-                      animate={{ x: [0, 4, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      <ArrowRight className="w-5 h-5" />
-                    </motion.div>
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-black to-gray-800 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                </button>
+                <div className="group cursor-pointer relative inline-block" onClick={handleClick}>
+                  {/* Floating cards effect */}
+                  <motion.div
+                    className="absolute -top-2 -left-2 w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur-sm opacity-30 group-hover:opacity-50 transition-opacity duration-300"
+                    animate={{ 
+                      rotate: [0, 1, -1, 0],
+                      scale: [1, 1.02, 0.98, 1]
+                    }}
+                    transition={{ 
+                      duration: 4, 
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                  
+                  {/* Main interactive element */}
+                  <motion.div
+                    className="relative bg-gradient-to-r from-gray-900 via-black to-gray-900 p-6 rounded-2xl border border-gray-800 group-hover:border-gray-600 transition-all duration-300"
+                    whileHover={{ 
+                      scale: 1.02,
+                      rotateY: 2
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Glowing particles */}
+                    <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                      <motion.div
+                        className="absolute top-4 left-4 w-2 h-2 bg-blue-400 rounded-full opacity-60"
+                        animate={{
+                          y: [0, -10, 0],
+                          opacity: [0.6, 1, 0.6]
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          delay: 0
+                        }}
+                      />
+                      <motion.div
+                        className="absolute top-6 right-8 w-1 h-1 bg-purple-400 rounded-full opacity-80"
+                        animate={{
+                          y: [0, -8, 0],
+                          opacity: [0.8, 1, 0.8]
+                        }}
+                        transition={{
+                          duration: 2.5,
+                          repeat: Infinity,
+                          delay: 0.5
+                        }}
+                      />
+                      <motion.div
+                        className="absolute bottom-6 left-8 w-1.5 h-1.5 bg-pink-400 rounded-full opacity-70"
+                        animate={{
+                          y: [0, -6, 0],
+                          opacity: [0.7, 1, 0.7]
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          delay: 1
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="relative z-10 flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <motion.div
+                          className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl"
+                          animate={{ rotate: [0, 360] }}
+                          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Bot className="w-6 h-6 text-white" />
+                        </motion.div>
+                        <div>
+                          <p className="text-white font-semibold text-lg">Start Chatting</p>
+                          <p className="text-gray-400 text-sm">Experience AI like never before</p>
+                        </div>
+                      </div>
+                      
+                      <motion.div
+                        className="text-gray-400 group-hover:text-white transition-colors"
+                        animate={{ x: [0, 4, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <ArrowRight className="w-6 h-6" />
+                      </motion.div>
+                    </div>
+                    
+                    {/* Hover effect overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-600/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </motion.div>
+                </div>
               </motion.div>
             </motion.div>
           </div>
