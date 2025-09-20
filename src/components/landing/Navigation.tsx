@@ -6,13 +6,15 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { FeaturesModal } from "./FeaturesModal";
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
   const { isSignedIn } = useUser();
 
   const navItems = [
-    { name: "Features", href: "#features" },
+    { name: "Features", href: "#features", onClick: () => setIsFeaturesModalOpen(true) },
     { name: "Pricing", href: "#pricing" },
     { name: "Contact", href: "#contact" }
   ];
@@ -40,16 +42,16 @@ export function Navigation() {
 
           <div className="hidden md:flex items-center gap-8 border-black/30 bg-black/5 backdrop-blur-md border px-4 py-3 rounded-3xl">
             {navItems.map((item, index) => (
-              <motion.a
+              <motion.button
                 key={item.name}
-                href={item.href}
+                onClick={item.onClick}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 + index * 0.1 }}
                 className="text-gray-700 hover:text-black transition-colors font-medium"
               >
                 {item.name}
-              </motion.a>
+              </motion.button>
             ))}
           </div>
 
@@ -107,14 +109,18 @@ export function Navigation() {
           >
             <div className="flex flex-col gap-4">
               {navItems.map((item) => (
-                <a
+                <button
                   key={item.name}
-                  href={item.href}
-                  className="text-gray-700 hover:text-black transition-colors font-medium"
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={() => {
+                    if (item.onClick) {
+                      item.onClick();
+                    }
+                    setIsMenuOpen(false);
+                  }}
+                  className="text-gray-700 hover:text-black transition-colors font-medium text-left"
                 >
                   {item.name}
-                </a>
+                </button>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
                 {isSignedIn ? (
@@ -143,6 +149,11 @@ export function Navigation() {
           </motion.div>
         )}
       </div>
+      
+      <FeaturesModal 
+        isOpen={isFeaturesModalOpen} 
+        onClose={() => setIsFeaturesModalOpen(false)} 
+      />
     </motion.nav>
   );
 }
