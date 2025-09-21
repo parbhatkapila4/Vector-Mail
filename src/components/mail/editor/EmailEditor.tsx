@@ -94,7 +94,15 @@ User's Email: ${account?.emailAddress || ''}
 INSTRUCTIONS:
 You are helping compose a reply to the above email. The user has started typing: "${prompt}"
 
-Generate ONLY the email body content for the reply, starting with what the user has typed. Do not include subject lines, headers, or metadata - just the email body content.`;
+Generate ONLY the email body content for the reply, starting with what the user has typed. 
+
+FORMATTING REQUIREMENTS:
+- Use EXACTLY double line breaks (\\n\\n) between paragraphs - this is critical
+- Structure with clear greeting, main content, and closing
+- Keep paragraphs concise and well-organized
+- Do not include subject lines, headers, or metadata
+- Each paragraph must be separated by exactly \\n\\n (two line breaks)
+- Example: "Greeting\\n\\nMain content\\n\\nClosing\\n\\nSignature"`;
         }
       } else {
         // Fallback context when no thread is available
@@ -106,7 +114,15 @@ User's Email: ${account?.emailAddress || ''}
 INSTRUCTIONS:
 You are helping compose a new email. The user has started typing: "${prompt}"
 
-Generate ONLY the email body content, starting with what the user has typed. Do not include subject lines, headers, or metadata - just the email body content.`;
+Generate ONLY the email body content, starting with what the user has typed.
+
+FORMATTING REQUIREMENTS:
+- Use EXACTLY double line breaks (\\n\\n) between paragraphs - this is critical
+- Structure with clear greeting, main content, and closing
+- Keep paragraphs concise and well-organized
+- Do not include subject lines, headers, or metadata
+- Each paragraph must be separated by exactly \\n\\n (two line breaks)
+- Example: "Greeting\\n\\nMain content\\n\\nClosing\\n\\nSignature"`;
       }
 
       toast.info("🤖 AI is thinking...", { duration: 2000 });
@@ -211,9 +227,15 @@ Generate ONLY the email body content, starting with what the user has typed. Do 
   React.useEffect(() => {
     if (!generation || !editor) return;
     
-    // Replace the current text with the AI completion
-    // The AI completion should already include the continuation from where the user left off
-    editor.commands.setContent(generation);
+    // Convert the generation text to proper HTML with paragraph tags
+    const formattedHTML = generation
+      .split('\n\n') // Split by double line breaks
+      .filter(para => para.trim()) // Remove empty paragraphs
+      .map(para => `<p>${para.trim()}</p>`) // Wrap each paragraph in p tags
+      .join(''); // Join them together
+    
+    // Set the content with proper HTML formatting
+    editor.commands.setContent(formattedHTML);
     
     // Clear the generation state to prevent re-insertion
     setGeneration("");

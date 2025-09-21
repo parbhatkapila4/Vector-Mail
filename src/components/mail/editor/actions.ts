@@ -131,29 +131,40 @@ export async function generate(input: string, context?: string) {
 
                         ENHANCEMENT EXAMPLES:
                         Input: "Thank you for your email regarding"
-                        Output: "Thank you for your email regarding the project proposal. I've reviewed the details and have a few questions that I'd like to discuss with you. Could we schedule a call this week to go over the implementation timeline? Best regards, [Your Name]"
+                        Output: "Thank you for your email regarding the project proposal. I've reviewed the details and have a few questions that I'd like to discuss with you.\n\nCould we schedule a call this week to go over the implementation timeline?\n\nBest regards,\n[Your Name]"
 
                         Input: "I wanted to follow up on"
-                        Output: "I wanted to follow up on our meeting last week and discuss the next steps for moving forward with the implementation. I've prepared the initial draft and would appreciate your feedback. Please let me know when would be a good time to review it together. Thank you, [Your Name]"
+                        Output: "I wanted to follow up on our meeting last week and discuss the next steps for moving forward with the implementation.\n\nI've prepared the initial draft and would appreciate your feedback. Please let me know when would be a good time to review it together.\n\nThank you,\n[Your Name]"
 
                         Input: "Please let me know if you need"
-                        Output: "Please let me know if you need any additional information or have any questions about the proposal. I'm available to clarify any points and discuss how we can move forward with this project. Looking forward to hearing from you. Best regards, [Your Name]"
+                        Output: "Please let me know if you need any additional information or have any questions about the proposal. I'm available to clarify any points and discuss how we can move forward with this project.\n\nLooking forward to hearing from you.\n\nBest regards,\n[Your Name]"
 
                         Input: "I think we should"
-                        Output: "I think we should schedule a follow-up meeting to discuss the implementation timeline and address any concerns you might have. This will help ensure we're all aligned on the project goals and deliverables. Please let me know your availability for next week. Thank you, [Your Name]"
+                        Output: "I think we should schedule a follow-up meeting to discuss the implementation timeline and address any concerns you might have.\n\nThis will help ensure we're all aligned on the project goals and deliverables. Please let me know your availability for next week.\n\nThank you,\n[Your Name]"
 
                         RESPONSE FORMAT:
                         - Output ONLY the email body content
                         - Include the original text as the starting point
-                        - Add appropriate email formatting with paragraphs
+                        - Use proper paragraph breaks with \\n\\n between paragraphs
+                        - Structure the email with: greeting, main content paragraphs, closing
                         - Include professional greeting and closing
                         - Use proper email language conventions
                         - Ensure the response is contextually relevant and helpful
-                        - NEVER include subject lines or email headers`
+                        - NEVER include subject lines or email headers
+                        - Use line breaks (\\n) for proper email formatting
+                        - Keep paragraphs concise and well-structured`
                     },
                     {
                         role: "user",
-                        content: `Please complete this email draft. Generate ONLY the email body content, starting with the text I've written: "${input}". Do not include subject lines, headers, or any metadata - just the email body content.`
+                        content: `Please complete this email draft with proper formatting. Generate ONLY the email body content, starting with the text I've written: "${input}". 
+
+IMPORTANT FORMATTING REQUIREMENTS:
+- Use EXACTLY double line breaks (\\n\\n) between paragraphs - this is critical for proper formatting
+- Structure the email with clear greeting, main content, and closing
+- Keep paragraphs concise and well-organized
+- Do not include subject lines, headers, or any metadata
+- Ensure each paragraph is separated by exactly \\n\\n (two line breaks)
+- Example format: "Greeting text\\n\\nMain paragraph 1\\n\\nMain paragraph 2\\n\\nClosing line\\n\\nSignature"`
                     }
                 ],
                 stream: true,
