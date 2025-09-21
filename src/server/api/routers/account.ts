@@ -215,12 +215,40 @@ export const accountRouter = createTRPCRouter({
             throw new Error("Thread not found or empty");
         }
 
+        // Find the last email that's not from the current account (external email)
         const lastExternalEmail = thread.emails
+            .slice()
             .reverse()
             .find(email => email.from.id !== account.id);
 
         if (!lastExternalEmail) {
-            throw new Error("No external email found in thread");
+            // If no external email found, use the last email in the thread
+            const lastEmail = thread.emails[thread.emails.length - 1];
+            if (!lastEmail) {
+                throw new Error("No emails found in thread");
+            }
+            
+            // For threads with only internal emails, we'll use the last email
+            // This handles cases where the user is replying to their own emails
+            const lastEmailForReply = lastEmail;
+            
+            if (input.replyType === 'reply') {
+                return {
+                    to: [lastEmailForReply.from],
+                    cc: [],
+                    from: { name: account.name, address: account.emailAddress },
+                    subject: `${lastEmailForReply.subject}`,
+                    id: lastEmailForReply.internetMessageId
+                };
+            } else if (input.replyType === 'replyAll') {
+                return {
+                    to: [lastEmailForReply.from, ...lastEmailForReply.to.filter(addr => addr.id !== account.id)],
+                    cc: lastEmailForReply.cc.filter(addr => addr.id !== account.id),
+                    from: { name: account.name, address: account.emailAddress },
+                    subject: `${lastEmailForReply.subject}`,
+                    id: lastEmailForReply.internetMessageId
+                };
+            }
         }
 
         const allRecipients = new Set([

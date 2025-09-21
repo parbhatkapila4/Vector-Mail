@@ -8,10 +8,16 @@ import EmailEditor from '../editor/EmailEditor'
 const ReplyBox = () => {
     const { threadId, accountId } = useThreads()
     
-    const { data: replyDetails } = api.account.getReplyDetails.useQuery({
+    const { 
+        data: replyDetails, 
+        isLoading, 
+        error 
+    } = api.account.getReplyDetails.useQuery({
         accountId: accountId,
         threadId: threadId || '',
         replyType: 'reply'
+    }, {
+        enabled: !!accountId && !!threadId
     })
     
     const [subject, setSubject] = React.useState('')
@@ -29,7 +35,40 @@ const ReplyBox = () => {
         setCcValues(replyDetails.cc.map((cc) => ({ label: cc.address ?? cc.name, value: cc.address })))
     }, [replyDetails, threadId])
     
-    if (!replyDetails) return null;
+    // Show loading state
+    if (isLoading) {
+        return (
+            <div className="h-[300px] flex items-center justify-center">
+                <div className="text-muted-foreground">Loading reply box...</div>
+            </div>
+        )
+    }
+    
+    // Show error state
+    if (error) {
+        return (
+            <div className="h-[300px] flex items-center justify-center">
+                <div className="text-red-500 text-center">
+                    <div className="mb-2">Failed to load reply details</div>
+                    <div className="text-sm text-muted-foreground">
+                        {error.message || 'Unable to prepare reply'}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+    
+    // Show message if no reply details available
+    if (!replyDetails) {
+        return (
+            <div className="h-[300px] flex items-center justify-center">
+                <div className="text-muted-foreground text-center">
+                    <div className="mb-2">No reply details available</div>
+                    <div className="text-sm">Select a thread to reply to</div>
+                </div>
+            </div>
+        )
+    }
 
     const handleSend = async (value: string) => {
         if (!replyDetails) return;
