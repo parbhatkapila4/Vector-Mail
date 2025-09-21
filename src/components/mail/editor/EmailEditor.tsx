@@ -59,6 +59,9 @@ const EmailEditor = ({
   const [generation, setGeneration] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
 
+  // Get email context outside of async function to avoid React Hook issues
+  const { threads, threadId, account } = useThreads();
+
   const aiGenerate = async (prompt: string) => {
     if (isGenerating) return; // Prevent multiple simultaneous generations
     
@@ -67,14 +70,43 @@ const EmailEditor = ({
     
     try {
       // Get email context if available
-      const { threads, threadId, account } = useThreads();
       const thread = threads?.find(t => t.id === threadId);
       let context = '';
       
       if (thread?.emails && thread.emails.length > 0) {
-        context = thread.emails.map(email => 
-          `Subject: ${email.subject}\nFrom: ${email.from.address}\nTo: ${email.to.map(t => t.address).join(', ')}\n\n${email.bodySnippet || email.body || ''}`
-        ).join('\n\n---\n\n');
+        // Get the most recent email in the thread for context
+        const latestEmail = thread.emails[thread.emails.length - 1];
+        if (latestEmail) {
+          context = `EMAIL THREAD CONTEXT FOR REPLY GENERATION:
+
+ORIGINAL EMAIL DETAILS:
+Subject: ${latestEmail.subject}
+From: ${latestEmail.from.address}
+Date: ${latestEmail.sentAt.toLocaleDateString()}
+
+ORIGINAL EMAIL BODY:
+${latestEmail.bodySnippet || latestEmail.body || ''}
+
+REPLY CONTEXT:
+User's Name: ${account?.name || 'User'}
+User's Email: ${account?.emailAddress || ''}
+
+INSTRUCTIONS:
+You are helping compose a reply to the above email. The user has started typing: "${prompt}"
+
+Generate ONLY the email body content for the reply, starting with what the user has typed. Do not include subject lines, headers, or metadata - just the email body content.`;
+        }
+      } else {
+        // Fallback context when no thread is available
+        context = `EMAIL COMPOSITION CONTEXT:
+
+User's Name: ${account?.name || 'User'}
+User's Email: ${account?.emailAddress || ''}
+
+INSTRUCTIONS:
+You are helping compose a new email. The user has started typing: "${prompt}"
+
+Generate ONLY the email body content, starting with what the user has typed. Do not include subject lines, headers, or metadata - just the email body content.`;
       }
 
       toast.info("🤖 AI is thinking...", { duration: 2000 });
@@ -179,11 +211,9 @@ const EmailEditor = ({
   React.useEffect(() => {
     if (!generation || !editor) return;
     
-    // Get current cursor position
-    const { from } = editor.state.selection;
-    
-    // Insert the new AI-generated content at the current cursor position
-    editor.commands.insertContent(generation);
+    // Replace the current text with the AI completion
+    // The AI completion should already include the continuation from where the user left off
+    editor.commands.setContent(generation);
     
     // Clear the generation state to prevent re-insertion
     setGeneration("");

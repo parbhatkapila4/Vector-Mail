@@ -1,5 +1,4 @@
 'use server';
-import TurndownService from 'turndown'
 import OpenAI from 'openai';
 import { createStreamableValue } from '@ai-sdk/rsc';
 
@@ -120,33 +119,41 @@ export async function generate(input: string, context?: string) {
                         COMPLETION RULES:
                         - Complete the current thought naturally and coherently
                         - Maintain the same tone and style as the existing text
-                        - Keep completions concise (1-3 sentences maximum)
+                        - Generate a complete, well-structured EMAIL BODY ONLY
                         - Use proper grammar, punctuation, and email conventions
                         - Sound professional and appropriate for email communication
-                        - Do NOT add greetings, closings, or meta-commentary
-                        - Do NOT start new paragraphs or topics unless the sentence is complete
-                        - Simply continue where the user left off
+                        - Include appropriate greetings and closings for a complete email body
+                        - Create a full, coherent response that flows naturally
+                        - Use the conversation context to provide relevant content
+                        - NEVER include subject lines, headers, or metadata
+
+                        CRITICAL: ONLY GENERATE EMAIL BODY CONTENT - NO SUBJECT LINES, NO HEADERS, NO METADATA
 
                         ENHANCEMENT EXAMPLES:
                         Input: "Thank you for your email regarding"
-                        Output: "the project proposal. I've reviewed the details and have a few questions that I'd like to discuss."
+                        Output: "Thank you for your email regarding the project proposal. I've reviewed the details and have a few questions that I'd like to discuss with you. Could we schedule a call this week to go over the implementation timeline? Best regards, [Your Name]"
 
                         Input: "I wanted to follow up on"
-                        Output: "our meeting last week and discuss the next steps for moving forward with the implementation."
+                        Output: "I wanted to follow up on our meeting last week and discuss the next steps for moving forward with the implementation. I've prepared the initial draft and would appreciate your feedback. Please let me know when would be a good time to review it together. Thank you, [Your Name]"
 
                         Input: "Please let me know if you need"
-                        Output: "any additional information or have any questions about the proposal."
+                        Output: "Please let me know if you need any additional information or have any questions about the proposal. I'm available to clarify any points and discuss how we can move forward with this project. Looking forward to hearing from you. Best regards, [Your Name]"
 
                         Input: "I think we should"
-                        Output: "schedule a follow-up meeting to discuss the implementation timeline and address any concerns."
+                        Output: "I think we should schedule a follow-up meeting to discuss the implementation timeline and address any concerns you might have. This will help ensure we're all aligned on the project goals and deliverables. Please let me know your availability for next week. Thank you, [Your Name]"
 
                         RESPONSE FORMAT:
-                        - Output ONLY the completion text
-                        - No newlines, formatting, or extra text
-                        - Match the existing tone (formal/casual)
-                        - Keep it relevant and helpful
+                        - Output ONLY the email body content
+                        - Include the original text as the starting point
+                        - Add appropriate email formatting with paragraphs
+                        - Include professional greeting and closing
                         - Use proper email language conventions
-                        - Ensure the completion flows naturally from the input`
+                        - Ensure the response is contextually relevant and helpful
+                        - NEVER include subject lines or email headers`
+                    },
+                    {
+                        role: "user",
+                        content: `Please complete this email draft. Generate ONLY the email body content, starting with the text I've written: "${input}". Do not include subject lines, headers, or any metadata - just the email body content.`
                     }
                 ],
                 stream: true,
