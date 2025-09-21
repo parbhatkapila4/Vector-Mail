@@ -8,7 +8,6 @@ import Text from "@tiptap/extension-text";
 import { Button } from "@/components/ui/button";
 
 import { generate } from "./actions";
-import { readStreamableValue } from "@ai-sdk/rsc";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
@@ -56,8 +55,9 @@ const EmailEditor = ({
 
   const [expanded, setExpanded] = React.useState(defaultToolbarExpand ?? false);
 
-  const [generation, setGeneration] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [displayContent, setDisplayContent] = React.useState("");
+  const completeContentRef = React.useRef("");
 
   // Get email context outside of async function to avoid React Hook issues
   const { threads, threadId, account } = useThreads();
@@ -66,7 +66,8 @@ const EmailEditor = ({
     if (isGenerating) return; // Prevent multiple simultaneous generations
     
     setIsGenerating(true);
-    setGeneration(""); // Clear previous generation
+    setDisplayContent(""); // Clear previous display content
+    completeContentRef.current = ""; // Clear previous complete content
     
     try {
       // Get email context if available
@@ -94,15 +95,7 @@ User's Email: ${account?.emailAddress || ''}
 INSTRUCTIONS:
 You are helping compose a reply to the above email. The user has started typing: "${prompt}"
 
-Generate ONLY the email body content for the reply, starting with what the user has typed. 
-
-FORMATTING REQUIREMENTS:
-- Use EXACTLY double line breaks (\\n\\n) between paragraphs - this is critical
-- Structure with clear greeting, main content, and closing
-- Keep paragraphs concise and well-organized
-- Do not include subject lines, headers, or metadata
-- Each paragraph must be separated by exactly \\n\\n (two line breaks)
-- Example: "Greeting\\n\\nMain content\\n\\nClosing\\n\\nSignature"`;
+Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines.`;
         }
       } else {
         // Fallback context when no thread is available
@@ -114,26 +107,20 @@ User's Email: ${account?.emailAddress || ''}
 INSTRUCTIONS:
 You are helping compose a new email. The user has started typing: "${prompt}"
 
-Generate ONLY the email body content, starting with what the user has typed.
-
-FORMATTING REQUIREMENTS:
-- Use EXACTLY double line breaks (\\n\\n) between paragraphs - this is critical
-- Structure with clear greeting, main content, and closing
-- Keep paragraphs concise and well-organized
-- Do not include subject lines, headers, or metadata
-- Each paragraph must be separated by exactly \\n\\n (two line breaks)
-- Example: "Greeting\\n\\nMain content\\n\\nClosing\\n\\nSignature"`;
+Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines.`;
       }
 
       toast.info("🤖 AI is thinking...", { duration: 2000 });
       
-      const { output } = await generate(prompt, context);
-      let fullGeneration = "";
-      for await (const delta of readStreamableValue(output)) {
-        if (delta) {
-          fullGeneration += delta;
-          setGeneration(fullGeneration);
-        }
+      // Call the generate function without streaming
+      const result = await generate(prompt, context);
+      const fullGeneration = result.content || "";
+      
+      // Set the complete generation only once
+      if (fullGeneration.trim()) {
+        console.log("Setting complete content:", fullGeneration);
+        completeContentRef.current = fullGeneration;
+        setDisplayContent(fullGeneration);
       }
       
       if (fullGeneration.trim()) {
@@ -225,21 +212,26 @@ FORMATTING REQUIREMENTS:
   }, [editor]);
 
   React.useEffect(() => {
-    if (!generation || !editor) return;
+    if (!displayContent || !editor || displayContent.trim() === "") return;
+    
+    console.log("useEffect triggered with complete content:", displayContent);
     
     // Convert the generation text to proper HTML with paragraph tags
-    const formattedHTML = generation
+    const formattedHTML = displayContent
+      .replace(/\\n/g, '\n') // Convert literal \n to actual line breaks
       .split('\n\n') // Split by double line breaks
       .filter(para => para.trim()) // Remove empty paragraphs
       .map(para => `<p>${para.trim()}</p>`) // Wrap each paragraph in p tags
       .join(''); // Join them together
     
+    console.log("Formatted HTML:", formattedHTML);
+    
     // Set the content with proper HTML formatting
     editor.commands.setContent(formattedHTML);
     
-    // Clear the generation state to prevent re-insertion
-    setGeneration("");
-  }, [generation, editor]);
+    // Clear the display content after setting content to prevent re-insertion
+    setDisplayContent("");
+  }, [displayContent, editor]);
 
 
   return (
@@ -284,7 +276,10 @@ FORMATTING REQUIREMENTS:
           </div>
           <AIComposeButton
             isComposing={defaultToolbarExpand}
-            onGenerate={setGeneration}
+            onGenerate={(content) => {
+              completeContentRef.current = content;
+              setDisplayContent(content);
+            }}
           />
         </div>
       </div>

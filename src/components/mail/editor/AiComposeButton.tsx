@@ -12,7 +12,6 @@ import {
 
 import React from 'react'
 import { generateEmail } from "./actions"
-import { readStreamableValue } from "@ai-sdk/rsc"
 import { Bot } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -39,12 +38,11 @@ const AIComposeButton = (props: Props) => {
             console.log('Generating email with context:', context?.substring(0, 200) + '...')
             console.log('Prompt:', prompt)
 
-            const { output } = await generateEmail((context || '') + `\n\nMy name is: ${account?.name}\n\n`, prompt)
-
-            for await (const delta of readStreamableValue(output)) {
-                if (delta) {
-                    props.onGenerate(delta);
-                }
+            const result = await generateEmail((context || '') + `\n\nMy name is: ${account?.name}\n\n`, prompt)
+            
+            // Send complete content at once (no streaming)
+            if (result.content && result.content.trim()) {
+                props.onGenerate(result.content);
             }
         } catch (error) {
             console.error('Error generating email:', error)
