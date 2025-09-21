@@ -17,6 +17,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useLocalStorage } from "usehooks-ts";
 import AIComposeButton from "./AiComposeButton";
 import { toast } from "sonner";
+import useThreads from "@/hooks/use-threads";
 
 type EmailEditorProps = {
   toValues: { label: string; value: string }[];
@@ -56,10 +57,29 @@ const EmailEditor = ({
   const [expanded, setExpanded] = React.useState(defaultToolbarExpand ?? false);
 
   const [generation, setGeneration] = React.useState("");
+  const [isGenerating, setIsGenerating] = React.useState(false);
 
   const aiGenerate = async (prompt: string) => {
+    if (isGenerating) return; // Prevent multiple simultaneous generations
+    
+    setIsGenerating(true);
+    setGeneration(""); // Clear previous generation
+    
     try {
-      const { output } = await generate(prompt);
+      // Get email context if available
+      const { threads, threadId, account } = useThreads();
+      const thread = threads?.find(t => t.id === threadId);
+      let context = '';
+      
+      if (thread?.emails && thread.emails.length > 0) {
+        context = thread.emails.map(email => 
+          `Subject: ${email.subject}\nFrom: ${email.from.address}\nTo: ${email.to.map(t => t.address).join(', ')}\n\n${email.bodySnippet || email.body || ''}`
+        ).join('\n\n---\n\n');
+      }
+
+      toast.info("🤖 AI is thinking...", { duration: 2000 });
+      
+      const { output } = await generate(prompt, context);
       let fullGeneration = "";
       for await (const delta of readStreamableValue(output)) {
         if (delta) {
@@ -67,9 +87,15 @@ const EmailEditor = ({
           setGeneration(fullGeneration);
         }
       }
+      
+      if (fullGeneration.trim()) {
+        toast.success("✨ AI suggestion ready!", { duration: 2000 });
+      }
     } catch (error) {
       console.error("AI generation failed:", error);
       toast.error("AI generation failed. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -77,23 +103,33 @@ const EmailEditor = ({
     addKeyboardShortcuts() {
       return {
         "Meta-j": () => {
+          if (isGenerating) {
+            toast.info("AI is already generating, please wait...");
+            return true;
+          }
+          
           const currentText = this.editor.getText();
           if (currentText.trim()) {
             aiGenerate(currentText);
           } else {
             toast.info(
-              "Please write some text first to generate AI suggestions",
+              "💡 Write some text first, then press Alt+J for AI autocomplete",
             );
           }
           return true;
         },
         "Alt-j": () => {
+          if (isGenerating) {
+            toast.info("AI is already generating, please wait...");
+            return true;
+          }
+          
           const currentText = this.editor.getText();
           if (currentText.trim()) {
             aiGenerate(currentText);
           } else {
             toast.info(
-              "Please write some text first to generate AI suggestions",
+              "💡 Write some text first, then press Alt+J for AI autocomplete",
             );
           }
           return true;
@@ -142,8 +178,13 @@ const EmailEditor = ({
 
   React.useEffect(() => {
     if (!generation || !editor) return;
+    
+    // Get current cursor position
+    const { from } = editor.state.selection;
+    
     // Insert the new AI-generated content at the current cursor position
     editor.commands.insertContent(generation);
+    
     // Clear the generation state to prevent re-insertion
     setGeneration("");
   }, [generation, editor]);
@@ -197,23 +238,41 @@ const EmailEditor = ({
       </div>
 
       <div className="w-full flex-1 px-4 py-4">
-        <div className="h-full min-h-[300px] w-full rounded-lg border border-gray-200 p-4 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+        <div className={`relative h-full min-h-[300px] w-full rounded-lg border p-4 transition-all duration-200 ${
+          isGenerating 
+            ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50/50' 
+            : 'border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500'
+        }`}>
           <EditorContent
-            className="prose prose-sm h-full  w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none"
+            className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none"
             editor={editor}
-            placeholder="Write your email here..."
+            placeholder={isGenerating ? "AI is generating suggestions..." : "Write your email here..."}
           />
+          {isGenerating && (
+            <div className="absolute top-2 right-2 flex items-center gap-2 text-blue-600 text-xs">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+              <span>AI thinking...</span>
+            </div>
+          )}
         </div>
       </div>
       <Separator />
       <div className="bg-background/50 sticky bottom-0 z-10 flex items-center justify-between px-4 py-3 backdrop-blur-sm">
-        <span className="text-muted-foreground text-sm">
-          Tip: Press{" "}
-          <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
-            {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd + J' : 'Alt + J'}
-          </kbd>{" "}
-          for AI autocomplete
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-muted-foreground text-sm">
+            💡 Press{" "}
+            <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
+              {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd + J' : 'Alt + J'}
+            </kbd>{" "}
+            for smart AI autocomplete
+          </span>
+          {isGenerating && (
+            <div className="flex items-center gap-2 text-blue-600 text-sm">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+              <span>AI thinking...</span>
+            </div>
+          )}
+        </div>
         <Button
           onClick={async () => {
             const content = editor?.getHTML() || "";

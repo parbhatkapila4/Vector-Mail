@@ -80,10 +80,12 @@ export async function generateEmail(context: string, prompt: string) {
     return { output: stream.value };
 }
 
-export async function generate(input: string) {
+export async function generate(input: string, context?: string) {
     const stream = createStreamableValue('');
 
     console.log("input", input);
+    console.log("context", context?.substring(0, 200) + '...');
+    
     (async () => {
         try {
             const openai = new OpenAI({
@@ -100,38 +102,51 @@ export async function generate(input: string) {
                 messages: [
                     {
                         role: "system",
-                        content: `You are an intelligent email autocomplete assistant that helps users complete their email sentences naturally and professionally.
+                        content: `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
 
-                        CONTEXT: The user is writing an email and needs help completing their current thought.
+                        EMAIL CONTEXT:
+                        ${context ? `CONVERSATION HISTORY:
+                        ${context}
+                        
+                        ` : ''}CURRENT DRAFT: "${input}"
 
-                        CURRENT TEXT: "${input}"
+                        YOUR CAPABILITIES:
+                        1. **Smart Completion**: Complete the current sentence or paragraph naturally
+                        2. **Tone Matching**: Match the existing tone (formal, casual, friendly, professional)
+                        3. **Context Awareness**: Use conversation history to provide relevant completions
+                        4. **Grammar Enhancement**: Fix grammar issues while maintaining the user's voice
+                        5. **Professional Polish**: Improve clarity and professionalism when appropriate
 
-                        YOUR TASK:
-                        - Complete the current sentence or thought naturally
+                        COMPLETION RULES:
+                        - Complete the current thought naturally and coherently
                         - Maintain the same tone and style as the existing text
-                        - Keep it concise (1-2 sentences maximum)
-                        - Use proper grammar and punctuation
+                        - Keep completions concise (1-3 sentences maximum)
+                        - Use proper grammar, punctuation, and email conventions
                         - Sound professional and appropriate for email communication
                         - Do NOT add greetings, closings, or meta-commentary
-                        - Do NOT start new paragraphs or topics
+                        - Do NOT start new paragraphs or topics unless the sentence is complete
                         - Simply continue where the user left off
 
-                        EXAMPLES:
+                        ENHANCEMENT EXAMPLES:
                         Input: "Thank you for your email regarding"
-                        Output: "the project proposal. I've reviewed the details and have a few questions."
+                        Output: "the project proposal. I've reviewed the details and have a few questions that I'd like to discuss."
 
                         Input: "I wanted to follow up on"
-                        Output: "our meeting last week and discuss the next steps."
+                        Output: "our meeting last week and discuss the next steps for moving forward with the implementation."
 
                         Input: "Please let me know if you need"
-                        Output: "any additional information or have any questions."
+                        Output: "any additional information or have any questions about the proposal."
 
-                        RESPONSE RULES:
+                        Input: "I think we should"
+                        Output: "schedule a follow-up meeting to discuss the implementation timeline and address any concerns."
+
+                        RESPONSE FORMAT:
                         - Output ONLY the completion text
                         - No newlines, formatting, or extra text
                         - Match the existing tone (formal/casual)
                         - Keep it relevant and helpful
-                        - Use proper email language conventions`
+                        - Use proper email language conventions
+                        - Ensure the completion flows naturally from the input`
                     }
                 ],
                 stream: true,
