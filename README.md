@@ -1,6 +1,6 @@
 # Vector Mail AI
 
-Production-grade AI email client built for scale. Handles 100 of emails with 99.9% uptime.
+Production-grade AI email Intelligence client built for scale. Handles 100 of emails with 99.9% uptime.
 
 ## Problem We Solve
 
@@ -232,4 +232,4 @@ npm run bench:sync   # Email sync performance
 
 ---
 
-**Built by [@parbhatkapila4](https://github.com/parbhatkapila4)** | [LinkedIn](https://linkedin.com/in/parbhatkapila) 
+**Built by [@parbhatkapila4](https://github.com/parbhatkapila4)** | [LinkedIn](https://www.linkedin.com/in/parbhat-kapila/) 
