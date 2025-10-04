@@ -169,6 +169,25 @@ export function Navigation() {
                         ))}
                       </div>
 
+                      {/* Legal Section */}
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                          Legal
+                        </h3>
+                        <Link href="/privacy">
+                          <motion.button
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: 0.4 }}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-black transition-all duration-200 text-left"
+                          >
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <span className="font-medium">Privacy Policy</span>
+                          </motion.button>
+                        </Link>
+                      </div>
+
                       {/* Dashboard Section */}
                       <div className="space-y-2">
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
