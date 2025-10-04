@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - VectorMail AI",
-  description: "Terms of Service for VectorMail AI - AI-powered email management platform",
+  title: "Terms & Conditions - VectorMail AI",
+  description: "Terms & Conditions for VectorMail AI - AI-powered email management platform",
 };
 
 export default function TermsPage() {
@@ -10,114 +10,119 @@ export default function TermsPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         <div className="prose prose-lg max-w-none">
-          <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
+          <h1 className="text-4xl font-bold mb-8">Terms & Conditions</h1>
           
           <p className="text-muted-foreground mb-8">
-            <strong>Last updated:</strong> {new Date().toLocaleDateString()}
+            Welcome, if you continue to browse and use this website you are agreeing to comply with and be bound by the following terms and conditions of use, which together with our privacy policy govern VectorMail AI's relationship with you in relation to this website.
           </p>
 
-          <div className="space-y-8">
+          <p className="text-muted-foreground mb-8">
+            The term 'VectorMail AI' or 'us' or 'we' refers to the owner of the website. The term 'you' refers to the user or viewer of our website.
+          </p>
+
+          <p className="text-muted-foreground mb-8">
+            The use of this website is subject to the following terms of use:
+          </p>
+
+          <div className="space-y-6">
             <section>
-              <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
               <p className="mb-4">
-                By accessing and using VectorMail AI, you accept and agree to be bound by the terms and 
-                provision of this agreement. If you do not agree to abide by the above, please do not 
-                use this service.
+                <strong>1.</strong> The content of the pages of this website is for your general information and use only. It is subject to change without notice.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">2. Description of Service</h2>
               <p className="mb-4">
-                VectorMail AI is an AI-powered email management platform that provides intelligent 
-                email organization, summarization, and search capabilities. Our service integrates 
-                with Gmail to offer enhanced email management features.
+                <strong>2.</strong> Neither we nor any third parties provide any warranty or guarantee as to the accuracy, timeliness, performance, completeness or suitability of the information and materials found or offered on this website for any particular purpose.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">3. User Accounts</h2>
               <p className="mb-4">
-                To use our service, you must create an account and provide accurate, complete information. 
-                You are responsible for maintaining the confidentiality of your account and password.
+                <strong>3.</strong> You acknowledge that such information and materials may contain inaccuracies or errors and we expressly exclude liability for any such inaccuracies or errors to the fullest extent permitted by law.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">4. Acceptable Use</h2>
-              <p className="mb-4">You agree not to use VectorMail AI to:</p>
-              <ul className="list-disc pl-6 mb-4 space-y-2">
-                <li>Violate any applicable laws or regulations</li>
-                <li>Transmit any harmful or malicious content</li>
-                <li>Attempt to gain unauthorized access to our systems</li>
-                <li>Use the service for any illegal or unauthorized purpose</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold mb-4">5. Intellectual Property</h2>
               <p className="mb-4">
-                The service and its original content, features, and functionality are owned by VectorMail AI 
-                and are protected by international copyright, trademark, patent, trade secret, and other 
-                intellectual property laws.
+                <strong>4.</strong> Your use of any information or materials on this website is entirely at your own risk, for which we shall not be liable.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">6. Privacy</h2>
               <p className="mb-4">
-                Your privacy is important to us. Please review our Privacy Policy, which also governs 
-                your use of the service, to understand our practices.
+                <strong>5.</strong> It shall be your own responsibility to ensure that any products, services or information available through this website meet your specific requirements.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">7. Service Availability</h2>
               <p className="mb-4">
-                We strive to maintain high service availability, but we do not guarantee that the service 
-                will be uninterrupted or error-free. We reserve the right to modify or discontinue the 
-                service at any time.
+                <strong>6.</strong> This website contains material which is owned by or licensed to us. This material includes, but is not limited to, the design, layout, look, appearance and graphics.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">8. Limitation of Liability</h2>
               <p className="mb-4">
-                In no event shall VectorMail AI be liable for any indirect, incidental, special, consequential, 
-                or punitive damages, including without limitation, loss of profits, data, use, goodwill, or 
-                other intangible losses.
+                <strong>7.</strong> Reproduction is prohibited other than in accordance with the copyright notice, which forms part of these terms and conditions.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">9. Termination</h2>
               <p className="mb-4">
-                We may terminate or suspend your account and access to the service immediately, without 
-                prior notice or liability, for any reason whatsoever, including without limitation if you 
-                breach the Terms.
+                <strong>8.</strong> All trademarks reproduced in this website which is not the property of, or licensed to, the operator is acknowledged on the website.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">10. Changes to Terms</h2>
               <p className="mb-4">
-                We reserve the right, at our sole discretion, to modify or replace these Terms at any time. 
-                If a revision is material, we will try to provide at least 30 days notice prior to any new 
-                terms taking effect.
+                <strong>9.</strong> Unauthorized use of this website by you may give rise to a claim for damages and/or be a criminal offense. From time to time this website may also include links to other websites.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4">11. Contact Information</h2>
               <p className="mb-4">
-                If you have any questions about these Terms of Service, please contact us:
+                <strong>10.</strong> These links are provided for your convenience to provide further information. They do not signify that we endorse the website(s). We take no responsibility for the content of the linked website(s).
               </p>
-              
-              <div className="bg-muted p-6 rounded-lg">
-                <p className="mb-2"><strong>Email:</strong> legal@vectormail-ai.com</p>
-                <p className="mb-2"><strong>Website:</strong> https://vectormail-ai.vercel.app</p>
-              </div>
             </section>
+
+            <section>
+              <p className="mb-4">
+                <strong>11.</strong> You may not create a link to this website from another website or document without VectorMail AI's prior consent. Your use of this website and any dispute arising out of such use of the website is subject to the laws of the United States or other regulatory authority.
+              </p>
+            </section>
+
+            <section>
+              <p className="mb-4">
+                <strong>12.</strong> Other Terms: Credit Card orders will commence on receiving the authorization/confirmation from the Credit Card/respective Payment Gateway companies.
+              </p>
+            </section>
+
+            <section>
+              <p className="mb-4">
+                <strong>13.</strong> AI-Powered Services: VectorMail AI provides artificial intelligence-powered email management services. You acknowledge that AI-generated content may not always be accurate and should be reviewed before use.
+              </p>
+            </section>
+
+            <section>
+              <p className="mb-4">
+                <strong>14.</strong> Email Integration: By connecting your email account, you grant VectorMail AI permission to access and process your email data for the purpose of providing our AI-powered services. You can revoke this access at any time.
+              </p>
+            </section>
+
+            <section>
+              <p className="mb-4">
+                <strong>15.</strong> Data Security: We implement industry-standard security measures to protect your data, but you acknowledge that no method of transmission over the internet is 100% secure.
+              </p>
+            </section>
+          </div>
+
+          <div className="mt-12 p-6 bg-muted rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4">Contact Information</h2>
+            <p className="mb-2"><strong>Email:</strong> legal@vectormail-ai.com</p>
+            <p className="mb-2"><strong>Website:</strong> https://vectormail.parbhat.dev</p>
+            <p className="text-sm text-muted-foreground mt-4">
+              <strong>Last updated:</strong> {new Date().toLocaleDateString()}
+            </p>
           </div>
         </div>
       </div>
