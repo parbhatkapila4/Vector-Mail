@@ -52,7 +52,7 @@ ${emailContent}
 Summary:`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp:free",
+      model: "google/gemini-2.5-flash-lite",
       messages: [
         {
           role: "user",
@@ -100,7 +100,7 @@ ${emailContent}
 Return only the tags as a comma-separated list, no other text.`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp:free",
+      model: "google/gemini-2.5-flash",
       messages: [
         {
           role: "user",

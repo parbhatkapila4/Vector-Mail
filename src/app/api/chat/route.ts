@@ -182,7 +182,7 @@ Example bad response: "**Subject:** ..., **From:** ..., **Date:** ..." (DO NOT D
           console.log('Email context length:', emailContext.length);
           
           const completion = await openai.chat.completions.create({
-            model: "google/gemini-2.0-flash-exp:free",
+            model: "google/gemini-2.5-flash",
             messages: [
               {
                 role: "system",
