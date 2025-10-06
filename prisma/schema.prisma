@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -104,7 +106,9 @@ model Email {
   nativeProperties     Json?
   folderId             String?
   omitted              String[]
-  emailLabel           EmailLabel            @default(inbox)
+  emailLabel           EmailLabel                      @default(inbox)
+  summary              String?
+  embedding            Unsupported("vector(768)")?
   from                 EmailAddress          @relation("FromEmail", fields: [fromId], references: [id], onDelete: Cascade)
   thread               Thread                @relation(fields: [threadId], references: [id], onDelete: Cascade)
   attachments          EmailAttachment[]

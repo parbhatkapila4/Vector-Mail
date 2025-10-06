@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { env } from '@/env.js';
 import type { EmailMessage } from "@/types";
+import { getGenerateEmbeddings } from './embedding';
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -18,39 +19,61 @@ export interface EmailAnalysis {
 }
 
 /**
- * Generate a concise summary of an email
+ * Generate a comprehensive summary of an email
  */
 export async function generateEmailSummary(email: EmailMessage): Promise<string> {
   try {
+    // Clean and truncate email body for better processing
+    const bodyContent = email.body || email.bodySnippet || 'No content';
+    const truncatedBody = bodyContent.length > 3000 
+      ? bodyContent.substring(0, 3000) + '...' 
+      : bodyContent;
+
     const emailContent = `
 Subject: ${email.subject}
-From: ${email.from.address}
-To: ${email.to.map(t => t.address).join(', ')}
+From: ${email.from.name || email.from.address} <${email.from.address}>
+To: ${email.to.map(t => t.name || t.address).join(', ')}
 Date: ${new Date(email.sentAt).toLocaleString()}
-Body: ${email.body || email.bodySnippet || 'No content'}
+Body: ${truncatedBody}
     `.trim();
 
-    const prompt = `Please provide a concise summary of this email in 1-2 sentences. Focus on the main purpose, key information, and any action items. Keep it under 100 words.
+    const prompt = `Analyze this email and create a comprehensive, informative summary. Include:
+
+1. **Main Purpose**: What is this email about? (e.g., order confirmation, meeting request, newsletter, promotion)
+2. **Key Information**: Important details like names, dates, amounts, locations, or specific items mentioned
+3. **Action Items**: Any tasks, requests, or deadlines mentioned
+4. **Context**: Who sent it and why it matters (business, personal, automated notification, etc.)
+
+Write 3-5 sentences that capture the essential information someone would need to understand and act on this email. Be specific and include relevant details.
 
 Email content:
-${emailContent}`;
+${emailContent}
+
+Summary:`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp",
+      model: "google/gemini-2.5-flash-lite",
       messages: [
         {
           role: "user",
           content: prompt,
         },
       ],
-      max_tokens: 150,
-      temperature: 0.3,
+      max_tokens: 300,
+      temperature: 0.4,
     });
 
-    return completion.choices[0]?.message?.content?.trim() || email.subject || "No summary available";
+    const summary = completion.choices[0]?.message?.content?.trim();
+    
+    // Ensure we have a meaningful summary
+    if (!summary || summary.length < 20) {
+      return `Email from ${email.from.name || email.from.address} about: ${email.subject}`;
+    }
+
+    return summary;
   } catch (error) {
     console.error("Error generating email summary:", error);
-    return email.subject || "No summary available";
+    return `Email from ${email.from.name || email.from.address} regarding: ${email.subject}`;
   }
 }
 
@@ -77,7 +100,7 @@ ${emailContent}
 Return only the tags as a comma-separated list, no other text.`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp",
+      model: "google/gemini-2.5-flash-lite",
       messages: [
         {
           role: "user",
@@ -104,31 +127,33 @@ Return only the tags as a comma-separated list, no other text.`;
 }
 
 /**
- * Generate vector embedding for email content
+ * Generate vector embedding from summary using Gemini
+ * Includes summary and key metadata for richer semantic representation
  */
-export async function generateEmailEmbedding(email: EmailMessage): Promise<number[]> {
+export async function generateEmailEmbedding(summary: string, email?: EmailMessage): Promise<number[]> {
   try {
-    // Create a comprehensive text for embedding
-    const embeddingText = `
-Subject: ${email.subject}
-From: ${email.from.address}
-To: ${email.to.map(t => t.address).join(', ')}
-Body: ${email.body || email.bodySnippet || ''}
-Keywords: ${email.keywords.join(', ')}
-Classifications: ${email.sysClassifications.join(', ')}
-    `.trim();
-
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-small", // Using OpenRouter's embedding model
-      input: embeddingText,
-      dimensions: 768, // Using 768 dimensions for better performance
-    });
-
-    if (!response?.data || response.data.length === 0) {
-      throw new Error("No embeddings returned");
+    // Create a rich text representation for embedding
+    let embeddingText = summary;
+    
+    // If email context is provided, enhance the embedding with metadata
+    if (email) {
+      const senderInfo = email.from.name || email.from.address;
+      const dateInfo = new Date(email.sentAt).toLocaleDateString();
+      
+      embeddingText = `${summary}\n\nFrom: ${senderInfo}\nDate: ${dateInfo}\nSubject: ${email.subject}`;
+    }
+    
+    console.log("Generating embedding for:", embeddingText.substring(0, 150) + "...");
+    
+    // Use Gemini embeddings with 768 dimensions
+    const embedding = await getGenerateEmbeddings(embeddingText);
+    
+    if (!embedding || embedding.length === 0) {
+      throw new Error("No embeddings returned from Gemini");
     }
 
-    return response.data[0]?.embedding || [];
+    console.log(`✓ Generated embedding with ${embedding.length} dimensions`);
+    return embedding;
   } catch (error) {
     console.error("Error generating email embedding:", error);
     // Return a zero vector as fallback
@@ -141,14 +166,24 @@ Classifications: ${email.sysClassifications.join(', ')}
  */
 export async function analyzeEmail(email: EmailMessage): Promise<EmailAnalysis> {
   try {
-    console.log(`Analyzing email: ${email.subject}`);
+    console.log(`\n📧 Analyzing email: ${email.subject}`);
+    console.log(`   From: ${email.from.name || email.from.address}`);
     
-    // Run all analyses in parallel for better performance
-    const [summary, tags, vectorEmbedding] = await Promise.all([
-      generateEmailSummary(email),
-      generateEmailTags(email),
-      generateEmailEmbedding(email)
-    ]);
+    // First generate comprehensive summary using OpenRouter
+    console.log(`   ⚙️  Generating detailed summary...`);
+    const summary = await generateEmailSummary(email);
+    console.log(`   ✓ Summary (${summary.length} chars): ${summary.substring(0, 100)}...`);
+    
+    // Generate embedding from the summary + metadata using Gemini
+    console.log(`   ⚙️  Generating semantic embedding...`);
+    const vectorEmbedding = await generateEmailEmbedding(summary, email);
+    
+    // Generate tags
+    console.log(`   ⚙️  Generating tags...`);
+    const tags = await generateEmailTags(email);
+    console.log(`   ✓ Tags: ${tags.join(', ')}`);
+
+    console.log(`   ✅ Analysis complete!\n`);
 
     return {
       summary,
@@ -156,7 +191,7 @@ export async function analyzeEmail(email: EmailMessage): Promise<EmailAnalysis> 
       vectorEmbedding
     };
   } catch (error) {
-    console.error("Error analyzing email:", error);
+    console.error("❌ Error analyzing email:", error);
     // Return fallback analysis
     return {
       summary: email.subject || "No summary available",
@@ -167,21 +202,18 @@ export async function analyzeEmail(email: EmailMessage): Promise<EmailAnalysis> 
 }
 
 /**
- * Generate embedding for search query
+ * Generate embedding for search query using Gemini
  */
 export async function generateQueryEmbedding(query: string): Promise<number[]> {
   try {
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: query,
-      dimensions: 768,
-    });
-
-    if (!response?.data || response.data.length === 0) {
+    // Use Gemini for query embeddings to match email embeddings
+    const embedding = await getGenerateEmbeddings(query);
+    
+    if (!embedding || embedding.length === 0) {
       throw new Error("No embeddings returned");
     }
 
-    return response.data[0]?.embedding || [];
+    return embedding;
   } catch (error) {
     console.error("Error generating query embedding:", error);
     // Return a zero vector as fallback

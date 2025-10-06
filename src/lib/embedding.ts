@@ -11,7 +11,7 @@ export async function getGenerateEmbeddings(summary: String) {
             model: 'gemini-embedding-001',
             contents: summary as string,
             config: {
-                outputDimensionality: 1536,
+                outputDimensionality: 768,
             },
         });
         if (!response?.embeddings) {
@@ -25,5 +25,3 @@ export async function getGenerateEmbeddings(summary: String) {
         return []
     }
 }
-
-console.log(await getGenerateEmbeddings("Hello, world!"))

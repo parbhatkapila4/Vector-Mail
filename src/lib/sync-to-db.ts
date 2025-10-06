@@ -1,6 +1,8 @@
 import { db } from "@/server/db";
 import type { EmailAddress, EmailAttachment, EmailMessage } from "@/types";
 import pLimit from "p-limit";
+import { analyzeEmail } from "./email-analysis";
+import { arrayToVector } from "./vector-utils";
 
 export async function syncEmailsToDatabase(emails: EmailMessage[], accountId: string) {
     console.log(`Syncing ${emails.length} emails to database`);
@@ -29,6 +31,15 @@ async function upsertEmail(email: EmailMessage, accountId: string, index: number
         } else if (email.sysLabels.includes('draft')) {
             emailLabelType = 'draft'
         }
+
+        // Generate AI summary and embeddings for the email
+        console.log(`Analyzing email: ${email.subject}`);
+        const analysis = await analyzeEmail(email);
+        console.log(`Generated summary: ${analysis.summary.substring(0, 100)}...`);
+        console.log(`Generated embedding with ${analysis.vectorEmbedding.length} dimensions`);
+        
+        // Convert embedding array to pgvector format
+        const embeddingVector = arrayToVector(analysis.vectorEmbedding);
 
         const addressToUpsert = new Map()
         for (const address of [email.from, ...email.to, ...email.cc, ...email.bcc, ...email.replyTo]) {
@@ -122,6 +133,7 @@ async function upsertEmail(email: EmailMessage, accountId: string, index: number
                 folderId: email.folderId,
                 omitted: email.omitted,
                 emailLabel: emailLabelType,
+                summary: analysis.summary,
             },
             create: {
                 id: email.id,
@@ -153,8 +165,16 @@ async function upsertEmail(email: EmailMessage, accountId: string, index: number
                 nativeProperties: email.nativeProperties as any,
                 folderId: email.folderId,
                 omitted: email.omitted,
+                summary: analysis.summary,
             }
         });
+
+        // Update embedding separately using raw SQL since it's an Unsupported type
+        await db.$executeRaw`
+            UPDATE "Email" 
+            SET embedding = ${embeddingVector}::vector
+            WHERE id = ${email.id}
+        `;
 
         const threadEmails = await db.email.findMany({
             where: { threadId: thread.id },

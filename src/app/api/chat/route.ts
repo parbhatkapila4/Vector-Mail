@@ -2,6 +2,8 @@ import { db } from '@/server/db';
 import { auth } from '@clerk/nextjs/server';
 import OpenAI from 'openai';
 import { env } from '@/env.js';
+import { generateQueryEmbedding } from '@/lib/email-analysis';
+import { arrayToVector } from '@/lib/vector-utils';
 
 export async function POST(req: Request) {
   try {
@@ -33,11 +35,56 @@ export async function POST(req: Request) {
       return new Response('Account not found', { status: 404 });
     }
 
-    const recentEmails = await db.email.findMany({
+    // 🚀 RAG SYSTEM: Generate embedding for user query
+    console.log('🔍 Generating embedding for query:', userQuery);
+    const queryEmbedding = await generateQueryEmbedding(userQuery);
+    const queryVector = arrayToVector(queryEmbedding);
+
+    // 🎯 RAG SYSTEM: Find semantically similar emails using vector search
+    console.log('🔎 Searching for relevant emails using semantic similarity...');
+    
+    // Calculate date 90 days ago for filtering recent emails
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    const relevantEmails = await db.$queryRaw<Array<{
+      id: string;
+      subject: string;
+      summary: string | null;
+      body: string | null;
+      bodySnippet: string | null;
+      sentAt: Date;
+      similarity: number;
+    }>>`
+      SELECT 
+        e.id,
+        e.subject,
+        e.summary,
+        e.body,
+        e."bodySnippet",
+        e."sentAt",
+        1 - (e.embedding <=> ${queryVector}::vector) as similarity
+      FROM "Email" e
+      INNER JOIN "Thread" t ON e."threadId" = t.id
+      WHERE 
+        t."accountId" = ${accountId}
+        AND e.embedding IS NOT NULL
+        AND e."sentAt" >= ${ninetyDaysAgo}
+      ORDER BY e.embedding <=> ${queryVector}::vector
+      LIMIT 10
+    `;
+
+    console.log(`✅ Found ${relevantEmails.length} relevant emails (avg similarity: ${
+      relevantEmails.length > 0 
+        ? (relevantEmails.reduce((sum, e) => sum + e.similarity, 0) / relevantEmails.length).toFixed(3)
+        : 0
+    })`);
+
+    // Get full email details for the relevant ones
+    const emailIds = relevantEmails.map(e => e.id);
+    const fullEmails = await db.email.findMany({
       where: {
-        thread: {
-          accountId: accountId,
-        },
+        id: { in: emailIds },
       },
       include: {
         thread: true,
@@ -46,27 +93,40 @@ export async function POST(req: Request) {
         cc: true,
         attachments: true,
       },
-      orderBy: {
-        sentAt: 'desc',
-      },
-      take: 10,
     });
 
-    let emailContext = recentEmails
-      .map((email) => {
-        const toAddresses = email.to.map(t => t.address).join(', ');
-        const fromAddress = email.from.address;
-        const bodyText = email.body || email.bodySnippet || 'No content';
-        const truncatedBody = bodyText.length > 500 ? bodyText.substring(0, 500) + '...' : bodyText;
+    // Create context from semantically similar emails
+    let emailContext = relevantEmails
+      .map((relevantEmail) => {
+        const fullEmail = fullEmails.find(e => e.id === relevantEmail.id);
+        if (!fullEmail) return '';
+
+        const toAddresses = fullEmail.to.map(t => t.address).join(', ');
+        const fromAddress = fullEmail.from.address;
+        const fromName = fullEmail.from.name || fromAddress;
+        
+        // Use summary if available, otherwise use body/snippet
+        const content = relevantEmail.summary || 
+                       relevantEmail.body || 
+                       relevantEmail.bodySnippet || 
+                       'No content';
+        
+        const truncatedContent = content.length > 600 
+          ? content.substring(0, 600) + '...' 
+          : content;
+        
+        const similarity = (relevantEmail.similarity * 100).toFixed(1);
         
         return `
-Subject: ${email.subject}
-From: ${fromAddress}
+[Relevance: ${similarity}%]
+Subject: ${relevantEmail.subject}
+From: ${fromName} <${fromAddress}>
 To: ${toAddresses}
-Date: ${email.sentAt.toISOString()}
-Body: ${truncatedBody}
+Date: ${new Date(relevantEmail.sentAt).toLocaleDateString()}
+${relevantEmail.summary ? 'Summary' : 'Content'}: ${truncatedContent}
 ---`;
       })
+      .filter(Boolean)
       .join('\n');
 
     // Check if context is too large (rough estimate: 1 token ≈ 4 characters)
@@ -78,21 +138,28 @@ Body: ${truncatedBody}
       emailContext = emailContext.substring(0, maxContextLength) + '\n... [Context truncated due to length]';
     }
 
-    const systemPrompt = `You are an AI assistant embedded in an email client app. You help users find information from their emails and answer questions about their email content.
+    const systemPrompt = `You are an AI assistant with RAG (Retrieval-Augmented Generation) capabilities embedded in an email client app. You help users find information from their emails using semantic search.
+
+🔍 SEARCH METHOD: The emails below were found using vector similarity search based on the user's query. They are ranked by relevance (similarity score shown).
 
 CURRENT TIME: ${new Date().toLocaleString()}
 
-EMAIL CONTEXT:
-${emailContext}
+📧 RELEVANT EMAIL CONTEXT (Sorted by Semantic Similarity):
+${emailContext || 'No relevant emails found for this query.'}
 
 INSTRUCTIONS:
-- Answer questions based on the provided email context
-- If the user asks about specific emails, search through the context to find relevant information
-- If you can't find the answer in the email context, politely say so
-- Be helpful and concise in your responses
-- Focus on factual information from the emails
-- If asked about upcoming events, meetings, or deadlines, look for relevant information in the email content
-- Don't make up information that isn't in the email context`;
+- Provide clean, natural language responses - NO formatting, NO asterisks, NO bold text
+- DO NOT repeat email metadata (Subject, From, Date) - this is already shown to the user
+- Answer questions based on the email context above
+- Summarize the key information from relevant emails in a conversational way
+- Simply describe what the email is about without repeating headers or formatting
+- Be concise and helpful - get straight to the point
+- If you can't find the answer, politely say so
+- Don't make up information that isn't in the email context
+
+Example good response: "Yes, I found one email from Brilliant. It's a rejection email for a Software Engineer (Growth) position, stating that your past experience wasn't a perfect match for the role."
+
+Example bad response: "**Subject:** ..., **From:** ..., **Date:** ..." (DO NOT DO THIS)`;
 
     const encoder = new TextEncoder();
 

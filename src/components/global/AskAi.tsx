@@ -180,15 +180,16 @@ const AskAI = ({ isCollapsed }: { isCollapsed: boolean }) => {
                         <div className='flex items-center gap-4  py-2'>
                             <SparklesIcon className='size-6 text-gray-500' />
                             <div>
-                                <p className='text-gray-900 dark:text-gray-100'>Ask AI anything about your emails</p>
-                                <p className='text-gray-500 text-xs dark:text-gray-400'>Get answers to your questions about your emails</p>
+                                <p className='text-gray-900 dark:text-gray-100'>AI-Powered Email Search 🚀</p>
+                                <p className='text-gray-500 text-xs dark:text-gray-400'>Using RAG + Vector Search to find relevant emails</p>
                             </div>
                         </div>
                         <div className="h-2"></div>
                         <div className="flex items-center gap-2  flex-wrap">
-                            <span onClick={() => setInput('What can I ask?')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer'>What can I ask?</span>
-                            <span onClick={() => setInput('When is my next flight?')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer'>When is my next flight?</span>
-                            <span onClick={() => setInput('When is my next meeting?')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer'>When is my next meeting?</span>
+                            <span onClick={() => setInput('Show me emails about orders')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>📦 Orders</span>
+                            <span onClick={() => setInput('Find my flight bookings')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>✈️ Flights</span>
+                            <span onClick={() => setInput('What meetings do I have coming up?')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>📅 Meetings</span>
+                            <span onClick={() => setInput('Show receipts and payments')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>💰 Payments</span>
                         </div>
                     </div>
                     }
@@ -201,7 +202,7 @@ const AskAI = ({ isCollapsed }: { isCollapsed: boolean }) => {
                                 className="w-full h-9 placeholder:text-[13px] rounded-full border border-gray-200 bg-white px-3 text-[15px] outline-none placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-blue-500/20 focus-visible:ring-offset-1
                 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus-visible:ring-blue-500/20 dark:focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-700
                 "
-                                placeholder="Ask AI anything about your emails"
+                                placeholder="Search your emails with AI (e.g., 'flights to London', 'meeting with Sarah')..."
                             />
                             <motion.div
                                 key={messages.length}
