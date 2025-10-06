@@ -173,7 +173,7 @@ Example bad response: "**Subject:** ..., **From:** ..., **Date:** ..." (DO NOT D
             baseURL: "https://openrouter.ai/api/v1",
             apiKey: env.OPENROUTER_API_KEY,
             defaultHeaders: {
-              "HTTP-Referer": "https://vectormail-ai.vercel.app",
+              "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "http://localhost:3000",
               "X-Title": "VectorMail AI",
             },
           });
@@ -182,7 +182,7 @@ Example bad response: "**Subject:** ..., **From:** ..., **Date:** ..." (DO NOT D
           console.log('Email context length:', emailContext.length);
           
           const completion = await openai.chat.completions.create({
-            model: "google/gemini-2.5-flash-lite",
+            model: "google/gemini-2.0-flash-exp:free",
             messages: [
               {
                 role: "system",

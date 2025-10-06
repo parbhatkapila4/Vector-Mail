@@ -7,7 +7,7 @@ const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: env.OPENROUTER_API_KEY,
   defaultHeaders: {
-    "HTTP-Referer": "https://vectormail-ai.vercel.app",
+    "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "http://localhost:3000",
     "X-Title": "VectorMail AI",
   },
 });
@@ -52,7 +52,7 @@ ${emailContent}
 Summary:`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.5-flash-lite",
+      model: "google/gemini-2.0-flash-exp:free",
       messages: [
         {
           role: "user",
@@ -100,7 +100,7 @@ ${emailContent}
 Return only the tags as a comma-separated list, no other text.`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.5-flash-lite",
+      model: "google/gemini-2.0-flash-exp:free",
       messages: [
         {
           role: "user",
