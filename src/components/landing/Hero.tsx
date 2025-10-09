@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, CheckCircle2, Sparkles, Mail, Zap, Brain } from "lucide-react";
+import { ArrowRight, Play, CheckCircle2, Sparkles,Zap } from "lucide-react";
 import { VideoModal } from "@/components/ui/video-modal";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -138,7 +138,7 @@ export function Hero() {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="text-xl sm:text-2xl md:text-3xl text-gray-400 max-w-4xl mx-auto leading-relaxed font-light"
           >
-            AI that doesn't just organize your inbox—it <span className="text-white font-medium">transforms</span> how you work
+            AI that doesn&apos;t just organize your inbox—it <span className="text-white font-medium">transforms</span> how you work
           </motion.p>
         </motion.div>
 
