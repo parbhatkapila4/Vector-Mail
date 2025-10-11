@@ -1,52 +1,108 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Brain, Zap, Search, Mail, Sparkles, Bot } from "lucide-react";
-import { useEffect } from "react";
+import { X, Brain, Zap, Search, Mail, Sparkles, Bot, Shield, Clock, TrendingUp, Users, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
-const features = [
+const coreFeatures = [
   {
     icon: Brain,
     title: "AI-Powered Email Analysis",
-    description:
-      "Advanced AI analyzes your emails to understand context, sentiment, and priority levels automatically.",
+    description: "Advanced AI analyzes your emails to understand context, sentiment, and priority levels automatically.",
     color: "from-purple-500 to-pink-500",
+    benefits: [
+      "Automatic sentiment detection",
+      "Smart priority ranking",
+      "Context-aware categorization",
+      "Real-time email scoring"
+    ]
   },
   {
     icon: Zap,
     title: "Smart Auto-Responses",
-    description:
-      "Generate intelligent, context-aware email responses in seconds with our AI writing assistant.",
+    description: "Generate intelligent, context-aware email responses in seconds with our AI writing assistant.",
     color: "from-yellow-500 to-orange-500",
+    benefits: [
+      "Matches your writing style",
+      "Context-aware suggestions",
+      "Multi-language support",
+      "Instant draft generation"
+    ]
   },
   {
     icon: Search,
-    title: "Semantic Search",
-    description:
-      "Find any email instantly using natural language queries. Search by meaning, not just keywords.",
+    title: "Semantic Email Search",
+    description: "Find emails by meaning, not just keywords. Search for concepts and ideas across your entire inbox.",
     color: "from-blue-500 to-cyan-500",
+    benefits: [
+      "Natural language queries",
+      "Concept-based matching",
+      "Cross-language search",
+      "Instant results"
+    ]
   },
-  {
-    icon: Bot,
-    title: "Email Threading",
-    description:
-      "Automatically organize related emails into conversation threads for better email management.",
-    color: "from-green-500 to-teal-500",
-  },
-];
-
-const keyFeatures = [
   {
     icon: Mail,
-    title: "Multi-Account Support",
-    description:
-      "Connect multiple email accounts and manage them all from one unified interface.",
+    title: "Smart Categorization",
+    description: "Automatically organize emails into categories like work, personal, newsletters, and more.",
+    color: "from-green-500 to-emerald-500",
+    benefits: [
+      "Automatic sorting",
+      "Custom categories",
+      "Newsletter detection",
+      "VIP sender recognition"
+    ]
   },
   {
     icon: Sparkles,
-    title: "AI Compose Assistant",
-    description:
-      "Get AI-powered suggestions for email composition, tone, and content optimization.",
+    title: "Priority Detection",
+    description: "AI identifies urgent emails and highlights them so you never miss important messages.",
+    color: "from-red-500 to-pink-500",
+    benefits: [
+      "Intelligent urgency scoring",
+      "VIP sender detection",
+      "Deadline awareness",
+      "Smart notifications"
+    ]
+  },
+  {
+    icon: Bot,
+    title: "Email Summarization",
+    description: "Get concise summaries of long email threads to quickly understand the key points.",
+    color: "from-indigo-500 to-purple-500",
+    benefits: [
+      "Instant thread summaries",
+      "Action item extraction",
+      "Decision tracking",
+      "Timeline visualization"
+    ]
+  },
+];
+
+const additionalFeatures = [
+  {
+    icon: Shield,
+    title: "Enterprise Security",
+    description: "Bank-level encryption, SOC 2 compliance, and zero-knowledge architecture to keep your data safe.",
+    color: "text-blue-600"
+  },
+  {
+    icon: Clock,
+    title: "Time Tracking & Analytics",
+    description: "Detailed insights into your email patterns and productivity metrics to optimize your workflow.",
+    color: "text-purple-600"
+  },
+  {
+    icon: TrendingUp,
+    title: "Performance Insights",
+    description: "Track response times, email volume, and engagement metrics with visual dashboards.",
+    color: "text-green-600"
+  },
+  {
+    icon: Users,
+    title: "Multi-Account Support",
+    description: "Connect and manage multiple email accounts from one unified, intelligent interface.",
+    color: "text-orange-600"
   },
 ];
 
@@ -56,10 +112,11 @@ interface FeaturesModalProps {
 }
 
 export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
+  const [selectedFeature, setSelectedFeature] = useState<typeof coreFeatures[0] | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       const scrollY = window.scrollY;
-
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = "100%";
@@ -81,7 +138,7 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -90,23 +147,32 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed inset-x-8 inset-y-4 z-50 overflow-hidden md:inset-x-12 md:inset-y-8 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-24"
+            className="fixed inset-x-4 inset-y-4 sm:inset-x-8 sm:inset-y-8 md:inset-x-12 md:inset-y-12 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-20 z-[95] overflow-hidden"
           >
-            <div className="h-full w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl">
-              <div className="relative border-b border-gray-200 p-4 sm:p-6">
-                <div className="pr-12 text-center sm:pr-16">
-                  <h2 className="text-xl font-bold text-black sm:text-2xl md:text-3xl">
+            <div className="h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
+              {/* Header */}
+              <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6">
+                <div className="pr-16 text-center">
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-white/50 mb-3"
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-semibold text-gray-700">AI-Powered Features</span>
+                  </motion.div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-2">
                     VectorMail AI Features
                   </h2>
-                  <p className="mt-1 text-sm text-gray-600 sm:text-base">
+                  <p className="text-gray-600">
                     Discover the power of AI-driven email management
                   </p>
                 </div>
                 <button
                   onClick={onClose}
-                  className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200 sm:right-6 sm:top-6 sm:h-10 sm:w-10"
+                  className="absolute right-6 top-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm border border-white/50 transition-all hover:bg-white hover:scale-105"
                 >
-                  <X className="h-4 w-4 text-gray-600 sm:h-5 sm:w-5" />
+                  <X className="h-5 w-5 text-gray-600" />
                 </button>
               </div>
 
@@ -119,74 +185,103 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
               >
                 <style jsx>{`
                   div::-webkit-scrollbar {
-                    width: 6px;
+                    width: 8px;
                   }
                   div::-webkit-scrollbar-track {
                     background: #f3f4f6;
-                    border-radius: 3px;
+                    border-radius: 4px;
                   }
                   div::-webkit-scrollbar-thumb {
                     background: #d1d5db;
-                    border-radius: 3px;
+                    border-radius: 4px;
                   }
                   div::-webkit-scrollbar-thumb:hover {
                     background: #9ca3af;
                   }
                 `}</style>
-                <div className="p-4 pb-16 sm:p-6 sm:pb-20 md:p-8 md:pb-24">
-                  <div className="mb-12 sm:mb-16">
-                    <h3 className="mb-6 text-lg font-bold text-black sm:mb-8 sm:text-xl">
-                      Core AI Features
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-                      {features.map((feature, index) => (
+                <div className="p-8 pb-24">
+                  {/* Core AI Features */}
+                  <div className="mb-16">
+                    <div className="text-center mb-10">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        Core AI Features
+                      </h3>
+                      <p className="text-gray-600">
+                        Click on any feature to see more details
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {coreFeatures.map((feature, index) => (
                         <motion.div
                           key={feature.title}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: index * 0.1 }}
-                          className="rounded-xl bg-gray-50 p-4 transition-all duration-300 hover:shadow-lg sm:rounded-2xl sm:p-6"
+                          whileHover={{ y: -5, scale: 1.02 }}
+                          onClick={() => setSelectedFeature(feature)}
+                          className="group relative cursor-pointer rounded-2xl bg-gradient-to-br from-gray-50 to-white p-6 border-2 border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-xl"
                         >
-                          <div
-                            className={`h-10 w-10 rounded-lg bg-gradient-to-r sm:h-12 sm:w-12 sm:rounded-xl ${feature.color} mb-3 flex items-center justify-center sm:mb-4`}
-                          >
-                            <feature.icon className="h-5 w-5 text-white sm:h-6 sm:w-6" />
+                          <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity bg-gradient-to-r ${feature.color}`}></div>
+                          
+                          <div className="relative">
+                            <div className={`h-14 w-14 rounded-xl bg-gradient-to-r ${feature.color} mb-4 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                              <feature.icon className="h-7 w-7 text-white" />
+                            </div>
+                            <h4 className="mb-2 text-lg font-bold text-gray-900">
+                              {feature.title}
+                            </h4>
+                            <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                              {feature.description}
+                            </p>
+                            
+                            <div className="space-y-2">
+                              {feature.benefits.slice(0, 2).map((benefit, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                  <span>{benefit}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="mt-4 text-xs text-purple-600 font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+                              <span>Learn more</span>
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
                           </div>
-                          <h4 className="mb-2 text-base font-semibold text-black sm:text-lg">
-                            {feature.title}
-                          </h4>
-                          <p className="text-xs leading-relaxed text-gray-600 sm:text-sm">
-                            {feature.description}
-                          </p>
                         </motion.div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mb-12 sm:mb-16 md:mb-20">
-                    <h3 className="mb-6 text-lg font-bold text-black sm:mb-8 sm:text-xl">
-                      Additional Capabilities
-                    </h3>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                      {keyFeatures.map((feature, index) => (
+                  {/* Additional Capabilities */}
+                  <div className="mb-16">
+                    <div className="text-center mb-10">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        Additional Capabilities
+                      </h3>
+                      <p className="text-gray-600">
+                        More features to enhance your email experience
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {additionalFeatures.map((feature, index) => (
                         <motion.div
                           key={feature.title}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            duration: 0.5,
-                            delay: (index + 6) * 0.1,
-                          }}
-                          className="mb-1 flex items-start gap-3 rounded-lg p-3 pb-4 transition-colors hover:bg-gray-50 sm:mb-2 sm:rounded-xl sm:p-4 sm:pb-5"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.5, delay: 0.6 + index * 0.1 }}
+                          className="flex items-start gap-4 rounded-xl bg-gray-50 p-6 hover:bg-gray-100 transition-colors"
                         >
-                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 sm:h-10 sm:w-10">
-                            <feature.icon className="h-4 w-4 text-gray-600 sm:h-5 sm:w-5" />
+                          <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white shadow-sm`}>
+                            <feature.icon className={`h-6 w-6 ${feature.color}`} />
                           </div>
-                          <div>
-                            <h4 className="mb-1 text-sm font-semibold text-black sm:text-base">
+                          <div className="flex-1">
+                            <h4 className="mb-1 text-base font-bold text-gray-900">
                               {feature.title}
                             </h4>
-                            <p className="text-xs text-gray-600 sm:text-sm">
+                            <p className="text-sm text-gray-600">
                               {feature.description}
                             </p>
                           </div>
@@ -194,10 +289,83 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
                       ))}
                     </div>
                   </div>
+
+                  {/* CTA Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1 }}
+                    className="relative rounded-3xl bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 p-8 text-center text-white overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-black/10"></div>
+                    <div className="relative">
+                      <h3 className="text-2xl font-bold mb-3">
+                        Ready to Transform Your Inbox?
+                      </h3>
+                      <p className="text-white/90 mb-6 max-w-2xl mx-auto">
+                        Join thousands of professionals who are already using VectorMail AI to save time and stay organized
+                      </p>
+                      <button 
+                        onClick={onClose}
+                        className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+                      >
+                        Get Started Free
+                      </button>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
           </motion.div>
+
+          {/* Feature Detail Overlay */}
+          <AnimatePresence>
+            {selectedFeature && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[97] bg-black/80 backdrop-blur-sm"
+                  onClick={() => setSelectedFeature(null)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="fixed left-1/2 top-1/2 z-[99] w-[90%] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl"
+                >
+                  <button
+                    onClick={() => setSelectedFeature(null)}
+                    className="absolute right-4 top-4 rounded-full bg-gray-100 p-2 hover:bg-gray-200"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  <div className={`h-16 w-16 rounded-2xl bg-gradient-to-r ${selectedFeature.color} mb-6 flex items-center justify-center shadow-lg`}>
+                    <selectedFeature.icon className="h-8 w-8 text-white" />
+                  </div>
+
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                    {selectedFeature.title}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {selectedFeature.description}
+                  </p>
+
+                  <h4 className="font-semibold text-gray-900 mb-3">Key Benefits:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedFeature.benefits.map((benefit, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-gray-700">{benefit}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>

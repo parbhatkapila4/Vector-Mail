@@ -98,7 +98,7 @@ export function SimpleContent() {
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 viewport={{ once: true }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/30 rounded-full mb-8"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/30 rounded-full mb-12"
               >
                 <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium text-orange-300">Currently in beta - Early access available</span>
@@ -109,7 +109,7 @@ export function SimpleContent() {
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight"
+                className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight -mt-8"
               >
                 Stop drowning in
                 <br />
