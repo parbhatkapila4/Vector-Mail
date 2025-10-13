@@ -96,6 +96,8 @@ export function Navigation() {
           <button
             className="md:hidden p-2 text-gray-300 hover:text-white"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isMenuOpen}
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -125,20 +127,30 @@ export function Navigation() {
                 ))}
                 <div className="border-t border-white/10 pt-4 px-4 space-y-2">
                   {isSignedIn ? (
-                    <Link href="/mail" onClick={() => setIsMenuOpen(false)}>
-                      <Button className="w-full bg-white text-black hover:bg-gray-100">
+                    <Link href="/mail">
+                      <Button 
+                        className="w-full bg-white text-black hover:bg-gray-100"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
                         Dashboard
                       </Button>
                     </Link>
                   ) : (
                     <>
-                      <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-white/10">
+                      <Link href="/sign-in">
+                        <Button 
+                          variant="ghost" 
+                          className="w-full text-gray-300 hover:text-white hover:bg-white/10"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
                           Sign In
                         </Button>
                       </Link>
-                      <Link href="/sign-up" onClick={() => setIsMenuOpen(false)}>
-                        <Button className="w-full bg-white text-black hover:bg-gray-100">
+                      <Link href="/sign-up">
+                        <Button 
+                          className="w-full bg-white text-black hover:bg-gray-100"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
                           Get Started
                         </Button>
                       </Link>
