@@ -4,20 +4,23 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Mail, Twitter, Github, Linkedin } from "lucide-react";
 import { ModeToggle } from "@/components/global/ThemeToggle";
+import { ContactModal } from "@/components/ui/contact-modal";
+import { useState } from "react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   const footerLinks = [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" },
-    { name: "Contact", href: "#" },
+    { name: "Privacy Policy", href: "/privacy" },
+    { name: "Terms of Service", href: "/terms" },
+    { name: "Contact", href: "#", onClick: () => setIsContactModalOpen(true) },
   ];
 
   const socialLinks = [
-    { icon: Twitter, href: "#", label: "Twitter" },
-    { icon: Github, href: "#", label: "GitHub" },
-    { icon: Linkedin, href: "#", label: "LinkedIn" },
+    { icon: Twitter, href: "https://x.com/Devcodies", label: "Twitter" },
+    { icon: Github, href: "https://github.com/parbhatkapila4/Vector-Mail", label: "GitHub" },
+    { icon: Linkedin, href: "https://www.linkedin.com/in/parbhat-kapila/", label: "LinkedIn" },
   ];
 
   return (
@@ -33,7 +36,7 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#875276' }}>
                 <Mail className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-black dark:text-white">VectorMail</span>
@@ -49,12 +52,21 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.map((link, index) => (
                 <li key={index}>
-                  <Link 
-                    href={link.href} 
-                    className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
-                  >
-                    {link.name}
-                  </Link>
+                  {link.onClick ? (
+                    <button
+                      onClick={link.onClick}
+                      className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors text-left"
+                    >
+                      {link.name}
+                    </button>
+                  ) : (
+                    <Link 
+                      href={link.href} 
+                      className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -79,16 +91,13 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            &copy; {currentYear} VectorMail. All rights reserved.
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Made with ❤️ for email productivity
-          </p>
-        </div>
       </div>
+
+      {/* Contact Modal */}
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+      />
     </motion.footer>
   );
 }

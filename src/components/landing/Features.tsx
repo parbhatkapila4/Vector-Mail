@@ -72,7 +72,7 @@ export function Features() {
               viewport={{ once: true }}
               className="text-center p-6 rounded-2xl bg-card border border-border hover:shadow-lg transition-all duration-300"
             >
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#875276' }}>
                 <feature.icon className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-black dark:text-white mb-2">{feature.title}</h3>
@@ -92,7 +92,8 @@ export function Features() {
           <Link href={isSignedIn ? "/mail" : "/sign-up"}>
             <Button
               size="lg"
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 text-lg font-semibold rounded-xl"
+              className="text-white px-8 py-3 text-lg font-semibold rounded-xl hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#875276' }}
               onClick={handleClick}
             >
               Get Started Free

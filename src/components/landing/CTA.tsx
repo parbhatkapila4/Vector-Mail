@@ -28,7 +28,8 @@ export function CTA() {
           <Link href={isSignedIn ? "/mail" : "/sign-up"}>
             <Button
               size="lg"
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-10 py-4 text-xl font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              className="text-white px-10 py-4 text-xl font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:opacity-90"
+              style={{ backgroundColor: '#875276' }}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-6 w-6" />

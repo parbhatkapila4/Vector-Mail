@@ -24,12 +24,13 @@ import { ThreadDisplay } from "./threads-ui/ThreadDisplay"
 import AskAI from "../global/AskAi"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
-import { Menu } from "lucide-react"
+import { Menu, ArrowLeft } from "lucide-react"
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { useRouter } from "next/navigation"
 
 interface MailProps {
   defaultLayout: number[] | undefined
@@ -47,6 +48,11 @@ export function Mail({
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed)
   const [selectedThread, setSelectedThread] = React.useState<string | null>(null)
   const isMobile = useIsMobile()
+  const router = useRouter()
+
+  const handleBackToLanding = () => {
+    router.push('/');
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full flex-1">
@@ -64,6 +70,19 @@ export function Mail({
       </div>
       <div className="mt-auto">
         <AskAI isCollapsed={isCollapsed} />
+        {!isCollapsed && (
+          <div className="p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBackToLanding}
+              className="w-full justify-start gap-2 hover:bg-muted"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

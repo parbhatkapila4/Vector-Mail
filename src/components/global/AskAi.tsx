@@ -176,21 +176,35 @@ const AskAI = ({ isCollapsed }: { isCollapsed: boolean }) => {
                 </div>
                 {messages.length > 0 && <div className="h-4"></div>}
                 <div className="w-full">
-                    {messages.length === 0 && <div className="mb-4">
-                        <div className='flex items-center gap-4  py-2'>
-                            <SparklesIcon className='size-6 text-gray-500' />
-                            <div>
-                                <p className='text-gray-900 dark:text-gray-100'>AI-Powered Email Search 🚀</p>
-                                <p className='text-gray-500 text-xs dark:text-gray-400'>Using RAG + Vector Search to find relevant emails</p>
+                    {messages.length === 0 && <div className="mb-6">
+                        <div className='text-center py-3'>
+                            <div className='flex items-center justify-center gap-2 mb-2'>
+                                <SparklesIcon className='size-5 text-gray-500' />
+                                <p className='text-gray-900 dark:text-gray-100 font-semibold'>AI-Powered Email Search</p>
+                                <span className='text-lg'>🚀</span>
                             </div>
+                            <p className='text-gray-500 text-xs dark:text-gray-400'>Using RAG + Vector Search to find relevant emails</p>
                         </div>
-                        <div className="h-2"></div>
-                        <div className="flex items-center gap-2  flex-wrap">
-                            <span onClick={() => setInput('Show me emails about orders')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>📦 Orders</span>
-                            <span onClick={() => setInput('Find my flight bookings')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>✈️ Flights</span>
-                            <span onClick={() => setInput('What meetings do I have coming up?')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>📅 Meetings</span>
-                            <span onClick={() => setInput('Show receipts and payments')} className='px-2 py-1 bg-gray-800 text-gray-200 rounded-md text-xs cursor-pointer hover:bg-gray-700 transition'>💰 Payments</span>
+                        <div className="h-4"></div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={() => setInput('Show me emails about orders')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
+                                <span>📦</span>
+                                <span>Orders</span>
+                            </button>
+                            <button onClick={() => setInput('Find my flight bookings')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
+                                <span>✈️</span>
+                                <span>Flights</span>
+                            </button>
+                            <button onClick={() => setInput('What meetings do I have coming up?')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
+                                <span>📅</span>
+                                <span>Meetings</span>
+                            </button>
+                            <button onClick={() => setInput('Show receipts and payments')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
+                                <span>💰</span>
+                                <span>Payments</span>
+                            </button>
                         </div>
+                        <div className="h-4"></div>
                     </div>
                     }
                     <form onSubmit={handleSubmit} className="flex w-full gap-2">

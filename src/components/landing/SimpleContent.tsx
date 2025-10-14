@@ -57,7 +57,7 @@ export function SimpleContent() {
                 viewport={{ once: true }}
                 className="flex items-center gap-4"
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#875276' }}>
                   <CheckCircle2 className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-gray-700 dark:text-gray-300 text-lg">{benefit}</span>
@@ -66,26 +66,29 @@ export function SimpleContent() {
           </div>
 
           <div className="bg-card rounded-2xl p-8 border border-border">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="text-center flex flex-col items-center">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#875276' }}>
                 <Zap className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-black dark:text-white mb-2">
+              <h3 className="text-2xl font-bold text-black dark:text-white mb-4 text-center">
                 Ready to get started?
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
+              <p className="text-gray-600 dark:text-gray-300 mb-8 text-center max-w-sm mx-auto">
                 Join our beta program and experience the future of email management
               </p>
-              <Link href={isSignedIn ? "/mail" : "/sign-up"}>
-                <Button
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold"
-                  onClick={handleClick}
-                >
-                  Start Free Trial
-                </Button>
-              </Link>
-              <p className="text-sm text-gray-500 mt-3">
+              <div className="w-full max-w-xs mx-auto">
+                <Link href={isSignedIn ? "/mail" : "/sign-up"}>
+                  <Button
+                    size="lg"
+                    className="w-full text-white font-semibold hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#875276' }}
+                    onClick={handleClick}
+                  >
+                    Start Free Trial
+                  </Button>
+                </Link>
+              </div>
+              <p className="text-sm text-gray-500 mt-4 text-center">
                 No credit card required • Free during beta
               </p>
             </div>

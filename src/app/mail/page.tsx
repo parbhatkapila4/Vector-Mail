@@ -18,11 +18,12 @@ function page() {
 
   return (
     <div className="h-screen w-full relative">
+      {/* User Controls */}
       <div className={cn(
         "flex items-center gap-2 z-50",
         isMobile 
           ? "fixed top-4 right-4 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg" 
-          : "absolute bottom-4 left-4"
+          : "absolute top-4 right-4 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg"
       )}>
         <UserButton />
         {!isMobile && <ComposeButton/>}
