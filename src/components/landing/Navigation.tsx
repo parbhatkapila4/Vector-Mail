@@ -6,22 +6,12 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { FeaturesModal } from "./FeaturesModal";
-import { PricingModal } from "./PricingModal";
-import { ContactModal } from "./ContactModal";
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
-  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const { isSignedIn } = useUser();
 
-  const navItems = [
-    { name: "Features", href: "#features", onClick: () => setIsFeaturesModalOpen(true) },
-    { name: "Pricing", href: "#pricing", onClick: () => setIsPricingModalOpen(true) },
-    { name: "Contact", href: "#contact", onClick: () => setIsContactModalOpen(true) }
-  ];
+  const navItems: any[] = [];
 
   return (
     <motion.nav
@@ -163,18 +153,6 @@ export function Navigation() {
         </AnimatePresence>
       </div>
       
-      <FeaturesModal 
-        isOpen={isFeaturesModalOpen} 
-        onClose={() => setIsFeaturesModalOpen(false)} 
-      />
-      <PricingModal 
-        isOpen={isPricingModalOpen} 
-        onClose={() => setIsPricingModalOpen(false)} 
-      />
-      <ContactModal 
-        isOpen={isContactModalOpen} 
-        onClose={() => setIsContactModalOpen(false)} 
-      />
     </motion.nav>
   );
 }
