@@ -346,22 +346,44 @@ export function Features() {
                   viewport={{ once: true }}
                   className="group"
                 >
-                  <div className="h-[320px] bg-gradient-to-br from-gray-900/40 via-gray-800/30 to-black/70 rounded-3xl border border-gray-700/40 p-10 hover:border-gray-600/60 hover:bg-gray-900/50 transition-all duration-700 overflow-hidden">
-                    {/* Card glow effect */}
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-700 rounded-3xl" style={{ background: feature.gradient }}></div>
+                  <div className="h-[320px] relative bg-gradient-to-br from-gray-900/80 via-gray-800/60 to-black/90 rounded-2xl border border-gray-700/30 p-8 hover:border-gray-600/50 hover:bg-gradient-to-br hover:from-gray-900/90 hover:via-gray-800/70 hover:to-black/95 transition-all duration-500 overflow-hidden backdrop-blur-xl shadow-2xl hover:shadow-3xl">
+                    {/* Premium glassmorphism overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                     
-                    <div className="relative h-full flex flex-col justify-between">
-                      <div>
-                        <div className="relative inline-flex p-4 rounded-2xl mb-8 group-hover:scale-110 transition-transform duration-500" style={{ background: feature.gradient }}>
-                          <feature.icon className="w-7 h-7 text-white" />
-                          <div className="absolute inset-0 rounded-2xl blur-lg opacity-50" style={{ background: feature.gradient }}></div>
+                    {/* Subtle gradient accent */}
+                    <div className="absolute top-0 right-0 w-32 h-32 opacity-0 group-hover:opacity-20 transition-opacity duration-700 rounded-full blur-2xl" style={{ background: feature.gradient }}></div>
+                    
+                    {/* Card content */}
+                    <div className="relative h-full flex flex-col">
+                      {/* Icon section with premium styling */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="relative inline-flex p-3.5 rounded-xl group-hover:scale-105 transition-all duration-300 shadow-lg" style={{ background: feature.gradient }}>
+                            <feature.icon className="w-6 h-6 text-white drop-shadow-sm" />
+                            <div className="absolute inset-0 rounded-xl blur-md opacity-40" style={{ background: feature.gradient }}></div>
+                          </div>
+                          
+                          {/* Premium badge - aligned with icon */}
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800/60 border border-gray-600/40 backdrop-blur-sm shadow-lg">
+                            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm"></div>
+                            <span className="text-xs font-semibold text-gray-200 uppercase tracking-wide">Premium</span>
+                          </div>
                         </div>
-                        <h4 className="text-2xl font-medium text-black dark:text-white mb-6 group-hover:text-gray-800 dark:group-hover:text-gray-100 transition-colors">
-                          {feature.title}
-                        </h4>
-                        <p className="text-gray-700 dark:text-gray-400 leading-relaxed text-lg group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors">
-                          {feature.description}
-                        </p>
+                      </div>
+                      
+                      {/* Content section */}
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-2xl font-semibold text-black dark:text-white mb-3 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors leading-tight">
+                            {feature.title}
+                          </h4>
+                          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-base group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
+                            {feature.description}
+                          </p>
+                        </div>
+                        
+                        {/* Bottom accent line */}
+                        <div className="mt-6 w-full h-px bg-gradient-to-r from-transparent via-gray-600/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       </div>
                     </div>
                   </div>

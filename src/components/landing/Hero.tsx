@@ -164,7 +164,7 @@ export function Hero() {
                       style={{ background: 'linear-gradient(90deg, rgba(139, 90, 122, 0.3), rgba(90, 11, 77, 0.3), rgba(122, 59, 106, 0.3))' }}
                       initial={{ x: "-100%" }}
                       animate={{ x: "100%" }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                     />
               </Button>
             </motion.div>

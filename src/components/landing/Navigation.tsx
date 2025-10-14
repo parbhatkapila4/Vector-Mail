@@ -127,16 +127,17 @@ export function Navigation() {
             transition={{ delay: 0.3 }}
             className="hidden md:flex items-center gap-3"
           >
-            {/* Theme Toggle */}
-            <ModeToggle />
-            
             {isSignedIn ? (
-              <Link href="/mail">
-                <Button className="relative bg-white text-black hover:bg-white/90 px-6 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl overflow-hidden">
-                  <span className="relative z-10">Dashboard</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                </Button>
-              </Link>
+              <>
+                <Link href="/mail">
+                  <Button className="relative bg-white text-black hover:bg-white/90 px-6 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl overflow-hidden">
+                    <span className="relative z-10">Dashboard</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                  </Button>
+                </Link>
+                {/* Theme Toggle */}
+                <ModeToggle />
+              </>
             ) : (
               <>
                 <Link href="/sign-in">
@@ -150,6 +151,8 @@ export function Navigation() {
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                   </Button>
                 </Link>
+                {/* Theme Toggle */}
+                <ModeToggle />
               </>
             )}
           </motion.div>
