@@ -356,10 +356,10 @@ export function Features() {
                           <feature.icon className="w-7 h-7 text-white" />
                           <div className="absolute inset-0 rounded-2xl blur-lg opacity-50" style={{ background: feature.gradient }}></div>
                         </div>
-                        <h4 className="text-2xl font-medium text-white mb-6 group-hover:text-gray-100 transition-colors">
+                        <h4 className="text-2xl font-medium text-black dark:text-white mb-6 group-hover:text-gray-800 dark:group-hover:text-gray-100 transition-colors">
                           {feature.title}
                         </h4>
-                        <p className="text-gray-400 leading-relaxed text-lg group-hover:text-gray-300 transition-colors">
+                        <p className="text-gray-700 dark:text-gray-400 leading-relaxed text-lg group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors">
                           {feature.description}
                         </p>
                       </div>
@@ -384,7 +384,7 @@ export function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
-                className="text-4xl font-light text-white mb-6"
+                className="text-4xl font-light text-black dark:text-white mb-6"
               >
                 Advanced Capabilities
               </motion.h3>
@@ -393,7 +393,7 @@ export function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 viewport={{ once: true }}
-                className="text-lg text-gray-400 max-w-2xl mx-auto"
+                className="text-lg text-gray-700 dark:text-gray-400 max-w-2xl mx-auto"
               >
                 Powerful features that set VectorMail apart from the competition
               </motion.p>
@@ -486,11 +486,11 @@ export function Features() {
                     <span className="text-sm font-medium text-gray-300">Powered by AI</span>
                   </div>
 
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black dark:text-white tracking-tight">
                 Your AI-powered email command center
               </h2>
 
-              <p className="text-xl text-gray-400 leading-relaxed">
+              <p className="text-xl text-gray-700 dark:text-gray-400 leading-relaxed">
                 Experience email management reimagined. Smart automation, instant search, and intelligent responses—all powered by cutting-edge AI.
               </p>
 

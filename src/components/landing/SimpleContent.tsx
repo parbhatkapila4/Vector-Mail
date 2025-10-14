@@ -101,7 +101,7 @@ export function SimpleContent() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/30 rounded-full mb-12"
               >
                 <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-orange-300 dark:text-orange-300">Currently in beta - Early access available</span>
+                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">Currently in beta - Early access available</span>
               </motion.div>
               
               <motion.h2
@@ -140,7 +140,7 @@ export function SimpleContent() {
                 ].map((item, index) => (
                   <div key={index} className="flex items-center gap-2 px-3 py-2 bg-green-500/20 border border-green-500/30 rounded-lg">
                     <span className="text-green-400 font-semibold">{item.icon}</span>
-                    <span className="text-sm text-green-300 dark:text-green-300 font-medium">{item.text}</span>
+                    <span className="text-sm text-green-700 dark:text-green-300 font-medium">{item.text}</span>
                   </div>
                 ))}
               </motion.div>
@@ -209,7 +209,7 @@ export function SimpleContent() {
                       "Constant inbox anxiety",
                       "Work-life balance disrupted"
                     ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 text-gray-400 text-sm">
+                      <div key={index} className="flex items-center gap-3 text-gray-700 dark:text-gray-400 text-sm">
                         <div className="w-1.5 h-1.5 bg-gray-500 rounded-full flex-shrink-0"></div>
                         <span>{item}</span>
                       </div>
@@ -260,7 +260,7 @@ export function SimpleContent() {
                         "Stress-free inbox management",
                         "Perfect work-life balance"
                       ].map((item, index) => (
-                        <div key={index} className="flex items-center gap-3 text-gray-300 text-sm">
+                        <div key={index} className="flex items-center gap-3 text-gray-700 dark:text-gray-300 text-sm">
                               <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#8B5A7A' }}></div>
                           <span>{item}</span>
                         </div>
