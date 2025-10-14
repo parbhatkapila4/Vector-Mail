@@ -142,9 +142,9 @@ export function Features() {
   };
 
   return (
-    <section className="relative bg-black py-48 overflow-hidden z-15">
+    <section className="relative bg-background py-48 overflow-hidden z-15">
       {/* Enhanced sophisticated background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-black to-gray-950"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-muted/20 via-background to-muted/20"></div>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 20% 10%, rgba(90, 11, 77, 0.04), transparent 60%)' }}></div>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 80% 90%, rgba(139, 90, 122, 0.04), transparent 60%)' }}></div>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(122, 59, 106, 0.02), transparent 70%)' }}></div>
@@ -201,7 +201,7 @@ export function Features() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
             viewport={{ once: true }}
-            className="text-7xl sm:text-8xl lg:text-9xl font-light text-white mb-16 tracking-tight leading-none"
+            className="text-7xl sm:text-8xl lg:text-9xl font-light text-black dark:text-white mb-16 tracking-tight leading-none"
           >
             Enterprise-grade
             <br />
@@ -222,7 +222,7 @@ export function Features() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
             viewport={{ once: true }}
-            className="text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-light"
+            className="text-2xl text-gray-700 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed font-light"
           >
             Advanced AI capabilities that transform how teams manage and respond to email at scale
           </motion.p>
@@ -246,7 +246,7 @@ export function Features() {
               viewport={{ once: true }}
               className="lg:col-span-8 group"
             >
-              <div className="relative h-[700px] bg-gradient-to-br from-gray-900/60 via-gray-800/40 to-black/90 rounded-3xl border border-gray-700/50 p-16 overflow-hidden">
+              <div className="relative h-[700px] bg-gradient-to-br from-card/60 via-muted/40 to-background/90 rounded-3xl border border-border p-16 overflow-hidden">
                     {/* Enhanced background effects */}
                     <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 70% 30%, rgba(90, 11, 77, 0.08), transparent 70%)' }}></div>
                     <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 30% 70%, rgba(139, 90, 122, 0.06), transparent 70%)' }}></div>
@@ -290,7 +290,7 @@ export function Features() {
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.3 }}
                       viewport={{ once: true }}
-                      className="text-5xl font-light text-white mb-8 leading-tight"
+                      className="text-5xl font-light text-black dark:text-white mb-8 leading-tight"
                     >
                       AI Email Assistant
                     </motion.h3>
@@ -300,7 +300,7 @@ export function Features() {
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.4 }}
                       viewport={{ once: true }}
-                      className="text-xl text-gray-300 leading-relaxed max-w-2xl"
+                      className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed max-w-2xl"
                     >
                       Your personal AI that learns and adapts to your email patterns, providing contextual insights and automated responses that match your communication style.
                     </motion.p>
@@ -324,7 +324,7 @@ export function Features() {
                         whileInView={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
                         viewport={{ once: true }}
-                        className="flex items-center gap-4 text-gray-300 group/item hover:text-white transition-colors cursor-pointer"
+                        className="flex items-center gap-4 text-gray-700 dark:text-gray-300 group/item hover:text-black dark:hover:text-white transition-colors cursor-pointer"
                       >
                             <div className="w-3 h-3 rounded-full shadow-lg group-hover/item:scale-125 transition-transform" style={{ backgroundColor: item.color }}></div>
                         <span className="text-lg font-medium">{item.text}</span>

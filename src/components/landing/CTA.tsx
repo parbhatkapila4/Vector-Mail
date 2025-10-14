@@ -10,7 +10,7 @@ export function CTA() {
   const { isSignedIn } = useUser();
 
   return (
-    <section className="relative py-32 overflow-hidden bg-black z-30">
+    <section className="relative py-32 overflow-hidden bg-background z-30">
       {/* Grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:64px_64px]"></div>
 
@@ -27,17 +27,17 @@ export function CTA() {
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 mb-8"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 backdrop-blur-xl border border-border mb-8"
           >
                 <Sparkles className="w-4 h-4" style={{ color: '#8B5A7A' }} />
-            <span className="text-sm font-medium text-gray-300">Start today</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Start today</span>
           </motion.div>
 
-          <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight">
+          <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-black dark:text-white mb-6 tracking-tight">
             Ready to transform<br />your inbox?
           </h2>
           
-          <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl sm:text-2xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
             Join 10,000+ professionals saving 10+ hours every week
           </p>
         </motion.div>
@@ -50,7 +50,7 @@ export function CTA() {
           viewport={{ once: true }}
           className="max-w-5xl mx-auto"
         >
-          <div className="relative bg-black rounded-3xl p-12 sm:p-16 border border-gray-800 overflow-hidden">
+          <div className="relative bg-card rounded-3xl p-12 sm:p-16 border border-border overflow-hidden">
                 {/* Gradient accents */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] blur-3xl" style={{ background: 'linear-gradient(180deg, rgba(90, 11, 77, 0.2), transparent)' }}></div>
                 <div className="absolute bottom-0 right-0 w-96 h-96 blur-3xl" style={{ background: 'linear-gradient(0deg, rgba(139, 90, 122, 0.1), transparent)' }}></div>
@@ -58,7 +58,7 @@ export function CTA() {
             <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               {/* Left side - Benefits */}
               <div className="space-y-8">
-                <h3 className="text-3xl sm:text-4xl font-bold text-white">
+                <h3 className="text-3xl sm:text-4xl font-bold text-black dark:text-white">
                   Start your free trial
                 </h3>
                 
@@ -80,7 +80,7 @@ export function CTA() {
                           <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform" style={{ backgroundColor: '#5A0B4D' }}>
                         <CheckCircle2 className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-gray-300 text-lg">{item}</span>
+                      <span className="text-gray-700 dark:text-gray-300 text-lg">{item}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -88,16 +88,16 @@ export function CTA() {
 
               {/* Right side - CTA */}
               <div className="lg:pl-8">
-                <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-10 border border-white/10">
+                <div className="bg-muted/50 backdrop-blur-xl rounded-2xl p-10 border border-border">
                   <div className="text-center mb-8">
                         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6" style={{ backgroundColor: 'rgba(90, 11, 77, 0.1)', borderColor: 'rgba(90, 11, 77, 0.2)', border: '1px solid' }}>
                       <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#5A0B4D' }}></div>
                       <span className="text-sm font-medium" style={{ color: '#8B5A7A' }}>Limited time offer</span>
                     </div>
-                    <div className="text-gray-300 text-lg mb-2">
-                      Get <span className="text-white font-bold text-2xl">20% off</span>
+                    <div className="text-muted-foreground text-lg mb-2">
+                      Get <span className="text-foreground font-bold text-2xl">20% off</span>
                     </div>
-                    <p className="text-gray-400 text-sm">when you sign up today</p>
+                    <p className="text-muted-foreground text-sm">when you sign up today</p>
                   </div>
 
                   <Link href={isSignedIn ? "/mail" : "/sign-up"} className="block mb-6">

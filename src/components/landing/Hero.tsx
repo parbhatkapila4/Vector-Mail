@@ -36,7 +36,7 @@ export function Hero() {
   }, [mouseX, mouseY]);
   
   return (
-    <div ref={heroRef} className="relative min-h-screen overflow-hidden bg-black z-10">
+    <div ref={heroRef} className="relative min-h-screen overflow-hidden bg-background z-10">
       {/* Enhanced grid with gradient mask */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_60%,transparent_100%)]"></div>
@@ -96,7 +96,7 @@ export function Hero() {
               >
                 <Sparkles className="w-4 h-4" style={{ color: '#8B5A7A' }} />
               </motion.div>
-          <span className="text-sm font-medium text-white">
+          <span className="text-sm font-medium text-black dark:text-white">
             Coming Soon · Early Access Available
           </span>
           <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#5A0B4D' }} />
@@ -112,7 +112,7 @@ export function Hero() {
           <motion.h1
             className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter mb-6"
           >
-            <span className="block text-white mb-2">
+            <span className="block text-black dark:text-white mb-2">
               The future of
             </span>
             <motion.span 
@@ -136,9 +136,9 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
-            className="text-xl sm:text-2xl md:text-3xl text-gray-400 max-w-4xl mx-auto leading-relaxed font-light"
+            className="text-xl sm:text-2xl md:text-3xl text-gray-700 dark:text-gray-400 max-w-4xl mx-auto leading-relaxed font-light"
           >
-            AI that doesn&apos;t just organize your inbox—it <span className="text-white font-medium">transforms</span> how you work
+            AI that doesn&apos;t just organize your inbox—it <span className="text-black dark:text-white font-medium">transforms</span> how you work
           </motion.p>
         </motion.div>
 
@@ -173,7 +173,7 @@ export function Hero() {
             <Button
               variant="outline"
               size="lg"
-              className="group px-10 py-8 text-lg font-bold rounded-2xl bg-white/5 border-2 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-200 backdrop-blur-2xl"
+              className="group px-10 py-8 text-lg font-bold rounded-2xl bg-white/5 dark:bg-white/5 border-2 border-gray-300 dark:border-white/20 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 hover:border-gray-400 dark:hover:border-white/30 transition-all duration-200 backdrop-blur-2xl"
               onClick={() => setIsVideoModalOpen(true)}
             >
               <Play className="mr-3 h-6 w-6 group-hover:scale-110 transition-transform" />
@@ -197,7 +197,7 @@ export function Hero() {
                 <motion.div
                   key={index}
                   whileHover={{ scale: 1.1, y: -2 }}
-                  className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors cursor-default bg-white/5 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10"
+                  className="flex items-center gap-2 text-gray-700 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors cursor-default bg-muted/50 backdrop-blur-xl px-4 py-2 rounded-full border border-border"
                 >
                   <item.icon className="w-4 h-4" style={{ color: '#8B5A7A' }} />
               <span className="font-medium">{item.text}</span>

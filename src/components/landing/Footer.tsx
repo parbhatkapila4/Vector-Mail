@@ -40,7 +40,7 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="relative bg-black text-white overflow-hidden border-t border-white/10">
+    <footer className="relative bg-background text-foreground overflow-hidden border-t border-border">
       {/* Grid background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
@@ -57,12 +57,78 @@ export function Footer() {
                 viewport={{ once: true }}
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                    <span className="text-black font-bold text-lg">V</span>
+                  <div className="relative">
+                    <motion.div 
+                      className="w-10 h-10 bg-transparent flex items-center justify-center"
+                      animate={{
+                        y: [0, -2, 0, 1, 0],
+                        rotate: [0, 1, 0, -1, 0],
+                      }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <div className="relative">
+                        {/* Enhanced minimalist envelope with motion lines */}
+                        <svg width="28" height="18" viewBox="0 0 28 18" fill="none" className="text-gray-700 dark:text-gray-300">
+                          {/* Enhanced envelope body with subtle gradient */}
+                          <rect x="5" y="7" width="18" height="11" rx="1.5" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+                          {/* Enhanced envelope flap */}
+                          <path d="M5 7 L14 2 L23 7" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+                          {/* Enhanced motion lines with better spacing */}
+                          <motion.line 
+                            x1="0.5" y1="9" x2="4" y2="9" 
+                            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"
+                            animate={{
+                              x2: [4, 3.5, 4, 4.5, 4],
+                              opacity: [0.8, 0.4, 0.8, 0.6, 0.8]
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: 0
+                            }}
+                          />
+                          <motion.line 
+                            x1="0.5" y1="11.5" x2="3.5" y2="11.5" 
+                            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.6"
+                            animate={{
+                              x2: [3.5, 3, 3.5, 4, 3.5],
+                              opacity: [0.6, 0.2, 0.6, 0.4, 0.6]
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: 0.5
+                            }}
+                          />
+                          <motion.line 
+                            x1="0.5" y1="14" x2="4" y2="14" 
+                            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"
+                            animate={{
+                              x2: [4, 3.5, 4, 4.5, 4],
+                              opacity: [0.8, 0.4, 0.8, 0.6, 0.8]
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: 1
+                            }}
+                          />
+                          {/* Subtle inner envelope detail */}
+                          <rect x="7" y="9" width="14" height="7" rx="0.5" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.3"/>
+                        </svg>
+                      </div>
+                    </motion.div>
                   </div>
-                  <span className="text-xl font-bold">VectorMail</span>
+                  <span className="text-xl font-bold text-black dark:text-white">VectorMail</span>
                 </div>
-                <p className="text-gray-400 mb-6 leading-relaxed max-w-sm">
+                <p className="text-gray-700 dark:text-gray-400 mb-6 leading-relaxed max-w-sm">
                   Email management reimagined with AI precision. Built for professionals who value their time.
                 </p>
                 

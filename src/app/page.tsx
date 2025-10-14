@@ -11,7 +11,7 @@ import { Footer } from '@/components/landing/Footer'
 
 export default function Page() {
   return (
-    <div className="relative min-h-screen bg-black">
+    <div className="relative min-h-screen bg-background">
       <ScrollProgress />
       <FloatingElements />
       <Navigation />

@@ -48,7 +48,7 @@ export function SimpleContent() {
   ];
 
   return (
-    <section className="relative bg-black py-48 overflow-hidden z-20">
+    <section className="relative bg-background py-48 overflow-hidden z-20">
       {/* Enhanced dark background pattern */}
           <div className="absolute inset-0">
           <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 25% 25%, rgba(90, 11, 77, 0.08), transparent 60%)' }}></div>
@@ -101,7 +101,7 @@ export function SimpleContent() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/30 rounded-full mb-12"
               >
                 <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-orange-300">Currently in beta - Early access available</span>
+                <span className="text-sm font-medium text-orange-300 dark:text-orange-300">Currently in beta - Early access available</span>
               </motion.div>
               
               <motion.h2
@@ -109,7 +109,7 @@ export function SimpleContent() {
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight -mt-8"
+                className="text-5xl sm:text-6xl lg:text-7xl font-bold text-black dark:text-white mb-8 leading-tight -mt-8"
               >
                 Stop drowning in
                 <br />
@@ -121,7 +121,7 @@ export function SimpleContent() {
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
                 viewport={{ once: true }}
-                className="text-xl text-gray-300 leading-relaxed mb-8"
+                className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed mb-8"
               >
                 Join the early adopters who are revolutionizing their email workflow with VectorMail's intelligent AI assistant
               </motion.p>
@@ -140,7 +140,7 @@ export function SimpleContent() {
                 ].map((item, index) => (
                   <div key={index} className="flex items-center gap-2 px-3 py-2 bg-green-500/20 border border-green-500/30 rounded-lg">
                     <span className="text-green-400 font-semibold">{item.icon}</span>
-                    <span className="text-sm text-green-300 font-medium">{item.text}</span>
+                    <span className="text-sm text-green-300 dark:text-green-300 font-medium">{item.text}</span>
                   </div>
                 ))}
               </motion.div>
@@ -178,8 +178,8 @@ export function SimpleContent() {
           className="mb-32"
         >
           <div className="text-center mb-16">
-            <h3 className="text-4xl font-light text-white mb-6">The VectorMail transformation</h3>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto">See how professionals reclaim their time and sanity</p>
+            <h3 className="text-4xl font-light text-black dark:text-white mb-6">The VectorMail transformation</h3>
+            <p className="text-lg text-gray-700 dark:text-gray-400 max-w-2xl mx-auto">See how professionals reclaim their time and sanity</p>
           </div>
           
           <div className="relative max-w-6xl mx-auto">
@@ -198,8 +198,8 @@ export function SimpleContent() {
                     <div className="w-16 h-16 bg-gradient-to-br from-gray-600 to-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Clock className="w-8 h-8 text-gray-300" />
                     </div>
-                    <h4 className="text-xl font-semibold text-gray-300 mb-2">Before</h4>
-                    <p className="text-sm text-gray-500">Traditional email chaos</p>
+                    <h4 className="text-xl font-semibold text-black dark:text-gray-300 mb-2">Before</h4>
+                    <p className="text-sm text-gray-700 dark:text-gray-500">Traditional email chaos</p>
                   </div>
                   
                   <div className="space-y-3">
@@ -249,7 +249,7 @@ export function SimpleContent() {
                       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(135deg, #5A0B4D, #8B5A7A)' }}>
                         <TrendingUp className="w-8 h-8 text-white" />
                       </div>
-                      <h4 className="text-xl font-semibold text-white mb-2">After</h4>
+                      <h4 className="text-xl font-semibold text-black dark:text-white mb-2">After</h4>
                       <p className="text-sm" style={{ color: '#8B5A7A' }}>AI-powered efficiency</p>
                     </div>
                     
@@ -288,8 +288,8 @@ export function SimpleContent() {
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: 'linear-gradient(135deg, rgba(90, 11, 77, 0.2), rgba(139, 90, 122, 0.2))' }}>
                     <stat.icon className="w-6 h-6" style={{ color: '#8B5A7A' }} />
                   </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-                  <div className="text-sm text-gray-400">{stat.label}</div>
+                  <div className="text-2xl font-bold text-black dark:text-white mb-1">{stat.value}</div>
+                  <div className="text-sm text-gray-700 dark:text-gray-400">{stat.label}</div>
                 </div>
               ))}
             </motion.div>
@@ -305,8 +305,8 @@ export function SimpleContent() {
           className="mb-32"
         >
           <div className="text-center mb-16">
-            <h3 className="text-3xl font-bold text-white mb-4">See VectorMail in action</h3>
-            <p className="text-lg text-gray-300">Experience the AI that transforms your email workflow</p>
+            <h3 className="text-3xl font-bold text-black dark:text-white mb-4">See VectorMail in action</h3>
+            <p className="text-lg text-gray-700 dark:text-gray-300">Experience the AI that transforms your email workflow</p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -355,9 +355,9 @@ export function SimpleContent() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`text-sm font-bold text-${item.color}-400`}>{item.step}</span>
-                      <h4 className="text-lg font-semibold text-white">{item.title}</h4>
+                      <h4 className="text-lg font-semibold text-black dark:text-white">{item.title}</h4>
                     </div>
-                    <p className="text-gray-300">{item.description}</p>
+                    <p className="text-gray-700 dark:text-gray-300">{item.description}</p>
                   </div>
                 </motion.div>
               ))}
