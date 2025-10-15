@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPolicy() {
-  const lastUpdated = "December 2024";
+  const lastUpdated = "September 2025";
 
   const sections = [
     {
@@ -142,7 +142,7 @@ export default function PrivacyPolicy() {
           </p>
           <div className="inline-flex items-center gap-2 px-6 py-3 bg-card border border-border rounded-xl">
             <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400">privacy@vectormail.com</span>
+            <span className="text-gray-600 dark:text-gray-400">help@productsolution.net</span>
           </div>
         </div>
 
