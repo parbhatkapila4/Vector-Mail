@@ -1,50 +1,45 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, MessageSquare, Search, Shield } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Brain, MessageSquare, Search, Shield, Zap, Clock } from "lucide-react";
 
 const features = [
   {
     icon: Brain,
-    title: "AI-Powered Analysis",
-    description: "Understand context, sentiment, and priority automatically"
+    title: "Smart Prioritization",
+    description: "AI learns what's important to you and surfaces emails that need your attention first."
   },
   {
     icon: MessageSquare,
-    title: "Smart Responses",
-    description: "Generate intelligent replies that match your style"
+    title: "AI Responses",
+    description: "Generate draft replies that match your writing style in seconds."
   },
   {
     icon: Search,
     title: "Semantic Search",
-    description: "Find emails by meaning, not just keywords"
+    description: "Find emails by meaning, not just keywords. Search naturally like you're talking."
   },
   {
     icon: Shield,
-    title: "Enterprise Security",
-    description: "Bank-level encryption with zero-knowledge architecture"
+    title: "Privacy First",
+    description: "Bank-grade encryption. Your emails are yours alone."
+  },
+  {
+    icon: Zap,
+    title: "Lightning Fast",
+    description: "Sub-50ms response times. Your email client that never lags."
+  },
+  {
+    icon: Clock,
+    title: "Save Time",
+    description: "Spend less time managing email and more time on what matters."
   }
 ];
 
 export function Features() {
-  const { isSignedIn } = useUser();
-  const router = useRouter();
-
-  const handleClick = () => {
-    if (isSignedIn) {
-      router.push("/mail");
-    } else {
-      router.push("/sign-up");
-    }
-  };
-
   return (
-    <section className="relative py-24 bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-24 bg-white">
+      <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -53,53 +48,39 @@ export function Features() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-black dark:text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Everything you need
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Powerful AI features designed for modern professionals
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Powerful features that help you take control of your inbox
           </p>
         </motion.div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="text-center p-6 rounded-2xl bg-card border border-border hover:shadow-lg transition-all duration-300"
+              className="group"
             >
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#875276' }}>
-                <feature.icon className="w-8 h-8 text-white" />
+              <div className="space-y-4">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                  <feature.icon className="w-6 h-6 text-gray-900" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  {feature.description}
+                </p>
               </div>
-              <h3 className="text-xl font-semibold text-black dark:text-white mb-2">{feature.title}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{feature.description}</p>
             </motion.div>
           ))}
         </div>
-
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
-          <Link href={isSignedIn ? "/mail" : "/sign-up"}>
-            <Button
-              size="lg"
-              className="text-white px-8 py-3 text-lg font-semibold rounded-xl hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: '#875276' }}
-              onClick={handleClick}
-            >
-              Get Started Free
-            </Button>
-          </Link>
-        </motion.div>
       </div>
     </section>
   );

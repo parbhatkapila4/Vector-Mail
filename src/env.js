@@ -7,11 +7,11 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_URL: z.string().url(),
+    DATABASE_URL: z.string().url().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    OPENROUTER_API_KEY: z.string().min(1),
+    OPENROUTER_API_KEY: z.string().min(1).optional(),
   },
 
   /**
