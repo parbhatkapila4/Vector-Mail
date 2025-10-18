@@ -3,6 +3,7 @@ import React from 'react'
 import { Navigation } from '@/components/landing/Navigation'
 import { Hero } from '@/components/landing/Hero'
 import { Features } from '@/components/landing/Features'
+import { FeatureHighlight } from '@/components/landing/FeatureHighlight'
 import { ProductShowcase } from '@/components/landing/ProductShowcase'
 import { SimpleContent } from '@/components/landing/SimpleContent'
 import { CTA } from '@/components/landing/CTA'
@@ -15,6 +16,7 @@ export default function Page() {
       <main>
         <Hero />
         <Features />
+        <FeatureHighlight />
         <ProductShowcase />
         <SimpleContent />
         <CTA />

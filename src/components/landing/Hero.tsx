@@ -20,7 +20,7 @@ export function Hero() {
           className="text-center space-y-8"
         >
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-600">
             <Sparkles className="w-4 h-4" />
             <span>AI-powered email assistant</span>
           </div>
