@@ -5,9 +5,14 @@ import { CheckCircle } from "lucide-react";
 
 export function SimpleContent() {
   return (
-    <section className="py-24 bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+    <section className="relative py-24 sm:py-32 overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black via-[#C2847A]/5 to-black">
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.05]"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left Side - Text Content */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -16,24 +21,33 @@ export function SimpleContent() {
             viewport={{ once: true }}
             className="space-y-6"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-[#C2847A] to-white leading-tight">
               Email that understands you
             </h2>
-            <p className="text-lg text-gray-600 leading-relaxed">
+            <p className="text-lg sm:text-xl text-gray-300 leading-relaxed">
               VectorMail uses advanced AI to learn your communication patterns, understand context, and help you manage your inbox more efficiently than ever before.
             </p>
             
             <div className="space-y-4 pt-4">
               {[
-                "Automatic email categorization and priority sorting",
-                "Smart reply suggestions based on your writing style",
-                "Advanced search that understands context and meaning",
-                "Privacy-first design with end-to-end encryption"
+                { text: "Automatic email categorization and priority sorting", color: "from-[#C2847A] to-[#D4A896]" },
+                { text: "Smart reply suggestions based on your writing style", color: "from-[#D4A896] to-[#C2847A]" },
+                { text: "Advanced search that understands context and meaning", color: "from-[#B0735E] to-[#C2847A]" },
+                { text: "Privacy-first design with end-to-end encryption", color: "from-[#C2847A] to-[#E6C4B8]" }
               ].map((item, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700">{item}</span>
-                </div>
+                <motion.div 
+                  key={index} 
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="flex items-start gap-3 group"
+                >
+                  <div className={`w-6 h-6 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md group-hover:scale-110 transition-transform duration-300 shadow-[#C2847A]/30`}>
+                    <CheckCircle className="w-4 h-4 text-black" />
+                  </div>
+                  <span className="text-gray-300 text-base leading-relaxed">{item.text}</span>
+                </motion.div>
               ))}
             </div>
           </motion.div>
@@ -44,15 +58,19 @@ export function SimpleContent() {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
+            className="relative"
           >
-            <div className="aspect-square bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-gray-200 shadow-2xl p-8 relative overflow-hidden">
+            {/* Glow effect */}
+            <div className="absolute -inset-2 bg-gradient-to-r from-[#C2847A] via-[#D4A896] to-[#C2847A] rounded-2xl blur-2xl opacity-30"></div>
+
+            <div className="relative aspect-square bg-gradient-to-br from-[#C2847A]/10 via-[#D4A896]/10 to-[#C2847A]/5 rounded-2xl border border-[#C2847A]/30 shadow-2xl p-8 overflow-hidden">
               {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-5">
+              <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0" style={{
                   backgroundImage: `
-                    radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
-                    radial-gradient(circle at 40% 60%, rgba(34, 197, 94, 0.1) 0%, transparent 50%)
+                    radial-gradient(circle at 20% 20%, rgba(194, 132, 122, 0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 80%, rgba(212, 168, 150, 0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 40% 60%, rgba(194, 132, 122, 0.3) 0%, transparent 50%)
                   `
                 }} />
               </div>
@@ -69,9 +87,9 @@ export function SimpleContent() {
                     rotate: { duration: 20, repeat: Infinity, ease: "linear" },
                     scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
                   }}
-                  className="w-40 h-40 rounded-full border-4 border-transparent bg-gradient-to-r from-gray-300 via-gray-400 to-gray-500 p-1"
+                  className="w-40 h-40 rounded-full border-4 border-transparent bg-gradient-to-r from-[#C2847A] via-[#D4A896] to-[#C2847A] p-1 shadow-xl"
                 >
-                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                  <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
                     {/* Inner Core */}
                     <motion.div
                       animate={{ 
@@ -82,7 +100,7 @@ export function SimpleContent() {
                         rotate: { duration: 15, repeat: Infinity, ease: "linear" },
                         scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
                       }}
-                      className="w-24 h-24 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center shadow-xl"
+                      className="w-24 h-24 bg-gradient-to-br from-[#C2847A] to-[#D4A896] rounded-full flex items-center justify-center shadow-2xl shadow-[#C2847A]/50"
                     >
                       <motion.span
                         animate={{ 
@@ -94,7 +112,7 @@ export function SimpleContent() {
                           repeat: Infinity, 
                           ease: "easeInOut" 
                         }}
-                        className="text-2xl font-bold text-white"
+                        className="text-2xl font-black text-black"
                       >
                         AI
                       </motion.span>
@@ -109,6 +127,16 @@ export function SimpleContent() {
                 const radius = 70;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
+                const colors = [
+                  'linear-gradient(135deg, #C2847A, #D4A896)',
+                  'linear-gradient(135deg, #D4A896, #C2847A)',
+                  'linear-gradient(135deg, #C2847A, #E6C4B8)',
+                  'linear-gradient(135deg, #E6C4B8, #C2847A)',
+                  'linear-gradient(135deg, #B0735E, #C2847A)',
+                  'linear-gradient(135deg, #C2847A, #B0735E)',
+                  'linear-gradient(135deg, #D4A896, #E6C4B8)',
+                  'linear-gradient(135deg, #E6C4B8, #D4A896)'
+                ];
                 
                 return (
                   <motion.div
@@ -124,13 +152,11 @@ export function SimpleContent() {
                       repeat: Infinity,
                       ease: "easeInOut"
                     }}
-                    className="absolute w-5 h-5 rounded-full shadow-lg"
+                    className="absolute w-5 h-5 rounded-full shadow-xl"
                     style={{
                       left: `calc(50% + ${x}px - 10px)`,
                       top: `calc(50% + ${y}px - 10px)`,
-                      background: i % 3 === 0 ? 'linear-gradient(135deg, #9ca3af, #6b7280)' :
-                                  i % 3 === 1 ? 'linear-gradient(135deg, #6b7280, #4b5563)' :
-                                  'linear-gradient(135deg, #4b5563, #374151)'
+                      background: colors[i]
                     }}
                   />
                 );
@@ -151,7 +177,7 @@ export function SimpleContent() {
                       y1="160"
                       x2={x}
                       y2={y}
-                      stroke="url(#enhancedNeuralGradient)"
+                      stroke="url(#coralNeuralGradient)"
                       strokeWidth="3"
                       opacity="0.7"
                       initial={{ pathLength: 0 }}
@@ -169,69 +195,72 @@ export function SimpleContent() {
                   );
                 })}
                 <defs>
-                  <linearGradient id="enhancedNeuralGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#9ca3af" />
-                    <stop offset="33%" stopColor="#6b7280" />
-                    <stop offset="66%" stopColor="#4b5563" />
-                    <stop offset="100%" stopColor="#374151" />
+                  <linearGradient id="coralNeuralGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#C2847A" />
+                    <stop offset="33%" stopColor="#D4A896" />
+                    <stop offset="66%" stopColor="#C2847A" />
+                    <stop offset="100%" stopColor="#E6C4B8" />
                   </linearGradient>
                 </defs>
               </svg>
 
               {/* Data Particles */}
-              {[...Array(12)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    x: [0, Math.random() * 200 - 100],
-                    y: [0, Math.random() * 200 - 100],
-                    opacity: [0, 1, 0],
-                    scale: [0, 1, 0]
-                  }}
-                  transition={{
-                    duration: 3 + Math.random() * 2,
-                    repeat: Infinity,
-                    delay: Math.random() * 3,
-                    ease: "easeOut"
-                  }}
-                  className="absolute w-1 h-1 rounded-full"
-                  style={{
-                    left: `${50 + Math.random() * 20}%`,
-                    top: `${50 + Math.random() * 20}%`,
-                    background: Math.random() > 0.5 ? '#6b7280' : '#4b5563'
-                  }}
-                />
-              ))}
+              {[...Array(12)].map((_, i) => {
+                const colors = ['#C2847A', '#D4A896', '#E6C4B8', '#B0735E'];
+                return (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      x: [0, Math.random() * 200 - 100],
+                      y: [0, Math.random() * 200 - 100],
+                      opacity: [0, 1, 0],
+                      scale: [0, 1, 0]
+                    }}
+                    transition={{
+                      duration: 3 + Math.random() * 2,
+                      repeat: Infinity,
+                      delay: Math.random() * 3,
+                      ease: "easeOut"
+                    }}
+                    className="absolute w-1.5 h-1.5 rounded-full shadow-lg"
+                    style={{
+                      left: `${50 + Math.random() * 20}%`,
+                      top: `${50 + Math.random() * 20}%`,
+                      background: colors[Math.floor(Math.random() * colors.length)]
+                    }}
+                  />
+                );
+              })}
 
               {/* Enhanced Processing Status */}
               <div className="absolute bottom-4 left-4 right-4">
-                <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 border border-gray-200 shadow-lg">
+                <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-[#C2847A]/30 shadow-xl">
                   <div className="flex items-center gap-3 mb-3">
                     <motion.div
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 1, repeat: Infinity }}
-                      className="w-3 h-3 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full"
+                      className="w-3 h-3 bg-gradient-to-r from-[#C2847A] to-[#D4A896] rounded-full shadow-lg"
                     />
-                    <span className="text-sm font-semibold text-gray-800">AI Processing</span>
+                    <span className="text-sm font-bold text-white">AI Processing</span>
                     <div className="ml-auto flex items-center gap-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-gray-600 font-medium">LIVE</span>
+                      <div className="w-2 h-2 bg-gradient-to-r from-[#C2847A] to-[#D4A896] rounded-full animate-pulse"></div>
+                      <span className="text-xs text-[#C2847A] font-bold">LIVE</span>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600 mb-2">
+                  <div className="text-sm text-gray-300 mb-2">
                     Analyzing 247 emails • 99.2% accuracy • 2.3s avg response
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
                     <motion.div
-                      className="bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600 h-2 rounded-full"
+                      className="bg-gradient-to-r from-[#C2847A] via-[#D4A896] to-[#C2847A] h-2 rounded-full shadow-md"
                       initial={{ width: "0%" }}
                       animate={{ width: "87%" }}
                       transition={{ duration: 3, ease: "easeOut" }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>Neural Processing</span>
-                    <span>87% Complete</span>
+                  <div className="flex justify-between text-xs text-gray-300 mt-1">
+                    <span className="font-medium">Neural Processing</span>
+                    <span className="font-bold text-[#C2847A]">87% Complete</span>
                   </div>
                 </div>
               </div>

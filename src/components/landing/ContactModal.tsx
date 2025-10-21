@@ -9,7 +9,7 @@ const contactMethods = [
     icon: Mail,
     title: "Email Support",
     description: "Get help from our support team",
-    contact: "help@vectormail.ai",
+    contact: "help@vectormail.dev",
     color: "from-blue-500 to-cyan-500",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200",
@@ -19,7 +19,7 @@ const contactMethods = [
     icon: MessageSquare,
     title: "General Inquiries",
     description: "Questions about our product",
-    contact: "hello@vectormail.ai",
+    contact: "hello@vectormail.dev",
     color: "from-purple-500 to-pink-500",
     bgColor: "bg-purple-50",
     borderColor: "border-purple-200",
@@ -29,7 +29,7 @@ const contactMethods = [
     icon: Phone,
     title: "Sales & Enterprise",
     description: "Custom solutions for teams",
-    contact: "sales@vectormail.ai",
+    contact: "sales@vectormail.dev",
     color: "from-green-500 to-teal-500",
     bgColor: "bg-green-50",
     borderColor: "border-green-200",
@@ -321,10 +321,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             General
                           </h4>
                           <a
-                            href="mailto:hello@vectormail.ai"
+                            href="mailto:hello@vectormail.dev"
                             className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
                           >
-                            hello@vectormail.ai
+                            hello@vectormail.dev
                           </a>
                         </motion.div>
 
@@ -339,10 +339,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             Support
                           </h4>
                           <a
-                            href="mailto:help@vectormail.ai"
+                            href="mailto:help@vectormail.dev"
                             className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
                           >
-                            help@vectormail.ai
+                            help@vectormail.dev
                           </a>
                         </motion.div>
 
@@ -357,10 +357,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             Sales
                           </h4>
                           <a
-                            href="mailto:sales@vectormail.ai"
+                            href="mailto:sales@vectormail.dev"
                             className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
                           >
-                            sales@vectormail.ai
+                            sales@vectormail.dev
                           </a>
                         </motion.div>
                       </div>

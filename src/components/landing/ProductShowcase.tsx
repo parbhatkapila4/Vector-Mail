@@ -41,7 +41,7 @@ export function ProductShowcase() {
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
               <div className="flex-1 bg-white rounded px-3 py-1 text-sm text-gray-500 ml-4">
-                vectormail.ai
+                vectormail.dev
               </div>
             </div>
 
@@ -56,7 +56,7 @@ export function ProductShowcase() {
                   </div>
                   <div>
                     <div className="text-sm font-medium">VectorMail</div>
-                    <div className="text-xs text-gray-400">user@vectormail.ai</div>
+                    <div className="text-xs text-gray-400">user@vectormail.dev</div>
                   </div>
                 </div>
 
