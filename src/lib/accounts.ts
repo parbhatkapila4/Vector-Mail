@@ -38,8 +38,6 @@ export class Account {
 
             console.log('initial sync complete' , allEmails.length)
 
-            await this.getUpdatedEmails(storedDeltaToken)
-
             return {
                 emails: allEmails,
                 deltaToken: storedDeltaToken
@@ -140,35 +138,56 @@ export class Account {
         }
     }
 
-    async syncEmails() {
+    async syncEmails(forceFullSync = false) {
         const account = await db.account.findUnique({
             where: {
                 token: this.token
             },
         })
         if (!account) throw new Error("Invalid token")
-        if (!account.nextDeltaToken) throw new Error("No delta token")
-        let response = await this.getUpdatedEmails(account.nextDeltaToken)
-        let allEmails: EmailMessage[] = response.records
-        let storedDeltaToken = account.nextDeltaToken
-        if (response.nextDeltaToken) {
-            storedDeltaToken = response.nextDeltaToken
-        }
-        while (response.nextPageToken) {
-            response = await this.getUpdatedEmails( "", response.nextPageToken);
-            allEmails = allEmails.concat(response.records);
+        
+        console.log(`Starting email sync for account ${account.id}`)
+        
+        let allEmails: EmailMessage[] = []
+        let storedDeltaToken: string
+        
+        // If no delta token or force full sync, perform initial sync
+        if (!account.nextDeltaToken || forceFullSync) {
+            console.log('Performing full initial sync...')
+            const initialSyncResult = await this.performInitialSync()
+            allEmails = initialSyncResult.emails
+            storedDeltaToken = initialSyncResult.deltaToken
+        } else {
+            console.log(`Using delta token: ${account.nextDeltaToken}`)
+            let response = await this.getUpdatedEmails(account.nextDeltaToken)
+            allEmails = response.records
+            storedDeltaToken = account.nextDeltaToken
+            
+            console.log(`Delta sync response: ${allEmails.length} emails found`)
+            
             if (response.nextDeltaToken) {
                 storedDeltaToken = response.nextDeltaToken
+                console.log(`Updated delta token: ${storedDeltaToken}`)
+            }
+            
+            while (response.nextPageToken) {
+                console.log(`Fetching next page with token: ${response.nextPageToken}`)
+                response = await this.getUpdatedEmails( "", response.nextPageToken);
+                allEmails = allEmails.concat(response.records);
+                console.log(`Page response: ${response.records.length} emails, total: ${allEmails.length}`)
+                if (response.nextDeltaToken) {
+                    storedDeltaToken = response.nextDeltaToken
+                }
             }
         }
 
-        if (!response) throw new Error("Failed to sync emails")
-
+        console.log(`Total emails to sync: ${allEmails.length}`)
 
         try {
             await syncEmailsToDatabase(allEmails, account.id)
+            console.log(`Successfully synced ${allEmails.length} emails to database`)
         } catch (error) {
-            console.log('error', error)
+            console.error('Error syncing emails to database:', error)
         }
 
         await db.account.update({
@@ -179,6 +198,8 @@ export class Account {
                 nextDeltaToken: storedDeltaToken,
             }
         })
+        
+        console.log(`Email sync completed for account ${account.id}`)
     }
 }
 
