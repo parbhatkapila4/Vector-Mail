@@ -57,7 +57,7 @@ function page() {
 
       <Mail
         defaultLayout={isMobile ? [0, 100, 0] : [20, 32, 48]}
-        defaultCollapsed={isMobile ? true : false}
+        defaultCollapsed={false}
         navCollapsedSize={4}
       />
     </div>
