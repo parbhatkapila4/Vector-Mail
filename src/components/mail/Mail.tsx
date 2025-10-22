@@ -62,7 +62,7 @@ export function Mail({
       <div className="flex-1 overflow-y-auto">
         <SideBar isCollapsed={isCollapsed} />
       </div>
-      <div className="mt-auto">
+      <div className="mt-auto pb-4">
         <AskAI isCollapsed={isCollapsed} />
       </div>
     </div>

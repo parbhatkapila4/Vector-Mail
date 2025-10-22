@@ -139,106 +139,115 @@ const AskAI = ({ isCollapsed }: { isCollapsed: boolean }) => {
     }
 
     return (
-        <div className='p-4 mb-14'>
-
-            {/* <PremiumBanner /> */}
-            <div className="h-4"></div>
-            <motion.div className="flex flex-col pb-4 border p-4 rounded-lg bg-white shadow-inner dark:bg-gray-800">
-                <div className="max-h-[50vh] overflow-y-scroll w-full flex flex-col gap-2" id='message-container'>
-                    <AnimatePresence mode="wait">
-                        {messages.map((message: any) => (
-                            <motion.div
-                                key={message.id}
-                                layout="position"
-                                className={cn("z-10 mt-2 break-words rounded-2xl", {
-                                    'self-end max-w-[250px] bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100': message.role === 'user',
-                                    'self-start max-w-[400px] bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg': message.role === 'assistant',
-                                })}
-                                layoutId={`container-[${messages.length - 1}]`}
-                                transition={transitionDebug as any}
-                            >
-                                <div className={cn("text-[15px] leading-[1.4]", {
-                                    'px-4 py-3 text-gray-900 dark:text-gray-100': message.role === 'user',
-                                    'px-5 py-4 text-white': message.role === 'assistant',
-                                })}>
-                                    {message.role === 'assistant' ? (
-                                        <div className="space-y-2">
-                                            <div className="font-medium text-blue-100 mb-2">✨ AI Assistant</div>
-                                            <div className="whitespace-pre-wrap">{message.content}</div>
-                                        </div>
-                                    ) : (
-                                        message.content
-                                    )}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
-                {messages.length > 0 && <div className="h-4"></div>}
-                <div className="w-full">
-                    {messages.length === 0 && <div className="mb-6">
-                        <div className='text-center py-3'>
-                            <div className='flex items-center justify-center gap-2 mb-2'>
-                                <SparklesIcon className='size-5 text-gray-500' />
-                                <p className='text-gray-900 dark:text-gray-100 font-semibold'>AI-Powered Email Search</p>
-                                <span className='text-lg'>🚀</span>
-                            </div>
-                            <p className='text-gray-500 text-xs dark:text-gray-400'>Using RAG + Vector Search to find relevant emails</p>
+        <div className='p-3 pb-20'>
+            <motion.div className="flex flex-col bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-lg shadow-lg">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gradient-to-br from-[#C2847A] to-[#D4A896] rounded-md flex items-center justify-center">
+                            <SparklesIcon className='w-4 h-4 text-black' />
                         </div>
-                        <div className="h-4"></div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => setInput('Show me emails about orders')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
-                                <span>📦</span>
-                                <span>Orders</span>
-                            </button>
-                            <button onClick={() => setInput('Find my flight bookings')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
-                                <span>✈️</span>
-                                <span>Flights</span>
-                            </button>
-                            <button onClick={() => setInput('What meetings do I have coming up?')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
-                                <span>📅</span>
-                                <span>Meetings</span>
-                            </button>
-                            <button onClick={() => setInput('Show receipts and payments')} className='px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium'>
-                                <span>💰</span>
-                                <span>Payments</span>
-                            </button>
-                        </div>
-                        <div className="h-4"></div>
+                        <h3 className="text-sm font-bold text-white">AI-Powered Email Search</h3>
                     </div>
-                    }
+                    <div className="w-6 h-6 bg-red-500 rounded-md flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">🚀</span>
+                    </div>
+                </div>
+
+                {/* Messages Area */}
+                {messages.length > 0 && (
+                    <div className="max-h-[200px] overflow-y-auto p-3 border-b border-gray-700" id='message-container'>
+                        <AnimatePresence mode="wait">
+                            {messages.map((message: any) => (
+                                <motion.div
+                                    key={message.id}
+                                    layout="position"
+                                    className={cn("z-10 mt-2 break-words rounded-2xl", {
+                                        'self-end max-w-[250px] bg-gray-700 text-white': message.role === 'user',
+                                        'self-start max-w-[400px] bg-gradient-to-br from-[#C2847A] to-[#D4A896] text-black shadow-lg': message.role === 'assistant',
+                                    })}
+                                    layoutId={`container-[${messages.length - 1}]`}
+                                    transition={transitionDebug as any}
+                                >
+                                    <div className={cn("text-sm leading-[1.4]", {
+                                        'px-4 py-3 text-white': message.role === 'user',
+                                        'px-5 py-4 text-black': message.role === 'assistant',
+                                    })}>
+                                        {message.role === 'assistant' ? (
+                                            <div className="space-y-2">
+                                                <div className="font-medium text-black/80 mb-2">✨ AI Assistant</div>
+                                                <div className="whitespace-pre-wrap">{message.content}</div>
+                                            </div>
+                                        ) : (
+                                            message.content
+                                        )}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                )}
+
+                {/* Content Area */}
+                <div className="p-4">
+                    {messages.length === 0 && (
+                        <div className="mb-4">
+                            {/* Description */}
+                            <div className="text-center mb-4">
+                                <p className='text-gray-300 text-xs'>Using RAG + Vector Search to find relevant emails</p>
+                            </div>
+                            
+                            {/* Category Suggestions */}
+                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                <button 
+                                    onClick={() => setInput('Show me emails about orders')} 
+                                    className='px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium border border-gray-600'
+                                >
+                                    <span className="text-sm">📦</span>
+                                    <span>Orders</span>
+                                </button>
+                                <button 
+                                    onClick={() => setInput('Find my flight bookings')} 
+                                    className='px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium border border-gray-600'
+                                >
+                                    <span className="text-sm">✈️</span>
+                                    <span>Flights</span>
+                                </button>
+                                <button 
+                                    onClick={() => setInput('What meetings do I have coming up?')} 
+                                    className='px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium border border-gray-600'
+                                >
+                                    <span className="text-sm">📅</span>
+                                    <span>Meetings</span>
+                                </button>
+                                <button 
+                                    onClick={() => setInput('Show receipts and payments')} 
+                                    className='px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 font-medium border border-gray-600'
+                                >
+                                    <span className="text-sm">💰</span>
+                                    <span>Payments</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Search Input */}
                     <form onSubmit={handleSubmit} className="flex w-full gap-2">
                         <div className="flex-1 relative">
                             <input
                                 type="text"
                                 onChange={handleInputChange}
                                 value={input}
-                                className="w-full h-9 placeholder:text-[13px] rounded-full border border-gray-200 bg-white px-3 text-[15px] outline-none placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-blue-500/20 focus-visible:ring-offset-1
-                dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus-visible:ring-blue-500/20 dark:focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-700
-                "
-                                placeholder="Search your emails with AI (e.g., 'flights to London', 'meeting with Sarah')..."
+                                className="w-full h-9 rounded-full border border-gray-600 bg-gray-700 px-3 text-white text-xs outline-none placeholder:text-gray-400 focus:border-[#C2847A] focus:ring-1 focus:ring-[#C2847A]/20 transition-all duration-200"
+                                placeholder="Search your emails with AI..."
                             />
-                            <motion.div
-                                key={messages.length}
-                                layout="position"
-                                className="pointer-events-none absolute z-10 flex h-9 w-[250px] items-center overflow-hidden break-words rounded-full  [word-break:break-word] dark:bg-gray-800"
-                                layoutId={`container-[${messages.length}]`}
-                                transition={transitionDebug as any}
-                                initial={{ opacity: 0.6, zIndex: -1 }}
-                                animate={{ opacity: 0.6, zIndex: -1 }}
-                                exit={{ opacity: 1, zIndex: 1 }}
-                            >
-                                <div className="px-3 py-2 text-[15px] leading-[15px] text-white dark:text-gray-100">
-                                    {input}
-                                </div>
-                            </motion.div>
                         </div>
                         <button
                             type="submit"
-                            className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-[#C2847A] to-[#D4A896] hover:from-[#D4A896] hover:to-[#C2847A] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-md"
                             disabled={isLoading || !input.trim()}
                         >
-                            <Send className="size-4 text-white" />
+                            <Send className="w-4 h-4 text-black" />
                         </button>
                     </form>
                 </div>
