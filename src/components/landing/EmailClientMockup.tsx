@@ -14,7 +14,7 @@ export function EmailClientMockup() {
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-purple-500/20 bg-black/40 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-purple-500/50">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-purple-500/50">
             V
           </div>
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
@@ -45,7 +45,7 @@ export function EmailClientMockup() {
           <button className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 rounded-lg flex items-center justify-center text-blue-400 transition-colors border border-blue-500/30">
             <HelpCircle className="w-4 h-4" />
           </button>
-          <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full border-2 border-purple-500/50" />
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full border-2 border-purple-500/50" />
           <button className="w-8 h-8 bg-gradient-to-br from-gray-500/20 to-gray-700/20 hover:from-gray-500/30 hover:to-gray-700/30 rounded-lg flex items-center justify-center text-gray-400 transition-colors border border-gray-500/30">
             <Settings className="w-4 h-4" />
           </button>
@@ -58,7 +58,7 @@ export function EmailClientMockup() {
           <div className="p-4">
             {/* Account */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/50">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/50">
                 V
               </div>
               <div className="flex-1 min-w-0">
@@ -68,7 +68,7 @@ export function EmailClientMockup() {
             </div>
 
             {/* New Email Button */}
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-semibold transition-colors mb-6 shadow-lg shadow-purple-500/50">
+            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:from-purple-700 hover:via-purple-500 hover:to-amber-500 text-white rounded-lg font-semibold transition-colors mb-6 shadow-lg shadow-purple-500/50">
               <Mail className="w-4 h-4" />
               <span>New email</span>
             </button>
@@ -121,7 +121,7 @@ export function EmailClientMockup() {
 
             {/* Filters */}
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/40 text-white rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/20">
+              <button className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 border border-purple-500/40 text-white rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/20">
                 <Zap className="w-4 h-4 text-yellow-400" />
                 Primary
               </button>
@@ -150,11 +150,11 @@ export function EmailClientMockup() {
               </div>
               
               <EmailItem
-                sender="Ali from Baked"
-                subject="New design review"
+                sender="VectorMail Team"
+                subject="New AI features launched"
                 time="Mar 29"
                 count="9"
-                avatarColor="from-pink-500 to-rose-500"
+                avatarColor="from-purple-600 via-purple-400 to-amber-400"
                 badges={[
                   { icon: User, color: "text-blue-400", bg: "bg-blue-500/20" },
                   { icon: Bell, color: "text-emerald-400", bg: "bg-emerald-500/20" }
@@ -162,20 +162,20 @@ export function EmailClientMockup() {
                 active
               />
               <EmailItem
-                sender="Alex, Ali, Sarah"
-                subject="Re: Design review feedback"
+                sender="David, Emma, Mike"
+                subject="Re: Product roadmap discussion"
                 time="Mar 28"
                 count="6"
                 avatarColor="from-blue-500 to-cyan-500"
                 badges={[
                   { icon: User, color: "text-purple-400", bg: "bg-purple-500/20" },
-                  { icon: User, color: "text-pink-400", bg: "bg-pink-500/20" },
+                  { icon: User, color: "text-amber-400", bg: "bg-amber-500/20" },
                   { icon: Bell, color: "text-yellow-400", bg: "bg-yellow-500/20" }
                 ]}
               />
               <EmailItem
-                sender="GitHub"
-                subject="Security alert: Critical vulnerability"
+                sender="Security Alerts"
+                subject="Weekly security digest"
                 time="Mar 28"
                 count="8"
                 avatarColor="from-orange-500 to-red-500"
@@ -197,25 +197,25 @@ export function EmailClientMockup() {
               </div>
               
               <EmailItem
-                sender="Stripe"
-                subject="Payment confirmation #1234"
+                sender="Finance Team"
+                subject="Monthly expense report ready"
                 time="Mar 29"
                 avatarColor="from-violet-500 to-purple-600"
                 badges={[
                   { icon: AlertTriangle, color: "text-emerald-400", bg: "bg-emerald-500/20" },
                   { icon: Bell, color: "text-blue-400", bg: "bg-blue-500/20" }
                 ]}
-                logo="S"
+                logo="F"
               />
               <EmailItem
-                sender="Netflix"
-                subject="New shows added to your list"
+                sender="Marketing"
+                subject="Q1 campaign performance update"
                 time="Mar 29"
                 avatarColor="from-red-600 to-rose-700"
                 badges={[
-                  { icon: Bell, color: "text-pink-400", bg: "bg-pink-500/20" }
+                  { icon: Bell, color: "text-amber-400", bg: "bg-amber-500/20" }
                 ]}
-                logo="N"
+                logo="M"
               />
             </div>
           </div>
@@ -228,7 +228,7 @@ export function EmailClientMockup() {
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h3 className="text-white text-xl font-semibold mb-2 flex items-center gap-2">
-                  Re: Design review feedback
+                  Re: VectorMail v2.0 roadmap
                   <span className="text-sm text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">6</span>
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-purple-300">
@@ -237,7 +237,7 @@ export function EmailClientMockup() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 rounded-lg text-white text-sm transition-colors border border-purple-500/30">
+                <button className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 hover:from-purple-600/30 hover:via-purple-400/30 hover:to-amber-400/30 rounded-lg text-white text-sm transition-colors border border-purple-500/30">
                   <Reply className="w-4 h-4" />
                   Reply all
                 </button>
@@ -256,9 +256,9 @@ export function EmailClientMockup() {
             {/* Participants */}
             <div className="flex items-center gap-3">
               {[
-                { name: 'Ali', color: 'from-pink-500 to-rose-500' },
-                { name: 'Alex', color: 'from-blue-500 to-cyan-500' },
-                { name: 'Sarah', color: 'from-emerald-500 to-green-500' }
+                { name: 'David', color: 'from-purple-600 via-purple-400 to-amber-400' },
+                { name: 'Emma', color: 'from-blue-500 to-cyan-500' },
+                { name: 'Mike', color: 'from-emerald-500 to-green-500' }
               ].map((person, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className={`w-8 h-8 bg-gradient-to-br ${person.color} rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg`}>
@@ -277,7 +277,7 @@ export function EmailClientMockup() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-purple-500/10 rounded-xl p-4 border border-purple-500/30 shadow-lg shadow-purple-500/10"
+              className="bg-gradient-to-br from-purple-600/10 via-purple-400/10 to-amber-400/10 rounded-xl p-4 border border-purple-500/30 shadow-lg shadow-purple-500/10"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export function EmailClientMockup() {
                 <ChevronDown className="w-4 h-4 text-purple-400" />
               </div>
               <p className="text-gray-300 text-sm leading-relaxed">
-                Design review of new email client features. Team discussed command center improvements and category system. General positive feedback, with suggestions for quick actions placement.
+                VectorMail v2.0 product roadmap discussion. Team reviewed AI-powered features, semantic search improvements, and inbox management tools. Positive feedback on the new dashboard design and keyboard shortcuts implementation.
               </p>
             </motion.div>
 
@@ -304,10 +304,10 @@ export function EmailClientMockup() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { name: 'cmd.center.fig', size: '21 MB', color: 'from-pink-500 to-rose-500' },
-                  { name: 'comments.docx', size: '3.7 MB', color: 'from-blue-500 to-indigo-500' },
-                  { name: 'img.png', size: '2.3 MB', color: 'from-emerald-500 to-green-500' },
-                  { name: 'requirements.pdf', size: '1.5 MB', color: 'from-orange-500 to-red-500' },
+                  { name: 'dashboard-mockup.fig', size: '21 MB', color: 'from-purple-600 via-purple-400 to-amber-400' },
+                  { name: 'product-roadmap.docx', size: '3.7 MB', color: 'from-blue-500 to-indigo-500' },
+                  { name: 'ui-screenshot.png', size: '2.3 MB', color: 'from-emerald-500 to-green-500' },
+                  { name: 'tech-specs.pdf', size: '1.5 MB', color: 'from-orange-500 to-red-500' },
                 ].map((file, i) => (
                   <div key={i} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border border-white/10">
                     <div className={`w-8 h-8 bg-gradient-to-br ${file.color} rounded-lg flex items-center justify-center shadow-lg`}>
@@ -324,25 +324,25 @@ export function EmailClientMockup() {
 
             {/* Email Thread */}
             <div className="space-y-4">
-              {/* Ali's Message */}
-              <div className="bg-white/5 rounded-xl p-4 border border-pink-500/20">
+              {/* David's Message */}
+              <div className="bg-white/5 rounded-xl p-4 border border-purple-500/20">
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-pink-500/50">
-                    A
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/50">
+                    D
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-white font-semibold text-sm">Ali Mamedgasanov</span>
+                      <span className="text-white font-semibold text-sm">David Chen</span>
                       <span className="text-xs text-gray-400">March 25, 10:15 AM</span>
                     </div>
-                    <div className="text-purple-300 text-xs mb-3">To: Alex, Sarah</div>
+                    <div className="text-purple-300 text-xs mb-3">To: Emma, Mike</div>
                     <p className="text-gray-300 text-sm leading-relaxed">
-                      yo team, i've updated the email client design with some new interactions. taking a different approach with the command center - much cleaner now. check out the new flows and let me know what you think!
+                      Hey team! Just pushed the latest VectorMail dashboard updates. The new semantic search is lightning fast and the AI summaries are incredibly accurate. Ready for your review - let me know what you think!
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 rounded-lg text-white text-xs transition-colors border border-purple-500/30">
+                  <button className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 hover:from-purple-600/30 hover:via-purple-400/30 hover:to-amber-400/30 rounded-lg text-white text-xs transition-colors border border-purple-500/30">
                     <Reply className="w-3 h-3" />
                     Reply
                   </button>
@@ -353,20 +353,20 @@ export function EmailClientMockup() {
                 </div>
               </div>
 
-              {/* Sarah's Message */}
+              {/* Emma's Message */}
               <div className="bg-white/5 rounded-xl p-4 border border-emerald-500/20">
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-500/50">
-                    S
+                    E
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-white font-semibold text-sm">Sarah</span>
+                      <span className="text-white font-semibold text-sm">Emma Rodriguez</span>
                       <span className="text-xs text-gray-400">March 25, 2:30 PM</span>
                     </div>
-                    <div className="text-purple-300 text-xs mb-3">To: Ali</div>
+                    <div className="text-purple-300 text-xs mb-3">To: David</div>
                     <p className="text-gray-300 text-sm leading-relaxed">
-                      I've spent some time playing with the new version and have quite a few thoughts. The command center is definitely moving in the right direction - the new layout makes much more sense for power users.
+                      Tested the new features thoroughly and I'm impressed! The keyboard shortcuts are incredibly intuitive and the AI-powered responses save so much time. This is exactly what power users need. Ready to ship! 🚀
                     </p>
                   </div>
                 </div>
@@ -407,7 +407,7 @@ function NavItem({ icon: Icon, label, count, active, color }: {
   };
 
   const bgColorMap: Record<string, string> = {
-    purple: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30',
+    purple: 'bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 border border-purple-500/30',
     yellow: 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30',
     blue: 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30',
     emerald: 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30',
@@ -447,7 +447,7 @@ function EmailItem({ sender, subject, time, count, badges, active, logo, avatarC
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all mb-2 ${
       active 
-        ? 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 shadow-lg shadow-purple-500/10' 
+        ? 'bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 border border-purple-500/30 shadow-lg shadow-purple-500/10' 
         : 'bg-white/5 hover:bg-white/10 border border-white/10'
     }`}>
       {logo ? (

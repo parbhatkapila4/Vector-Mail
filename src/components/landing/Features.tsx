@@ -26,7 +26,7 @@ export function Features() {
             className="text-5xl sm:text-6xl font-black text-center mb-32"
           >
             <span className="text-white">Designed for </span>
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
               power users
             </span>
             <span className="text-white"> who value time</span>
@@ -45,7 +45,7 @@ export function Features() {
                 <h3 className="text-4xl font-black text-white">
                   Speed Is Everything
                 </h3>
-                <h4 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+                <h4 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]">
                   Reply in seconds
                 </h4>
               </div>
@@ -61,7 +61,7 @@ export function Features() {
             >
               {/* Glow effect - subtle pulse */}
               <div 
-                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+                className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
               />
               <motion.div 
                 className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-6 shadow-2xl"
@@ -72,10 +72,10 @@ export function Features() {
                 <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">
                   <span className="text-gray-500 text-sm">To:</span>
                   <div className="flex gap-2">
-                      {['Adam', 'Ryan'].map((name, i) => (
+                      {['David', 'Emma'].map((name, i) => (
                       <motion.div 
                         key={i} 
-                        className="flex items-center gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-3 py-1 rounded-full border border-purple-500/30"
+                        className="flex items-center gap-2 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 px-3 py-1 rounded-full border border-purple-500/30"
                         whileHover={{ 
                           scale: 1.05,
                           borderColor: "rgba(168, 85, 247, 0.6)",
@@ -83,7 +83,7 @@ export function Features() {
                         }}
                         transition={{ duration: 0.2 }}
                       >
-                        <div className="w-5 h-5 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-lg" />
+                        <div className="w-5 h-5 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full shadow-lg" />
                         <span className="text-white text-sm font-medium">{name}</span>
                       </motion.div>
                     ))}
@@ -97,7 +97,7 @@ export function Features() {
                   whileHover={{ opacity: 1 }}
                 >
                   <Zap className="w-4 h-4 text-purple-400" />
-                  <span className="text-white font-medium">Re: Code review feedback</span>
+                  <span className="text-white font-medium">Re: VectorMail feature updates</span>
           </motion.div>
 
                 {/* Email Body */}
@@ -108,8 +108,8 @@ export function Features() {
                 >
                   <p className="text-gray-300 text-sm leading-relaxed">
                     Hey team,<br /><br />
-                    I took a look at the code review feedback. Really like the keyboard navigation - it makes everything much faster to access. The search implementation is clean, though I'd love to see the link to test it out myself.<br /><br />
-                    Let me know when you can share the preview and I'll provide more detailed feedback.
+                    Just finished reviewing the latest VectorMail dashboard updates. The new semantic search is incredibly fast - finding emails is now instant. The AI summaries are spot-on and save me at least 30 minutes daily.<br /><br />
+                    Ready to ship this to production. Great work everyone!
           </p>
         </motion.div>
 
@@ -117,7 +117,7 @@ export function Features() {
                   <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <motion.button 
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold shadow-lg shadow-purple-500/30"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold shadow-lg shadow-purple-500/30"
                       whileHover={{ 
                         scale: 1.05, 
                         boxShadow: "0 0 25px rgba(168, 85, 247, 0.5)",
@@ -188,7 +188,7 @@ export function Features() {
             >
               {/* Glow effect */}
               <div 
-                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+                className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
               />
               <motion.div 
                 className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 shadow-2xl overflow-hidden"
@@ -202,7 +202,7 @@ export function Features() {
                       className="flex items-center gap-2 text-white font-medium"
                       whileHover={{ scale: 1.02 }}
                     >
-                      <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded shadow-lg" />
+                      <div className="w-5 h-5 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded shadow-lg" />
                       <span>Inbox</span>
                     </motion.div>
                     <motion.button 
@@ -235,7 +235,7 @@ export function Features() {
                 {/* Category Badge */}
                 <div className="p-4">
                   <motion.div 
-                    className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/30"
+                    className="bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 rounded-lg p-4 border border-purple-500/30"
                     whileHover={{ 
                       borderColor: "rgba(168, 85, 247, 0.5)",
                       boxShadow: "0 0 20px rgba(168, 85, 247, 0.2)"
@@ -262,16 +262,16 @@ export function Features() {
                     <span className="bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded">3</span>
                   </div>
                   {[
-                    { sender: 'Nizzy', subject: 'New design review', time: 'Mar 29', count: '9' },
-                    { sender: 'Alex, Ali, Sarah', subject: 'Re: Design review feedback', time: 'Mar 28', count: '6' },
+                    { sender: 'Product Team', subject: 'VectorMail v2.0 features', time: 'Mar 29', count: '9' },
+                    { sender: 'David, Emma, Mike', subject: 'Re: Sprint planning feedback', time: 'Mar 28', count: '6' },
                   ].map((email, i) => (
                     <motion.div 
                       key={i} 
-                      className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
+                      className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
                       whileHover={{ x: 4, scale: 1.01 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
                         {email.sender[0]}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -315,7 +315,7 @@ export function Features() {
             >
               {/* Glow effect */}
               <div 
-                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+                className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
               />
               <motion.div 
                 className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-6 shadow-2xl"
@@ -329,7 +329,7 @@ export function Features() {
                   whileHover={{ opacity: 1 }}
                 >
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Re: Design review feedback</h4>
+                    <h4 className="text-white font-semibold mb-1">Re: VectorMail v2.0 roadmap</h4>
                     <div className="flex items-center gap-2 text-xs text-purple-300">
                       <span>March 25 - March 29</span>
                     </div>
@@ -338,10 +338,10 @@ export function Features() {
 
                 {/* Participants */}
                 <div className="flex gap-2 mb-4">
-                  {['Ali', 'Nick', 'Sarah'].map((name, i) => (
+                  {['David', 'Emma', 'Mike'].map((name, i) => (
                     <motion.div 
                       key={i} 
-                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-2 py-1 rounded-full border border-purple-500/30"
+                      className="flex items-center gap-2 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 px-2 py-1 rounded-full border border-purple-500/30"
                       whileHover={{ 
                         scale: 1.05,
                         borderColor: "rgba(168, 85, 247, 0.6)",
@@ -349,7 +349,7 @@ export function Features() {
                       }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className="w-5 h-5 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-lg" />
+                      <div className="w-5 h-5 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full shadow-lg" />
                       <span className="text-white text-xs font-medium">{name}</span>
                     </motion.div>
                   ))}
@@ -357,7 +357,7 @@ export function Features() {
                   
                 {/* AI Summary Box */}
                 <motion.div 
-                  className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/30"
+                  className="bg-gradient-to-br from-purple-600/10 via-purple-400/10 to-amber-400/10 rounded-xl p-4 border border-purple-500/30"
                   whileHover={{ 
                     borderColor: "rgba(168, 85, 247, 0.5)",
                     boxShadow: "0 0 25px rgba(168, 85, 247, 0.3)"
@@ -369,7 +369,7 @@ export function Features() {
                     <span className="text-white font-semibold text-sm">AI Summary</span>
                   </div>
                   <p className="text-gray-300 text-sm leading-relaxed">
-                    Design review of new email client features. Team discussed command center improvements and category system. General positive feedback, with suggestions for quick actions placement.
+                    VectorMail v2.0 feature discussion. Team reviewed AI-powered summaries, semantic search capabilities, and inbox automation. Strong consensus on prioritizing keyboard shortcuts and smart categorization for power users.
                   </p>
                 </motion.div>
 
@@ -381,12 +381,12 @@ export function Features() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { name: 'cmd.center.fig', size: '21 MB' },
-                      { name: 'comments.docx', size: '3.7 MB' },
+                      { name: 'dashboard-v2.fig', size: '21 MB' },
+                      { name: 'roadmap-notes.docx', size: '3.7 MB' },
                     ].map((file, i) => (
                       <motion.div 
                         key={i} 
-                        className="bg-white/5 rounded-lg p-3 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
+                        className="bg-white/5 rounded-lg p-3 hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
                         whileHover={{ scale: 1.02, y: -2 }}
                         transition={{ duration: 0.2 }}
                       >
@@ -429,7 +429,7 @@ export function Features() {
             >
               {/* Glow effect */}
               <div 
-                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+                className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
               />
               <motion.div 
                 className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 shadow-2xl overflow-hidden"
@@ -458,18 +458,18 @@ export function Features() {
                   <div className="text-purple-300 text-sm mb-4 font-medium">Recently interacted</div>
                   <div className="space-y-2">
                     {[
-                      { sender: 'Stripe', subject: 'Payment confirmation #1234', time: 'Mar 29' },
-                      { sender: 'Netflix', subject: 'New shows added to your list', time: 'Mar 29' },
-                      { sender: 'Dudu', subject: 'New design review', time: 'Mar 29', count: '9' },
-                      { sender: 'Figma', subject: 'Comments on "Landing Page v2"', time: 'Mar 26', count: '5' },
+                      { sender: 'Finance Team', subject: 'Monthly expense report #1234', time: 'Mar 29' },
+                      { sender: 'Marketing Team', subject: 'Campaign performance update', time: 'Mar 29' },
+                      { sender: 'Design Team', subject: 'VectorMail UI mockups ready', time: 'Mar 29', count: '9' },
+                      { sender: 'Engineering', subject: 'Code review for Dashboard v2', time: 'Mar 26', count: '5' },
                     ].map((email, i) => (
                       <motion.div 
                         key={i} 
-                        className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
+                        className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
                         whileHover={{ x: 4, scale: 1.01 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-lg">
                           {email.sender[0]}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -497,7 +497,7 @@ export function Features() {
                       ].map((shortcut, i) => (
                         <motion.div 
                           key={i} 
-                          className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-2 text-center border border-purple-500/20"
+                          className="bg-gradient-to-br from-purple-600/10 via-purple-400/10 to-amber-400/10 rounded-lg p-2 text-center border border-purple-500/20"
                           whileHover={{ 
                             scale: 1.05,
                             borderColor: "rgba(168, 85, 247, 0.4)",
@@ -511,7 +511,7 @@ export function Features() {
                       ))}
                     </div>
                   </div>
-                </div>
+              </div>
               </motion.div>
             </motion.div>
 

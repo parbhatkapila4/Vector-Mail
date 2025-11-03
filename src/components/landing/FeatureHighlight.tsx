@@ -10,7 +10,7 @@ export function FeatureHighlight() {
       <div 
         className="absolute top-1/3 left-1/3 w-[600px] h-[600px] rounded-full blur-3xl opacity-15 pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
           willChange: "auto"
         }}
       />
@@ -25,7 +25,7 @@ export function FeatureHighlight() {
         >
           <h2 className="text-5xl sm:text-6xl font-black mb-6">
             <span className="text-white">AI email chat with </span>
-            <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
               natural language
             </span>
           </h2>
@@ -42,7 +42,7 @@ export function FeatureHighlight() {
             >
               <ArrowRight className="w-8 h-8 text-purple-500 rotate-0 sm:rotate-0" />
             </motion.div>
-            <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(236,72,153,0.4)]">
+            <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]">
               Get your answers
             </span>
           </div>
@@ -55,21 +55,13 @@ export function FeatureHighlight() {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="relative"
+            className="relative group"
           >
             {/* Glow effect */}
-            <motion.div 
-              className="absolute -inset-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-2xl blur-xl"
-              animate={{
-                opacity: [0.2, 0.4, 0.2],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+            <div 
+              className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
             />
-            <div className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-pink-500/20 shadow-2xl">
+            <div className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/20 shadow-2xl">
             <div className="p-6">
               <div className="text-xs text-gray-500 flex items-center justify-between mb-4">
                 <span>Pinned</span>
@@ -78,17 +70,17 @@ export function FeatureHighlight() {
               
               <div className="space-y-2">
                 {[
-                  { sender: 'Adam from Zero', subject: 'New design review', time: 'Mar 29', count: '9' },
-                  { sender: 'Alex, Ali, Sarah', subject: 'Re: Design review feedback', time: 'Mar 28', count: '6' },
-                  { sender: 'GitHub', subject: 'Security alert: Critical vulnerability', time: 'Mar 28', count: '8' },
+                  { sender: 'VectorMail Team', subject: 'New feature release: AI summaries', time: 'Mar 29', count: '9' },
+                  { sender: 'David, Emma, Mike', subject: 'Re: Product roadmap discussion', time: 'Mar 28', count: '6' },
+                  { sender: 'Security Alerts', subject: 'Weekly security digest', time: 'Mar 28', count: '8' },
                 ].map((email, i) => (
                   <motion.div 
                     key={i} 
-                    className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-pink-500/10 hover:to-purple-500/10 hover:border hover:border-pink-500/20 transition-all cursor-pointer"
+                    className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 hover:border hover:border-purple-500/20 transition-all cursor-pointer"
                     whileHover={{ scale: 1.02, x: 5 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-purple-400 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
                       {email.sender[0]}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -114,20 +106,11 @@ export function FeatureHighlight() {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="relative"
+            className="relative group"
           >
             {/* Glow effect */}
-            <motion.div 
-              className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-xl"
-              animate={{
-                opacity: [0.2, 0.5, 0.2],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.5
-              }}
+            <div 
+              className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
             />
             <div className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/20 shadow-2xl">
             <div className="p-6">
@@ -138,7 +121,7 @@ export function FeatureHighlight() {
                   whileHover={{ rotate: 180 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400" />
                   <Sparkles className="w-5 h-5 text-white relative z-10" />
                 </motion.div>
                 <span className="text-white font-semibold">Email Assistant</span>
@@ -163,18 +146,7 @@ export function FeatureHighlight() {
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500"
-                    animate={{
-                      backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
-                    }}
-                    transition={{
-                      duration: 5,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                    style={{ backgroundSize: "200% 200%" }}
-                  />
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400" />
                   <Sparkles className="w-8 h-8 text-white relative z-10" />
                 </motion.div>
               </div>
@@ -189,13 +161,13 @@ export function FeatureHighlight() {
               <div className="space-y-3 mb-6">
                 <div className="grid grid-cols-1 gap-2">
                   {[
-                    'Show recent design feedback',
-                    'Reply to Nick',
-                    'Find invoice from Stripe',
+                    'Show recent project updates',
+                    'Reply to team discussion',
+                    'Find payment receipts',
                   ].map((suggestion, i) => (
                     <motion.button
                       key={i}
-                      className="text-left px-4 py-2 bg-white/5 rounded-lg text-gray-300 text-sm hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 hover:border hover:border-purple-500/20 transition-all"
+                      className="text-left px-4 py-2 bg-white/5 rounded-lg text-gray-300 text-sm hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 hover:border hover:border-purple-500/20 transition-all"
                       whileHover={{ scale: 1.02, x: 5 }}
                       transition={{ duration: 0.2 }}
                     >
@@ -205,12 +177,12 @@ export function FeatureHighlight() {
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   {[
-                    'Schedule meeting with Sarah',
-                    'What did alex say about the design',
+                    'Schedule team standup meeting',
+                    'Summarize this week\'s updates',
                   ].map((suggestion, i) => (
                     <motion.button
                       key={i}
-                      className="text-left px-4 py-2 bg-white/5 rounded-lg text-gray-300 text-sm hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 hover:border hover:border-purple-500/20 transition-all"
+                      className="text-left px-4 py-2 bg-white/5 rounded-lg text-gray-300 text-sm hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 hover:border hover:border-purple-500/20 transition-all"
                       whileHover={{ scale: 1.02, x: 5 }}
                       transition={{ duration: 0.2 }}
                     >
@@ -224,7 +196,7 @@ export function FeatureHighlight() {
               <div className="flex items-center gap-2 bg-white/5 rounded-lg px-4 py-3">
                 <input
                   type="text"
-                  placeholder="Ask Zero to do anything..."
+                  placeholder="Ask VectorMail AI to do anything..."
                   className="bg-transparent text-white flex-1 outline-none text-sm"
                   readOnly
                 />

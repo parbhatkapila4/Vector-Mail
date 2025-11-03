@@ -21,7 +21,7 @@ export function CTA() {
       <div 
         className="absolute bottom-0 right-1/4 w-[600px] h-[600px] rounded-full blur-3xl opacity-20 pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
           willChange: "auto"
         }}
       />
@@ -37,40 +37,42 @@ export function CTA() {
           {/* Simplified Logo/Icon */}
           <div className="flex justify-center mb-8">
             <div 
-              className="w-24 h-24 rounded-2xl flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg shadow-purple-500/50"
+              className="w-24 h-24 rounded-2xl flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-500 to-amber-500 shadow-lg shadow-purple-500/50"
             >
               <Sparkles className="w-12 h-12 text-white" />
             </div>
           </div>
 
           <h2 className="text-5xl sm:text-6xl md:text-7xl font-black leading-tight mb-4">
-            <span className="text-white">Ready to Transform</span>
+            <span className="text-white">Help Us Build the</span>
             <br />
             <span 
-              className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent inline-block"
+              className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent inline-block"
               style={{
                 filter: "drop-shadow(0 0 40px rgba(168, 85, 247, 0.6))"
               }}
             >
-              Your Inbox?
+              Future of Email
             </span>
           </h2>
 
           <p className="text-xl sm:text-2xl text-gray-400 max-w-2xl mx-auto mb-4">
-            Join thousands of professionals who save hours every week with AI-powered email management.
+            VectorMail is open source and built by developers, for developers. Join our community and help shape the next generation of email.
           </p>
-          <p className="text-sm text-gray-500 mb-8">
-            No credit card required • Free forever • Setup in 2 minutes
+          <p className="text-sm text-gray-500 mb-16">
+            Open Source • Production Grade • Built with Modern Stack
           </p>
 
-          <Link href={isSignedIn ? "/mail" : "/sign-up"}>
+          <div className="mt-8">
+          <Link href="https://github.com/parbhatkapila4/Vector-Mail" target="_blank" rel="noopener noreferrer">
             <button
-              className="group relative px-12 py-5 rounded-xl font-bold text-lg transition-all flex items-center gap-3 overflow-hidden mx-auto bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95"
+              className="group relative px-12 py-5 rounded-xl font-bold text-lg transition-all flex items-center gap-3 overflow-hidden mx-auto bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95"
             >
-              <span className="text-white">Get Started Free</span>
+              <span className="text-white">Contribute on GitHub</span>
               <ArrowRight className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform" />
             </button>
           </Link>
+          </div>
         </motion.div>
       </div>
     </section>

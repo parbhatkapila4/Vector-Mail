@@ -30,7 +30,7 @@ export function Hero() {
       <div 
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-3xl opacity-15 pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(236, 72, 153, 0.3) 0%, rgba(139, 92, 246, 0.2) 50%, transparent 100%)",
+          background: "radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 100%)",
           willChange: "auto"
         }}
       />
@@ -58,7 +58,7 @@ export function Hero() {
               <br />
               <span className="text-white">Built to </span>
               <span 
-                className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent inline-block"
+                className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent inline-block"
                 style={{
                   filter: "drop-shadow(0 0 40px rgba(168, 85, 247, 0.6))"
                 }}
@@ -76,13 +76,13 @@ export function Hero() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
               <Link href={isSignedIn ? "/mail" : "/sign-up"}>
                 <button 
-                  className="group relative px-10 py-4 rounded-xl font-semibold text-lg transition-all flex items-center gap-2 overflow-hidden bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95"
+                  className="group relative px-10 py-4 rounded-xl font-semibold text-lg transition-all flex items-center gap-2 overflow-hidden bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95"
                 >
                   <span className="relative z-10 text-white">Get Started Free</span>
                 </button>
               </Link>
               <button 
-                className="px-10 py-4 border border-purple-500/30 text-white rounded-xl font-semibold text-lg backdrop-blur-sm bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 transition-all hover:scale-105 active:scale-95"
+                className="px-10 py-4 border border-purple-500/30 text-white rounded-xl font-semibold text-lg backdrop-blur-sm bg-gradient-to-r from-purple-600/5 via-purple-400/5 to-amber-400/5 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 transition-all hover:scale-105 active:scale-95"
               >
                 Watch Demo
               </button>
@@ -124,7 +124,7 @@ export function Hero() {
           <div 
             className="absolute -inset-4 rounded-3xl blur-3xl opacity-30 pointer-events-none"
             style={{
-              background: "linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(236, 72, 153, 0.3), rgba(59, 130, 246, 0.3))",
+              background: "linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(251, 191, 36, 0.3), rgba(168, 85, 247, 0.3))",
               willChange: "auto"
             }}
           />
@@ -137,7 +137,7 @@ export function Hero() {
       <div 
         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px opacity-50"
         style={{
-          background: "linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.5), rgba(236, 72, 153, 0.5), rgba(168, 85, 247, 0.5), transparent)"
+          background: "linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.5), rgba(251, 191, 36, 0.5), rgba(168, 85, 247, 0.5), transparent)"
         }}
       />
     </div>

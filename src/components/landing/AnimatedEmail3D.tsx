@@ -19,7 +19,7 @@ export function AnimatedEmail3D() {
         <div
           className="absolute bottom-1/4 right-1/4 w-[250px] h-[250px] rounded-full blur-3xl opacity-50"
           style={{
-            background: "radial-gradient(circle, rgba(236, 72, 153, 0.6) 0%, rgba(249, 115, 22, 0.4) 50%, transparent 100%)",
+            background: "radial-gradient(circle, rgba(251, 191, 36, 0.6) 0%, rgba(251, 191, 36, 0.4) 50%, transparent 100%)",
             willChange: "auto"
           }}
         />
@@ -31,7 +31,7 @@ export function AnimatedEmail3D() {
         >
           {/* Email back layer */}
           <div
-            className="absolute w-64 h-48 rounded-2xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-pink-900/20 backdrop-blur-xl"
+            className="absolute w-64 h-48 rounded-2xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 via-purple-800/20 to-amber-900/20 backdrop-blur-xl"
             style={{
               transform: "translateZ(-20px)",
               boxShadow: "0 0 80px rgba(168, 85, 247, 0.4), inset 0 0 60px rgba(168, 85, 247, 0.2)",
@@ -41,7 +41,7 @@ export function AnimatedEmail3D() {
 
           {/* Email main layer */}
           <div
-            className="relative w-64 h-48 rounded-2xl border-2 bg-gradient-to-br from-gray-900 via-purple-900/50 to-pink-900/50 backdrop-blur-xl overflow-hidden"
+            className="relative w-64 h-48 rounded-2xl border-2 bg-gradient-to-br from-gray-900 via-purple-900/50 to-amber-900/50 backdrop-blur-xl overflow-hidden"
             style={{
               borderColor: "rgba(168, 85, 247, 0.5)",
               boxShadow: "0 0 100px rgba(168, 85, 247, 0.6), inset 0 0 80px rgba(168, 85, 247, 0.3)",
@@ -50,7 +50,7 @@ export function AnimatedEmail3D() {
           >
             {/* Envelope flap - static */}
             <div
-              className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-purple-500/40 to-pink-500/40 opacity-50"
+              className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-purple-600/40 via-purple-400/40 to-amber-400/40 opacity-50"
               style={{
                 clipPath: "polygon(0 0, 50% 60%, 100% 0)",
                 borderBottom: "1px solid rgba(168, 85, 247, 0.5)"
@@ -77,7 +77,7 @@ export function AnimatedEmail3D() {
             className="absolute w-64 h-48 rounded-2xl border border-purple-400/20"
             style={{
               transform: "translateZ(20px)",
-              background: "linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)",
+              background: "linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%)",
               willChange: "auto"
             }}
           />

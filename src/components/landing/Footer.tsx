@@ -29,7 +29,7 @@ export function Footer() {
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500" />
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400" />
                 <Mail className="w-6 h-6 text-white relative z-10" />
               </motion.div>
               <span className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors">
@@ -67,7 +67,7 @@ export function Footer() {
           {/* Right: Links */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-white font-semibold mb-4 text-sm bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <h3 className="text-white font-semibold mb-4 text-sm bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
                 Resources
               </h3>
               <ul className="space-y-2">
@@ -101,7 +101,7 @@ export function Footer() {
               </ul>
             </div>
             <div>
-              <h3 className="text-white font-semibold mb-4 text-sm bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+              <h3 className="text-white font-semibold mb-4 text-sm bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
                 Company
               </h3>
               <ul className="space-y-2">
