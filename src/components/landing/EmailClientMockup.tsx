@@ -68,14 +68,14 @@ export function EmailClientMockup() {
             </div>
 
             {/* New Email Button */}
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:from-purple-700 hover:via-purple-500 hover:to-amber-500 text-white rounded-lg font-semibold transition-colors mb-6 shadow-lg shadow-purple-500/50">
+            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:from-purple-700 hover:via-purple-500 hover:to-amber-500 text-white rounded-lg font-semibold transition-colors mb-8 shadow-lg shadow-purple-500/50">
               <Mail className="w-4 h-4" />
               <span>New email</span>
             </button>
 
             {/* Navigation */}
             <div className="space-y-1">
-              <div className="text-xs text-purple-300 uppercase tracking-wider mb-2 px-2 font-semibold">Core</div>
+              <div className="text-xs text-purple-300 uppercase tracking-wider mb-3 px-2 font-semibold">Core</div>
               <NavItem icon={Mail} label="Inbox" count="281" active color="purple" />
               <NavItem icon={Star} label="Favorites" color="yellow" />
               <NavItem icon={Clock} label="Drafts" count="13" color="blue" />
