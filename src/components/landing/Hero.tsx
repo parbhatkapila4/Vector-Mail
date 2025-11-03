@@ -1,14 +1,38 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { EmailClientMockup } from "./EmailClientMockup"
 import { AnimatedEmail3D } from "./AnimatedEmail3D"
 import { LampContainer } from "../ui/lamp"
+import { useState } from "react"
+import { X } from "lucide-react"
 
 export function Hero() {
   const { isSignedIn } = useUser()
+  const [showNewsletterModal, setShowNewsletterModal] = useState(false)
+  const [email, setEmail] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState("")
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    
+    // Simulate API call
+    setTimeout(() => {
+      setSubmitMessage("Thanks! We'll notify you when the demo is ready. 🎉")
+      setEmail("")
+      setIsSubmitting(false)
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowNewsletterModal(false)
+        setSubmitMessage("")
+      }, 2000)
+    }, 1000)
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -89,6 +113,7 @@ export function Hero() {
                 </button>
               </Link>
               <button 
+                onClick={() => setShowNewsletterModal(true)}
                 className="w-full sm:w-auto px-8 sm:px-10 py-3 sm:py-4 border border-purple-500/30 text-white rounded-xl font-semibold text-base sm:text-lg backdrop-blur-sm bg-gradient-to-r from-purple-600/5 via-purple-400/5 to-amber-400/5 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 transition-all hover:scale-105 active:scale-95"
               >
                 Watch Demo
@@ -130,6 +155,91 @@ export function Hero() {
           </div>
         </div>
       </div>
+
+      {/* Newsletter Modal */}
+      <AnimatePresence>
+        {showNewsletterModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowNewsletterModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-6 sm:p-8 shadow-2xl"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setShowNewsletterModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 flex items-center justify-center shadow-lg shadow-purple-500/50">
+                  <span className="text-3xl">🎬</span>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="text-center mb-6">
+                <h3 className="text-2xl sm:text-3xl font-black text-white mb-3">
+                  Demo Coming Soon!
+                </h3>
+                <p className="text-gray-400 text-sm sm:text-base">
+                  We're working on an amazing demo. Drop your email and we'll notify you when it's ready!
+                </p>
+              </div>
+
+              {/* Form */}
+              {submitMessage ? (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-center py-4"
+                >
+                  <p className="text-purple-300 font-semibold">{submitMessage}</p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleNewsletterSubmit} className="space-y-4">
+                  <div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      required
+                      className="w-full px-4 py-3 bg-white/5 border border-purple-500/30 rounded-lg text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? "Submitting..." : "Notify Me"}
+                  </button>
+                </form>
+              )}
+
+              {/* Badge */}
+              <div className="mt-6 text-center">
+                <p className="text-xs text-gray-500">
+                  🔒 We respect your privacy. No spam, ever.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

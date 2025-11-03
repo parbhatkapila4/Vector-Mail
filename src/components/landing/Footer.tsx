@@ -97,13 +97,13 @@ export function Footer() {
               </h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#features" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
+                  <Link href="/features" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform inline-block">Features</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
-                    <span className="group-hover:translate-x-1 transition-transform inline-block">Shortcuts</span>
+                  <Link href="/pricing" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
+                    <span className="group-hover:translate-x-1 transition-transform inline-block">Pricing</span>
                   </Link>
                 </li>
               </ul>
@@ -114,12 +114,12 @@ export function Footer() {
               </h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
+                  <Link href="/about" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform inline-block">About</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="https://github.com/parbhatkapila4/Vector-Mail" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group" target="_blank">
+                  <Link href="/we" className="text-gray-400 hover:text-purple-300 transition-colors text-sm inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform inline-block">Github</span>
                   </Link>
                 </li>
@@ -134,7 +134,7 @@ export function Footer() {
             © {currentYear} VectorMail Inc, All Rights Reserved
           </p>
           <div className="flex gap-4">
-            <Link href="#" className="text-gray-500 hover:text-purple-300 transition-colors text-sm">
+            <Link href="/about" className="text-gray-500 hover:text-purple-300 transition-colors text-sm">
               About
             </Link>
             <span className="text-gray-700">•</span>
