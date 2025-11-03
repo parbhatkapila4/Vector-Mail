@@ -12,16 +12,16 @@ export function Features() {
         <div 
           className="absolute top-0 right-1/3 w-[500px] h-[500px] rounded-full blur-3xl opacity-15 pointer-events-none"
           style={{
-            background: "radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
             willChange: "auto"
           }}
         />
-
-        <div className="relative max-w-7xl mx-auto px-6">
+      
+      <div className="relative max-w-7xl mx-auto px-6">
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
             viewport={{ once: true }}
             className="text-5xl sm:text-6xl font-black text-center mb-32"
           >
@@ -42,13 +42,10 @@ export function Features() {
               className="space-y-6"
             >
               <div className="space-y-4">
-                <motion.h3 
-                  className="text-4xl font-black text-white"
-                  whileHover={{ scale: 1.02 }}
-                >
+                <h3 className="text-4xl font-black text-white">
                   Speed Is Everything
-                </motion.h3>
-                <h4 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                </h3>
+                <h4 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]">
                   Reply in seconds
                 </h4>
               </div>
@@ -60,21 +57,17 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="relative"
+              className="relative group"
             >
-              {/* Glow effect */}
-              <motion.div 
-                className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-2xl blur-xl"
-                animate={{
-                  opacity: [0.3, 0.6, 0.3],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
+              {/* Glow effect - subtle pulse */}
+              <div 
+                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
               />
-              <div className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-emerald-500/20 p-6 shadow-2xl">
+              <motion.div 
+                className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-6 shadow-2xl"
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
                 {/* To field */}
                 <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">
                   <span className="text-gray-500 text-sm">To:</span>
@@ -82,10 +75,15 @@ export function Features() {
                       {['Adam', 'Ryan'].map((name, i) => (
                       <motion.div 
                         key={i} 
-                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 px-3 py-1 rounded-full border border-emerald-500/30"
-                        whileHover={{ scale: 1.05, borderColor: "rgba(16, 185, 129, 0.5)" }}
+                        className="flex items-center gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-3 py-1 rounded-full border border-purple-500/30"
+                        whileHover={{ 
+                          scale: 1.05,
+                          borderColor: "rgba(168, 85, 247, 0.6)",
+                          boxShadow: "0 0 15px rgba(168, 85, 247, 0.3)"
+                        }}
+                        transition={{ duration: 0.2 }}
                       >
-                        <div className="w-5 h-5 bg-gradient-to-br from-emerald-400 to-blue-400 rounded-full" />
+                        <div className="w-5 h-5 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-lg" />
                         <span className="text-white text-sm font-medium">{name}</span>
                       </motion.div>
                     ))}
@@ -93,53 +91,88 @@ export function Features() {
                 </div>
 
                 {/* Subject */}
-                <div className="flex items-center gap-2 mb-4">
-                  <Zap className="w-4 h-4 text-gray-500" />
+                <motion.div 
+                  className="flex items-center gap-2 mb-4"
+                  initial={{ opacity: 0.8 }}
+                  whileHover={{ opacity: 1 }}
+                >
+                  <Zap className="w-4 h-4 text-purple-400" />
                   <span className="text-white font-medium">Re: Code review feedback</span>
-                </div>
+          </motion.div>
 
                 {/* Email Body */}
-                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                <motion.div 
+                  className="bg-white/5 rounded-lg p-4 mb-4 border border-purple-500/10"
+                  whileHover={{ borderColor: "rgba(168, 85, 247, 0.2)" }}
+                  transition={{ duration: 0.3 }}
+                >
                   <p className="text-gray-300 text-sm leading-relaxed">
                     Hey team,<br /><br />
                     I took a look at the code review feedback. Really like the keyboard navigation - it makes everything much faster to access. The search implementation is clean, though I'd love to see the link to test it out myself.<br /><br />
                     Let me know when you can share the preview and I'll provide more detailed feedback.
-                  </p>
-                </div>
+          </p>
+        </motion.div>
 
                 {/* Actions */}
                   <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <motion.button 
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-lg font-semibold shadow-lg"
-                      whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)" }}
-                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold shadow-lg shadow-purple-500/30"
+                      whileHover={{ 
+                        scale: 1.05, 
+                        boxShadow: "0 0 25px rgba(168, 85, 247, 0.5)",
+                        y: -2
+                      }}
+                      whileTap={{ scale: 0.98, y: 0 }}
+                      transition={{ duration: 0.2 }}
                     >
                       <span>Send now</span>
                       <span className="text-xs opacity-80">⏎</span>
                     </motion.button>
-                    <button className="text-gray-400 text-sm hover:text-white transition-colors">
+                    <motion.button 
+                      className="text-gray-400 text-sm hover:text-purple-300 transition-colors"
+                      whileHover={{ x: 3 }}
+                      transition={{ duration: 0.2 }}
+                    >
                       Add files
-                    </button>
+                    </motion.button>
                   </div>
                   <div className="flex gap-2 text-xs text-gray-500">
-                    <span className="bg-white/5 px-2 py-1 rounded">Neutral</span>
-                    <span className="bg-white/5 px-2 py-1 rounded">Medium-length</span>
+                    <motion.span 
+                      className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded"
+                      whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
+                    >
+                      Neutral
+                    </motion.span>
+                    <motion.span 
+                      className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded"
+                      whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
+                    >
+                      Medium-length
+                    </motion.span>
                   </div>
                 </div>
 
                 {/* Keyboard Shortcuts */}
-                <div className="flex gap-4 mt-4 pt-4 border-t border-white/10 text-xs text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <span className="bg-white/10 px-2 py-1 rounded">↓ ↑</span>
+                <div className="flex gap-4 mt-4 pt-4 border-t border-purple-500/10 text-xs text-gray-500">
+                  <motion.div 
+                    className="flex items-center gap-1"
+                    whileHover={{ scale: 1.05, color: "#c084fc" }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <span className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded">↓ ↑</span>
                     <span>to navigate</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="bg-white/10 px-2 py-1 rounded">⌘Z</span>
+                  </motion.div>
+                  <motion.div 
+                    className="flex items-center gap-1"
+                    whileHover={{ scale: 1.05, color: "#c084fc" }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <span className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded">⌘Z</span>
                     <span>return generation</span>
-                  </div>
+                  </motion.div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           </div>
 
@@ -151,41 +184,66 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="relative lg:order-2"
+              className="relative lg:order-2 group"
             >
-              <div className="bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+              {/* Glow effect */}
+              <div 
+                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+              />
+              <motion.div 
+                className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 shadow-2xl overflow-hidden"
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
                 {/* Header */}
-                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                <div className="p-4 border-b border-purple-500/10 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-white font-medium">
-                      <div className="w-5 h-5 bg-blue-500 rounded" />
+                    <motion.div 
+                      className="flex items-center gap-2 text-white font-medium"
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded shadow-lg" />
                       <span>Inbox</span>
-                    </div>
-                    <button className="text-gray-400 hover:text-white transition-colors text-sm">
+                    </motion.div>
+                    <motion.button 
+                      className="text-gray-400 hover:text-purple-300 transition-colors text-sm"
+                      whileHover={{ x: 2 }}
+                    >
                       Select
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 
                 {/* Search Bar */}
-                <div className="p-4 border-b border-white/10">
-                  <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                    <Search className="w-4 h-4 text-gray-500" />
+                <div className="p-4 border-b border-purple-500/10">
+                  <motion.div 
+                    className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 border border-purple-500/10"
+                    whileHover={{ borderColor: "rgba(168, 85, 247, 0.3)" }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Search className="w-4 h-4 text-purple-400" />
                     <input
                       type="text"
                       placeholder="Search"
                       className="bg-transparent text-white flex-1 outline-none text-sm"
                       readOnly
                     />
-                    <span className="text-xs text-gray-500 bg-white/10 px-2 py-0.5 rounded">⌘K</span>
-                  </div>
+                    <span className="text-xs text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">⌘K</span>
+                  </motion.div>
                 </div>
 
                 {/* Category Badge */}
                 <div className="p-4">
-                  <div className="bg-gradient-to-r from-white/5 to-gray-900 rounded-lg p-4 border border-white/20">
+                  <motion.div 
+                    className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/30"
+                    whileHover={{ 
+                      borderColor: "rgba(168, 85, 247, 0.5)",
+                      boxShadow: "0 0 20px rgba(168, 85, 247, 0.2)"
+                    }}
+                    transition={{ duration: 0.3 }}
+                  >
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-white" />
+                    <Sparkles className="w-4 h-4 text-purple-400" />
                       <span className="text-white font-semibold text-sm">Personal</span>
                     </div>
                     <p className="text-gray-400 text-xs">
@@ -194,37 +252,42 @@ export function Features() {
                     <p className="text-gray-500 text-xs mt-1">
                       Time-sensitive notifications, security alerts, and critical project updates.
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
 
                 {/* Email List */}
                 <div className="p-4 space-y-2">
                   <div className="text-xs text-gray-500 flex items-center justify-between px-2">
                     <span>Pinned</span>
-                    <span className="bg-white/10 px-2 py-0.5 rounded">3</span>
+                    <span className="bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded">3</span>
                   </div>
                   {[
                     { sender: 'Nizzy', subject: 'New design review', time: 'Mar 29', count: '9' },
                     { sender: 'Alex, Ali, Sarah', subject: 'Re: Design review feedback', time: 'Mar 28', count: '6' },
                   ].map((email, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
-                      <div className="w-8 h-8 bg-gradient-to-br from-white to-gray-600 rounded-full flex items-center justify-center text-black text-xs font-bold">
+                    <motion.div 
+                      key={i} 
+                      className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
+                      whileHover={{ x: 4, scale: 1.01 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
                         {email.sender[0]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-white text-sm font-medium truncate">{email.sender}</span>
                           {email.count && (
-                            <span className="text-xs text-gray-500 bg-white/10 px-1.5 py-0.5 rounded">{email.count}</span>
+                            <span className="text-xs text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">{email.count}</span>
                           )}
                           <span className="text-xs text-gray-500 ml-auto">{email.time}</span>
                         </div>
                         <div className="text-gray-400 text-xs truncate">{email.subject}</div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -248,59 +311,92 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="relative"
+              className="relative group"
             >
-              <div className="bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-white/10 p-6 shadow-2xl">
+              {/* Glow effect */}
+              <div 
+                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+              />
+              <motion.div 
+                className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-6 shadow-2xl"
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
                 {/* Thread Header */}
-                <div className="flex items-center justify-between mb-4">
+                <motion.div 
+                  className="flex items-center justify-between mb-4"
+                  initial={{ opacity: 0.8 }}
+                  whileHover={{ opacity: 1 }}
+                >
                   <div>
                     <h4 className="text-white font-semibold mb-1">Re: Design review feedback</h4>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-purple-300">
                       <span>March 25 - March 29</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Participants */}
                 <div className="flex gap-2 mb-4">
                   {['Ali', 'Nick', 'Sarah'].map((name, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-full border border-white/10">
-                      <div className="w-5 h-5 bg-gradient-to-br from-white to-gray-600 rounded-full" />
+                    <motion.div 
+                      key={i} 
+                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-2 py-1 rounded-full border border-purple-500/30"
+                      whileHover={{ 
+                        scale: 1.05,
+                        borderColor: "rgba(168, 85, 247, 0.6)",
+                        boxShadow: "0 0 15px rgba(168, 85, 247, 0.3)"
+                      }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="w-5 h-5 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-lg" />
                       <span className="text-white text-xs font-medium">{name}</span>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
-
+                  </div>
+                  
                 {/* AI Summary Box */}
-                <div className="bg-gradient-to-br from-white/5 to-gray-900 rounded-xl p-4 border border-white/20">
+                <motion.div 
+                  className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/30"
+                  whileHover={{ 
+                    borderColor: "rgba(168, 85, 247, 0.5)",
+                    boxShadow: "0 0 25px rgba(168, 85, 247, 0.3)"
+                  }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-4 h-4 text-white" />
+                    <Sparkles className="w-4 h-4 text-purple-400" />
                     <span className="text-white font-semibold text-sm">AI Summary</span>
                   </div>
                   <p className="text-gray-300 text-sm leading-relaxed">
                     Design review of new email client features. Team discussed command center improvements and category system. General positive feedback, with suggestions for quick actions placement.
                   </p>
-                </div>
+                </motion.div>
 
                 {/* Attachments */}
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-xs font-medium">Attachments</span>
-                    <span className="text-xs text-gray-500 bg-white/10 px-2 py-0.5 rounded">4</span>
+                    <span className="text-purple-300 text-xs font-medium">Attachments</span>
+                    <span className="text-xs text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">4</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { name: 'cmd.center.fig', size: '21 MB' },
                       { name: 'comments.docx', size: '3.7 MB' },
                     ].map((file, i) => (
-                      <div key={i} className="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer">
+                      <motion.div 
+                        key={i} 
+                        className="bg-white/5 rounded-lg p-3 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        transition={{ duration: 0.2 }}
+                      >
                         <div className="text-white text-xs font-medium mb-1 truncate">{file.name}</div>
-                        <div className="text-gray-500 text-xs">{file.size}</div>
-                      </div>
+                        <div className="text-gray-400 text-xs">{file.size}</div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -329,25 +425,37 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="relative lg:order-2"
+              className="relative lg:order-2 group"
             >
-              <div className="bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+              {/* Glow effect */}
+              <div 
+                className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+              />
+              <motion.div 
+                className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 shadow-2xl overflow-hidden"
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
                 {/* Search Header */}
-                <div className="p-6 border-b border-white/10">
-                  <div className="flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3">
-                    <div className="text-gray-500 text-sm bg-white/10 px-2 py-1 rounded">esc</div>
+                <div className="p-6 border-b border-purple-500/10">
+                  <motion.div 
+                    className="flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3 border border-purple-500/10"
+                    whileHover={{ borderColor: "rgba(168, 85, 247, 0.3)" }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="text-purple-300 text-sm bg-purple-500/20 px-2 py-1 rounded border border-purple-500/30">esc</div>
                     <input
                       type="text"
                       placeholder="Search by sender, subject, or content..."
                       className="bg-transparent text-white flex-1 outline-none"
                       readOnly
                     />
-                  </div>
+                  </motion.div>
                 </div>
 
                 {/* Recently Interacted */}
                 <div className="p-6">
-                  <div className="text-gray-400 text-sm mb-4">Recently interacted</div>
+                  <div className="text-purple-300 text-sm mb-4 font-medium">Recently interacted</div>
                   <div className="space-y-2">
                     {[
                       { sender: 'Stripe', subject: 'Payment confirmation #1234', time: 'Mar 29' },
@@ -355,42 +463,56 @@ export function Features() {
                       { sender: 'Dudu', subject: 'New design review', time: 'Mar 29', count: '9' },
                       { sender: 'Figma', subject: 'Comments on "Landing Page v2"', time: 'Mar 26', count: '5' },
                     ].map((email, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
-                        <div className="w-8 h-8 bg-gradient-to-br from-white to-gray-600 rounded-lg flex items-center justify-center text-black text-xs font-bold">
+                      <motion.div 
+                        key={i} 
+                        className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 transition-all cursor-pointer border border-transparent hover:border-purple-500/20"
+                        whileHover={{ x: 4, scale: 1.01 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-lg">
                           {email.sender[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="text-white text-sm font-medium">{email.sender}</span>
                             {email.count && (
-                              <span className="text-xs text-gray-500 bg-white/10 px-1.5 py-0.5 rounded">{email.count}</span>
+                              <span className="text-xs text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">{email.count}</span>
                             )}
                             <span className="text-xs text-gray-500 ml-auto">{email.time}</span>
                           </div>
                           <div className="text-gray-400 text-xs truncate">{email.subject}</div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
 
                   {/* Keyboard Shortcuts */}
-                  <div className="mt-6 pt-4 border-t border-white/10">
-                    <div className="text-xs text-gray-500 mb-3">Open</div>
+                  <div className="mt-6 pt-4 border-t border-purple-500/10">
+                    <div className="text-xs text-purple-300 mb-3 font-medium">Open</div>
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         { key: '⌘R', action: 'Reply' },
                         { key: '⌘E', action: 'Archive' },
                         { key: '⌘M', action: 'Mark read' },
                       ].map((shortcut, i) => (
-                        <div key={i} className="bg-white/5 rounded-lg p-2 text-center">
+                        <motion.div 
+                          key={i} 
+                          className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-2 text-center border border-purple-500/20"
+                          whileHover={{ 
+                            scale: 1.05,
+                            borderColor: "rgba(168, 85, 247, 0.4)",
+                            boxShadow: "0 0 15px rgba(168, 85, 247, 0.2)"
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
                           <div className="text-white text-xs font-medium mb-1">{shortcut.key}</div>
-                          <div className="text-gray-500 text-xs">{shortcut.action}</div>
-                        </div>
+                          <div className="text-gray-400 text-xs">{shortcut.action}</div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -405,9 +527,9 @@ export function Features() {
                 Your inbox, your rules. Create personalized email processing flows that match exactly how you organize, write, reply, and work.
               </p>
             </motion.div>
-          </div>
         </div>
-      </section>
+      </div>
+    </section>
     </>
   );
 }
