@@ -1,195 +1,237 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, ArrowRight, CheckCircle, Clock, Zap } from "lucide-react";
+import { Sparkles, Send, ArrowRight } from "lucide-react";
 
 export function FeatureHighlight() {
   return (
-    <section className="relative py-24 sm:py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-black">
-        <div className="absolute inset-0 bg-grid-pattern opacity-[0.05]"></div>
-      </div>
+    <section className="relative py-32 overflow-hidden bg-black">
+      {/* Static gradient background */}
+      <div 
+        className="absolute top-1/3 left-1/3 w-[600px] h-[600px] rounded-full blur-3xl opacity-15 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
+          willChange: "auto"
+        }}
+      />
 
       <div className="relative max-w-7xl mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Left Side - Content */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="space-y-8"
-          >
-            <div className="space-y-6">
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                viewport={{ once: true }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#C2847A]/10 border border-[#C2847A]/30 rounded-full text-sm font-medium text-[#C2847A] shadow-sm"
-              >
-                <Brain className="w-4 h-4 text-[#C2847A]" />
-                <span>AI-Powered Intelligence</span>
-              </motion.div>
-              
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-[#C2847A] to-white leading-tight">
-                Smart Prioritization
-              </h2>
-              
-              <p className="text-lg sm:text-xl text-gray-300 leading-relaxed">
-                VectorMail's AI learns your communication patterns and automatically surfaces the most important emails first. No more digging through endless messages to find what matters.
-              </p>
-            </div>
-
-            {/* Feature Benefits */}
-            <div className="space-y-4">
-              {[
-                { icon: Zap, text: "Instant email prioritization based on your behavior", color: "from-[#C2847A] to-[#D4A896]" },
-                { icon: Clock, text: "Save 2+ hours per week on email management", color: "from-[#D4A896] to-[#C2847A]" },
-                { icon: CheckCircle, text: "Never miss important messages again", color: "from-[#B0735E] to-[#C2847A]" }
-              ].map((benefit, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="flex items-start gap-4 group"
-                >
-                  <div className={`w-10 h-10 bg-gradient-to-br ${benefit.color} rounded-xl flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-110 transition-transform duration-300 shadow-[#C2847A]/30`}>
-                    <benefit.icon className="w-5 h-5 text-black" />
-                  </div>
-                  <span className="text-gray-300 text-base leading-relaxed pt-1.5">{benefit.text}</span>
-                </motion.div>
-              ))}
-            </div>
-
-            <motion.div 
-              className="pt-4"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              viewport={{ once: true }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-20"
+        >
+          <h2 className="text-5xl sm:text-6xl font-black mb-6">
+            <span className="text-white">AI email chat with </span>
+            <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+              natural language
+            </span>
+          </h2>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-3xl font-bold">
+            <motion.span 
+              className="text-white"
+              whileHover={{ scale: 1.05 }}
             >
-              <button className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#C2847A] to-[#D4A896] text-black rounded-xl hover:from-[#D4A896] hover:to-[#C2847A] transition-all duration-300 shadow-lg shadow-[#C2847A]/30 hover:shadow-xl hover:shadow-[#C2847A]/50 hover:-translate-y-0.5 text-base font-bold">
-                <span>See how it works</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              Ask away
+            </motion.span>
+            <motion.div
+              animate={{ x: [0, 10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ArrowRight className="w-8 h-8 text-purple-500 rotate-0 sm:rotate-0" />
             </motion.div>
-          </motion.div>
+            <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(236,72,153,0.4)]">
+              Get your answers
+            </span>
+          </div>
+        </motion.div>
 
-          {/* Right Side - Enhanced Email Interface */}
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          {/* Left: Email List */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
             className="relative"
           >
             {/* Glow effect */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-[#C2847A] via-[#D4A896] to-[#C2847A] rounded-2xl blur-2xl opacity-30"></div>
-
-            {/* Main Feature Card */}
-            <div className="relative bg-white/5 rounded-2xl border border-[#C2847A]/30 shadow-2xl p-6 backdrop-blur-sm">
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#C2847A] to-[#D4A896] rounded-xl flex items-center justify-center shadow-lg shadow-[#C2847A]/30">
-                  <Brain className="w-6 h-6 text-black" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Smart Prioritization</h3>
-                  <p className="text-sm text-[#C2847A]">AI analyzing your emails</p>
-                </div>
-                <div className="ml-auto">
-                  <div className="w-3 h-3 bg-gradient-to-r from-[#C2847A] to-[#D4A896] rounded-full animate-pulse shadow-lg shadow-[#C2847A]/50"></div>
-                </div>
+            <motion.div 
+              className="absolute -inset-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-2xl blur-xl"
+              animate={{
+                opacity: [0.2, 0.4, 0.2],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+            <div className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-pink-500/20 shadow-2xl">
+            <div className="p-6">
+              <div className="text-xs text-gray-500 flex items-center justify-between mb-4">
+                <span>Pinned</span>
+                <span className="bg-white/10 px-2 py-0.5 rounded">3</span>
               </div>
-
-              {/* Email Priority List */}
-              <div className="space-y-3">
-                {/* High Priority */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="p-4 bg-gradient-to-br from-[#C2847A]/20 to-[#D4A896]/20 border border-[#C2847A]/30 rounded-xl hover:shadow-md hover:shadow-[#C2847A]/20 transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-white">High Priority</span>
-                    <span className="text-xs font-semibold text-black bg-[#C2847A] px-3 py-1 rounded-full">Urgent</span>
-                  </div>
-                  <div className="text-sm text-gray-200 font-medium mb-1">Client deadline approaching</div>
-                  <div className="text-xs text-gray-400">From: Sarah Johnson</div>
-                </motion.div>
-
-                {/* Medium Priority */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="p-4 bg-gradient-to-br from-[#D4A896]/15 to-[#C2847A]/15 border border-[#C2847A]/25 rounded-xl hover:shadow-md hover:shadow-[#C2847A]/20 transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-white">Medium Priority</span>
-                    <span className="text-xs font-semibold text-black bg-[#D4A896] px-3 py-1 rounded-full">Today</span>
-                  </div>
-                  <div className="text-sm text-gray-200 font-medium mb-1">Team meeting reminder</div>
-                  <div className="text-xs text-gray-400">From: Calendar</div>
-                </motion.div>
-
-                {/* Low Priority */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="p-4 bg-gradient-to-br from-white/5 to-white/10 border border-white/10 rounded-xl hover:shadow-md hover:shadow-[#C2847A]/10 transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-white">Low Priority</span>
-                    <span className="text-xs font-semibold text-white bg-white/20 px-3 py-1 rounded-full">Later</span>
-                  </div>
-                  <div className="text-sm text-gray-200 font-medium mb-1">Newsletter subscription</div>
-                  <div className="text-xs text-gray-400">From: TechCrunch</div>
-                </motion.div>
-              </div>
-
-              {/* AI Analysis Footer */}
-              <div className="mt-6 p-4 bg-gradient-to-br from-[#C2847A]/10 to-[#D4A896]/10 border border-[#C2847A]/30 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-4 h-4 text-[#C2847A]" />
-                  <span className="text-sm font-bold text-white">AI Analysis</span>
-                </div>
-                <div className="text-xs text-gray-300 mb-2">
-                  Analyzing 247 emails • Learning your patterns • 99.2% accuracy
-                </div>
-                <div className="w-full bg-white/10 rounded-full h-2">
-                  <motion.div
-                    className="bg-gradient-to-r from-[#C2847A] to-[#D4A896] h-2 rounded-full shadow-md"
-                    initial={{ width: "0%" }}
-                    animate={{ width: "75%" }}
-                    transition={{ duration: 2, ease: "easeOut" }}
-                  />
-                </div>
+              
+              <div className="space-y-2">
+                {[
+                  { sender: 'Adam from Zero', subject: 'New design review', time: 'Mar 29', count: '9' },
+                  { sender: 'Alex, Ali, Sarah', subject: 'Re: Design review feedback', time: 'Mar 28', count: '6' },
+                  { sender: 'GitHub', subject: 'Security alert: Critical vulnerability', time: 'Mar 28', count: '8' },
+                ].map((email, i) => (
+                  <motion.div 
+                    key={i} 
+                    className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-gradient-to-r hover:from-pink-500/10 hover:to-purple-500/10 hover:border hover:border-pink-500/20 transition-all cursor-pointer"
+                    whileHover={{ scale: 1.02, x: 5 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-purple-400 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                      {email.sender[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-white text-sm font-medium truncate">{email.sender}</span>
+                        {email.count && (
+                          <span className="text-xs text-gray-500 bg-white/10 px-1.5 py-0.5 rounded">{email.count}</span>
+                        )}
+                        <span className="text-xs text-gray-500 ml-auto">{email.time}</span>
+                      </div>
+                      <div className="text-gray-400 text-xs truncate">{email.subject}</div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
+            </div>
+          </motion.div>
 
-            {/* Floating Elements */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-4 -right-4 w-12 h-12 bg-gradient-to-br from-[#C2847A] to-[#D4A896] rounded-full flex items-center justify-center shadow-xl shadow-[#C2847A]/50"
-            >
-              <Zap className="w-6 h-6 text-black" />
-            </motion.div>
+          {/* Right: AI Chat */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            {/* Glow effect */}
+            <motion.div 
+              className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-xl"
+              animate={{
+                opacity: [0.2, 0.5, 0.2],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.5
+              }}
+            />
+            <div className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/20 shadow-2xl">
+            <div className="p-6">
+              {/* Chat Header */}
+              <div className="flex items-center gap-2 mb-6 pb-4 border-b border-purple-500/20">
+                <motion.div 
+                  className="w-8 h-8 rounded-lg flex items-center justify-center relative overflow-hidden"
+                  whileHover={{ rotate: 180 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500" />
+                  <Sparkles className="w-5 h-5 text-white relative z-10" />
+                </motion.div>
+                <span className="text-white font-semibold">Email Assistant</span>
+                <motion.div 
+                  className="ml-auto w-2 h-2 bg-emerald-400 rounded-full"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [1, 0.7, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                />
+              </div>
 
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute -bottom-4 -left-4 w-10 h-10 bg-gradient-to-br from-[#D4A896] to-[#C2847A] rounded-full flex items-center justify-center shadow-xl shadow-[#C2847A]/50"
-            >
-              <CheckCircle className="w-5 h-5 text-black" />
-            </motion.div>
+              {/* Chat Icon */}
+              <div className="flex justify-center mb-6">
+                <motion.div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center relative overflow-hidden"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500"
+                    animate={{
+                      backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
+                    }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                    style={{ backgroundSize: "200% 200%" }}
+                  />
+                  <Sparkles className="w-8 h-8 text-white relative z-10" />
+                </motion.div>
+              </div>
+
+              {/* Instructions */}
+              <div className="text-center mb-6 space-y-2">
+                <p className="text-white font-medium">Ask anything about your emails</p>
+                <p className="text-gray-400 text-sm">Ask to do or show anything using natural language</p>
+              </div>
+
+              {/* Suggestion Pills */}
+              <div className="space-y-3 mb-6">
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    'Show recent design feedback',
+                    'Reply to Nick',
+                    'Find invoice from Stripe',
+                  ].map((suggestion, i) => (
+                    <motion.button
+                      key={i}
+                      className="text-left px-4 py-2 bg-white/5 rounded-lg text-gray-300 text-sm hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 hover:border hover:border-purple-500/20 transition-all"
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {suggestion}
+                    </motion.button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    'Schedule meeting with Sarah',
+                    'What did alex say about the design',
+                  ].map((suggestion, i) => (
+                    <motion.button
+                      key={i}
+                      className="text-left px-4 py-2 bg-white/5 rounded-lg text-gray-300 text-sm hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 hover:border hover:border-purple-500/20 transition-all"
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {suggestion}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input */}
+              <div className="flex items-center gap-2 bg-white/5 rounded-lg px-4 py-3">
+                <input
+                  type="text"
+                  placeholder="Ask Zero to do anything..."
+                  className="bg-transparent text-white flex-1 outline-none text-sm"
+                  readOnly
+                />
+                <Send className="w-4 h-4 text-gray-500" />
+              </div>
+            </div>
+            </div>
           </motion.div>
         </div>
       </div>
