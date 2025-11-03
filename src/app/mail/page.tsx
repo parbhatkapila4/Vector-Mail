@@ -37,7 +37,7 @@ function page() {
           variant="ghost"
           size="sm"
           onClick={handleBackToHome}
-          className="bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg hover:bg-muted"
+          className="bg-white/5 backdrop-blur-sm border border-purple-500/30 rounded-lg p-2 shadow-lg hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 hover:border-purple-500/50 text-white transition-all"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Home

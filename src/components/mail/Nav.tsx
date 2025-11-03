@@ -54,7 +54,10 @@ export function Nav({ links, isCollapsed }: NavProps) {
                     "dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-white"
                   )}
                 >
-                  <link.icon className="w-4 h-4" />
+                  <link.icon className={cn(
+                    "w-4 h-4",
+                    link.variant === "default" && "text-purple-400"
+                  )} />
                   <span className="sr-only">{link.title}</span>
                 </span>
               </TooltipTrigger>
@@ -74,12 +77,16 @@ export function Nav({ links, isCollapsed }: NavProps) {
               className={cn(
                 buttonVariants({ variant: link.variant, size: isMobile ? "lg" : "sm" }),
                 link.variant === "default" &&
-                "dark:bg-muted dark:text-white dark:hover:bg-muted dark:hover:text-white",
+                "dark:bg-gradient-to-r dark:from-purple-600/20 dark:via-purple-400/20 dark:to-amber-400/20 dark:text-white dark:hover:from-purple-600/30 dark:hover:via-purple-400/30 dark:hover:to-amber-400/30 border-purple-500/30",
                 "justify-start cursor-pointer",
                 isMobile && "h-12 text-base"
               )}
             >
-              <link.icon className={cn("w-4 h-4 mr-2", isMobile && "w-5 h-5")} />
+              <link.icon className={cn(
+                "w-4 h-4 mr-2",
+                isMobile && "w-5 h-5",
+                link.variant === "default" && "text-purple-400"
+              )} />
               {link.title}
               {link.label && (
                 <span

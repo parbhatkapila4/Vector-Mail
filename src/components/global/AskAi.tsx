@@ -195,7 +195,7 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
           <div className="h-2" />
           <button
             onClick={handleAccountConnection}
-            className="w-full px-4 py-2 bg-black text-white rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-800"
+            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-md text-sm font-medium transition-all hover:shadow-lg hover:shadow-purple-500/50"
           >
             Connect Google Account
           </button>
@@ -206,16 +206,16 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
 
   return (
     <div className='p-2 pb-20'>
-      <motion.div className="flex flex-col bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-lg shadow-lg max-h-[350px] overflow-hidden">
+      <motion.div className="flex flex-col bg-gradient-to-br from-gray-900 to-black border border-purple-500/30 rounded-lg shadow-lg max-h-[350px] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-gray-700">
+        <div className="flex items-center justify-between p-3 border-b border-purple-500/30">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-gradient-to-br from-[#C2847A] to-[#D4A896] rounded flex items-center justify-center">
-              <Sparkles className='w-3 h-3 text-black' />
+            <div className="w-5 h-5 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 rounded flex items-center justify-center">
+              <Sparkles className='w-3 h-3 text-white' />
             </div>
             <h3 className="text-xs font-bold text-white">Email Search Assistant</h3>
           </div>
-          <div className="w-5 h-5 bg-red-500 rounded flex items-center justify-center">
+          <div className="w-5 h-5 bg-gradient-to-r from-purple-600 to-amber-400 rounded flex items-center justify-center">
             <span className="text-white text-xs">🚀</span>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
         {/* Messages Area */}
         {messages.length > 0 && (
           <div 
-            className="max-h-[150px] overflow-y-auto p-2 border-b border-gray-700" 
+            className="max-h-[150px] overflow-y-auto p-2 border-b border-purple-500/30" 
             ref={messageContainerRef}
           >
             <AnimatePresence mode="wait">
@@ -232,19 +232,19 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
                   key={message.id}
                   layout="position"
                   className={cn("z-10 mt-2 break-words rounded-2xl", {
-                    'self-end max-w-[250px] bg-gray-700 text-white': message.role === 'user',
-                    'self-start max-w-[400px] bg-gradient-to-br from-[#C2847A] to-[#D4A896] text-black shadow-lg': message.role === 'assistant',
+                    'self-end max-w-[250px] bg-white/10 text-white': message.role === 'user',
+                    'self-start max-w-[400px] bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 text-white shadow-lg border border-purple-500/30': message.role === 'assistant',
                   })}
                   layoutId={`container-[${messages.length - 1}]`}
                   transition={ANIMATION_CONFIG}
                 >
                   <div className={cn("text-sm leading-[1.4]", {
                     'px-4 py-3 text-white': message.role === 'user',
-                    'px-5 py-4 text-black': message.role === 'assistant',
+                    'px-5 py-4 text-white': message.role === 'assistant',
                   })}>
                     {message.role === 'assistant' ? (
                       <div className="space-y-2">
-                        <div className="font-medium text-black/80 mb-2">✨ Assistant</div>
+                        <div className="font-medium text-purple-300 mb-2">✨ Assistant</div>
                         <div className="whitespace-pre-wrap">{message.content}</div>
                       </div>
                     ) : (
@@ -274,7 +274,7 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
                   <button 
                     key={label}
                     onClick={() => handleQuerySuggestion(query)} 
-                    className='px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-1 font-medium border border-gray-600'
+                    className='px-2 py-1 bg-white/5 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 text-white rounded text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-1 font-medium border border-purple-500/30 hover:border-purple-500/50'
                   >
                     <span className="text-xs">{icon}</span>
                     <span>{label}</span>
@@ -287,7 +287,7 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
                 <button 
                   onClick={handleProcessEmails}
                   disabled={processEmailsMutation.isPending || !accountId}
-                  className='w-full px-2 py-1 bg-gradient-to-r from-[#C2847A] to-[#D4A896] hover:from-[#D4A896] hover:to-[#C2847A] text-black rounded text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-1 font-medium disabled:opacity-50 disabled:cursor-not-allowed'
+                  className='w-full px-2 py-1 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:shadow-lg hover:shadow-purple-500/50 text-white rounded text-xs cursor-pointer transition-all duration-200 flex items-center justify-center gap-1 font-medium disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   <span className="text-xs">🤖</span>
                   {processEmailsMutation.isPending ? 'Processing...' : 'Process Emails for Search'}
@@ -296,8 +296,8 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
 
               {/* Debug Information */}
               {debugData && (
-                <div className="mb-3 p-2 bg-gray-700 rounded text-xs">
-                  <div className="text-gray-300 mb-1">System Status:</div>
+                <div className="mb-3 p-2 bg-white/5 border border-purple-500/30 rounded text-xs">
+                  <div className="text-purple-300 mb-1">System Status:</div>
                   <div className="text-gray-400 text-xs">
                     Total: {debugData.totalEmails} | Processed: {debugData.emails.filter(e => e.hasEmbedding).length}
                   </div>
@@ -316,17 +316,17 @@ export default function EmailSearchAssistant({ isCollapsed }: EmailSearchProps) 
                 type="text"
                 onChange={handleInputChange}
                 value={input}
-                className="w-full h-8 rounded-full border border-gray-600 bg-gray-700 px-2 text-white text-xs outline-none placeholder:text-gray-400 focus:border-[#C2847A] focus:ring-1 focus:ring-[#C2847A]/20 transition-all duration-200"
+                className="w-full h-8 rounded-full border border-purple-500/30 bg-white/5 px-2 text-white text-xs outline-none placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all duration-200"
                 placeholder="Search your emails..."
                 disabled={isLoading}
               />
             </div>
             <button
               type="submit"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#C2847A] to-[#D4A896] hover:from-[#D4A896] hover:to-[#C2847A] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-md"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 hover:shadow-lg hover:shadow-purple-500/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               disabled={isLoading || !input.trim()}
             >
-              <Send className="w-3 h-3 text-black" />
+              <Send className="w-3 h-3 text-white" />
             </button>
           </form>
         </div>

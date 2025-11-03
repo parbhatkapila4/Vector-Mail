@@ -149,22 +149,22 @@ export function Mail({
   const DesktopHeader = useCallback(() => (
     <div className="flex items-center px-4 py-2">
       <h1 className="text-xl font-bold">Inbox</h1>
-      <TabsList className="ml-auto">
+      <TabsList className="ml-auto bg-white/5 border border-purple-500/30">
         <TabsTrigger
           value="inbox"
-          className="text-zinc-600 dark:text-zinc-200"
+          className="text-zinc-600 dark:text-zinc-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white"
         >
           Inbox
         </TabsTrigger>
         <TabsTrigger
           value="important"
-          className="text-zinc-600 dark:text-zinc-200"
+          className="text-zinc-600 dark:text-zinc-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white"
         >
           Important
         </TabsTrigger>
         <TabsTrigger
           value="unread"
-          className="text-zinc-600 dark:text-zinc-200"
+          className="text-zinc-600 dark:text-zinc-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white"
         >
           Unread
         </TabsTrigger>
@@ -179,22 +179,22 @@ export function Mail({
       onValueChange={handleTabChange}
     >
       <div className="flex items-center px-4 py-2">
-        <TabsList className="w-full">
+        <TabsList className="w-full bg-white/5 border border-purple-500/30">
           <TabsTrigger
             value="inbox"
-            className="text-zinc-600 dark:text-zinc-200 flex-1"
+            className="text-zinc-600 dark:text-zinc-200 flex-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white"
           >
             Inbox
           </TabsTrigger>
           <TabsTrigger
             value="important"
-            className="text-zinc-600 dark:text-zinc-200 flex-1"
+            className="text-zinc-600 dark:text-zinc-200 flex-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white"
           >
             Important
           </TabsTrigger>
           <TabsTrigger
             value="unread"
-            className="text-zinc-600 dark:text-zinc-200 flex-1"
+            className="text-zinc-600 dark:text-zinc-200 flex-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white"
           >
             Unread
           </TabsTrigger>

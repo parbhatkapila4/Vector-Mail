@@ -107,8 +107,8 @@ export function AccountSwitcher({
             } catch (error) {
               toast.error((error as Error).message)
             }
-          }} className="relative flex hover:bg-gray-50 w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
-            <Plus className="size-4 mr-1" />
+          }} className="relative flex hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
+            <Plus className="size-4 mr-1 text-purple-400" />
             Add account
           </div>
         </SelectContent>
