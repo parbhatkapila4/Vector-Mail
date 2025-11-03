@@ -22,7 +22,7 @@ export function Navigation() {
             </span>
           </Link>
 
-          <Link href="#pricing" className="px-4 py-2">
+          <Link href="/pricing" className="px-4 py-2">
             <span className="text-white hover:text-purple-300 transition-colors text-base font-medium">
               Pricing
             </span>

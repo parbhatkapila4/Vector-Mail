@@ -62,6 +62,14 @@ export function Footer() {
             <p className="text-gray-500 text-sm max-w-xs">
               AI-powered email client that saves you time and helps you focus on what matters.
             </p>
+
+            <div className="space-y-2">
+              <p className="text-purple-300 text-xs font-semibold uppercase tracking-wider">Contact</p>
+              <Link href="mailto:help@productionsolution.net" className="text-gray-400 hover:text-purple-300 transition-colors text-sm flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                help@productionsolution.net
+              </Link>
+            </div>
           </div>
 
           {/* Right: Links */}

@@ -9,7 +9,7 @@ const contactMethods = [
     icon: Mail,
     title: "Email Support",
     description: "Get help from our support team",
-    contact: "help@vectormail.dev",
+    contact: "help@productionsolution.net",
     color: "from-blue-500 to-cyan-500",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200",
@@ -19,7 +19,7 @@ const contactMethods = [
     icon: MessageSquare,
     title: "General Inquiries",
     description: "Questions about our product",
-    contact: "hello@vectormail.dev",
+    contact: "help@productionsolution.net",
     color: "from-purple-500 to-pink-500",
     bgColor: "bg-purple-50",
     borderColor: "border-purple-200",
@@ -29,7 +29,7 @@ const contactMethods = [
     icon: Phone,
     title: "Sales & Enterprise",
     description: "Custom solutions for teams",
-    contact: "sales@vectormail.dev",
+    contact: "help@productionsolution.net",
     color: "from-green-500 to-teal-500",
     bgColor: "bg-green-50",
     borderColor: "border-green-200",
@@ -321,7 +321,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             General
                           </h4>
                           <a
-                            href="mailto:hello@vectormail.dev"
+                            href="mailto:help@productionsolution.net"
                             className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
                           >
                             hello@vectormail.dev
@@ -339,7 +339,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             Support
                           </h4>
                           <a
-                            href="mailto:help@vectormail.dev"
+                            href="mailto:help@productionsolution.net"
                             className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
                           >
                             help@vectormail.dev
@@ -357,7 +357,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             Sales
                           </h4>
                           <a
-                            href="mailto:sales@vectormail.dev"
+                            href="mailto:help@productionsolution.net"
                             className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
                           >
                             sales@vectormail.dev
