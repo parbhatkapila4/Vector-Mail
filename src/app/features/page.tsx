@@ -229,38 +229,38 @@ export default function FeaturesPage() {
       <Navigation />
       
       {/* Back Button */}
-      <div className="fixed top-32 left-8 z-40">
+      <div className="fixed top-20 sm:top-32 left-4 sm:left-8 z-40">
         <Link href="/">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 border border-purple-500/30 hover:border-purple-500/50 rounded-lg text-white transition-all hover:scale-105">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Back</span>
+          <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 border border-purple-500/30 hover:border-purple-500/50 rounded-lg text-white transition-all hover:scale-105">
+            <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm font-medium">Back</span>
           </button>
         </Link>
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-48 pb-32 overflow-hidden bg-black">
+      <section className="relative pt-24 sm:pt-32 lg:pt-48 pb-16 sm:pb-24 lg:pb-32 overflow-hidden bg-black">
         {/* Background gradient */}
         <div 
-          className="absolute top-0 right-1/4 w-[600px] h-[600px] rounded-full blur-3xl opacity-20 pointer-events-none"
+          className="absolute top-0 right-1/4 w-[300px] h-[300px] lg:w-[600px] lg:h-[600px] rounded-full blur-3xl opacity-20 pointer-events-none"
           style={{
             background: "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)"
           }}
         />
         <div 
-          className="absolute bottom-0 left-1/4 w-[500px] h-[500px] rounded-full blur-3xl opacity-20 pointer-events-none"
+          className="absolute bottom-0 left-1/4 w-[250px] h-[250px] lg:w-[500px] lg:h-[500px] rounded-full blur-3xl opacity-20 pointer-events-none"
           style={{
             background: "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)"
           }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-6 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-6xl sm:text-7xl md:text-8xl font-black mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black mb-6 leading-tight">
               <span className="text-white">Email Reinvented with</span>
               <br />
               <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
@@ -268,7 +268,7 @@ export default function FeaturesPage() {
               </span>
             </h1>
             
-            <p className="text-xl sm:text-2xl text-gray-400 max-w-3xl mx-auto mb-8">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-400 max-w-3xl mx-auto mb-8">
               Traditional email clients use 1995 keyword search. VectorMail uses semantic vector embeddings and AI to understand what you actually mean.
             </p>
 

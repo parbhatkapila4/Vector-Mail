@@ -5,31 +5,31 @@ import { Sparkles, Send, ArrowRight } from "lucide-react";
 
 export function FeatureHighlight() {
   return (
-    <section className="relative py-32 overflow-hidden bg-black">
+    <section className="relative py-16 sm:py-24 lg:py-32 overflow-hidden bg-black">
       {/* Static gradient background */}
       <div 
-        className="absolute top-1/3 left-1/3 w-[600px] h-[600px] rounded-full blur-3xl opacity-15 pointer-events-none"
+        className="absolute top-1/3 left-1/3 w-[300px] h-[300px] lg:w-[600px] lg:h-[600px] rounded-full blur-3xl opacity-15 pointer-events-none"
         style={{
           background: "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
           willChange: "auto"
         }}
       />
 
-      <div className="relative max-w-7xl mx-auto px-6">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="text-center mb-12 sm:mb-16 lg:mb-20"
         >
-          <h2 className="text-5xl sm:text-6xl font-black mb-6">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-6">
             <span className="text-white">AI email chat with </span>
             <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
               natural language
             </span>
           </h2>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-3xl font-bold">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-xl sm:text-2xl lg:text-3xl font-bold">
             <motion.span 
               className="text-white"
               whileHover={{ scale: 1.05 }}

@@ -7,23 +7,23 @@ export function Features() {
   return (
     <>
       {/* Section 1: Designed for power users */}
-      <section className="relative py-32 overflow-hidden bg-black">
+      <section className="relative py-16 sm:py-24 lg:py-32 overflow-hidden bg-black">
         {/* Static gradient background */}
         <div 
-          className="absolute top-0 right-1/3 w-[500px] h-[500px] rounded-full blur-3xl opacity-15 pointer-events-none"
+          className="absolute top-0 right-1/3 w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] rounded-full blur-3xl opacity-15 pointer-events-none"
           style={{
             background: "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
             willChange: "auto"
           }}
         />
       
-      <div className="relative max-w-7xl mx-auto px-6">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
           <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-5xl sm:text-6xl font-black text-center mb-32"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-center mb-16 sm:mb-24 lg:mb-32"
           >
             <span className="text-white">Designed for </span>
             <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
@@ -33,19 +33,19 @@ export function Features() {
           </motion.h2>
 
           {/* Speed Feature */}
-          <div className="grid lg:grid-cols-2 gap-16 items-center mb-40">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center mb-20 sm:mb-32 lg:mb-40">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-6"
+              className="space-y-4 sm:space-y-6"
             >
-              <div className="space-y-4">
-                <h3 className="text-4xl font-black text-white">
+              <div className="space-y-3 sm:space-y-4">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white">
                   Speed Is Everything
                 </h3>
-                <h4 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+                <h4 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]">
                   Reply in seconds
                 </h4>
               </div>
@@ -295,17 +295,17 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-6 lg:order-1"
+              className="space-y-4 sm:space-y-6 lg:order-1"
             >
-              <h3 className="text-4xl font-black text-white">Lightning-Fast Interface</h3>
-              <p className="text-xl text-gray-400 leading-relaxed">
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white">Lightning-Fast Interface</h3>
+              <p className="text-base sm:text-lg lg:text-xl text-gray-400 leading-relaxed">
                 Email at the speed of thought. Navigate your entire inbox using just your keyboard. Process hundreds of emails in minutes.
               </p>
             </motion.div>
           </div>
 
           {/* AI Summaries */}
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -404,10 +404,10 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-6"
+              className="space-y-4 sm:space-y-6"
             >
-              <h3 className="text-4xl font-black text-white">AI-Powered Summaries</h3>
-              <p className="text-xl text-gray-400 leading-relaxed">
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white">AI-Powered Summaries</h3>
+              <p className="text-base sm:text-lg lg:text-xl text-gray-400 leading-relaxed">
                 Your personal email copilot. Let our AI draft responses, summarize long threads, and extract action items automatically.
               </p>
             </motion.div>
@@ -416,9 +416,9 @@ export function Features() {
       </section>
 
       {/* Section 2: Smart Search */}
-      <section className="relative py-32 overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black">
-        <div className="relative max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <section className="relative py-16 sm:py-24 lg:py-32 overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
             {/* Search Mockup */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -520,10 +520,10 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-6 lg:order-1"
+              className="space-y-4 sm:space-y-6 lg:order-1"
             >
-              <h3 className="text-4xl font-black text-white">Smart Search</h3>
-              <p className="text-xl text-gray-400 leading-relaxed">
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white">Smart Search</h3>
+              <p className="text-base sm:text-lg lg:text-xl text-gray-400 leading-relaxed">
                 Your inbox, your rules. Create personalized email processing flows that match exactly how you organize, write, reply, and work.
               </p>
             </motion.div>

@@ -8,19 +8,19 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative border-t border-purple-500/20 py-16 bg-black overflow-hidden">
+    <footer className="relative border-t border-purple-500/20 py-12 sm:py-16 bg-black overflow-hidden">
       {/* Subtle gradient background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
       <div 
-        className="absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full blur-3xl opacity-10 pointer-events-none"
+        className="absolute bottom-0 left-1/4 w-[200px] h-[200px] sm:w-[400px] sm:h-[400px] rounded-full blur-3xl opacity-10 pointer-events-none"
         style={{
           background: "radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%)",
           willChange: "auto"
         }}
       />
 
-      <div className="relative max-w-7xl mx-auto px-6">
-        <div className="grid md:grid-cols-2 gap-12 mb-12">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid md:grid-cols-2 gap-8 sm:gap-12 mb-8 sm:mb-12">
           {/* Left: Logo & Social */}
           <div className="space-y-6">
             <Link href="/" className="inline-flex items-center gap-3 group">

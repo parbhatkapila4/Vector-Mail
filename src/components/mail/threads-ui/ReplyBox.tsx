@@ -1,24 +1,26 @@
 'use client'
 import React from 'react'
 import useThreads from '@/hooks/use-threads'
-import { api, type RouterOutputs } from '@/trpc/react'
+import { api } from '@/trpc/react'
 import { toast } from 'sonner'
 import EmailEditor from '../editor/EmailEditor'
+import { useLocalStorage } from 'usehooks-ts'
 
 const ReplyBox = () => {
-    const { threadId, accountId } = useThreads()
+    const { threadId, threads, account } = useThreads()
+    const [accountId] = useLocalStorage('accountId', '')
     
-    const { 
-        data: replyDetails, 
-        isLoading, 
-        error 
-    } = api.account.getReplyDetails.useQuery({
-        accountId: accountId,
-        threadId: threadId || '',
-        replyType: 'reply'
-    }, {
-        enabled: !!accountId && !!threadId
-    })
+    const thread = threads?.find((t) => t.id === threadId)
+    const { data: foundThread } = api.account.getThreadById.useQuery(
+        {
+            accountId: accountId,
+            threadId: threadId ?? '',
+        },
+        { enabled: !!!thread && !!threadId && !!accountId }
+    )
+    
+    const currentThread = thread ?? foundThread
+    const lastEmail = currentThread?.emails?.[currentThread.emails.length - 1]
     
     const [subject, setSubject] = React.useState('')
     const [toValues, setToValues] = React.useState<{ label: string, value: string }[]>([])
@@ -27,16 +29,16 @@ const ReplyBox = () => {
     const sendEmail = api.account.sendEmail.useMutation()
     
     React.useEffect(() => {
-        if (!replyDetails || !threadId) return;
+        if (!lastEmail || !threadId) return;
 
-        const newSubject = replyDetails.subject.startsWith('Re:') ? replyDetails.subject : `Re: ${replyDetails.subject}`
+        const newSubject = lastEmail.subject.startsWith('Re:') ? lastEmail.subject : `Re: ${lastEmail.subject}`
         setSubject(newSubject)
-        setToValues(replyDetails.to.map((to) => ({ label: to.address ?? to.name, value: to.address })))
-        setCcValues(replyDetails.cc.map((cc) => ({ label: cc.address ?? cc.name, value: cc.address })))
-    }, [replyDetails, threadId])
+        setToValues([{ label: lastEmail.from.address ?? lastEmail.from.name, value: lastEmail.from.address }])
+        setCcValues([])
+    }, [lastEmail, threadId])
     
     // Show loading state
-    if (isLoading) {
+    if (!currentThread && threadId) {
         return (
             <div className="h-[300px] flex items-center justify-center">
                 <div className="text-muted-foreground">Loading reply box...</div>
@@ -44,22 +46,8 @@ const ReplyBox = () => {
         )
     }
     
-    // Show error state
-    if (error) {
-        return (
-            <div className="h-[300px] flex items-center justify-center">
-                <div className="text-red-500 text-center">
-                    <div className="mb-2">Failed to load reply details</div>
-                    <div className="text-sm text-muted-foreground">
-                        {error.message || 'Unable to prepare reply'}
-                    </div>
-                </div>
-            </div>
-        )
-    }
-    
-    // Show message if no reply details available
-    if (!replyDetails) {
+    // Show message if no thread selected
+    if (!currentThread || !lastEmail) {
         return (
             <div className="h-[300px] flex items-center justify-center">
                 <div className="text-muted-foreground text-center">
@@ -71,20 +59,24 @@ const ReplyBox = () => {
     }
 
     const handleSend = async (value: string) => {
-        if (!replyDetails) return;
+        if (!lastEmail || !account) return;
         sendEmail.mutate({
             accountId,
             threadId: threadId ?? undefined,
             body: value,
             subject,
-            from: replyDetails.from,
-            to: replyDetails.to.map((to) => ({ name: to.name ?? to.address, address: to.address })),
-            cc: replyDetails.cc.map((cc) => ({ name: cc.name ?? cc.address, address: cc.address })),
-            replyTo: replyDetails.from,
-            inReplyTo: replyDetails.id,
+            from: { name: account.name ?? 'Me', address: account.emailAddress ?? 'me@example.com' },
+            to: [{ name: lastEmail.from.name ?? lastEmail.from.address, address: lastEmail.from.address }],
+            cc: [],
+            replyTo: { name: account.name ?? 'Me', address: account.emailAddress ?? 'me@example.com' },
+            inReplyTo: lastEmail.internetMessageId,
         }, {
             onSuccess: () => {
                 toast.success("Email sent")
+            },
+            onError: (error) => {
+                console.log(error)
+                toast.error(error.message)
             }
         })
     }
