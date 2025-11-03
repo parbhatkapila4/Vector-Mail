@@ -1,7 +1,6 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Sparkles, Zap, Check } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { EmailClientMockup } from "./EmailClientMockup"
@@ -77,7 +76,7 @@ export function Hero() {
           </p>
 
           <p className="text-sm text-purple-300 text-center">
-            Trusted by 12,000+ users worldwide
+            100% Open Source • Production Grade • Modern Stack
           </p>
 
           {/* CTA */}

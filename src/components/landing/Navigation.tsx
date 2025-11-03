@@ -16,15 +16,15 @@ export function Navigation() {
             background: "linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(30,0,50,0.8) 100%)"
           }}
         >
-          <Link href="#features" className="px-4 py-2">
+          <Link href="/features" className="px-4 py-2">
             <span className="text-white hover:text-purple-300 transition-colors text-base font-medium">
               Features
             </span>
           </Link>
 
-          <Link href="#features" className="px-4 py-2">
+          <Link href="#pricing" className="px-4 py-2">
             <span className="text-white hover:text-purple-300 transition-colors text-base font-medium">
-              Product
+              Pricing
             </span>
           </Link>
 
