@@ -15,7 +15,11 @@ export const metadata: Metadata = {
   authors: [{ name: "VectorMail AI" }],
   creator: "VectorMail AI",
   publisher: "VectorMail AI",
-
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
 };
 
 const geist = Geist({

@@ -73,7 +73,7 @@ export default function PricingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black w-full overflow-x-hidden">
       <Navigation />
       
       {/* Back Button */}

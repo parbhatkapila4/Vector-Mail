@@ -225,69 +225,79 @@ export default function FeaturesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden w-full">
       <Navigation />
       
-      {/* Back Button */}
-      <div className="fixed top-20 sm:top-32 left-4 sm:left-8 z-40">
+      {/* Back Button - Hidden on mobile to avoid overlap */}
+      <div className="hidden sm:block fixed top-24 sm:top-32 left-4 sm:left-8 z-40">
         <Link href="/">
-          <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 border border-purple-500/30 hover:border-purple-500/50 rounded-lg text-white transition-all hover:scale-105">
+          <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 border border-purple-500/30 hover:border-purple-500/50 rounded-lg text-white transition-all hover:scale-105 backdrop-blur-sm">
             <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="text-xs sm:text-sm font-medium">Back</span>
           </button>
         </Link>
       </div>
 
+      {/* Mobile Back Button - In content flow */}
+      <div className="sm:hidden pt-20 px-4">
+        <Link href="/">
+          <button className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 border border-purple-500/30 hover:border-purple-500/50 rounded-lg text-white transition-all backdrop-blur-sm">
+            <ArrowLeft className="w-3 h-3" />
+            <span className="text-xs font-medium">Back</span>
+          </button>
+        </Link>
+      </div>
+
       {/* Hero Section */}
-      <section className="relative pt-24 sm:pt-32 lg:pt-48 pb-16 sm:pb-24 lg:pb-32 overflow-hidden bg-black">
+      <section className="relative pt-8 sm:pt-16 md:pt-24 lg:pt-40 xl:pt-48 pb-12 sm:pb-20 lg:pb-32 overflow-hidden bg-black">
         {/* Background gradient */}
         <div 
-          className="absolute top-0 right-1/4 w-[300px] h-[300px] lg:w-[600px] lg:h-[600px] rounded-full blur-3xl opacity-20 pointer-events-none"
+          className="absolute top-0 right-1/4 w-[200px] h-[200px] sm:w-[300px] sm:h-[300px] lg:w-[600px] lg:h-[600px] rounded-full blur-3xl opacity-20 pointer-events-none"
           style={{
             background: "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)"
           }}
         />
         <div 
-          className="absolute bottom-0 left-1/4 w-[250px] h-[250px] lg:w-[500px] lg:h-[500px] rounded-full blur-3xl opacity-20 pointer-events-none"
+          className="absolute bottom-0 left-1/4 w-[150px] h-[150px] sm:w-[250px] sm:h-[250px] lg:w-[500px] lg:h-[500px] rounded-full blur-3xl opacity-20 pointer-events-none"
           style={{
             background: "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)"
           }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 text-center">
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
+            className="w-full"
           >
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black mb-6 leading-tight">
-              <span className="text-white">Email Reinvented with</span>
-              <br />
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-6 leading-tight w-full break-words">
+              <span className="text-white block">Email Reinvented with</span>
+              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent block mt-2">
                 Vector AI Technology
               </span>
             </h1>
             
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-400 max-w-3xl mx-auto mb-8">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-400 w-full max-w-3xl mx-auto mb-6 break-words">
               Traditional email clients use 1995 keyword search. VectorMail uses semantic vector embeddings and AI to understand what you actually mean.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-purple-300">
-              <span>🚀 Open Source</span>
-              <span>•</span>
-              <span>⚡ Sub-50ms Search</span>
-              <span>•</span>
-              <span>🔒 Zero-Knowledge</span>
-              <span>•</span>
-              <span>🏗️ Production Grade</span>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-purple-300 w-full">
+              <span className="whitespace-nowrap">🚀 Open Source</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">⚡ Sub-50ms Search</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">🔒 Zero-Knowledge</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">🏗️ Production Grade</span>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="relative py-20 bg-gradient-to-b from-black via-purple-950/5 to-black">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="relative py-12 sm:py-20 bg-gradient-to-b from-black via-purple-950/5 to-black overflow-hidden">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -418,13 +428,13 @@ export default function FeaturesPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-5xl sm:text-6xl font-black mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 w-full break-words px-2">
               <span className="text-white">Technical </span>
               <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
                 Infrastructure
               </span>
             </h2>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-gray-400 w-full max-w-2xl mx-auto px-2">
               Enterprise-grade architecture with modern tooling. Built to scale from 1 to 1 million users.
             </p>
           </motion.div>

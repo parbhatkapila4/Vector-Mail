@@ -64,18 +64,18 @@ export function Features() {
                 className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
               />
               <motion.div 
-                className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-6 shadow-2xl"
+                className="relative bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-purple-500/30 p-3 sm:p-4 md:p-6 shadow-2xl overflow-hidden"
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
                 {/* To field */}
-                <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">
-                  <span className="text-gray-500 text-sm">To:</span>
-                  <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 pb-4 border-b border-white/10">
+                  <span className="text-gray-500 text-xs sm:text-sm">To:</span>
+                  <div className="flex flex-wrap gap-2">
                       {['David', 'Emma'].map((name, i) => (
                       <motion.div 
                         key={i} 
-                        className="flex items-center gap-2 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 px-3 py-1 rounded-full border border-purple-500/30"
+                        className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 px-2 sm:px-3 py-1 rounded-full border border-purple-500/30"
                         whileHover={{ 
                           scale: 1.05,
                           borderColor: "rgba(168, 85, 247, 0.6)",
@@ -83,8 +83,8 @@ export function Features() {
                         }}
                         transition={{ duration: 0.2 }}
                       >
-                        <div className="w-5 h-5 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full shadow-lg" />
-                        <span className="text-white text-sm font-medium">{name}</span>
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 rounded-full shadow-lg" />
+                        <span className="text-white text-xs sm:text-sm font-medium">{name}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -96,17 +96,17 @@ export function Features() {
                   initial={{ opacity: 0.8 }}
                   whileHover={{ opacity: 1 }}
                 >
-                  <Zap className="w-4 h-4 text-purple-400" />
-                  <span className="text-white font-medium">Re: VectorMail feature updates</span>
+                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400 flex-shrink-0" />
+                  <span className="text-white font-medium text-xs sm:text-sm truncate">Re: VectorMail feature updates</span>
           </motion.div>
 
                 {/* Email Body */}
                 <motion.div 
-                  className="bg-white/5 rounded-lg p-4 mb-4 border border-purple-500/10"
+                  className="bg-white/5 rounded-lg p-3 sm:p-4 mb-4 border border-purple-500/10"
                   whileHover={{ borderColor: "rgba(168, 85, 247, 0.2)" }}
                   transition={{ duration: 0.3 }}
                 >
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
                     Hey team,<br /><br />
                     Just finished reviewing the latest VectorMail dashboard updates. The new semantic search is incredibly fast - finding emails is now instant. The AI summaries are spot-on and save me at least 30 minutes daily.<br /><br />
                     Ready to ship this to production. Great work everyone!
@@ -114,10 +114,10 @@ export function Features() {
         </motion.div>
 
                 {/* Actions */}
-                  <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <motion.button 
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold shadow-lg shadow-purple-500/30"
+                      className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold shadow-lg shadow-purple-500/30 text-xs sm:text-sm"
                       whileHover={{ 
                         scale: 1.05, 
                         boxShadow: "0 0 25px rgba(168, 85, 247, 0.5)",
@@ -130,22 +130,22 @@ export function Features() {
                       <span className="text-xs opacity-80">⏎</span>
                     </motion.button>
                     <motion.button 
-                      className="text-gray-400 text-sm hover:text-purple-300 transition-colors"
+                      className="text-gray-400 text-xs sm:text-sm hover:text-purple-300 transition-colors text-center sm:text-left"
                       whileHover={{ x: 3 }}
                       transition={{ duration: 0.2 }}
                     >
                       Add files
                     </motion.button>
                   </div>
-                  <div className="flex gap-2 text-xs text-gray-500">
+                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
                     <motion.span 
-                      className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded"
+                      className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded whitespace-nowrap"
                       whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
                     >
                       Neutral
                     </motion.span>
                     <motion.span 
-                      className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded"
+                      className="bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded whitespace-nowrap"
                       whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
                     >
                       Medium-length

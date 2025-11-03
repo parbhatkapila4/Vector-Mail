@@ -9,9 +9,9 @@ import { Footer } from '@/components/landing/Footer'
 
 export default function Page() {
   return (
-    <div className="relative min-h-screen bg-black">
+    <div className="relative min-h-screen bg-black w-full overflow-x-hidden">
       <Navigation />
-      <main className="overflow-hidden">
+      <main className="overflow-hidden w-full">
         <Hero />
         <Features />
         <FeatureHighlight />
