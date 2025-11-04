@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vectormail-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vectormail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vectormail_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-vectormail}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vectormail}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vectormail-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vectormail-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vectormail-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vectormail-app
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vectormail}:${POSTGRES_PASSWORD:-vectormail_dev}@postgres:5432/${POSTGRES_DB:-vectormail}?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vectormail-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  vectormail-network:
+    driver: bridge
+

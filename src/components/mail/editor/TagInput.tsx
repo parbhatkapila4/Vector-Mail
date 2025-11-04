@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import Avatar from 'react-avatar';
-import Select from 'react-select';
+import Select, { MultiValue, ActionMeta } from 'react-select';
+
+type OptionType = {
+    label: string | React.ReactNode;
+    value: string;
+};
 
 type TagInputProps = {
     suggestions: string[];
-    defaultValues?: { label: string, value: string }[];
+    defaultValues?: OptionType[];
     placeholder: string;
     label: string;
-
-    onChange: (values: { label: string, value: string }[]) => void;
-    value: { label: string, value: string }[];
+    onChange: (values: OptionType[]) => void;
+    value: OptionType[];
 };
 
 const TagInput: React.FC<TagInputProps> = ({ suggestions, defaultValues = [], label, onChange, value }) => {
@@ -26,16 +30,14 @@ const TagInput: React.FC<TagInputProps> = ({ suggestions, defaultValues = [], la
 
     return <div className="border rounded-md flex items-center">
         <span className='ml-3 text-sm text-gray-500'>{label}</span>
-        <Select
+        <Select<OptionType, true>
             value={value}
-            // @ts-ignore
-            onChange={onChange}
+            onChange={(newValue: MultiValue<OptionType>) => onChange(Array.from(newValue))}
             className='w-full flex-1'
             isMulti
             onInputChange={setInput}
             defaultValue={defaultValues}
             placeholder={''}
-            //@ts-ignore
             options={input ? options.concat({
                 label: (
                     <span className='flex items-center gap-2'>
