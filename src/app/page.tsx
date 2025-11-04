@@ -1,17 +1,16 @@
-
-import React from 'react'
-import { Navigation } from '@/components/landing/Navigation'
-import { Hero } from '@/components/landing/Hero'
-import { Features } from '@/components/landing/Features'
-import { FeatureHighlight } from '@/components/landing/FeatureHighlight'
-import { CTA } from '@/components/landing/CTA'
-import { Footer } from '@/components/landing/Footer'
+import React from "react";
+import { Navigation } from "@/components/landing/Navigation";
+import { Hero } from "@/components/landing/Hero";
+import { Features } from "@/components/landing/Features";
+import { FeatureHighlight } from "@/components/landing/FeatureHighlight";
+import { CTA } from "@/components/landing/CTA";
+import { Footer } from "@/components/landing/Footer";
 
 export default function Page() {
   return (
-    <div className="relative min-h-screen bg-black w-full overflow-x-hidden">
+    <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
-      <main className="overflow-hidden w-full">
+      <main className="w-full overflow-hidden">
         <Hero />
         <Features />
         <FeatureHighlight />
@@ -19,5 +18,5 @@ export default function Page() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }

@@ -13,21 +13,23 @@ export interface SearchResult {
 export async function searchEmailsByVector(
   query: string,
   accountId: string,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<SearchResult[]> {
   try {
     console.log(`Searching emails with query: "${query}"`);
-    
+
     // Generate embedding for the search query
     const queryEmbedding = await generateQueryEmbedding(query);
-    
-    if (queryEmbedding.every(val => val === 0)) {
-      console.warn("Query embedding is zero vector, falling back to text search");
+
+    if (queryEmbedding.every((val) => val === 0)) {
+      console.warn(
+        "Query embedding is zero vector, falling back to text search",
+      );
       return await fallbackTextSearch(query, accountId, limit);
     }
 
     // Use raw SQL for vector similarity search
-    const emails = await db.$queryRaw`
+    const emails = (await db.$queryRaw`
       SELECT 
         e.*,
         (e."vectorEmbedding" <=> ${JSON.stringify(queryEmbedding)}::vector) as distance
@@ -37,16 +39,18 @@ export async function searchEmailsByVector(
         AND e."vectorEmbedding" IS NOT NULL
       ORDER BY distance ASC
       LIMIT ${limit * 2}
-    ` as any[];
+    `) as any[];
 
     if (emails.length === 0) {
-      console.log("No emails with embeddings found, falling back to text search");
+      console.log(
+        "No emails with embeddings found, falling back to text search",
+      );
       return await fallbackTextSearch(query, accountId, limit);
     }
 
     // Get full email details for the top results
     const topEmailIds = emails.slice(0, limit).map((e: any) => e.id);
-    
+
     const fullEmails = await db.email.findMany({
       where: {
         id: { in: topEmailIds },
@@ -61,21 +65,27 @@ export async function searchEmailsByVector(
     });
 
     // Map the results with similarity scores
-    const emailDistanceMap = new Map(emails.map((e: any) => [e.id, e.distance]));
-    
+    const emailDistanceMap = new Map(
+      emails.map((e: any) => [e.id, e.distance]),
+    );
+
     const results: SearchResult[] = fullEmails
-      .map(email => {
+      .map((email) => {
         const distance = emailDistanceMap.get(email.id) || 1;
         const similarity = 1 - distance; // Convert distance to similarity (closer to 1 is better)
-        const relevanceScore = calculateRelevanceScore(email, query, similarity);
-        
+        const relevanceScore = calculateRelevanceScore(
+          email,
+          query,
+          similarity,
+        );
+
         return {
           email,
           similarity,
           relevanceScore,
         };
       })
-      .filter(result => result.similarity > 0.1) // Filter out very low similarities
+      .filter((result) => result.similarity > 0.1) // Filter out very low similarities
       .sort((a, b) => b.relevanceScore - a.relevanceScore)
       .slice(0, limit);
 
@@ -94,11 +104,14 @@ export async function searchEmailsByVector(
 async function fallbackTextSearch(
   query: string,
   accountId: string,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<SearchResult[]> {
   try {
-    const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 2);
-    
+    const searchTerms = query
+      .toLowerCase()
+      .split(" ")
+      .filter((term) => term.length > 2);
+
     if (searchTerms.length === 0) {
       // If no meaningful search terms, return recent emails
       const emails = await db.email.findMany({
@@ -115,12 +128,12 @@ async function fallbackTextSearch(
           attachments: true,
         },
         orderBy: {
-          sentAt: 'desc',
+          sentAt: "desc",
         },
         take: limit,
       });
 
-      return emails.map(email => ({
+      return emails.map((email) => ({
         email,
         similarity: 0.5, // Default similarity for recent emails
         relevanceScore: 0.5,
@@ -137,19 +150,19 @@ async function fallbackTextSearch(
           {
             subject: {
               contains: query,
-              mode: 'insensitive',
+              mode: "insensitive",
             },
           },
           {
             body: {
               contains: query,
-              mode: 'insensitive',
+              mode: "insensitive",
             },
           },
           {
             aiSummary: {
               contains: query,
-              mode: 'insensitive',
+              mode: "insensitive",
             },
           },
           {
@@ -167,23 +180,28 @@ async function fallbackTextSearch(
         attachments: true,
       },
       orderBy: {
-        sentAt: 'desc',
+        sentAt: "desc",
       },
       take: limit * 2, // Get more results to filter and score
     });
 
     // Score the results based on text matching
-    const results: SearchResult[] = emails.map(email => {
-      const relevanceScore = calculateTextRelevanceScore(email, query, searchTerms);
-      return {
-        email,
-        similarity: relevanceScore,
-        relevanceScore,
-      };
-    })
-    .filter(result => result.relevanceScore > 0.1)
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, limit);
+    const results: SearchResult[] = emails
+      .map((email) => {
+        const relevanceScore = calculateTextRelevanceScore(
+          email,
+          query,
+          searchTerms,
+        );
+        return {
+          email,
+          similarity: relevanceScore,
+          relevanceScore,
+        };
+      })
+      .filter((result) => result.relevanceScore > 0.1)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, limit);
 
     return results;
   } catch (error) {
@@ -195,16 +213,21 @@ async function fallbackTextSearch(
 /**
  * Calculate relevance score combining similarity and email properties
  */
-function calculateRelevanceScore(email: any, query: string, similarity: number): number {
+function calculateRelevanceScore(
+  email: any,
+  query: string,
+  similarity: number,
+): number {
   let score = similarity;
 
   // Boost score for important emails
-  if (email.sysLabels?.includes('important')) {
+  if (email.sysLabels?.includes("important")) {
     score *= 1.3;
   }
 
   // Boost score for recent emails
-  const daysSinceSent = (Date.now() - new Date(email.sentAt).getTime()) / (1000 * 60 * 60 * 24);
+  const daysSinceSent =
+    (Date.now() - new Date(email.sentAt).getTime()) / (1000 * 60 * 60 * 24);
   if (daysSinceSent < 7) {
     score *= 1.2;
   } else if (daysSinceSent < 30) {
@@ -213,17 +236,18 @@ function calculateRelevanceScore(email: any, query: string, similarity: number):
 
   // Boost score if query terms appear in subject
   const queryLower = query.toLowerCase();
-  const subjectLower = email.subject?.toLowerCase() || '';
+  const subjectLower = email.subject?.toLowerCase() || "";
   if (subjectLower.includes(queryLower)) {
     score *= 1.4;
   }
 
   // Boost score for emails with AI tags matching query
-  const queryTerms = queryLower.split(' ').filter(term => term.length > 2);
-  const matchingTags = email.aiTags?.filter((tag: string) => 
-    queryTerms.some(term => tag.includes(term))
-  ) || [];
-  
+  const queryTerms = queryLower.split(" ").filter((term) => term.length > 2);
+  const matchingTags =
+    email.aiTags?.filter((tag: string) =>
+      queryTerms.some((term) => tag.includes(term)),
+    ) || [];
+
   if (matchingTags.length > 0) {
     score *= 1.2;
   }
@@ -234,46 +258,58 @@ function calculateRelevanceScore(email: any, query: string, similarity: number):
 /**
  * Calculate text-based relevance score
  */
-function calculateTextRelevanceScore(email: any, query: string, searchTerms: string[]): number {
+function calculateTextRelevanceScore(
+  email: any,
+  query: string,
+  searchTerms: string[],
+): number {
   let score = 0;
   const queryLower = query.toLowerCase();
 
   // Subject matching (highest weight)
-  const subjectLower = email.subject?.toLowerCase() || '';
+  const subjectLower = email.subject?.toLowerCase() || "";
   if (subjectLower.includes(queryLower)) {
     score += 3;
   } else {
     // Partial subject matching
-    const subjectMatches = searchTerms.filter(term => subjectLower.includes(term)).length;
+    const subjectMatches = searchTerms.filter((term) =>
+      subjectLower.includes(term),
+    ).length;
     score += subjectMatches * 0.5;
   }
 
   // Body matching
-  const bodyLower = (email.body || email.bodySnippet || '').toLowerCase();
+  const bodyLower = (email.body || email.bodySnippet || "").toLowerCase();
   if (bodyLower.includes(queryLower)) {
     score += 2;
   } else {
-    const bodyMatches = searchTerms.filter(term => bodyLower.includes(term)).length;
+    const bodyMatches = searchTerms.filter((term) =>
+      bodyLower.includes(term),
+    ).length;
     score += bodyMatches * 0.3;
   }
 
   // AI summary matching
-  const summaryLower = email.aiSummary?.toLowerCase() || '';
+  const summaryLower = email.aiSummary?.toLowerCase() || "";
   if (summaryLower.includes(queryLower)) {
     score += 1.5;
   } else {
-    const summaryMatches = searchTerms.filter(term => summaryLower.includes(term)).length;
+    const summaryMatches = searchTerms.filter((term) =>
+      summaryLower.includes(term),
+    ).length;
     score += summaryMatches * 0.2;
   }
 
   // AI tags matching
-  const tagMatches = email.aiTags?.filter((tag: string) => 
-    searchTerms.some(term => tag.includes(term))
-  ).length || 0;
+  const tagMatches =
+    email.aiTags?.filter((tag: string) =>
+      searchTerms.some((term) => tag.includes(term)),
+    ).length || 0;
   score += tagMatches * 0.4;
 
   // Recent emails boost
-  const daysSinceSent = (Date.now() - new Date(email.sentAt).getTime()) / (1000 * 60 * 60 * 24);
+  const daysSinceSent =
+    (Date.now() - new Date(email.sentAt).getTime()) / (1000 * 60 * 60 * 24);
   if (daysSinceSent < 7) {
     score *= 1.2;
   } else if (daysSinceSent < 30) {
@@ -281,7 +317,7 @@ function calculateTextRelevanceScore(email: any, query: string, searchTerms: str
   }
 
   // Important emails boost
-  if (email.sysLabels?.includes('important')) {
+  if (email.sysLabels?.includes("important")) {
     score *= 1.3;
   }
 

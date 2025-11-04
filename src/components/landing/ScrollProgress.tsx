@@ -14,10 +14,10 @@ export function ScrollProgress() {
     <>
       {/* Progress bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 origin-left z-50"
+        className="fixed left-0 right-0 top-0 z-50 h-1 origin-left bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500"
         style={{ scaleX }}
       />
-      
+
       {/* Floating scroll indicator */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -26,13 +26,13 @@ export function ScrollProgress() {
         className="fixed bottom-8 right-8 z-40"
       >
         <motion.div
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
+          className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl transition-all hover:bg-white/20"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
           <svg
-            className="w-6 h-6 text-white"
+            className="h-6 w-6 text-white"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

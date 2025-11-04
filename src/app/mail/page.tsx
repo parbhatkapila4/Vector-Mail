@@ -21,38 +21,40 @@ function page() {
   const router = useRouter();
 
   const handleBackToHome = () => {
-    router.push('/');
+    router.push("/");
   };
 
   return (
-    <div className="h-screen w-full relative">
+    <div className="relative h-screen w-full">
       {/* Back to Home Button - Top Right */}
-      <div className={cn(
-        "z-50",
-        isMobile 
-          ? "fixed top-4 right-4" 
-          : "absolute top-4 right-4"
-      )}>
+      <div
+        className={cn(
+          "z-50",
+          isMobile ? "fixed right-4 top-4" : "absolute right-4 top-4",
+        )}
+      >
         <Button
           variant="ghost"
           size="sm"
           onClick={handleBackToHome}
-          className="bg-white/5 backdrop-blur-sm border border-purple-500/30 rounded-lg p-2 shadow-lg hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 hover:border-purple-500/50 text-white transition-all"
+          className="rounded-lg border border-purple-500/30 bg-white/5 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
         </Button>
       </div>
 
       {/* User Controls - Bottom Left */}
-      <div className={cn(
-        "flex items-center gap-2 z-50",
-        isMobile 
-          ? "fixed bottom-4 left-4 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg" 
-          : "absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg"
-      )}>
+      <div
+        className={cn(
+          "z-50 flex items-center gap-2",
+          isMobile
+            ? "fixed bottom-4 left-4 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm"
+            : "absolute bottom-4 left-4 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm",
+        )}
+      >
         <UserButton />
-        <ComposeButton/>
+        <ComposeButton />
       </div>
 
       <Mail

@@ -68,15 +68,11 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center p-2">
-        
-    
-      </div>
+      <div className="flex items-center p-2"></div>
       {isSearching ? (
-        <>
-        </>
-        // <SearchDisplay />
+        <></>
       ) : (
+        // <SearchDisplay />
         <>
           {thread ? (
             <div className="flex flex-1 flex-col overflow-scroll">
@@ -105,7 +101,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
                   </div>
                 </div>
                 {thread.emails[0]?.sentAt && (
-                  <div className="text-muted-foreground ml-auto text-xs">
+                  <div className="ml-auto text-xs text-muted-foreground">
                     {format(new Date(thread.emails[0].sentAt), "PPpp")}
                   </div>
                 )}
@@ -121,13 +117,12 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
               <div className="flex-1"></div>
               <Separator className="mt-auto" />
               <div className="h-[300px]">
-
-              <ReplyBox />
+                <ReplyBox />
               </div>
             </div>
           ) : (
             <>
-              <div className="text-muted-foreground p-8 text-center">
+              <div className="p-8 text-center text-muted-foreground">
                 No message selected {threadId}
               </div>
             </>

@@ -1,25 +1,25 @@
-'use server';
-import OpenAI from 'openai';
+"use server";
+import OpenAI from "openai";
 
 export async function generateEmail(context: string, prompt: string) {
-    console.log("context", context)
-    
-    try {
-        const openai = new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
-            defaultHeaders: {
-                "HTTP-Referer": "https://vectormail-ai.vercel.app",
-                "X-Title": "VectorMail AI",
-            },
-        });
+  console.log("context", context);
 
-        const completion = await openai.chat.completions.create({
-            model: "google/gemini-2.5-flash",
-            messages: [
-                {
-                    role: "system",
-                    content: `You are a professional AI email assistant that helps compose well-structured, professional emails. 
+  try {
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": "https://vectormail-ai.vercel.app",
+        "X-Title": "VectorMail AI",
+      },
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional AI email assistant that helps compose well-structured, professional emails. 
 
                     THE TIME NOW IS ${new Date().toLocaleString()}
                     
@@ -48,50 +48,57 @@ export async function generateEmail(context: string, prompt: string) {
                     - Do not include subject line
                     - Do not add meta-commentary like "Here's your email"
                     - Ensure proper paragraph breaks
-                    - Use standard email formatting conventions`
-                },
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            stream: false, // DISABLE STREAMING
-        });
+                    - Use standard email formatting conventions`,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      stream: false, // DISABLE STREAMING
+    });
 
-        const content = completion.choices[0]?.message?.content || "";
-        return { content };
-    } catch (error) {
-        console.error('Error in generateEmail:', error);
-        return { content: 'Error: Failed to generate email. Please check your OpenRouter API key and try again.' };
-    }
+    const content = completion.choices[0]?.message?.content || "";
+    return { content };
+  } catch (error) {
+    console.error("Error in generateEmail:", error);
+    return {
+      content:
+        "Error: Failed to generate email. Please check your OpenRouter API key and try again.",
+    };
+  }
 }
 
 export async function generate(input: string, context?: string) {
-    console.log("input", input);
-    console.log("context", context?.substring(0, 200) + '...');
-    
-    try {
-        const openai = new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
-            defaultHeaders: {
-                "HTTP-Referer": "https://vectormail-ai.vercel.app",
-                "X-Title": "VectorMail AI",
-            },
-        });
+  console.log("input", input);
+  console.log("context", context?.substring(0, 200) + "...");
 
-        const completion = await openai.chat.completions.create({
-            model: "google/gemini-2.5-flash",
-            messages: [
-                {
-                    role: "system",
-                    content: `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
+  try {
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": "https://vectormail-ai.vercel.app",
+        "X-Title": "VectorMail AI",
+      },
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
 
                     EMAIL CONTEXT:
-                    ${context ? `CONVERSATION HISTORY:
+                    ${
+                      context
+                        ? `CONVERSATION HISTORY:
                     ${context}
                     
-                    ` : ''}CURRENT DRAFT: "${input}"
+                    `
+                        : ""
+                    }CURRENT DRAFT: "${input}"
 
                     YOUR CAPABILITIES:
                     1. **Smart Completion**: Complete the current sentence or paragraph naturally
@@ -123,22 +130,25 @@ export async function generate(input: string, context?: string) {
                     - Ensure the response is contextually relevant and helpful
                     - NEVER include subject lines or email headers
                     - Use line breaks (\\n) for proper email formatting
-                    - Keep paragraphs concise and well-structured`
-                },
-                {
-                    role: "user",
-                    content: `Complete this email draft. Start with the text I've written: "${input}". 
+                    - Keep paragraphs concise and well-structured`,
+        },
+        {
+          role: "user",
+          content: `Complete this email draft. Start with the text I've written: "${input}". 
 
-Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`
-                }
-            ],
-            stream: false, // DISABLE STREAMING
-        });
+Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`,
+        },
+      ],
+      stream: false, // DISABLE STREAMING
+    });
 
-        const content = completion.choices[0]?.message?.content || "";
-        return { content };
-    } catch (error) {
-        console.error('Error in generate:', error);
-        return { content: 'Error: Failed to generate text. Please check your OpenRouter API key and try again.' };
-    }
+    const content = completion.choices[0]?.message?.content || "";
+    return { content };
+  } catch (error) {
+    console.error("Error in generate:", error);
+    return {
+      content:
+        "Error: Failed to generate text. Please check your OpenRouter API key and try again.",
+    };
+  }
 }

@@ -13,30 +13,23 @@ export function FloatingElements() {
   if (!mounted) return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       {/* Floating gradient orbs */}
       {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-96 h-96 rounded-full blur-[100px] opacity-20"
+          className="absolute h-96 w-96 rounded-full opacity-20 blur-[100px]"
           style={{
-            background: i === 0 
-              ? "radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)"
-              : i === 1
-              ? "radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 70%)"
-              : "radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)",
+            background:
+              i === 0
+                ? "radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)"
+                : i === 1
+                  ? "radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 70%)"
+                  : "radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)",
           }}
           animate={{
-            x: [
-              `${20 + i * 30}%`,
-              `${40 + i * 20}%`,
-              `${20 + i * 30}%`,
-            ],
-            y: [
-              `${10 + i * 25}%`,
-              `${60 + i * 10}%`,
-              `${10 + i * 25}%`,
-            ],
+            x: [`${20 + i * 30}%`, `${40 + i * 20}%`, `${20 + i * 30}%`],
+            y: [`${10 + i * 25}%`, `${60 + i * 10}%`, `${10 + i * 25}%`],
             scale: [1, 1.2, 1],
           }}
           transition={{
@@ -51,7 +44,7 @@ export function FloatingElements() {
       {[...Array(15)].map((_, i) => (
         <motion.div
           key={`particle-${i}`}
-          className="absolute w-1 h-1 bg-blue-400 rounded-full"
+          className="absolute h-1 w-1 rounded-full bg-blue-400"
           style={{
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,

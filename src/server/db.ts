@@ -11,10 +11,9 @@ const createPrismaClient = () => {
       // Add other methods as needed
     } as any;
   }
-  
+
   return new PrismaClient({
-    log:
-      env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 };
 

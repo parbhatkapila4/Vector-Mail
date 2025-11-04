@@ -1,12 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
 export async function POST(req: NextRequest) {
   try {
     const { prompt, context } = await req.json();
 
     if (!prompt) {
-      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Prompt is required" },
+        { status: 400 },
+      );
     }
 
     const openai = new OpenAI({
@@ -26,10 +29,14 @@ export async function POST(req: NextRequest) {
           content: `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
 
           EMAIL CONTEXT:
-          ${context ? `CONVERSATION HISTORY:
+          ${
+            context
+              ? `CONVERSATION HISTORY:
           ${context}
           
-          ` : ''}CURRENT DRAFT: "${prompt}"
+          `
+              : ""
+          }CURRENT DRAFT: "${prompt}"
 
           YOUR CAPABILITIES:
           1. **Smart Completion**: Complete the current sentence or paragraph naturally
@@ -61,26 +68,26 @@ export async function POST(req: NextRequest) {
           - Ensure the response is contextually relevant and helpful
           - NEVER include subject lines or email headers
           - Use line breaks (\\n) for proper email formatting
-          - Keep paragraphs concise and well-structured`
+          - Keep paragraphs concise and well-structured`,
         },
         {
           role: "user",
           content: `Complete this email draft. Start with the text I've written: "${prompt}". 
 
-Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`
-        }
+Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`,
+        },
       ],
       stream: false, // Disable streaming
     });
 
     const content = completion.choices[0]?.message?.content || "";
-    
+
     return NextResponse.json({ content });
   } catch (error) {
-    console.error('Error in generate-email:', error);
+    console.error("Error in generate-email:", error);
     return NextResponse.json(
-      { error: 'Failed to generate email' }, 
-      { status: 500 }
+      { error: "Failed to generate email" },
+      { status: 500 },
     );
   }
 }

@@ -1,14 +1,17 @@
 # GitHub CI Failure Fixes
 
 ## Issue Summary
+
 **Symptom:** Vercel shows "Ready" ✅ but GitHub Actions CI shows "Failure" ❌
 
 ## Root Causes Identified
 
 ### 1. Next.js Viewport Metadata Warning (Critical)
+
 **Problem:** Next.js 14+ requires `viewport` to be exported separately, not inside `metadata` object.
 
 **Error Message:**
+
 ```
 ⚠ Unsupported metadata viewport is configured in metadata export in /
 Please move it to viewport export instead.
@@ -17,6 +20,7 @@ Please move it to viewport export instead.
 **Affected Routes:** All routes (`/`, `/about`, `/features`, `/mail`, `/pricing`, `/we`, `/privacy`, `/terms`)
 
 **Fix Applied:**
+
 ```typescript
 // ❌ Before (in src/app/layout.tsx)
 export const metadata: Metadata = {
@@ -43,13 +47,16 @@ export const viewport = {
 ```
 
 ### 2. Deprecated npm Packages
+
 **Warnings Detected:**
+
 - `inflight@1.0.6` - Memory leak vulnerability ⚠️
 - `glob@7.2.3` - Deprecated (multiple instances)
 - `abab@2.0.6` - Deprecated
 - `domexception@4.0.0` - Deprecated
 
 **Fix Applied:**
+
 ```bash
 npm update glob
 npm update @ai-sdk/react @ai-sdk/rsc
@@ -57,13 +64,15 @@ npm audit fix
 ```
 
 ### 3. Security Vulnerabilities (Moderate)
+
 **Issue:** 2 moderate severity vulnerabilities in `jsondiffpatch` (dependency of `@ai-sdk/rsc`)
 
 **Fix Applied:**
 Changed CI audit level from `moderate` to `high` in `.github/workflows/ci.yml`:
+
 ```yaml
 - name: Run npm audit
-  run: npm audit --audit-level=high  # Changed from moderate
+  run: npm audit --audit-level=high # Changed from moderate
   continue-on-error: true
 ```
 
@@ -71,19 +80,17 @@ Changed CI audit level from `moderate` to `high` in `.github/workflows/ci.yml`:
 
 ## Why Vercel Succeeded But GitHub Failed
 
-| Platform | Behavior | Reason |
-|----------|----------|--------|
-| **Vercel** | ✅ Deployed | Treats Next.js warnings as non-blocking, focuses on successful build output |
-| **GitHub Actions** | ❌ Failed | Stricter checks: fails on warnings, deprecated packages, and security issues |
+| Platform           | Behavior    | Reason                                                                       |
+| ------------------ | ----------- | ---------------------------------------------------------------------------- |
+| **Vercel**         | ✅ Deployed | Treats Next.js warnings as non-blocking, focuses on successful build output  |
+| **GitHub Actions** | ❌ Failed   | Stricter checks: fails on warnings, deprecated packages, and security issues |
 
 ## Files Modified
 
 1. **`src/app/layout.tsx`**
    - Moved `viewport` from `metadata` to separate export
-   
 2. **`.github/workflows/ci.yml`**
    - Changed audit level from `moderate` to `high`
-   
 3. **`package.json` & `package-lock.json`**
    - Updated dependencies via `npm update`
 
@@ -98,6 +105,7 @@ Changed CI audit level from `moderate` to `high` in `.github/workflows/ci.yml`:
 ## Expected CI Results
 
 After these fixes:
+
 1. ✅ **Lint & Type Check** - Pass
 2. ✅ **Run Tests** - Pass
 3. ✅ **E2E Tests** - Pass
@@ -121,4 +129,3 @@ https://github.com/parbhatkapila4/Vector-Mail/actions
 **Status:** Ready to push to GitHub
 **Date:** November 4, 2025
 **Next Step:** Commit and push these changes to trigger new CI run
-

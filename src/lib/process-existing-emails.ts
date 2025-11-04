@@ -6,7 +6,10 @@ import { EmailMessage } from "@/types";
  * Process existing emails to add AI analysis
  * This should be run once to backfill existing emails with AI analysis
  */
-export async function processExistingEmails(accountId?: string, batchSize: number = 10) {
+export async function processExistingEmails(
+  accountId?: string,
+  batchSize: number = 10,
+) {
   try {
     console.log("Starting to process existing emails with AI analysis...");
 
@@ -14,8 +17,8 @@ export async function processExistingEmails(accountId?: string, batchSize: numbe
       OR: [
         { aiSummary: null },
         { vectorEmbedding: null },
-        { vectorEmbedding: { isEmpty: true } }
-      ]
+        { vectorEmbedding: { isEmpty: true } },
+      ],
     };
 
     if (accountId) {
@@ -24,10 +27,10 @@ export async function processExistingEmails(accountId?: string, batchSize: numbe
           whereClause,
           {
             thread: {
-              accountId: accountId
-            }
-          }
-        ]
+              accountId: accountId,
+            },
+          },
+        ],
       };
     }
 
@@ -48,7 +51,7 @@ export async function processExistingEmails(accountId?: string, batchSize: numbe
         },
         take: batchSize,
         orderBy: {
-          sentAt: 'desc',
+          sentAt: "desc",
         },
       });
 
@@ -78,28 +81,28 @@ export async function processExistingEmails(accountId?: string, batchSize: numbe
             meetingMessageMethod: email.meetingMessageMethod as any,
             from: {
               address: email.from.address,
-              name: email.from.name || '',
+              name: email.from.name || "",
             },
-            to: email.to.map(t => ({
+            to: email.to.map((t) => ({
               address: t.address,
-              name: t.name || '',
+              name: t.name || "",
             })),
-            cc: email.cc.map(c => ({
+            cc: email.cc.map((c) => ({
               address: c.address,
-              name: c.name || '',
+              name: c.name || "",
             })),
-            bcc: email.bcc.map(b => ({
+            bcc: email.bcc.map((b) => ({
               address: b.address,
-              name: b.name || '',
+              name: b.name || "",
             })),
-            replyTo: email.replyTo.map(r => ({
+            replyTo: email.replyTo.map((r) => ({
               address: r.address,
-              name: r.name || '',
+              name: r.name || "",
             })),
             hasAttachments: email.hasAttachments,
             body: email.body || undefined,
             bodySnippet: email.bodySnippet || undefined,
-            attachments: email.attachments.map(a => ({
+            attachments: email.attachments.map((a) => ({
               id: a.id,
               name: a.name,
               mimeType: a.mimeType,
@@ -135,13 +138,14 @@ export async function processExistingEmails(accountId?: string, batchSize: numbe
           processed++;
           totalProcessed++;
 
-          console.log(`✓ Processed email: ${email.subject} (${totalProcessed} total)`);
+          console.log(
+            `✓ Processed email: ${email.subject} (${totalProcessed} total)`,
+          );
 
           // Add a small delay to avoid overwhelming the AI service
           if (processed % 5 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-
         } catch (error) {
           console.error(`Error processing email ${email.id}:`, error);
           // Continue with next email
@@ -149,14 +153,15 @@ export async function processExistingEmails(accountId?: string, batchSize: numbe
       }
 
       console.log(`Completed batch. Total processed: ${totalProcessed}`);
-      
+
       // Add delay between batches
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
-    console.log(`Finished processing emails. Total processed: ${totalProcessed}`);
+    console.log(
+      `Finished processing emails. Total processed: ${totalProcessed}`,
+    );
     return { success: true, totalProcessed };
-
   } catch (error) {
     console.error("Error processing existing emails:", error);
     return { success: false, error: error.message };
@@ -172,23 +177,23 @@ export async function getEmailProcessingStats(accountId?: string) {
     if (accountId) {
       whereClause = {
         thread: {
-          accountId: accountId
-        }
+          accountId: accountId,
+        },
       };
     }
 
     const totalEmails = await db.email.count({ where: whereClause });
-    
+
     const emailsWithAnalysis = await db.email.count({
       where: {
         AND: [
           whereClause,
           {
             aiSummary: { not: null },
-            vectorEmbedding: { not: null }
-          }
-        ]
-      }
+            vectorEmbedding: { not: null },
+          },
+        ],
+      },
     });
 
     const emailsNeedingAnalysis = totalEmails - emailsWithAnalysis;
@@ -197,7 +202,10 @@ export async function getEmailProcessingStats(accountId?: string) {
       totalEmails,
       emailsWithAnalysis,
       emailsNeedingAnalysis,
-      percentageComplete: totalEmails > 0 ? Math.round((emailsWithAnalysis / totalEmails) * 100) : 0
+      percentageComplete:
+        totalEmails > 0
+          ? Math.round((emailsWithAnalysis / totalEmails) * 100)
+          : 0,
     };
   } catch (error) {
     console.error("Error getting email processing stats:", error);

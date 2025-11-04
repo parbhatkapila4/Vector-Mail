@@ -1,48 +1,48 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { AlertCircle, RefreshCw, Home } from 'lucide-react'
-import Link from 'next/link'
+import { useEffect } from "react";
+import { AlertCircle, RefreshCw, Home } from "lucide-react";
+import Link from "next/link";
 
 export default function Error({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Application error:', error)
-  }, [error])
+    console.error("Application error:", error);
+  }, [error]);
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-gradient-to-br from-purple-900/20 to-amber-900/20 border border-purple-500/30 rounded-2xl p-8 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-black p-4">
+      <div className="w-full max-w-md rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-amber-900/20 p-8 text-center">
         <div className="mb-6 flex justify-center">
-          <div className="p-4 bg-red-500/20 rounded-full">
-            <AlertCircle className="w-12 h-12 text-red-400" />
+          <div className="rounded-full bg-red-500/20 p-4">
+            <AlertCircle className="h-12 w-12 text-red-400" />
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-2">
+        <h1 className="mb-2 text-2xl font-bold text-white">
           Something went wrong!
         </h1>
 
-        <p className="text-gray-400 mb-6">
+        <p className="mb-6 text-gray-400">
           We encountered an unexpected error. Please try again.
         </p>
 
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="mb-6 text-left">
-            <summary className="cursor-pointer text-purple-400 hover:text-purple-300 mb-2">
+            <summary className="mb-2 cursor-pointer text-purple-400 hover:text-purple-300">
               Error Details (Development Only)
             </summary>
-            <div className="bg-black/50 p-4 rounded-lg overflow-auto max-h-48">
-              <p className="text-red-400 text-sm font-mono break-all">
+            <div className="max-h-48 overflow-auto rounded-lg bg-black/50 p-4">
+              <p className="break-all font-mono text-sm text-red-400">
                 {error.message}
               </p>
               {error.digest && (
-                <p className="text-gray-500 text-xs mt-2">
+                <p className="mt-2 text-xs text-gray-500">
                   Error ID: {error.digest}
                 </p>
               )}
@@ -50,24 +50,23 @@ export default function Error({
           </details>
         )}
 
-        <div className="flex gap-3 justify-center">
+        <div className="flex justify-center gap-3">
           <button
             onClick={() => reset()}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all"
+            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-3 font-semibold text-white transition-all hover:shadow-lg hover:shadow-purple-500/50"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="h-4 w-4" />
             Try Again
           </button>
 
           <Link href="/">
-            <button className="flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition-all border border-purple-500/30">
-              <Home className="w-4 h-4" />
+            <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/10 px-6 py-3 font-semibold text-white transition-all hover:bg-white/20">
+              <Home className="h-4 w-4" />
               Go Home
             </button>
           </Link>
         </div>
       </div>
     </div>
-  )
+  );
 }
-

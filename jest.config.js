@@ -1,26 +1,26 @@
-const nextJest = require('next/jest')
+const nextJest = require("next/jest");
 
 const createJestConfig = nextJest({
-  dir: './',
-})
+  dir: "./",
+});
 
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  testEnvironment: "jest-environment-jsdom",
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
   collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/*.stories.{js,jsx,ts,tsx}',
-    '!src/**/__tests__/**',
+    "src/**/*.{js,jsx,ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/*.stories.{js,jsx,ts,tsx}",
+    "!src/**/__tests__/**",
   ],
   testMatch: [
-    '**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',
-    '**/*.(test|spec).(js|jsx|ts|tsx)',
+    "**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)",
+    "**/*.(test|spec).(js|jsx|ts|tsx)",
   ],
-  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/e2e/'],
+  testPathIgnorePatterns: ["/node_modules/", "/.next/", "/e2e/"],
   coverageThreshold: {
     global: {
       branches: 50,
@@ -29,7 +29,6 @@ const customJestConfig = {
       statements: 50,
     },
   },
-}
+};
 
-module.exports = createJestConfig(customJestConfig)
-
+module.exports = createJestConfig(customJestConfig);

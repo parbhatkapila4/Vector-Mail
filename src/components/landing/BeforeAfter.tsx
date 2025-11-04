@@ -42,50 +42,53 @@ const comparison = {
 
 export function BeforeAfter() {
   return (
-    <section className="relative bg-white py-32 overflow-hidden">
+    <section className="relative overflow-hidden bg-white py-32">
       {/* Grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:64px_64px]"></div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="mb-20 text-center"
         >
-          <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-black mb-6 tracking-tight">
-            The difference is <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">night and day</span>
+          <h2 className="mb-6 text-5xl font-bold tracking-tight text-black sm:text-6xl lg:text-7xl">
+            The difference is{" "}
+            <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              night and day
+            </span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="mx-auto max-w-3xl text-xl text-gray-600">
             See how VectorMail transforms your entire email workflow
           </p>
         </motion.div>
 
         {/* Comparison Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+        <div className="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Before */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="relative bg-gradient-to-b from-red-50 to-red-50/30 rounded-3xl p-8 border-2 border-red-200"
+            className="relative rounded-3xl border-2 border-red-200 bg-gradient-to-b from-red-50 to-red-50/30 p-8"
           >
-            <div className="absolute -top-4 left-8 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
-              <TrendingDown className="w-4 h-4" />
+            <div className="absolute -top-4 left-8 flex items-center gap-2 rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white">
+              <TrendingDown className="h-4 w-4" />
               {comparison.before.subtitle}
             </div>
 
-            <div className="mt-6 mb-8">
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="mb-8 mt-6">
+              <h3 className="mb-2 text-3xl font-bold text-gray-900">
                 {comparison.before.title}
               </h3>
               <p className="text-gray-600">Frustrating and time-consuming</p>
             </div>
 
-            <div className="space-y-4 mb-8">
+            <div className="mb-8 space-y-4">
               {comparison.before.items.map((item, index) => (
                 <motion.div
                   key={index}
@@ -95,16 +98,18 @@ export function BeforeAfter() {
                   viewport={{ once: true }}
                   className="flex items-start gap-3 text-gray-700"
                 >
-                  <item.icon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
                   <span>{item.text}</span>
                 </motion.div>
               ))}
             </div>
 
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t-2 border-red-200">
+            <div className="grid grid-cols-3 gap-4 border-t-2 border-red-200 pt-6">
               {comparison.before.stats.map((stat, index) => (
                 <div key={index} className="text-center">
-                  <div className="text-2xl font-bold text-red-600 mb-1">{stat.value}</div>
+                  <div className="mb-1 text-2xl font-bold text-red-600">
+                    {stat.value}
+                  </div>
                   <div className="text-xs text-gray-600">{stat.label}</div>
                 </div>
               ))}
@@ -117,21 +122,21 @@ export function BeforeAfter() {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="relative bg-gradient-to-b from-green-50 to-green-50/30 rounded-3xl p-8 border-2 border-green-200 shadow-xl"
+            className="relative rounded-3xl border-2 border-green-200 bg-gradient-to-b from-green-50 to-green-50/30 p-8 shadow-xl"
           >
-            <div className="absolute -top-4 left-8 bg-green-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
+            <div className="absolute -top-4 left-8 flex items-center gap-2 rounded-full bg-green-500 px-4 py-2 text-sm font-bold text-white">
+              <TrendingUp className="h-4 w-4" />
               {comparison.after.subtitle}
             </div>
 
-            <div className="mt-6 mb-8">
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="mb-8 mt-6">
+              <h3 className="mb-2 text-3xl font-bold text-gray-900">
                 {comparison.after.title}
               </h3>
               <p className="text-gray-600">Effortless and intelligent</p>
             </div>
 
-            <div className="space-y-4 mb-8">
+            <div className="mb-8 space-y-4">
               {comparison.after.items.map((item, index) => (
                 <motion.div
                   key={index}
@@ -141,16 +146,18 @@ export function BeforeAfter() {
                   viewport={{ once: true }}
                   className="flex items-start gap-3 text-gray-700"
                 >
-                  <item.icon className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
                   <span className="font-medium">{item.text}</span>
                 </motion.div>
               ))}
             </div>
 
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t-2 border-green-200">
+            <div className="grid grid-cols-3 gap-4 border-t-2 border-green-200 pt-6">
               {comparison.after.stats.map((stat, index) => (
                 <div key={index} className="text-center">
-                  <div className="text-2xl font-bold text-green-600 mb-1">{stat.value}</div>
+                  <div className="mb-1 text-2xl font-bold text-green-600">
+                    {stat.value}
+                  </div>
                   <div className="text-xs text-gray-600">{stat.label}</div>
                 </div>
               ))}
@@ -164,18 +171,19 @@ export function BeforeAfter() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           viewport={{ once: true }}
-          className="text-center bg-gradient-to-r from-blue-500 to-cyan-500 rounded-3xl p-12 text-white"
+          className="rounded-3xl bg-gradient-to-r from-blue-500 to-cyan-500 p-12 text-center text-white"
         >
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-7xl font-bold mb-4"
+            className="mb-4 text-7xl font-bold"
           >
             85%
           </motion.div>
-          <p className="text-2xl font-semibold mb-2">Time Saved</p>
-          <p className="text-blue-100 text-lg max-w-2xl mx-auto">
-            Our users save an average of 10+ hours per week with VectorMail's AI automation
+          <p className="mb-2 text-2xl font-semibold">Time Saved</p>
+          <p className="mx-auto max-w-2xl text-lg text-blue-100">
+            Our users save an average of 10+ hours per week with VectorMail's AI
+            automation
           </p>
         </motion.div>
       </div>

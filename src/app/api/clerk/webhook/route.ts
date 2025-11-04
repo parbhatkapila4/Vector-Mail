@@ -6,7 +6,7 @@ import { Webhook } from "svix";
 export async function POST(request: NextRequest) {
   try {
     const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-    
+
     if (!WEBHOOK_SECRET) {
       console.error("Missing CLERK_WEBHOOK_SECRET environment variable");
       return new Response("Webhook secret not configured", { status: 500 });
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       return new Response("Webhook verification failed", { status: 400 });
     }
 
-    const { data, type } = evt as { data: any, type: string };
+    const { data, type } = evt as { data: any; type: string };
 
     if (!data || !data.id) {
       console.error("Invalid webhook data: missing data or id");
@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
 
     if (type === "user.created") {
       console.log("Processing user.created webhook for user:", data.id);
-      
+
       const emailAddress = data.email_addresses?.[0]?.email_address;
-      
+
       if (!emailAddress) {
         console.error("No email address found for user:", data.id);
         return new Response("No email address", { status: 400 });
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
             lastName,
             imageUrl,
             id,
-          }
+          },
         });
         console.log("User upserted successfully:", id);
       } catch (dbError) {
@@ -92,4 +92,4 @@ export async function POST(request: NextRequest) {
     console.error("Webhook error:", error);
     return new Response("Internal server error", { status: 500 });
   }
-}   
+}

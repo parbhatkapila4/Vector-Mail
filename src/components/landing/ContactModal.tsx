@@ -1,7 +1,19 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mail, MessageSquare, Phone, Send, Heart, Clock, MapPin, Linkedin, Twitter, Github } from "lucide-react";
+import {
+  X,
+  Mail,
+  MessageSquare,
+  Phone,
+  Send,
+  Heart,
+  Clock,
+  MapPin,
+  Linkedin,
+  Twitter,
+  Github,
+} from "lucide-react";
 import { useEffect } from "react";
 
 const contactMethods = [
@@ -13,7 +25,7 @@ const contactMethods = [
     color: "from-blue-500 to-cyan-500",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200",
-    responseTime: "Response within 24 hours"
+    responseTime: "Response within 24 hours",
   },
   {
     icon: MessageSquare,
@@ -23,7 +35,7 @@ const contactMethods = [
     color: "from-purple-500 to-pink-500",
     bgColor: "bg-purple-50",
     borderColor: "border-purple-200",
-    responseTime: "Response within 48 hours"
+    responseTime: "Response within 48 hours",
   },
   {
     icon: Phone,
@@ -33,15 +45,15 @@ const contactMethods = [
     color: "from-green-500 to-teal-500",
     bgColor: "bg-green-50",
     borderColor: "border-green-200",
-    responseTime: "Response within 12 hours"
-  }
+    responseTime: "Response within 12 hours",
+  },
 ];
 
 const officeInfo = {
   address: "123 AI Boulevard, Tech District",
   city: "San Francisco, CA 94105",
   country: "United States",
-  hours: "Monday - Friday: 9:00 AM - 6:00 PM PST"
+  hours: "Monday - Friday: 9:00 AM - 6:00 PM PST",
 };
 
 const socialLinks = [
@@ -49,20 +61,20 @@ const socialLinks = [
     icon: Linkedin,
     name: "LinkedIn",
     url: "#",
-    color: "hover:text-blue-600"
+    color: "hover:text-blue-600",
   },
   {
     icon: Twitter,
     name: "Twitter",
     url: "#",
-    color: "hover:text-sky-500"
+    color: "hover:text-sky-500",
   },
   {
     icon: Github,
     name: "GitHub",
     url: "#",
-    color: "hover:text-gray-900"
-  }
+    color: "hover:text-gray-900",
+  },
 ];
 
 interface ContactModalProps {
@@ -95,7 +107,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90]"
+            className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -104,24 +116,24 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed inset-y-4 md:inset-y-8 lg:inset-y-16 xl:inset-y-20 inset-x-4 sm:inset-x-8 md:inset-x-12 lg:inset-x-20 xl:inset-x-32 z-[95] overflow-hidden"
+            className="fixed inset-x-4 inset-y-4 z-[95] overflow-hidden sm:inset-x-8 md:inset-x-12 md:inset-y-8 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-20"
           >
-            <div className="w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
               {/* Header */}
-              <div className="relative bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6 border-b border-gray-200">
-                <div className="text-center pr-16">
+              <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6">
+                <div className="pr-16 text-center">
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-white/50 mb-3"
+                    className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/80 px-4 py-2 backdrop-blur-sm"
                   >
-                    <Send className="w-4 h-4 text-blue-600" />
+                    <Send className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-semibold text-gray-700">
                       Get in Touch
                     </span>
                   </motion.div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                  <h2 className="mb-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-3xl font-bold text-transparent">
                     Contact Us
                   </h2>
                   <p className="text-gray-600">
@@ -130,14 +142,14 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 </div>
                 <button
                   onClick={onClose}
-                  className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white border border-white/50 flex items-center justify-center transition-all duration-200 hover:scale-105 z-10"
+                  className="absolute right-6 top-6 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white"
                 >
-                  <X className="w-5 h-5 text-gray-600" />
+                  <X className="h-5 w-5 text-gray-600" />
                 </button>
               </div>
 
               <div
-                className="overflow-y-auto h-full"
+                className="h-full overflow-y-auto"
                 style={{
                   scrollbarWidth: "thin",
                   scrollbarColor: "#d1d5db #f3f4f6",
@@ -162,8 +174,8 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 <div className="p-8 pb-24">
                   {/* Contact Methods */}
                   <div className="mb-16">
-                    <div className="text-center mb-10">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    <div className="mb-10 text-center">
+                      <h3 className="mb-2 text-2xl font-bold text-gray-900">
                         Choose Your Preferred Contact Method
                       </h3>
                       <p className="text-gray-600">
@@ -171,7 +183,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         concerns
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                       {contactMethods.map((method, index) => (
                         <motion.div
                           key={method.title}
@@ -179,32 +191,32 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: index * 0.1 }}
                           whileHover={{ y: -5, scale: 1.02 }}
-                          className={`${method.bgColor} ${method.borderColor} border-2 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 relative overflow-hidden group`}
+                          className={`${method.bgColor} ${method.borderColor} group relative overflow-hidden rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-xl`}
                         >
                           {/* Background decoration */}
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/30 to-transparent rounded-full -translate-y-10 translate-x-10"></div>
+                          <div className="absolute right-0 top-0 h-20 w-20 -translate-y-10 translate-x-10 rounded-full bg-gradient-to-br from-white/30 to-transparent"></div>
 
                           <div className="relative z-10">
                             <div
-                              className={`w-14 h-14 rounded-xl bg-gradient-to-r ${method.color} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                              className={`h-14 w-14 rounded-xl bg-gradient-to-r ${method.color} mb-4 flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110`}
                             >
-                              <method.icon className="w-7 h-7 text-white" />
+                              <method.icon className="h-7 w-7 text-white" />
                             </div>
-                            <h4 className="text-xl font-bold text-gray-800 mb-2">
+                            <h4 className="mb-2 text-xl font-bold text-gray-800">
                               {method.title}
                             </h4>
-                            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                            <p className="mb-4 text-sm leading-relaxed text-gray-600">
                               {method.description}
                             </p>
                             <a
                               href={`mailto:${method.contact}`}
-                              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/50 text-blue-600 hover:text-blue-800 font-semibold text-sm transition-all duration-200 hover:bg-white hover:shadow-md mb-3 break-all"
+                              className="mb-3 inline-flex items-center gap-2 break-all rounded-lg border border-white/50 bg-white/80 px-4 py-2 text-sm font-semibold text-blue-600 backdrop-blur-sm transition-all duration-200 hover:bg-white hover:text-blue-800 hover:shadow-md"
                             >
-                              <Mail className="w-4 h-4 flex-shrink-0" />
+                              <Mail className="h-4 w-4 flex-shrink-0" />
                               <span>{method.contact}</span>
                             </a>
                             <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <Clock className="w-3 h-3" />
+                              <Clock className="h-3 w-3" />
                               <span>{method.responseTime}</span>
                             </div>
                           </div>
@@ -215,30 +227,30 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
 
                   {/* Office Information */}
                   <div className="mb-16">
-                    <div className="text-center mb-10">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    <div className="mb-10 text-center">
+                      <h3 className="mb-2 text-2xl font-bold text-gray-900">
                         Office Information
                       </h3>
                       <p className="text-gray-600">
                         Visit us or reach out during business hours
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
                       <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 }}
-                        className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100"
+                        className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-purple-50 p-6"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                            <MapPin className="w-6 h-6 text-white" />
+                          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-purple-500">
+                            <MapPin className="h-6 w-6 text-white" />
                           </div>
                           <div>
-                            <h4 className="font-bold text-gray-900 mb-2">
+                            <h4 className="mb-2 font-bold text-gray-900">
                               Our Address
                             </h4>
-                            <p className="text-sm text-gray-600 leading-relaxed">
+                            <p className="text-sm leading-relaxed text-gray-600">
                               {officeInfo.address}
                               <br />
                               {officeInfo.city}
@@ -253,20 +265,20 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="bg-gradient-to-br from-green-50 to-teal-50 rounded-2xl p-6 border border-green-100"
+                        className="rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-teal-50 p-6"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center flex-shrink-0">
-                            <Clock className="w-6 h-6 text-white" />
+                          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-green-500 to-teal-500">
+                            <Clock className="h-6 w-6 text-white" />
                           </div>
                           <div>
-                            <h4 className="font-bold text-gray-900 mb-2">
+                            <h4 className="mb-2 font-bold text-gray-900">
                               Business Hours
                             </h4>
-                            <p className="text-sm text-gray-600 leading-relaxed">
+                            <p className="text-sm leading-relaxed text-gray-600">
                               {officeInfo.hours}
                             </p>
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="mt-2 text-xs text-gray-500">
                               Weekend support available via email
                             </p>
                           </div>
@@ -280,49 +292,49 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.6 }}
-                    className="relative bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-8 text-center overflow-hidden"
+                    className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8 text-center"
                   >
                     {/* Background decorations */}
-                    <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full -translate-x-16 -translate-y-16"></div>
-                    <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-pink-200/30 to-purple-200/30 rounded-full translate-x-20 translate-y-20"></div>
+                    <div className="absolute left-0 top-0 h-32 w-32 -translate-x-16 -translate-y-16 rounded-full bg-gradient-to-br from-blue-200/30 to-purple-200/30"></div>
+                    <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-20 translate-y-20 rounded-full bg-gradient-to-tl from-pink-200/30 to-purple-200/30"></div>
 
                     <div className="relative z-10">
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ duration: 0.5, delay: 0.8 }}
-                        className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full border border-white/50 mb-6"
+                        className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/50 bg-white/80 px-6 py-3 backdrop-blur-sm"
                       >
-                        <Heart className="w-5 h-5 text-pink-500" />
-                        <span className="text-gray-700 font-semibold">
+                        <Heart className="h-5 w-5 text-pink-500" />
+                        <span className="font-semibold text-gray-700">
                           We&apos;d love to hear from you
                         </span>
                       </motion.div>
 
-                      <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+                      <h3 className="mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-3xl font-bold text-transparent">
                         Ready to Get Started?
                       </h3>
 
-                      <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+                      <p className="mx-auto mb-8 max-w-2xl text-lg text-gray-600">
                         Whether you have questions, need support, or want to
                         explore our enterprise solutions, we&apos;re here to
                         help you transform your email experience.
                       </p>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto mb-8">
+                      <div className="mx-auto mb-8 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3">
                         <motion.div
                           whileHover={{ scale: 1.05 }}
-                          className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 hover:bg-white/80 transition-all duration-300"
+                          className="rounded-2xl border border-white/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:bg-white/80"
                         >
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                            <Mail className="w-6 h-6 text-white" />
+                          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500">
+                            <Mail className="h-6 w-6 text-white" />
                           </div>
-                          <h4 className="font-bold text-gray-800 mb-2">
+                          <h4 className="mb-2 font-bold text-gray-800">
                             General
                           </h4>
                           <a
                             href="mailto:help@productionsolution.net"
-                            className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
+                            className="break-all text-sm font-medium text-blue-600 transition-colors hover:text-blue-800"
                           >
                             hello@vectormail.dev
                           </a>
@@ -330,17 +342,17 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
 
                         <motion.div
                           whileHover={{ scale: 1.05 }}
-                          className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 hover:bg-white/80 transition-all duration-300"
+                          className="rounded-2xl border border-white/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:bg-white/80"
                         >
-                          <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-teal-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                            <MessageSquare className="w-6 h-6 text-white" />
+                          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-green-500 to-teal-500">
+                            <MessageSquare className="h-6 w-6 text-white" />
                           </div>
-                          <h4 className="font-bold text-gray-800 mb-2">
+                          <h4 className="mb-2 font-bold text-gray-800">
                             Support
                           </h4>
                           <a
                             href="mailto:help@productionsolution.net"
-                            className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
+                            className="break-all text-sm font-medium text-blue-600 transition-colors hover:text-blue-800"
                           >
                             help@vectormail.dev
                           </a>
@@ -348,17 +360,17 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
 
                         <motion.div
                           whileHover={{ scale: 1.05 }}
-                          className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 hover:bg-white/80 transition-all duration-300"
+                          className="rounded-2xl border border-white/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:bg-white/80"
                         >
-                          <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                            <Phone className="w-6 h-6 text-white" />
+                          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-pink-500">
+                            <Phone className="h-6 w-6 text-white" />
                           </div>
-                          <h4 className="font-bold text-gray-800 mb-2">
+                          <h4 className="mb-2 font-bold text-gray-800">
                             Sales
                           </h4>
                           <a
                             href="mailto:help@productionsolution.net"
-                            className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm break-all"
+                            className="break-all text-sm font-medium text-blue-600 transition-colors hover:text-blue-800"
                           >
                             sales@vectormail.dev
                           </a>
@@ -367,7 +379,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
 
                       {/* Social Links */}
                       <div className="flex items-center justify-center gap-4">
-                        <span className="text-sm text-gray-600 font-medium">
+                        <span className="text-sm font-medium text-gray-600">
                           Follow us:
                         </span>
                         <div className="flex gap-3">
@@ -375,10 +387,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                             <a
                               key={social.name}
                               href={social.url}
-                              className={`w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/50 flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-md ${social.color}`}
+                              className={`flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:shadow-md ${social.color}`}
                               aria-label={social.name}
                             >
-                              <social.icon className="w-5 h-5" />
+                              <social.icon className="h-5 w-5" />
                             </a>
                           ))}
                         </div>

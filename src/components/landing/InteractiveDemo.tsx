@@ -47,40 +47,45 @@ export function InteractiveDemo() {
   const [activeFeature, setActiveFeature] = useState(0);
 
   return (
-    <section className="relative bg-white py-32 overflow-hidden">
+    <section className="relative overflow-hidden bg-white py-32">
       {/* Grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:80px_80px]"></div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="mb-20 text-center"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/5 backdrop-blur-xl border border-black/10 mb-8"
+            className="mb-8 inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/5 px-4 py-2 backdrop-blur-xl"
           >
-            <Sparkles className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-medium text-gray-700">Built for performance</span>
+            <Sparkles className="h-4 w-4 text-blue-500" />
+            <span className="text-sm font-medium text-gray-700">
+              Built for performance
+            </span>
           </motion.div>
 
-          <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-black mb-6 tracking-tight">
-            Designed for <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">power users</span>
+          <h2 className="mb-6 text-5xl font-bold tracking-tight text-black sm:text-6xl lg:text-7xl">
+            Designed for{" "}
+            <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              power users
+            </span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="mx-auto max-w-3xl text-xl text-gray-600">
             Every feature built with speed, intelligence, and efficiency in mind
           </p>
         </motion.div>
 
         {/* Interactive Demo Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <div className="mb-16 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {demoFeatures.map((feature, index) => (
             <motion.div
               key={feature.id}
@@ -92,43 +97,43 @@ export function InteractiveDemo() {
               onHoverStart={() => setActiveFeature(index)}
               className={`group relative bg-gradient-to-b ${
                 activeFeature === index
-                  ? 'from-black/10 to-black/5'
-                  : 'from-black/5 to-black/[0.02]'
-              } backdrop-blur-xl rounded-3xl p-8 border-2 ${
-                activeFeature === index
-                  ? 'border-black/20'
-                  : 'border-black/10'
-              } transition-all duration-300 cursor-pointer overflow-hidden`}
+                  ? "from-black/10 to-black/5"
+                  : "from-black/5 to-black/[0.02]"
+              } rounded-3xl border-2 p-8 backdrop-blur-xl ${
+                activeFeature === index ? "border-black/20" : "border-black/10"
+              } cursor-pointer overflow-hidden transition-all duration-300`}
             >
               {/* Animated gradient background */}
               <motion.div
-                className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                animate={activeFeature === index ? { opacity: 0.1 } : { opacity: 0 }}
+                className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 transition-opacity duration-300 group-hover:opacity-10`}
+                animate={
+                  activeFeature === index ? { opacity: 0.1 } : { opacity: 0 }
+                }
               />
 
               {/* Icon */}
               <motion.div
                 whileHover={{ rotate: 360, scale: 1.1 }}
                 transition={{ duration: 0.6 }}
-                className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${feature.color} mb-6 shadow-lg`}
+                className={`inline-flex rounded-2xl bg-gradient-to-br p-4 ${feature.color} mb-6 shadow-lg`}
               >
-                <feature.icon className="w-8 h-8 text-white" />
+                <feature.icon className="h-8 w-8 text-white" />
               </motion.div>
 
               {/* Content */}
-              <h3 className="text-2xl font-bold text-black mb-2">
+              <h3 className="mb-2 text-2xl font-bold text-black">
                 {feature.title}
               </h3>
-              <p className="text-gray-600 mb-6">
-                {feature.description}
-              </p>
+              <p className="mb-6 text-gray-600">{feature.description}</p>
 
               {/* Metric */}
               <div className="space-y-1">
-                <div className={`text-4xl font-bold bg-gradient-to-r ${feature.color} bg-clip-text text-transparent`}>
+                <div
+                  className={`bg-gradient-to-r text-4xl font-bold ${feature.color} bg-clip-text text-transparent`}
+                >
                   {feature.metric}
                 </div>
-                <div className="text-sm text-gray-500 font-medium uppercase tracking-wider">
+                <div className="text-sm font-medium uppercase tracking-wider text-gray-500">
                   {feature.label}
                 </div>
               </div>
@@ -140,7 +145,8 @@ export function InteractiveDemo() {
                 whileHover={{ x: "100%" }}
                 transition={{ duration: 0.8 }}
                 style={{
-                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
                 }}
               />
             </motion.div>
@@ -153,20 +159,21 @@ export function InteractiveDemo() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           viewport={{ once: true }}
-          className="relative bg-black rounded-3xl p-8 md:p-12 border border-gray-800 overflow-hidden"
+          className="relative overflow-hidden rounded-3xl border border-gray-800 bg-black p-8 md:p-12"
         >
           {/* Gradient accents */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-b from-blue-600/20 to-transparent blur-3xl" />
-          
+          <div className="absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 bg-gradient-to-b from-blue-600/20 to-transparent blur-3xl" />
+
           <div className="relative text-center">
-            <h3 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            <h3 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
               Built with cutting-edge technology
             </h3>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-12">
-              We're leveraging the latest in AI and machine learning to create something truly special
+            <p className="mx-auto mb-12 max-w-2xl text-xl text-gray-400">
+              We're leveraging the latest in AI and machine learning to create
+              something truly special
             </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
               {[
                 { value: "Advanced", label: "AI Models", icon: "🤖" },
                 { value: "Real-time", label: "Processing", icon: "⚡" },
@@ -179,15 +186,15 @@ export function InteractiveDemo() {
                   transition={{ delay: 0.6 + index * 0.1 }}
                   viewport={{ once: true }}
                   whileHover={{ scale: 1.05 }}
-                  className="text-center group cursor-default"
+                  className="group cursor-default text-center"
                 >
-                  <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">
+                  <div className="mb-3 text-4xl transition-transform group-hover:scale-110">
                     {stat.icon}
                   </div>
-                  <div className="text-3xl font-bold text-white mb-2 tracking-tight">
+                  <div className="mb-2 text-3xl font-bold tracking-tight text-white">
                     {stat.value}
                   </div>
-                  <div className="text-sm text-gray-400 uppercase tracking-wider font-medium">
+                  <div className="text-sm font-medium uppercase tracking-wider text-gray-400">
                     {stat.label}
                   </div>
                 </motion.div>

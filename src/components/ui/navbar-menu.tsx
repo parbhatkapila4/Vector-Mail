@@ -25,15 +25,15 @@ export const MenuItem = ({
   children?: React.ReactNode;
 }) => {
   return (
-    <div onMouseEnter={() => setActive(item)} className="relative ">
+    <div onMouseEnter={() => setActive(item)} className="relative">
       <motion.p
         transition={{ duration: 0.3 }}
-        className="cursor-pointer text-white hover:text-purple-300 px-4 py-2 relative group"
+        className="group relative cursor-pointer px-4 py-2 text-white hover:text-purple-300"
         whileHover={{ scale: 1.05 }}
       >
         {item}
         <motion.span
-          className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 origin-left"
+          className="absolute bottom-0 left-0 h-0.5 w-full origin-left bg-gradient-to-r from-purple-500 to-pink-500"
           initial={{ scaleX: 0 }}
           whileHover={{ scaleX: 1 }}
           transition={{ duration: 0.3 }}
@@ -46,18 +46,19 @@ export const MenuItem = ({
           transition={transition}
         >
           {active === item && (
-            <div className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4">
+            <div className="absolute left-1/2 top-[calc(100%_+_1.2rem)] -translate-x-1/2 transform pt-4">
               <motion.div
                 transition={transition}
                 layoutId="active" // layoutId ensures smooth animation
-                className="bg-black/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-purple-500/30 shadow-2xl shadow-purple-500/20"
+                className="overflow-hidden rounded-2xl border border-purple-500/30 bg-black/90 shadow-2xl shadow-purple-500/20 backdrop-blur-xl"
                 style={{
-                  background: "linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,0,50,0.9) 100%)"
+                  background:
+                    "linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,0,50,0.9) 100%)",
                 }}
               >
                 <motion.div
                   layout // layout ensures smooth animation
-                  className="w-max h-full p-4"
+                  className="h-full w-max p-4"
                 >
                   {children}
                 </motion.div>
@@ -80,9 +81,10 @@ export const Menu = ({
   return (
     <nav
       onMouseLeave={() => setActive(null)} // resets the state
-      className="relative rounded-full border border-purple-500/30 bg-black/80 backdrop-blur-xl shadow-2xl shadow-purple-500/10 flex justify-center space-x-4 px-8 py-6"
+      className="relative flex justify-center space-x-4 rounded-full border border-purple-500/30 bg-black/80 px-8 py-6 shadow-2xl shadow-purple-500/10 backdrop-blur-xl"
       style={{
-        background: "linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(30,0,50,0.8) 100%)"
+        background:
+          "linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(30,0,50,0.8) 100%)",
       }}
     >
       {children}
@@ -111,12 +113,8 @@ export const ProductItem = ({
         className="flex-shrink-0 rounded-md shadow-2xl"
       />
       <div>
-        <h4 className="text-xl font-bold mb-1 text-white">
-          {title}
-        </h4>
-        <p className="text-neutral-300 text-sm max-w-[10rem]">
-          {description}
-        </p>
+        <h4 className="mb-1 text-xl font-bold text-white">{title}</h4>
+        <p className="max-w-[10rem] text-sm text-neutral-300">{description}</p>
       </div>
     </Link>
   );
@@ -126,7 +124,7 @@ export const HoveredLink = ({ children, ...rest }: any) => {
   return (
     <Link
       {...rest}
-      className="text-neutral-300 hover:text-purple-300 transition-all duration-200 hover:translate-x-1 inline-block"
+      className="inline-block text-neutral-300 transition-all duration-200 hover:translate-x-1 hover:text-purple-300"
     >
       {children}
     </Link>

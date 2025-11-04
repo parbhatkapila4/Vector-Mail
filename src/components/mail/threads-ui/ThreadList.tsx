@@ -1,156 +1,170 @@
-import React, { useRef, useCallback, useMemo } from "react"
-import { motion } from "framer-motion"
-import { formatDistanceToNow, format } from "date-fns"
-import { RefreshCw } from "lucide-react"
+import React, { useRef, useCallback, useMemo } from "react";
+import { motion } from "framer-motion";
+import { formatDistanceToNow, format } from "date-fns";
+import { RefreshCw } from "lucide-react";
 
-import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { api } from "@/trpc/react"
-import useThreads from "@/hooks/use-threads"
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { api } from "@/trpc/react";
+import useThreads from "@/hooks/use-threads";
 
 interface ThreadListProps {
-  onThreadSelect?: (threadId: string) => void
+  onThreadSelect?: (threadId: string) => void;
 }
 
 interface Thread {
-  id: string
-  subject: string
-  lastMessageDate: Date
+  id: string;
+  subject: string;
+  lastMessageDate: Date;
   emails: Array<{
-    from?: { name: string }
-    bodySnippet?: string
-    sysLabels: string[]
-  }>
+    from?: { name: string };
+    bodySnippet?: string;
+    sysLabels: string[];
+  }>;
 }
 
 interface GroupedThreads {
-  [date: string]: Thread[]
+  [date: string]: Thread[];
 }
 
 const LOADING_STATES = {
-  ACCOUNTS: 'accounts',
-  THREADS: 'threads',
-  SYNC: 'sync',
-} as const
+  ACCOUNTS: "accounts",
+  THREADS: "threads",
+  SYNC: "sync",
+} as const;
 
 const CONNECTION_ERROR_MESSAGES = {
-  NO_ACCOUNT: 'No account connected',
-  CONNECT_DESCRIPTION: 'Connect your Google account to start managing your emails with AI-powered features.',
-  CONNECT_BUTTON: 'Connect Google Account',
-} as const
+  NO_ACCOUNT: "No account connected",
+  CONNECT_DESCRIPTION:
+    "Connect your Google account to start managing your emails with AI-powered features.",
+  CONNECT_BUTTON: "Connect Google Account",
+} as const;
 
 export function ThreadList({ onThreadSelect }: ThreadListProps) {
-  const { 
-    threads, 
-    threadId, 
-    setThreadId, 
-    isFetching, 
-    isFetchingNextPage, 
-    hasNextPage, 
+  const {
+    threads,
+    threadId,
+    setThreadId,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
     fetchNextPage,
     accountId,
-    refetch
-  } = useThreads()
-  
-  const { data: accounts, isLoading: accountsLoading } = api.account.getAccounts.useQuery()
-  
+    refetch,
+  } = useThreads();
+
+  const { data: accounts, isLoading: accountsLoading } =
+    api.account.getAccounts.useQuery();
+
   const syncEmailsMutation = api.account.syncEmails.useMutation({
     onSuccess: () => {
-      console.log('Email sync completed, refetching threads...')
-      refetch()
+      console.log("Email sync completed, refetching threads...");
+      refetch();
     },
     onError: (error) => {
-      console.error('Email sync failed:', error)
-    }
-  })
+      console.error("Email sync failed:", error);
+    },
+  });
 
-  const observerRef = useRef<IntersectionObserver | null>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const handleRefresh = useCallback(() => {
     if (accountId) {
-      syncEmailsMutation.mutate({ accountId, forceFullSync: true })
+      syncEmailsMutation.mutate({ accountId, forceFullSync: true });
     }
-  }, [accountId, syncEmailsMutation])
+  }, [accountId, syncEmailsMutation]);
 
   const handleAccountConnection = useCallback(async () => {
     try {
-      const { getAurinkoAuthUrl } = await import('@/lib/aurinko')
-      const url = await getAurinkoAuthUrl('Google')
-      window.location.href = url
+      const { getAurinkoAuthUrl } = await import("@/lib/aurinko");
+      const url = await getAurinkoAuthUrl("Google");
+      window.location.href = url;
     } catch (error) {
-      console.error('Error connecting account:', error)
+      console.error("Error connecting account:", error);
     }
-  }, [])
+  }, []);
 
   const lastThreadElementRef = useCallback(
     (node: HTMLButtonElement) => {
-      if (isFetchingNextPage) return
-      if (observerRef.current) observerRef.current.disconnect()
+      if (isFetchingNextPage) return;
+      if (observerRef.current) observerRef.current.disconnect();
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && hasNextPage) {
-          void fetchNextPage()
+          void fetchNextPage();
         }
-      })
-      if (node) observerRef.current.observe(node)
+      });
+      if (node) observerRef.current.observe(node);
     },
-    [isFetchingNextPage, hasNextPage, fetchNextPage]
-  )
+    [isFetchingNextPage, hasNextPage, fetchNextPage],
+  );
 
   const groupedThreads = useMemo(() => {
-    if (!threads) return {}
-    
-    return threads.reduce((acc: GroupedThreads, thread) => {
-      const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd")
-      if (!acc[date]) {
-        acc[date] = []
-      }
-      acc[date].push(thread)
-      return acc
-    }, {})
-  }, [threads])
+    if (!threads) return {};
 
-  const allThreads = threads ?? []
-  const lastThreadId = allThreads[allThreads.length - 1]?.id
+    return threads.reduce((acc: GroupedThreads, thread) => {
+      const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd");
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(thread);
+      return acc;
+    }, {});
+  }, [threads]);
+
+  const allThreads = threads ?? [];
+  const lastThreadId = allThreads[allThreads.length - 1]?.id;
 
   const renderLoadingState = () => (
     <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] p-8">
+      <div className="flex h-full min-h-[400px] flex-col items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">Loading accounts...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500" />
+          <p className="text-gray-500 dark:text-gray-400">
+            Loading accounts...
+          </p>
         </div>
       </div>
     </div>
-  )
+  );
 
   const renderConnectionPrompt = () => (
     <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] p-8">
-        <div className="text-center max-w-md">
+      <div className="flex h-full min-h-[400px] flex-col items-center justify-center p-8">
+        <div className="max-w-md text-center">
           <div className="mb-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+              <svg
+                className="h-8 w-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <h2 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">
               {CONNECTION_ERROR_MESSAGES.NO_ACCOUNT}
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <p className="mb-6 text-gray-500 dark:text-gray-400">
               {CONNECTION_ERROR_MESSAGES.CONNECT_DESCRIPTION}
             </p>
           </div>
           <button
             onClick={handleAccountConnection}
-            className="px-6 py-3 bg-black text-white rounded-lg font-medium transition-colors duration-200 hover:bg-gray-800"
+            className="rounded-lg bg-black px-6 py-3 font-medium text-white transition-colors duration-200 hover:bg-gray-800"
           >
             {CONNECTION_ERROR_MESSAGES.CONNECT_BUTTON}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 
   const renderThreadItem = (thread: Thread, isLast: boolean) => (
     <button
@@ -158,11 +172,11 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       ref={isLast ? lastThreadElementRef : null}
       className={cn(
         "relative flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800",
-        threadId === thread.id && "bg-blue-50 dark:bg-blue-900/20"
+        threadId === thread.id && "bg-blue-50 dark:bg-blue-900/20",
       )}
       onClick={() => {
-        setThreadId(thread.id)
-        onThreadSelect?.(thread.id)
+        setThreadId(thread.id);
+        onThreadSelect?.(thread.id);
       }}
     >
       {threadId === thread.id && (
@@ -195,9 +209,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
             })}
           </div>
         </div>
-        <div className="line-clamp-2 text-xs font-medium">
-          {thread.subject}
-        </div>
+        <div className="line-clamp-2 text-xs font-medium">{thread.subject}</div>
         {thread.emails.at(-1)?.bodySnippet && (
           <div className="line-clamp-2 text-xs text-muted-foreground">
             {thread.emails.at(-1)?.bodySnippet}
@@ -205,64 +217,78 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         )}
         <div className="flex items-center gap-2">
           {thread.emails.at(-1)?.sysLabels.includes("important") && (
-            <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30">
+            <Badge
+              variant="secondary"
+              className="bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
+            >
               important
             </Badge>
           )}
           {thread.emails.at(-1)?.sysLabels.includes("unread") && (
-            <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
+            <Badge
+              variant="secondary"
+              className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+            >
               unread
             </Badge>
           )}
           {thread.emails.at(-1)?.sysLabels.includes("inbox") && (
-            <Badge variant="secondary" className="bg-green-500/20 text-green-400 hover:bg-green-500/30">
+            <Badge
+              variant="secondary"
+              className="bg-green-500/20 text-green-400 hover:bg-green-500/30"
+            >
               inbox
             </Badge>
           )}
           {thread.emails.at(-1)?.sysLabels.includes("trash") && (
-            <Badge variant="secondary" className="bg-red-500/20 text-red-400 hover:bg-red-500/30">
+            <Badge
+              variant="secondary"
+              className="bg-red-500/20 text-red-400 hover:bg-red-500/30"
+            >
               trash
             </Badge>
           )}
         </div>
       </div>
     </button>
-  )
+  );
 
   const renderThreadsList = () => (
     <div className="flex flex-col gap-2 p-4 pt-0">
       {Object.entries(groupedThreads).map(([date, threads]) => (
         <React.Fragment key={date}>
-          <div className="text-muted-foreground mt-4 text-xs font-medium first:mt-0">
+          <div className="mt-4 text-xs font-medium text-muted-foreground first:mt-0">
             {format(new Date(date), "MMMM d, yyyy")}
           </div>
-          {threads.map((thread) => renderThreadItem(thread, thread.id === lastThreadId))}
+          {threads.map((thread) =>
+            renderThreadItem(thread, thread.id === lastThreadId),
+          )}
         </React.Fragment>
       ))}
       {isFetchingNextPage && (
         <div className="flex justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
         </div>
       )}
     </div>
-  )
+  );
 
   if (accountsLoading) {
-    return renderLoadingState()
+    return renderLoadingState();
   }
 
   if (!accountId || (accounts !== undefined && accounts.length === 0)) {
-    return renderConnectionPrompt()
+    return renderConnectionPrompt();
   }
 
   return (
     <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
       {/* Header with refresh button */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold">Inbox</h2>
           {isFetching && (
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           )}
         </div>
         <Button
@@ -272,12 +298,14 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           disabled={syncEmailsMutation.isPending || !accountId}
           className="flex items-center gap-2"
         >
-          <RefreshCw className={`w-4 h-4 ${syncEmailsMutation.isPending ? 'animate-spin' : ''}`} />
-          {syncEmailsMutation.isPending ? 'Syncing...' : 'Refresh'}
+          <RefreshCw
+            className={`h-4 w-4 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`}
+          />
+          {syncEmailsMutation.isPending ? "Syncing..." : "Refresh"}
         </Button>
       </div>
-      
+
       {renderThreadsList()}
     </div>
-  )
+  );
 }

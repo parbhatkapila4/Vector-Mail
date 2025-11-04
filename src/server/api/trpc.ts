@@ -100,13 +100,15 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 });
 
 const isAuth = t.middleware(async ({ next, ctx }) => {
-  if(!ctx.auth.userId) {
+  if (!ctx.auth.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  return next({ ctx: {
-    ...ctx,
-    auth: ctx.auth as Required<typeof ctx.auth>,
-  }});
+  return next({
+    ctx: {
+      ...ctx,
+      auth: ctx.auth as Required<typeof ctx.auth>,
+    },
+  });
 });
 
 /**

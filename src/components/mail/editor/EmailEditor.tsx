@@ -64,16 +64,16 @@ const EmailEditor = ({
 
   const aiGenerate = async (prompt: string) => {
     if (isGenerating) return; // Prevent multiple simultaneous generations
-    
+
     setIsGenerating(true);
     setDisplayContent(""); // Clear previous display content
     completeContentRef.current = ""; // Clear previous complete content
-    
+
     try {
       // Get email context if available
-      const thread = threads?.find(t => t.id === threadId);
-      let context = '';
-      
+      const thread = threads?.find((t) => t.id === threadId);
+      let context = "";
+
       if (thread?.emails && thread.emails.length > 0) {
         // Get the most recent email in the thread for context
         const latestEmail = thread.emails[thread.emails.length - 1];
@@ -86,11 +86,11 @@ From: ${latestEmail.from.address}
 Date: ${latestEmail.sentAt.toLocaleDateString()}
 
 ORIGINAL EMAIL BODY:
-${latestEmail.bodySnippet || latestEmail.body || ''}
+${latestEmail.bodySnippet || latestEmail.body || ""}
 
 REPLY CONTEXT:
-User's Name: ${account?.name || 'User'}
-User's Email: ${account?.emailAddress || ''}
+User's Name: ${account?.name || "User"}
+User's Email: ${account?.emailAddress || ""}
 
 INSTRUCTIONS:
 You are helping compose a reply to the above email. The user has started typing: "${prompt}"
@@ -101,8 +101,8 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
         // Fallback context when no thread is available
         context = `EMAIL COMPOSITION CONTEXT:
 
-User's Name: ${account?.name || 'User'}
-User's Email: ${account?.emailAddress || ''}
+User's Name: ${account?.name || "User"}
+User's Email: ${account?.emailAddress || ""}
 
 INSTRUCTIONS:
 You are helping compose a new email. The user has started typing: "${prompt}"
@@ -111,18 +111,18 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       }
 
       toast.info("🤖 AI is thinking...", { duration: 2000 });
-      
+
       // Call the generate function without streaming
       const result = await generate(prompt, context);
       const fullGeneration = result.content || "";
-      
+
       // Set the complete generation only once
       if (fullGeneration.trim()) {
         console.log("Setting complete content:", fullGeneration);
         completeContentRef.current = fullGeneration;
         setDisplayContent(fullGeneration);
       }
-      
+
       if (fullGeneration.trim()) {
         toast.success("✨ AI suggestion ready!", { duration: 2000 });
       }
@@ -142,7 +142,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             toast.info("AI is already generating, please wait...");
             return true;
           }
-          
+
           const currentText = this.editor.getText();
           if (currentText.trim()) {
             aiGenerate(currentText);
@@ -158,7 +158,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             toast.info("AI is already generating, please wait...");
             return true;
           }
-          
+
           const currentText = this.editor.getText();
           if (currentText.trim()) {
             aiGenerate(currentText);
@@ -213,26 +213,25 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
 
   React.useEffect(() => {
     if (!displayContent || !editor || displayContent.trim() === "") return;
-    
+
     console.log("useEffect triggered with complete content:", displayContent);
-    
+
     // Convert the generation text to proper HTML with paragraph tags
     const formattedHTML = displayContent
-      .replace(/\\n/g, '\n') // Convert literal \n to actual line breaks
-      .split('\n\n') // Split by double line breaks
-      .filter(para => para.trim()) // Remove empty paragraphs
-      .map(para => `<p>${para.trim()}</p>`) // Wrap each paragraph in p tags
-      .join(''); // Join them together
-    
+      .replace(/\\n/g, "\n") // Convert literal \n to actual line breaks
+      .split("\n\n") // Split by double line breaks
+      .filter((para) => para.trim()) // Remove empty paragraphs
+      .map((para) => `<p>${para.trim()}</p>`) // Wrap each paragraph in p tags
+      .join(""); // Join them together
+
     console.log("Formatted HTML:", formattedHTML);
-    
+
     // Set the content with proper HTML formatting
     editor.commands.setContent(formattedHTML);
-    
+
     // Clear the display content after setting content to prevent re-insertion
     setDisplayContent("");
   }, [displayContent, editor]);
-
 
   return (
     <div className="flex h-full flex-col">
@@ -244,14 +243,18 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
         {expanded && (
           <>
             <TagInput
-              suggestions={suggestions?.map((s: { address: string }) => s.address) || []}
+              suggestions={
+                suggestions?.map((s: { address: string }) => s.address) || []
+              }
               value={toValues}
               placeholder="Add tags"
               label="To"
               onChange={onToChange}
             />
             <TagInput
-              suggestions={suggestions?.map((s: { address: string }) => s.address) || []}
+              suggestions={
+                suggestions?.map((s: { address: string }) => s.address) || []
+              }
               value={ccValues}
               placeholder="Add tags"
               label="Cc"
@@ -285,37 +288,46 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       </div>
 
       <div className="w-full flex-1 px-4 py-4">
-        <div className={`relative h-full min-h-[300px] w-full rounded-lg border p-4 transition-all duration-200 ${
-          isGenerating 
-            ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50/50' 
-            : 'border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500'
-        }`}>
+        <div
+          className={`relative h-full min-h-[300px] w-full rounded-lg border p-4 transition-all duration-200 ${
+            isGenerating
+              ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-200"
+              : "border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"
+          }`}
+        >
           <EditorContent
             className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none"
             editor={editor}
-            placeholder={isGenerating ? "AI is generating suggestions..." : "Write your email here..."}
+            placeholder={
+              isGenerating
+                ? "AI is generating suggestions..."
+                : "Write your email here..."
+            }
           />
           {isGenerating && (
-            <div className="absolute top-2 right-2 flex items-center gap-2 text-blue-600 text-xs">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+            <div className="absolute right-2 top-2 flex items-center gap-2 text-xs text-blue-600">
+              <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600"></div>
               <span>AI thinking...</span>
             </div>
           )}
         </div>
       </div>
       <Separator />
-      <div className="bg-background/50 sticky bottom-0 z-10 flex items-center justify-between px-4 py-3 backdrop-blur-sm">
+      <div className="sticky bottom-0 z-10 flex items-center justify-between bg-background/50 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             💡 Press{" "}
             <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
-              {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd + J' : 'Alt + J'}
+              {typeof navigator !== "undefined" &&
+              navigator.platform.toLowerCase().includes("mac")
+                ? "Cmd + J"
+                : "Alt + J"}
             </kbd>{" "}
             for smart AI autocomplete
           </span>
           {isGenerating && (
-            <div className="flex items-center gap-2 text-blue-600 text-sm">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+            <div className="flex items-center gap-2 text-sm text-blue-600">
+              <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600"></div>
               <span>AI thinking...</span>
             </div>
           )}
