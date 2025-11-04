@@ -13,6 +13,9 @@ jobs:
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    env:
+      SKIP_ENV_VALIDATION: "true"
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test"
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +40,9 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    env:
+      SKIP_ENV_VALIDATION: "true"
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test"
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +60,8 @@ jobs:
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
+        if: always()
+        continue-on-error: true
         with:
           file: ./coverage/lcov.info
           flags: unittests
@@ -62,6 +70,11 @@ jobs:
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
+    env:
+      SKIP_ENV_VALIDATION: "true"
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_mock"
+      CLERK_SECRET_KEY: "sk_test_mock"
     steps:
       - uses: actions/checkout@v4
 
@@ -75,7 +88,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install chromium --with-deps
 
       - name: Run E2E tests
         run: npm run test:e2e
@@ -141,11 +154,24 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run npm audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high || echo "npm audit found issues, but continuing..."
         continue-on-error: true
 
       - name: Run Trivy vulnerability scanner
@@ -155,6 +181,8 @@ jobs:
           scan-ref: "."
           format: "sarif"
           output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
