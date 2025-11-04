@@ -38,9 +38,9 @@ export function Navigation() {
               </span>
             </Link>
           ) : (
-            <Link href="#pricing" className="px-4 py-2">
+            <Link href="/about" className="px-4 py-2">
               <span className="text-white hover:text-purple-300 transition-colors text-base font-medium">
-                Pricing
+                About
               </span>
             </Link>
           )}
@@ -53,18 +53,11 @@ export function Navigation() {
               </span>
             </div>
           ) : (
-            <>
-              <Link href="/sign-in" className="px-4 py-2">
-                <span className="text-white hover:opacity-80 transition-opacity text-base font-medium">
-                  Login
-                </span>
-              </Link>
-              <Link href="/sign-up">
-                <button className="px-6 py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all text-base hover:scale-105">
-                  Get Started
-                </button>
-              </Link>
-            </>
+            <Link href="/sign-in">
+              <button className="px-6 py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all text-base hover:scale-105">
+                Login
+              </button>
+            </Link>
           )}
         </nav>
       </div>
@@ -103,7 +96,11 @@ export function Navigation() {
                 <Link href="/mail" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
                   <span className="text-white font-medium">Inbox</span>
                 </Link>
-              ) : null}
+              ) : (
+                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
+                  <span className="text-white font-medium">About</span>
+                </Link>
+              )}
 
               {isSignedIn ? (
                 <div className="flex items-center gap-3 px-4 py-3">
@@ -113,13 +110,10 @@ export function Navigation() {
                   </span>
                 </div>
               ) : (
-                <div className="space-y-2 pt-2">
-                  <Link href="/sign-in" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
-                    <span className="text-white font-medium">Login</span>
-                  </Link>
-                  <Link href="/sign-up" onClick={() => setMobileMenuOpen(false)}>
+                <div className="pt-2">
+                  <Link href="/sign-in" onClick={() => setMobileMenuOpen(false)}>
                     <button className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all">
-                      Get Started
+                      Login
                     </button>
                   </Link>
                 </div>
