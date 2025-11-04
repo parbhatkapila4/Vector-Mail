@@ -205,7 +205,6 @@ For questions or support, reach out to [help@productionsolution.net](mailto:help
 ## 🌐 Links
 
 - [Website](https://vectormail.parbhat.dev/)
-- [Documentation](https://docs.vectormail.app)
 - [GitHub](https://github.com/parbhatkapila4/Vector-Mail)
 - [Issues](https://github.com/parbhatkapila4/Vector-Mail/issues)
 
