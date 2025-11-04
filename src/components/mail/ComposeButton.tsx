@@ -15,15 +15,16 @@ import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { toast } from "sonner";
 
+type OptionType = {
+  label: string | React.ReactNode;
+  value: string;
+};
+
 const ComposeButton = () => {
   const [open, setOpen] = React.useState(false);
   const [accountId] = useLocalStorage("accountId", "");
-  const [toValues, setToValues] = React.useState<
-    { label: string; value: string }[]
-  >([]);
-  const [ccValues, setCcValues] = React.useState<
-    { label: string; value: string }[]
-  >([]);
+  const [toValues, setToValues] = React.useState<OptionType[]>([]);
+  const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
   const [subject, setSubject] = React.useState<string>("");
   const { data: account } = api.account.getMyAccount.useQuery({ accountId });
 

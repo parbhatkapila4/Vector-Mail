@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import EmailEditor from "../editor/EmailEditor";
 import { useLocalStorage } from "usehooks-ts";
 
+type OptionType = {
+  label: string | React.ReactNode;
+  value: string;
+};
+
 const ReplyBox = () => {
   const { threadId, threads, account } = useThreads();
   const [accountId] = useLocalStorage("accountId", "");
@@ -22,12 +27,8 @@ const ReplyBox = () => {
   const lastEmail = currentThread?.emails?.[currentThread.emails.length - 1];
 
   const [subject, setSubject] = React.useState("");
-  const [toValues, setToValues] = React.useState<
-    { label: string; value: string }[]
-  >([]);
-  const [ccValues, setCcValues] = React.useState<
-    { label: string; value: string }[]
-  >([]);
+  const [toValues, setToValues] = React.useState<OptionType[]>([]);
+  const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
 
   const sendEmail = api.account.sendEmail.useMutation();
 

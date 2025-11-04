@@ -23,7 +23,7 @@ VectorMail is a modern, AI-native email client that leverages semantic search, i
 
 ### Prerequisites
 
-- Node.js 20+ 
+- Node.js 20+
 - PostgreSQL 16+ with pgvector extension
 - Redis (optional, for caching)
 - npm or bun
@@ -31,29 +31,35 @@ VectorMail is a modern, AI-native email client that leverages semantic search, i
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/parbhatkapila4/Vector-Mail.git
    cd Vector-Mail
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env.local
    ```
+
    Fill in your environment variables (see [Environment Variables](#environment-variables))
 
 4. **Set up the database**
+
    ```bash
    npm run db:push
    npm run db:generate
    ```
 
 5. **Run the development server**
+
    ```bash
    npm run dev
    ```
@@ -68,6 +74,7 @@ docker-compose up -d
 ```
 
 This will start:
+
 - PostgreSQL with pgvector
 - Redis cache
 - VectorMail application
@@ -119,6 +126,7 @@ This will start:
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 15 (React 19)
 - **Styling**: Tailwind CSS + Radix UI
 - **Animations**: Framer Motion
@@ -126,6 +134,7 @@ This will start:
 - **Authentication**: Clerk
 
 ### Backend
+
 - **API**: tRPC
 - **Database**: PostgreSQL + Prisma ORM
 - **Vector Search**: pgvector
@@ -133,6 +142,7 @@ This will start:
 - **AI/ML**: OpenAI GPT-4, Google Gemini
 
 ### DevOps
+
 - **Containerization**: Docker + Docker Compose
 - **CI/CD**: GitHub Actions
 - **Testing**: Jest, React Testing Library, Playwright
@@ -149,16 +159,16 @@ npm run test:e2e:ui   # Run E2E tests with UI
 
 ## 📦 Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build production bundle |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Run TypeScript check |
-| `npm run format:write` | Format code with Prettier |
-| `npm run db:push` | Push Prisma schema to database |
-| `npm run db:studio` | Open Prisma Studio |
+| Script                 | Description                    |
+| ---------------------- | ------------------------------ |
+| `npm run dev`          | Start development server       |
+| `npm run build`        | Build production bundle        |
+| `npm run start`        | Start production server        |
+| `npm run lint`         | Run ESLint                     |
+| `npm run typecheck`    | Run TypeScript check           |
+| `npm run format:write` | Format code with Prettier      |
+| `npm run db:push`      | Push Prisma schema to database |
+| `npm run db:studio`    | Open Prisma Studio             |
 
 ## 🔒 Environment Variables
 

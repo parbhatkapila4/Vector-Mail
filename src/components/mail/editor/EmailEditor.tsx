@@ -24,8 +24,8 @@ type OptionType = {
 };
 
 type EmailEditorProps = {
-  toValues: { label: string; value: string }[];
-  ccValues: { label: string; value: string }[];
+  toValues: OptionType[];
+  ccValues: OptionType[];
 
   subject: string;
   setSubject: (subject: string) => void;

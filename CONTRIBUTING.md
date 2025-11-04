@@ -38,28 +38,33 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 ### Setup Development Environment
 
 1. Fork and clone the repository
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/Vector-Mail.git
    cd Vector-Mail
    ```
 
 2. Install dependencies
+
    ```bash
    npm install
    ```
 
 3. Set up environment variables
+
    ```bash
    cp .env.example .env.local
    # Fill in your environment variables
    ```
 
 4. Start database with Docker
+
    ```bash
    docker-compose up -d postgres redis
    ```
 
 5. Run database migrations
+
    ```bash
    npm run db:push
    ```
@@ -79,6 +84,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 - `chore/` - Maintenance tasks
 
 Examples:
+
 - `feature/email-templates`
 - `fix/search-query-bug`
 - `docs/api-endpoints`
@@ -96,6 +102,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -105,6 +112,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 - `chore`: Maintenance tasks
 
 **Examples:**
+
 ```
 feat(search): add semantic email search
 
@@ -131,6 +139,7 @@ test(email): add unit tests for email parser
 All contributions must include appropriate tests:
 
 1. **Unit Tests**: For utility functions and isolated components
+
    ```bash
    npm run test
    ```
@@ -196,16 +205,16 @@ describe('EmailList', () => {
 ### E2E Test Example
 
 ```typescript
-import { test, expect } from '@playwright/test'
+import { test, expect } from "@playwright/test";
 
-test('user can compose and send email', async ({ page }) => {
-  await page.goto('/mail')
-  await page.click('text=Compose')
-  await page.fill('[name="to"]', 'recipient@example.com')
-  await page.fill('[name="subject"]', 'Test Subject')
-  await page.click('text=Send')
-  await expect(page.locator('text=Email sent')).toBeVisible()
-})
+test("user can compose and send email", async ({ page }) => {
+  await page.goto("/mail");
+  await page.click("text=Compose");
+  await page.fill('[name="to"]', "recipient@example.com");
+  await page.fill('[name="subject"]', "Test Subject");
+  await page.click("text=Send");
+  await expect(page.locator("text=Email sent")).toBeVisible();
+});
 ```
 
 ## 📚 Documentation
@@ -233,12 +242,14 @@ We pledge to make participation in our project a harassment-free experience for 
 ### Our Standards
 
 **Positive behavior includes:**
+
 - Using welcoming and inclusive language
 - Being respectful of differing viewpoints
 - Gracefully accepting constructive criticism
 - Focusing on what is best for the community
 
 **Unacceptable behavior includes:**
+
 - Trolling, insulting comments, and personal attacks
 - Public or private harassment
 - Publishing others' private information
@@ -247,6 +258,7 @@ We pledge to make participation in our project a harassment-free experience for 
 ## 🎉 Recognition
 
 Contributors will be:
+
 - Listed in our README
 - Mentioned in release notes
 - Given credit in the project
@@ -258,4 +270,3 @@ By contributing, you agree that your contributions will be licensed under the MI
 ---
 
 **Thank you for making VectorMail better! 🚀**
-

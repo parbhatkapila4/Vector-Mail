@@ -56,10 +56,8 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
   const _thread = threads?.find((t) => t.id === threadId);
   const [isSearching, setIsSearching] = useAtom(isSearchingAtom);
 
-  const [accountId] = useLocalStorage("accountId", "");
   const { data: foundThread } = api.account.getThreadById.useQuery(
     {
-      accountId: accountId,
       threadId: threadId ?? "",
     },
     { enabled: !!!_thread && !!threadId },

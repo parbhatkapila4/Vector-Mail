@@ -60,6 +60,7 @@ NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
 Use a managed PostgreSQL service with pgvector:
 
 **Recommended Providers:**
+
 - [Neon](https://neon.tech) - Built-in pgvector support
 - [Supabase](https://supabase.com) - Free tier available
 - [Railway](https://railway.app) - Easy setup
@@ -83,6 +84,7 @@ docker-compose up -d
 ```
 
 This starts:
+
 - PostgreSQL with pgvector
 - Redis cache
 - VectorMail application
@@ -141,23 +143,23 @@ services:
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key | `pk_test_...` |
-| `CLERK_SECRET_KEY` | Clerk secret key | `sk_test_...` |
-| `AURINKO_CLIENT_ID` | Aurinko client ID | `your-client-id` |
-| `AURINKO_CLIENT_SECRET` | Aurinko secret | `your-secret` |
-| `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
+| Variable                            | Description                  | Example                               |
+| ----------------------------------- | ---------------------------- | ------------------------------------- |
+| `DATABASE_URL`                      | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key             | `pk_test_...`                         |
+| `CLERK_SECRET_KEY`                  | Clerk secret key             | `sk_test_...`                         |
+| `AURINKO_CLIENT_ID`                 | Aurinko client ID            | `your-client-id`                      |
+| `AURINKO_CLIENT_SECRET`             | Aurinko secret               | `your-secret`                         |
+| `OPENAI_API_KEY`                    | OpenAI API key               | `sk-...`                              |
 
 ### Optional Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `REDIS_URL` | Redis connection string | Not set |
-| `GEMINI_API_KEY` | Google Gemini API key | Not set |
-| `SENTRY_DSN` | Sentry error tracking | Not set |
-| `NODE_ENV` | Environment | `development` |
+| Variable         | Description             | Default       |
+| ---------------- | ----------------------- | ------------- |
+| `REDIS_URL`      | Redis connection string | Not set       |
+| `GEMINI_API_KEY` | Google Gemini API key   | Not set       |
+| `SENTRY_DSN`     | Sentry error tracking   | Not set       |
+| `NODE_ENV`       | Environment             | `development` |
 
 ## Database Setup
 
@@ -184,12 +186,14 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 ### 1. Set Up Webhooks
 
 Configure webhooks in Clerk dashboard:
+
 - Endpoint: `https://your-domain.com/api/clerk/webhook`
 - Events: `user.created`, `user.updated`, `user.deleted`
 
 ### 2. Configure Aurinko Callback
 
 Set redirect URI in Aurinko dashboard:
+
 - `https://your-domain.com/api/aurinko/callback`
 
 ### 3. Test Email Integration
@@ -285,10 +289,10 @@ aws s3 cp backup.sql s3://your-bucket/backups/
 ## Support
 
 For deployment issues:
+
 - Check [GitHub Issues](https://github.com/parbhatkapila4/Vector-Mail/issues)
 - Email: [help@productionsolution.net](mailto:help@productionsolution.net)
 
 ---
 
 **Happy Deploying! 🚀**
-

@@ -172,8 +172,8 @@ export class Account {
     if (!account.nextDeltaToken || forceFullSync) {
       console.log("Performing full initial sync...");
       const initialSyncResult = await this.performInitialSync();
-      allEmails = initialSyncResult.emails;
-      storedDeltaToken = initialSyncResult.deltaToken;
+      allEmails = initialSyncResult?.emails ?? [];
+      storedDeltaToken = initialSyncResult?.deltaToken ?? "";
     } else {
       console.log(`Using delta token: ${account.nextDeltaToken}`);
       let response = await this.getUpdatedEmails(account.nextDeltaToken);

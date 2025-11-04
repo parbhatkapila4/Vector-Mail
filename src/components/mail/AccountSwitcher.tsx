@@ -28,7 +28,8 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
     if (accounts && accounts.length > 0) {
       // Check if the current accountId is valid
       const isCurrentAccountValid =
-        accountId && accounts.some((acc: { id: string }) => acc.id === accountId);
+        accountId &&
+        accounts.some((acc: { id: string }) => acc.id === accountId);
 
       // If no accountId or current accountId is invalid, set to first account
       if (!isCurrentAccountValid) {
@@ -77,14 +78,18 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
           <SelectValue placeholder="Select an account">
             <span className={cn({ hidden: !isCollapsed })}>
               {
-                accounts.find((account: { id: string; emailAddress: string }) => account.id === accountId)
-                  ?.emailAddress[0]
+                accounts.find(
+                  (account: { id: string; emailAddress: string }) =>
+                    account.id === accountId,
+                )?.emailAddress[0]
               }
             </span>
             <span className={cn("ml-2", isCollapsed && "hidden")}>
               {
-                accounts.find((account: { id: string; emailAddress: string }) => account.id === accountId)
-                  ?.emailAddress
+                accounts.find(
+                  (account: { id: string; emailAddress: string }) =>
+                    account.id === accountId,
+                )?.emailAddress
               }
             </span>
           </SelectValue>

@@ -8,4 +8,5 @@ coverage
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
-
+.husky
+lint-output.txt
