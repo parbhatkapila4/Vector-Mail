@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 type Props = {
-  email: RouterOutputs["account"]["getThreads"][0]["emails"][0];
+  email: RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 };
 
 const EmailDisplay = ({ email }: Props) => {

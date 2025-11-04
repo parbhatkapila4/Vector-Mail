@@ -33,7 +33,7 @@ interface DebugData {
 const ANIMATION_CONFIG = {
   type: "easeOut" as const,
   duration: 0.2,
-};
+} as any;
 
 const SUGGESTED_QUERIES = [
   { label: "Orders", query: "Show me emails about orders", icon: "📦" },
@@ -331,7 +331,7 @@ export default function EmailSearchAssistant({
                   <div className="mb-1 text-purple-300">System Status:</div>
                   <div className="text-xs text-gray-400">
                     Total: {debugData.totalEmails} | Processed:{" "}
-                    {debugData.emails.filter((e) => e.hasEmbedding).length}
+                    {debugData.emails.filter((e: any) => e.hasEmbedding).length}
                   </div>
                   <div className="truncate text-xs text-gray-400">
                     Latest: {debugData.emails[0]?.subject || "None"}

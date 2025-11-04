@@ -45,7 +45,7 @@ function useThreads() {
     fetchNextPage,
     refetch,
     accountId,
-    account: accounts?.find((account) => account.id === accountId),
+    account: accounts?.find((account: { id: string }) => account.id === accountId),
     threadId,
     setThreadId,
   };

@@ -70,8 +70,8 @@ const limiters = {
 
 export function getIdentifier(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0] : request.ip || "unknown";
-  return ip;
+  const ip = forwarded ? forwarded.split(",")[0]?.trim() : "unknown";
+  return ip || "unknown";
 }
 
 export function rateLimit(

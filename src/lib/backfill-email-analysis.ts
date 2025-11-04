@@ -78,22 +78,22 @@ export async function backfillEmailAnalysis(
             address: email.from.address,
             raw: email.from.raw || "",
           },
-          to: email.to.map((addr) => ({
+          to: email.to.map((addr: any) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
           })),
-          cc: email.cc.map((addr) => ({
+          cc: email.cc.map((addr: any) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
           })),
-          bcc: email.bcc.map((addr) => ({
+          bcc: email.bcc.map((addr: any) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
           })),
-          replyTo: email.replyTo.map((addr) => ({
+          replyTo: email.replyTo.map((addr: any) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",

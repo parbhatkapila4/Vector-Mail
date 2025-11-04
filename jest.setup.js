@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
 
+// @ts-ignore - Mock for testing
 global.IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}

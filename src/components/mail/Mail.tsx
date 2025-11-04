@@ -24,7 +24,7 @@ import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
 
 interface MailLayoutProps {
-  defaultLayout: number[] | undefined;
+  defaultLayout: number[] | readonly number[] | undefined;
   defaultCollapsed?: boolean;
   navCollapsedSize: number;
 }

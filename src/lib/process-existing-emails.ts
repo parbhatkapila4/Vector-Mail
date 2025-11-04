@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
-import { EmailMessage } from "@/types";
+import type { EmailMessage } from "@/types";
 
 /**
  * Process existing emails to add AI analysis
@@ -83,26 +83,26 @@ export async function processExistingEmails(
               address: email.from.address,
               name: email.from.name || "",
             },
-            to: email.to.map((t) => ({
+            to: email.to.map((t: any) => ({
               address: t.address,
               name: t.name || "",
             })),
-            cc: email.cc.map((c) => ({
+            cc: email.cc.map((c: any) => ({
               address: c.address,
               name: c.name || "",
             })),
-            bcc: email.bcc.map((b) => ({
+            bcc: email.bcc.map((b: any) => ({
               address: b.address,
               name: b.name || "",
             })),
-            replyTo: email.replyTo.map((r) => ({
+            replyTo: email.replyTo.map((r: any) => ({
               address: r.address,
               name: r.name || "",
             })),
             hasAttachments: email.hasAttachments,
             body: email.body || undefined,
             bodySnippet: email.bodySnippet || undefined,
-            attachments: email.attachments.map((a) => ({
+            attachments: email.attachments.map((a: any) => ({
               id: a.id,
               name: a.name,
               mimeType: a.mimeType,
@@ -164,7 +164,7 @@ export async function processExistingEmails(
     return { success: true, totalProcessed };
   } catch (error) {
     console.error("Error processing existing emails:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 

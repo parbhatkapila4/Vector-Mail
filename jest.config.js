@@ -1,5 +1,6 @@
 const nextJest = require("next/jest");
 
+// @ts-ignore - Next.js jest config
 const createJestConfig = nextJest({
   dir: "./",
 });

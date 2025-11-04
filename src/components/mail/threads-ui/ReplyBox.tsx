@@ -13,10 +13,9 @@ const ReplyBox = () => {
   const thread = threads?.find((t) => t.id === threadId);
   const { data: foundThread } = api.account.getThreadById.useQuery(
     {
-      accountId: accountId,
       threadId: threadId ?? "",
     },
-    { enabled: !!!thread && !!threadId && !!accountId },
+    { enabled: !!!thread && !!threadId },
   );
 
   const currentThread = thread ?? foundThread;

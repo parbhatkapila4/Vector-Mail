@@ -70,7 +70,7 @@ export async function searchEmailsByVector(
     );
 
     const results: SearchResult[] = fullEmails
-      .map((email) => {
+      .map((email: any) => {
         const distance = emailDistanceMap.get(email.id) || 1;
         const similarity = 1 - distance; // Convert distance to similarity (closer to 1 is better)
         const relevanceScore = calculateRelevanceScore(
@@ -85,8 +85,8 @@ export async function searchEmailsByVector(
           relevanceScore,
         };
       })
-      .filter((result) => result.similarity > 0.1) // Filter out very low similarities
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .filter((result: any) => result.similarity > 0.1) // Filter out very low similarities
+      .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
       .slice(0, limit);
 
     console.log(`Found ${results.length} relevant emails`);
@@ -133,7 +133,7 @@ async function fallbackTextSearch(
         take: limit,
       });
 
-      return emails.map((email) => ({
+      return emails.map((email: any) => ({
         email,
         similarity: 0.5, // Default similarity for recent emails
         relevanceScore: 0.5,
@@ -187,7 +187,7 @@ async function fallbackTextSearch(
 
     // Score the results based on text matching
     const results: SearchResult[] = emails
-      .map((email) => {
+      .map((email: any) => {
         const relevanceScore = calculateTextRelevanceScore(
           email,
           query,
@@ -199,8 +199,8 @@ async function fallbackTextSearch(
           relevanceScore,
         };
       })
-      .filter((result) => result.relevanceScore > 0.1)
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .filter((result: any) => result.relevanceScore > 0.1)
+      .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
       .slice(0, limit);
 
     return results;

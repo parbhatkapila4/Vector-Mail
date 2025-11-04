@@ -62,6 +62,66 @@ export const accountRouter = createTRPCRouter({
     });
   }),
 
+  getMyAccount: protectedProcedure
+    .input(z.object({ accountId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      return account;
+    }),
+
+  sendEmail: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        from: emailAddressSchema,
+        to: z.array(emailAddressSchema),
+        subject: z.string(),
+        body: z.string(),
+        threadId: z.string().optional(),
+        replyTo: emailAddressSchema.optional(),
+        cc: z.array(emailAddressSchema).optional(),
+        bcc: z.array(emailAddressSchema).optional(),
+        inReplyTo: z.string().optional(),
+        references: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      const emailAccount = new Account(account.token);
+      await emailAccount.sendEmail(input);
+      return { success: true };
+    }),
+
+  getEmailSuggestions: protectedProcedure
+    .input(z.object({ accountId: z.string(), query: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      // Return email addresses from contacts or previous emails
+      const contacts = await ctx.db.emailAddress.findMany({
+        where: {
+          email: {
+            thread: {
+              accountId: input.accountId,
+            },
+          },
+        },
+        distinct: ["address"],
+        take: 10,
+        orderBy: {
+          email: {
+            sentAt: "desc",
+          },
+        },
+      });
+      return contacts.map((c: any) => ({ name: c.name, address: c.address }));
+    }),
+
   getNumThreads: protectedProcedure
     .input(
       z.object({
@@ -174,7 +234,7 @@ export const accountRouter = createTRPCRouter({
 
         return {
           totalEmails: recentEmails.length,
-          emails: recentEmails.map((email) => ({
+          emails: recentEmails.map((email: any) => ({
             id: email.id,
             subject: email.subject,
             from: email.from.address,

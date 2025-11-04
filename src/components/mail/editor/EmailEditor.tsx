@@ -18,6 +18,11 @@ import AIComposeButton from "./AiComposeButton";
 import { toast } from "sonner";
 import useThreads from "@/hooks/use-threads";
 
+type OptionType = {
+  label: string | React.ReactNode;
+  value: string;
+};
+
 type EmailEditorProps = {
   toValues: { label: string; value: string }[];
   ccValues: { label: string; value: string }[];
@@ -28,8 +33,8 @@ type EmailEditorProps = {
   handleSend: (value: string) => void;
   isSending: boolean;
 
-  onToChange: (values: { label: string; value: string }[]) => void;
-  onCcChange: (values: { label: string; value: string }[]) => void;
+  onToChange: (values: OptionType[]) => void;
+  onCcChange: (values: OptionType[]) => void;
 
   defaultToolbarExpand?: boolean;
 };

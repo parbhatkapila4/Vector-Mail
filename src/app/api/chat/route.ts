@@ -136,7 +136,7 @@ export async function POST(req: Request) {
             take: SEARCH_CONFIG.TEXT_SEARCH_LIMIT,
           });
 
-          relevantEmails = textSearchResults.map((email) => ({
+          relevantEmails = textSearchResults.map((email: any) => ({
             id: email.id,
             subject: email.subject,
             summary: email.summary,

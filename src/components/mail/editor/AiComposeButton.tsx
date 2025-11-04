@@ -34,7 +34,7 @@ const AIComposeButton = (props: Props) => {
       if (!props.isComposing) {
         context = thread?.emails
           .map(
-            (m) =>
+            (m: any) =>
               `Subject: ${m.subject}\nFrom: ${m.from.address}\n\n${turndown.turndown(m.body ?? m.bodySnippet ?? "")}`,
           )
           .join("\n");
