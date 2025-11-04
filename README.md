@@ -38,27 +38,35 @@ VectorMail represents a paradigm shift in email management by integrating artifi
 ## Key Features
 
 ### AI-Powered Email Management
+
 Leverages machine learning for intelligent email categorization, priority detection, and context-aware automated responses.
 
 ### Semantic Search
+
 Implements vector-based search using pgvector, enabling users to find emails by meaning and context rather than exact keyword matching.
 
 ### Multi-Account Support
+
 Unified dashboard for managing multiple email accounts across different providers with seamless account switching.
 
 ### Smart Composition
+
 AI-assisted email writing with real-time suggestions, tone adjustment, and context-aware content generation.
 
 ### Email Analytics
+
 Comprehensive insights into communication patterns, response times, and productivity metrics with visual dashboards.
 
 ### Modern User Interface
+
 Responsive, accessible interface built with Next.js 15 and Tailwind CSS, optimized for desktop and mobile experiences.
 
 ### Secure Authentication
+
 Enterprise-grade authentication powered by Clerk with support for OAuth, multi-factor authentication, and session management.
 
 ### Real-time Synchronization
+
 Instant email synchronization across devices with optimistic updates and conflict resolution.
 
 ---
@@ -66,6 +74,7 @@ Instant email synchronization across devices with optimistic updates and conflic
 ## Technology Stack
 
 ### Frontend Layer
+
 - **Framework**: Next.js 15 with React 19
 - **Styling**: Tailwind CSS with Radix UI primitives
 - **Animations**: Framer Motion
@@ -73,6 +82,7 @@ Instant email synchronization across devices with optimistic updates and conflic
 - **Authentication**: Clerk
 
 ### Backend Layer
+
 - **API**: tRPC for end-to-end type safety
 - **Database**: PostgreSQL 16+ with Prisma ORM
 - **Vector Database**: pgvector extension for semantic search
@@ -80,6 +90,7 @@ Instant email synchronization across devices with optimistic updates and conflic
 - **AI Integration**: OpenAI GPT-4, Google Gemini
 
 ### DevOps & Tooling
+
 - **Containerization**: Docker with multi-stage builds
 - **CI/CD**: GitHub Actions workflows
 - **Testing**: Jest, React Testing Library, Playwright
@@ -149,6 +160,7 @@ docker-compose up -d
 ```
 
 This command initializes:
+
 - PostgreSQL database with pgvector extension
 - Redis cache server
 - VectorMail application server
@@ -228,16 +240,16 @@ For a complete list of configuration options, refer to `.env.example` in the pro
 
 ### Available Scripts
 
-| Command                | Description                                      |
-|------------------------|--------------------------------------------------|
-| `npm run dev`          | Start development server with hot reload        |
-| `npm run build`        | Build production-optimized bundle               |
-| `npm run start`        | Start production server                          |
-| `npm run lint`         | Execute ESLint for code quality checks           |
-| `npm run typecheck`    | Run TypeScript type checking                     |
-| `npm run format:write` | Format codebase with Prettier                    |
-| `npm run db:push`      | Synchronize Prisma schema with database          |
-| `npm run db:studio`    | Launch Prisma Studio for database management     |
+| Command                | Description                                  |
+| ---------------------- | -------------------------------------------- |
+| `npm run dev`          | Start development server with hot reload     |
+| `npm run build`        | Build production-optimized bundle            |
+| `npm run start`        | Start production server                      |
+| `npm run lint`         | Execute ESLint for code quality checks       |
+| `npm run typecheck`    | Run TypeScript type checking                 |
+| `npm run format:write` | Format codebase with Prettier                |
+| `npm run db:push`      | Synchronize Prisma schema with database      |
+| `npm run db:studio`    | Launch Prisma Studio for database management |
 
 ### Testing
 
@@ -276,11 +288,13 @@ Detailed documentation is available in the following resources:
 Contributions to VectorMail are welcomed and appreciated. To contribute:
 
 1. **Fork the Repository**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/Vector-Mail.git
    ```
 
 2. **Create a Feature Branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -291,12 +305,15 @@ Contributions to VectorMail are welcomed and appreciated. To contribute:
    - Update documentation as needed
 
 4. **Commit Changes**
+
    ```bash
    git commit -m "feat: add your feature description"
    ```
+
    Follow [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
 5. **Push to Your Fork**
+
    ```bash
    git push origin feature/your-feature-name
    ```
