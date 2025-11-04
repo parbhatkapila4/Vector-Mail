@@ -4,7 +4,7 @@ import { EmailClientMockup } from "@/components/landing/EmailClientMockup";
 describe("EmailClientMockup Component", () => {
   it("renders the email mockup interface", () => {
     render(<EmailClientMockup />);
-    expect(screen.getByText("Inbox")).toBeInTheDocument();
+    expect(screen.getAllByText("Inbox")[0]).toBeInTheDocument(); // Use getAllByText since "Inbox" appears multiple times
     expect(screen.getByText("Drafts")).toBeInTheDocument();
     expect(screen.getByText("Sent")).toBeInTheDocument();
   });
