@@ -114,7 +114,11 @@ export default function EmailSearchAssistant({
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorText = await response.text();
+          console.error("API error:", errorText);
+          throw new Error(
+            `Failed to get response: ${response.status} ${response.statusText}`,
+          );
         }
 
         const reader = response.body?.getReader();
@@ -131,12 +135,14 @@ export default function EmailSearchAssistant({
 
         setMessages((prev) => [...prev, assistantMessage]);
 
+        let hasContent = false;
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
           const chunk = new TextDecoder().decode(value);
           assistantMessage.content += chunk;
+          hasContent = true;
 
           setMessages((prev) =>
             prev.map((msg) =>
@@ -146,9 +152,31 @@ export default function EmailSearchAssistant({
             ),
           );
         }
+
+        if (!hasContent) {
+          assistantMessage.content =
+            "I'm having trouble searching your emails right now. Please try again.";
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id ? assistantMessage : msg,
+            ),
+          );
+        }
       } catch (error) {
         console.error("Error sending message:", error);
-        toast.error("Failed to send message. Please try again.");
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        toast.error(`Failed to send message: ${errorMessage}`);
+
+        // Add error message to chat
+        const errorAssistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content:
+            "I encountered an error while searching your emails. Please make sure your email account is properly synced and try again.",
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, errorAssistantMessage]);
       } finally {
         setIsLoading(false);
       }
