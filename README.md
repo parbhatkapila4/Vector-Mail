@@ -2,7 +2,6 @@
 
 **An AI-Native Email Client for Modern Productivity**
 
-[![CI/CD](https://github.com/parbhatkapila4/Vector-Mail/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/parbhatkapila4/Vector-Mail/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
