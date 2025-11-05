@@ -252,27 +252,27 @@ export default function EmailSearchAssistant({
   }
 
   return (
-    <div className="p-2 pb-20">
-      <motion.div className="flex max-h-[350px] flex-col overflow-hidden rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black shadow-lg">
+    <div className="p-2 pb-20 pt-15">
+      <motion.div className="flex max-h-[700px] flex-col overflow-hidden rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-purple-500/30 p-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
-              <Sparkles className="h-3 w-3 text-white" />
+        <div className="flex items-center justify-between border-b border-purple-500/30 p-2">
+          <div className="flex items-center gap-1.5">
+            <div className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+              <Sparkles className="h-2.5 w-2.5 text-white" />
             </div>
-            <h3 className="text-xs font-bold text-white">
+            <h3 className="text-[10px] font-bold text-white">
               Email Search Assistant
             </h3>
           </div>
-          <div className="flex h-5 w-5 items-center justify-center rounded bg-gradient-to-r from-purple-600 to-amber-400">
-            <span className="text-xs text-white">🚀</span>
+          <div className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-r from-purple-600 to-amber-400">
+            <span className="text-[10px] text-white">🚀</span>
           </div>
         </div>
 
         {/* Messages Area */}
         {messages.length > 0 && (
           <div
-            className="max-h-[150px] overflow-y-auto border-b border-purple-500/30 p-2"
+            className="max-h-[450px] overflow-y-auto border-b border-purple-500/30 p-2"
             ref={messageContainerRef}
           >
             <AnimatePresence mode="wait">
@@ -280,8 +280,8 @@ export default function EmailSearchAssistant({
                 <motion.div
                   key={message.id}
                   layout="position"
-                  className={cn("z-10 mt-2 break-words rounded-2xl", {
-                    "max-w-[250px] self-end bg-white/10 text-white":
+                  className={cn("z-10 mt-1.5 break-words rounded-xl", {
+                    "max-w-[220px] self-end bg-white/10 text-white":
                       message.role === "user",
                     "max-w-[400px] self-start border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 text-white shadow-lg":
                       message.role === "assistant",
@@ -290,17 +290,17 @@ export default function EmailSearchAssistant({
                   transition={ANIMATION_CONFIG}
                 >
                   <div
-                    className={cn("text-sm leading-[1.4]", {
-                      "px-4 py-3 text-white": message.role === "user",
-                      "px-5 py-4 text-white": message.role === "assistant",
+                    className={cn("text-[11px] leading-[1.3]", {
+                      "px-3 py-2 text-white": message.role === "user",
+                      "px-3 py-2.5 text-white": message.role === "assistant",
                     })}
                   >
                     {message.role === "assistant" ? (
-                      <div className="space-y-2">
-                        <div className="mb-2 font-medium text-purple-300">
+                      <div className="space-y-1">
+                        <div className="mb-1 text-[10px] font-medium text-purple-300">
                           ✨ Assistant
                         </div>
-                        <div className="whitespace-pre-wrap">
+                        <div className="whitespace-pre-wrap text-[11px]">
                           {message.content}
                         </div>
                       </div>
@@ -315,38 +315,38 @@ export default function EmailSearchAssistant({
         )}
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-2">
           {messages.length === 0 && (
-            <div className="mb-3">
+            <div className="mb-2">
               {/* Description */}
-              <div className="mb-3 text-center">
-                <p className="text-xs text-gray-300">
+              <div className="mb-2 text-center">
+                <p className="text-[10px] text-gray-300">
                   Using semantic search to find relevant emails
                 </p>
               </div>
 
               {/* Query Suggestions */}
-              <div className="mb-3 grid grid-cols-2 gap-1">
+              <div className="mb-2 grid grid-cols-2 gap-1">
                 {SUGGESTED_QUERIES.map(({ label, query, icon }) => (
                   <button
                     key={label}
                     onClick={() => handleQuerySuggestion(query)}
-                    className="flex cursor-pointer items-center justify-center gap-1 rounded border border-purple-500/30 bg-white/5 px-2 py-1 text-xs font-medium text-white transition-all duration-200 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
+                    className="flex cursor-pointer items-center justify-center gap-0.5 rounded border border-purple-500/30 bg-white/5 px-1.5 py-1 text-[10px] font-medium text-white transition-all duration-200 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
                   >
-                    <span className="text-xs">{icon}</span>
+                    <span className="text-[10px]">{icon}</span>
                     <span>{label}</span>
                   </button>
                 ))}
               </div>
 
               {/* Process Emails Button */}
-              <div className="mb-3">
+              <div className="mb-2">
                 <button
                   onClick={handleProcessEmails}
                   disabled={processEmailsMutation.isPending || !accountId}
-                  className="flex w-full cursor-pointer items-center justify-center gap-1 rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-2 py-1 text-xs font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full cursor-pointer items-center justify-center gap-0.5 rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-2 py-1 text-[10px] font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span className="text-xs">🤖</span>
+                  <span className="text-[10px]">🤖</span>
                   {processEmailsMutation.isPending
                     ? "Processing..."
                     : "Process Emails for Search"}
@@ -355,13 +355,13 @@ export default function EmailSearchAssistant({
 
               {/* Debug Information */}
               {debugData && (
-                <div className="mb-3 rounded border border-purple-500/30 bg-white/5 p-2 text-xs">
-                  <div className="mb-1 text-purple-300">System Status:</div>
-                  <div className="text-xs text-gray-400">
+                <div className="mb-2 rounded border border-purple-500/30 bg-white/5 p-1.5 text-[10px]">
+                  <div className="mb-0.5 text-purple-300">System Status:</div>
+                  <div className="text-[9px] text-gray-400">
                     Total: {debugData.totalEmails} | Processed:{" "}
                     {debugData.emails.filter((e: any) => e.hasEmbedding).length}
                   </div>
-                  <div className="truncate text-xs text-gray-400">
+                  <div className="truncate text-[9px] text-gray-400">
                     Latest: {debugData.emails[0]?.subject || "None"}
                   </div>
                 </div>
@@ -376,17 +376,17 @@ export default function EmailSearchAssistant({
                 type="text"
                 onChange={handleInputChange}
                 value={input}
-                className="h-8 w-full rounded-full border border-purple-500/30 bg-white/5 px-2 text-xs text-white outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
+                className="h-7 w-full rounded-full border border-purple-500/30 bg-white/5 px-2.5 text-[11px] text-white outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
                 placeholder="Search your emails..."
                 disabled={isLoading}
               />
             </div>
             <button
               type="submit"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isLoading || !input.trim()}
             >
-              <Send className="h-3 w-3 text-white" />
+              <Send className="h-2.5 w-2.5 text-white" />
             </button>
           </form>
         </div>
