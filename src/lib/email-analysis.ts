@@ -18,14 +18,10 @@ export interface EmailAnalysis {
   vectorEmbedding: number[];
 }
 
-/**
- * Generate a comprehensive summary of an email
- */
 export async function generateEmailSummary(
   email: EmailMessage,
 ): Promise<string> {
   try {
-    // Clean and truncate email body for better processing
     const bodyContent = email.body || email.bodySnippet || "No content";
     const truncatedBody =
       bodyContent.length > 3000
@@ -68,21 +64,17 @@ Summary:`;
 
     const summary = completion.choices[0]?.message?.content?.trim();
 
-    // Ensure we have a meaningful summary
     if (!summary || summary.length < 20) {
       return `Email from ${email.from.name || email.from.address} about: ${email.subject}`;
     }
 
     return summary;
   } catch (error) {
-    console.error("Error generating email summary:", error);
+    console.error("Failed to generate summary:", error);
     return `Email from ${email.from.name || email.from.address} regarding: ${email.subject}`;
   }
 }
 
-/**
- * Generate relevant tags for an email using AI
- */
 export async function generateEmailTags(
   email: EmailMessage,
 ): Promise<string[]> {
@@ -123,8 +115,7 @@ Return only the tags as a comma-separated list, no other text.`;
       .map((tag: string) => tag.trim().toLowerCase())
       .filter(Boolean);
   } catch (error) {
-    console.error("Error generating email tags:", error);
-    // Fallback tags based on email properties
+    console.error("Tag generation failed:", error);
     const fallbackTags = [];
     if (email.sysLabels.includes("important")) fallbackTags.push("important");
     if (email.sysLabels.includes("junk")) fallbackTags.push("spam");
@@ -135,74 +126,43 @@ Return only the tags as a comma-separated list, no other text.`;
   }
 }
 
-/**
- * Generate vector embedding from summary using Gemini
- * Includes summary and key metadata for richer semantic representation
- */
 export async function generateEmailEmbedding(
   summary: string,
   email?: EmailMessage,
 ): Promise<number[]> {
   try {
-    // Create a rich text representation for embedding
     let embeddingText = summary;
 
-    // If email context is provided, enhance the embedding with metadata
     if (email) {
       const senderInfo = email.from.name || email.from.address;
       const dateInfo = new Date(email.sentAt).toLocaleDateString();
-
       embeddingText = `${summary}\n\nFrom: ${senderInfo}\nDate: ${dateInfo}\nSubject: ${email.subject}`;
     }
 
-    console.log(
-      "Generating embedding for:",
-      embeddingText.substring(0, 150) + "...",
-    );
-
-    // Use Gemini embeddings with 768 dimensions
     const embedding = await getGenerateEmbeddings(embeddingText);
 
     if (!embedding || embedding.length === 0) {
       throw new Error("No embeddings returned from Gemini");
     }
 
-    console.log(`✓ Generated embedding with ${embedding.length} dimensions`);
     return embedding;
   } catch (error) {
-    console.error("Error generating email embedding:", error);
-    // Return a zero vector as fallback
+    console.error("Embedding generation failed:", error);
     return new Array(768).fill(0);
   }
 }
 
-/**
- * Analyze an email and generate summary, tags, and embedding
- */
 export async function analyzeEmail(
   email: EmailMessage,
 ): Promise<EmailAnalysis> {
   try {
-    console.log(`\n📧 Analyzing email: ${email.subject}`);
-    console.log(`   From: ${email.from.name || email.from.address}`);
-
-    // First generate comprehensive summary using OpenRouter
-    console.log(`   ⚙️  Generating detailed summary...`);
+    console.log(`Analyzing: ${email.subject}`);
+    
     const summary = await generateEmailSummary(email);
-    console.log(
-      `   ✓ Summary (${summary.length} chars): ${summary.substring(0, 100)}...`,
-    );
-
-    // Generate embedding from the summary + metadata using Gemini
-    console.log(`   ⚙️  Generating semantic embedding...`);
     const vectorEmbedding = await generateEmailEmbedding(summary, email);
-
-    // Generate tags
-    console.log(`   ⚙️  Generating tags...`);
     const tags = await generateEmailTags(email);
-    console.log(`   ✓ Tags: ${tags.join(", ")}`);
-
-    console.log(`   ✅ Analysis complete!\n`);
+    
+    console.log(`Tags: ${tags.join(", ")}`);
 
     return {
       summary,
@@ -210,8 +170,7 @@ export async function analyzeEmail(
       vectorEmbedding,
     };
   } catch (error) {
-    console.error("❌ Error analyzing email:", error);
-    // Return fallback analysis
+    console.error("Email analysis failed:", error);
     return {
       summary: email.subject || "No summary available",
       tags: email.sysLabels.includes("important") ? ["important"] : ["normal"],
@@ -220,12 +179,8 @@ export async function analyzeEmail(
   }
 }
 
-/**
- * Generate embedding for search query using Gemini
- */
 export async function generateQueryEmbedding(query: string): Promise<number[]> {
   try {
-    // Use Gemini for query embeddings to match email embeddings
     const embedding = await getGenerateEmbeddings(query);
 
     if (!embedding || embedding.length === 0) {
@@ -234,15 +189,11 @@ export async function generateQueryEmbedding(query: string): Promise<number[]> {
 
     return embedding;
   } catch (error) {
-    console.error("Error generating query embedding:", error);
-    // Return a zero vector as fallback
+    console.error("Query embedding failed:", error);
     return new Array(768).fill(0);
   }
 }
 
-/**
- * Calculate cosine similarity between two vectors
- */
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length) {
     throw new Error("Vectors must have the same length");

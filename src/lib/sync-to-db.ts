@@ -8,7 +8,6 @@ export async function syncEmailsToDatabase(
   emails: EmailMessage[],
   accountId: string,
 ) {
-  console.log(`Syncing ${emails.length} emails to database`);
   const limit = pLimit(10);
 
   try {
@@ -16,7 +15,7 @@ export async function syncEmailsToDatabase(
       await upsertEmail(email, accountId, 0);
     }
   } catch (error) {
-    console.log("error", error);
+    console.log("Sync error:", error);
   }
 }
 
@@ -25,8 +24,6 @@ async function upsertEmail(
   accountId: string,
   index: number,
 ) {
-  console.log(`Upserting email ${index} of `);
-
   try {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
     if (
@@ -40,15 +37,7 @@ async function upsertEmail(
       emailLabelType = "draft";
     }
 
-    // Generate AI summary and embeddings for the email
-    console.log(`Analyzing email: ${email.subject}`);
     const analysis = await analyzeEmail(email);
-    console.log(`Generated summary: ${analysis.summary.substring(0, 100)}...`);
-    console.log(
-      `Generated embedding with ${analysis.vectorEmbedding.length} dimensions`,
-    );
-
-    // Convert embedding array to pgvector format
     const embeddingVector = arrayToVector(analysis.vectorEmbedding);
 
     const addressToUpsert = new Map();
@@ -80,9 +69,7 @@ async function upsertEmail(
 
     const fromAddress = addressMap.get(email.from.address);
     if (!fromAddress) {
-      console.log(
-        `Failed to upsert from address for email ${email.bodySnippet}`,
-      );
+      console.log(`Failed to upsert from address`);
       return;
     }
 
@@ -236,7 +223,7 @@ async function upsertEmail(
       await upsertAttachment(email.id, attachment);
     }
   } catch (error) {
-    console.log("error", error);
+    console.log("Upsert email failed:", error);
   }
 }
 
@@ -266,7 +253,7 @@ async function upsertAttachment(emailId: string, attachment: EmailAttachment) {
       },
     });
   } catch (error) {
-    console.log(`Failed to upsert attachment for email ${emailId}: ${error}`);
+    console.log(`Failed to upsert attachment: ${error}`);
   }
 }
 
@@ -286,18 +273,18 @@ async function upsertEmailAddress(address: EmailAddress, accountId: string) {
         where: { id: existingAddress.id },
         data: { name: address.name, raw: address.raw },
       });
-    } else {
-      return await db.emailAddress.create({
-        data: {
-          address: address.address ?? "",
-          name: address.name,
-          raw: address.raw,
-          accountId,
-        },
-      });
     }
+    
+    return await db.emailAddress.create({
+      data: {
+        address: address.address ?? "",
+        name: address.name,
+        raw: address.raw,
+        accountId,
+      },
+    });
   } catch (error) {
-    console.log(`Failed to upsert email address: ${error}`);
+    console.log(`Failed to upsert address: ${error}`);
     return null;
   }
 }

@@ -31,7 +31,7 @@ export async function exchangeAurinkoCodeForToken(code: string) {
         },
       },
     );
-    console.log(response.data);
+    
     return response.data as {
       accountId: number;
       accessToken: string;
@@ -40,12 +40,9 @@ export async function exchangeAurinkoCodeForToken(code: string) {
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error(
-        "Error exchanging Aurinko code for token:",
-        error.response?.data,
-      );
+      console.error("Token exchange failed:", error.response?.data);
     }
-    console.error("Error exchanging Aurinko code for token:", error);
+    console.error("Aurinko error:", error);
   }
 }
 
@@ -56,14 +53,15 @@ export async function getAccountInfo(accessToken: string) {
         Authorization: `Bearer ${accessToken}`,
       },
     });
+    
     return response.data as {
       email: string;
       name: string;
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error("Error getting account info:", error.response?.data);
+      console.error("Account info failed:", error.response?.data);
     }
-    console.error("Error getting account info:", error);
+    console.error("Aurinko error:", error);
   }
 }

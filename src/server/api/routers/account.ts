@@ -12,18 +12,6 @@ interface AccountAccess {
   token: string;
 }
 
-const THREAD_FILTERS = {
-  INBOX: { inboxStatus: true, draftStatus: false, sentStatus: false },
-  DRAFTS: { inboxStatus: false, draftStatus: true, sentStatus: false },
-  SENT: { inboxStatus: false, draftStatus: false, sentStatus: true },
-} as const;
-
-const SYNC_CONFIG = {
-  DEFAULT_LIMIT: 15,
-  MAX_LIMIT: 50,
-  REFETCH_INTERVAL: 5000,
-} as const;
-
 export const authoriseAccountAccess = async (
   accountId: string,
   userId: string,
@@ -102,7 +90,6 @@ export const accountRouter = createTRPCRouter({
     .input(z.object({ accountId: z.string(), query: z.string() }))
     .query(async ({ ctx, input }) => {
       await authoriseAccountAccess(input.accountId, ctx.auth.userId);
-      // Return email addresses from contacts or previous emails
       const contacts = await ctx.db.emailAddress.findMany({
         where: {
           email: {
@@ -137,10 +124,10 @@ export const accountRouter = createTRPCRouter({
 
       const filters =
         input.tab === "inbox"
-          ? THREAD_FILTERS.INBOX
+          ? { inboxStatus: true, draftStatus: false, sentStatus: false }
           : input.tab === "drafts"
-            ? THREAD_FILTERS.DRAFTS
-            : THREAD_FILTERS.SENT;
+            ? { inboxStatus: false, draftStatus: true, sentStatus: false }
+            : { inboxStatus: false, draftStatus: false, sentStatus: true };
 
       return await ctx.db.thread.count({
         where: {
@@ -165,17 +152,13 @@ export const accountRouter = createTRPCRouter({
       const emailAccount = new Account(account.token);
 
       try {
-        console.log(
-          `Manual email sync triggered (forceFullSync: ${input.forceFullSync})...`,
-        );
         await emailAccount.syncEmails(input.forceFullSync);
-        console.log("Manual email sync completed successfully");
         return {
           success: true,
           message: "Emails synced successfully",
         };
       } catch (error) {
-        console.error("Manual email sync failed:", error);
+        console.error("Email sync failed:", error);
         throw new Error(`Failed to sync emails: ${error}`);
       }
     }),
@@ -190,12 +173,10 @@ export const accountRouter = createTRPCRouter({
       await authoriseAccountAccess(input.accountId, ctx.auth.userId);
 
       try {
-        console.log("Processing emails for AI analysis...");
         const { processExistingEmails } = await import(
           "@/lib/process-existing-emails"
         );
-        await processExistingEmails(input.accountId, 5); // Process 5 emails at a time
-        console.log("Email processing completed successfully");
+        await processExistingEmails(input.accountId, 5);
         return {
           success: true,
           message: "Emails processed for AI analysis",
@@ -255,7 +236,7 @@ export const accountRouter = createTRPCRouter({
         tab: z.string(),
         important: z.boolean(),
         unread: z.boolean(),
-        limit: z.number().min(1).max(50).default(SYNC_CONFIG.DEFAULT_LIMIT),
+        limit: z.number().min(1).max(50).default(15),
         cursor: z.string().nullish(),
       }),
     )
@@ -266,14 +247,10 @@ export const accountRouter = createTRPCRouter({
       );
       const emailAccount = new Account(account.token);
 
-      // Force sync emails before returning threads
       try {
-        console.log("Starting email sync...");
-        await emailAccount.syncEmails(true); // Force full sync
-        console.log("Email sync completed successfully");
+        await emailAccount.syncEmails(true);
       } catch (error) {
         console.error("Email sync failed:", error);
-        // Continue with existing data even if sync fails
       }
 
       const baseFilters: Prisma.ThreadWhereInput = {
@@ -304,10 +281,7 @@ export const accountRouter = createTRPCRouter({
         };
       }
 
-      const limit = Math.min(
-        input.limit ?? SYNC_CONFIG.DEFAULT_LIMIT,
-        SYNC_CONFIG.MAX_LIMIT,
-      );
+      const limit = Math.min(input.limit ?? 15, 50);
       const { cursor } = input;
 
       const threads = await ctx.db.thread.findMany({

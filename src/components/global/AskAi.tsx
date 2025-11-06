@@ -30,12 +30,12 @@ interface DebugData {
   }>;
 }
 
-const ANIMATION_CONFIG = {
+const animationConfig = {
   type: "easeOut" as const,
   duration: 0.2,
 } as any;
 
-const SUGGESTED_QUERIES = [
+const suggestedQueries = [
   { label: "Orders", query: "Show me emails about orders", icon: "📦" },
   { label: "Flights", query: "Find my flight bookings", icon: "✈️" },
   {
@@ -57,10 +57,10 @@ export default function EmailSearchAssistant({
 
   const processEmailsMutation = api.account.processEmailsForAI.useMutation({
     onSuccess: () => {
-      console.log("Email processing completed successfully");
+      console.log("Email processing completed");
     },
     onError: (error) => {
-      console.error("Email processing failed:", error);
+      console.error("Processing failed:", error);
       toast.error("Failed to process emails. Please try again.");
     },
   });
@@ -116,15 +116,11 @@ export default function EmailSearchAssistant({
         if (!response.ok) {
           const errorText = await response.text();
           console.error("API error:", errorText);
-          throw new Error(
-            `Failed to get response: ${response.status} ${response.statusText}`,
-          );
+          throw new Error(`Failed: ${response.status}`);
         }
 
         const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error("No response body");
-        }
+        if (!reader) throw new Error("No response body");
 
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -163,12 +159,11 @@ export default function EmailSearchAssistant({
           );
         }
       } catch (error) {
-        console.error("Error sending message:", error);
+        console.error("Send message error:", error);
         const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
+          error instanceof Error ? error.message : "Unknown error";
         toast.error(`Failed to send message: ${errorMessage}`);
 
-        // Add error message to chat
         const errorAssistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -287,7 +282,7 @@ export default function EmailSearchAssistant({
                       message.role === "assistant",
                   })}
                   layoutId={`container-[${messages.length - 1}]`}
-                  transition={ANIMATION_CONFIG}
+                  transition={animationConfig}
                 >
                   <div
                     className={cn("text-[11px] leading-[1.3]", {
@@ -325,9 +320,8 @@ export default function EmailSearchAssistant({
                 </p>
               </div>
 
-              {/* Query Suggestions */}
               <div className="mb-2 grid grid-cols-2 gap-1">
-                {SUGGESTED_QUERIES.map(({ label, query, icon }) => (
+                {suggestedQueries.map(({ label, query, icon }) => (
                   <button
                     key={label}
                     onClick={() => handleQuerySuggestion(query)}

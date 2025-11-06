@@ -11,41 +11,27 @@ interface ChatRequest {
   accountId: string;
 }
 
-const SEARCH_CONFIG = {
-  RECENT_DAYS: 365,
-  SIMILARITY_THRESHOLD: 0.1, // Very low threshold
-} as const;
-
-const AI_CONFIG = {
-  MODEL: "gpt-3.5-turbo", // Using faster, more reliable model
-  MAX_TOKENS: 1000,
-  TEMPERATURE: 0.7,
-} as const;
+const recentDays = 365;
+const similarityThreshold = 0.1;
 
 export async function POST(req: Request) {
   try {
     const { messages, accountId }: ChatRequest = await req.json();
     const { userId } = await auth();
 
-    console.log("Chat API called with accountId:", accountId);
-
     if (!userId) {
-      console.error("No user ID found in session");
       return new Response("Unauthorized", { status: 401 });
     }
     if (!accountId) {
-      console.error("No account ID provided");
       return new Response("Account ID is required", { status: 400 });
     }
 
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage?.content) {
-      console.error("No message content in request");
       return new Response("No message content provided", { status: 400 });
     }
 
     const userQuery = lastMessage.content;
-    console.log("User query:", userQuery);
 
     const account = await db.account.findFirst({
       where: {
@@ -55,26 +41,19 @@ export async function POST(req: Request) {
     });
 
     if (!account) {
-      console.error("Account not found for ID:", accountId);
       return new Response("Account not found", { status: 404 });
     }
 
-    console.log("Starting email search...");
-
     const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - SEARCH_CONFIG.RECENT_DAYS);
+    recentDate.setDate(recentDate.getDate() - recentDays);
 
     let relevantEmails: any[] = [];
 
-    // Check if query mentions specific sender
     const senderPattern = /(?:from|by|sent\s+by)\s+([a-zA-Z0-9._-]+)/i;
     const senderMatch = userQuery.match(senderPattern);
     const senderTerm = senderMatch?.[1]?.toLowerCase() || "";
 
-    console.log("Searching emails...", { senderTerm, userQuery });
-
     try {
-      // Build search conditions
       const whereConditions: any = {
         thread: {
           accountId: accountId,
@@ -83,9 +62,7 @@ export async function POST(req: Request) {
 
       const orConditions: any[] = [];
 
-      // Add sender filter if specified
       if (senderTerm) {
-        console.log("Filtering by sender:", senderTerm);
         orConditions.push({
           from: {
             OR: [
@@ -96,7 +73,6 @@ export async function POST(req: Request) {
         });
       }
 
-      // Add general search conditions
       const cleanQuery = userQuery
         .toLowerCase()
         .replace(/from|by|sent/gi, "")
@@ -108,12 +84,9 @@ export async function POST(req: Request) {
         );
       }
 
-      // Apply OR conditions if any
       if (orConditions.length > 0) {
         whereConditions.OR = orConditions;
       }
-
-      console.log("Executing database query...");
 
       const searchResults = await db.email.findMany({
         where: whereConditions,
@@ -126,8 +99,6 @@ export async function POST(req: Request) {
         },
         take: 20,
       });
-
-      console.log(`Found ${searchResults.length} emails`);
 
       relevantEmails = searchResults.map((email: any) => ({
         id: email.id,
@@ -145,16 +116,10 @@ export async function POST(req: Request) {
       throw searchError;
     }
 
-    console.log(`Found ${relevantEmails.length} relevant emails`);
-
-    // Filter by similarity threshold
     const filteredEmails = relevantEmails.filter(
-      (email) => email.similarity >= SEARCH_CONFIG.SIMILARITY_THRESHOLD,
+      (email) => email.similarity >= similarityThreshold,
     );
 
-    console.log(`${filteredEmails.length} emails passed similarity threshold`);
-
-    // Prepare context for AI with more details
     const emailContext = filteredEmails.map((email) => ({
       subject: email.subject,
       content: email.bodySnippet || email.body || "",
@@ -170,47 +135,31 @@ export async function POST(req: Request) {
         : "",
     }));
 
-    const systemPrompt = `You are an AI email assistant. You have access to the user's email context to help answer their questions.
-
-${filteredEmails.length > 0 ? `Found ${filteredEmails.length} relevant emails:` : "No relevant emails found."}
+    const systemPrompt = `You're helping search through emails. ${filteredEmails.length > 0 ? `Found ${filteredEmails.length} emails:` : "No emails found."}
 
 ${emailContext
   .map(
     (email, index) => `
-Email ${index + 1}:
-- From: ${email.from}
-- Subject: ${email.subject}
-- Date: ${new Date(email.date).toLocaleDateString()}
-${email.summary ? `- Summary: ${email.summary}` : ""}
-- Content Preview: ${email.content.substring(0, 300)}...
+${index + 1}. From: ${email.from}
+Subject: ${email.subject}
+Date: ${new Date(email.date).toLocaleDateString()}
+${email.summary ? `Summary: ${email.summary}` : ""}
+Preview: ${email.content.substring(0, 300)}...
 `,
   )
   .join("\n")}
 
-Instructions:
-- Answer based on the provided email context above
-- Be specific and cite which email(s) you're referring to
-- Include sender names when relevant
-- If no relevant emails are found, politely let the user know
-- Be concise but informative
-- Maintain a friendly, helpful tone`;
+Answer based on these emails. Be specific about which email you're referencing. If nothing matches well, say so.`;
 
     if (!env.OPENAI_API_KEY) {
-      console.error("OpenAI API key not configured");
-      // Return a simple response without OpenAI
-      const simpleResponse = `I found ${filteredEmails.length} emails matching your query. ${
-        filteredEmails.length > 0
-          ? `Here they are:\n\n${filteredEmails
-              .slice(0, 5)
-              .map(
-                (e, i) =>
-                  `${i + 1}. ${e.subject} (from ${e.from?.name || e.from?.address || "Unknown"})\n   Date: ${new Date(e.sentAt).toLocaleDateString()}`,
-              )
-              .join("\n\n")}`
-          : "Try refining your search query."
-      }`;
+      const resp = filteredEmails.length > 0
+        ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
+            .slice(0, 5)
+            .map((e, i) => `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`)
+            .join("\n\n")}`
+        : "No emails found for that query.";
 
-      return new Response(simpleResponse, {
+      return new Response(resp, {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "no-cache",
@@ -218,24 +167,18 @@ Instructions:
       });
     }
 
-    console.log("Initializing OpenAI with model:", AI_CONFIG.MODEL);
-
     try {
       const openai = new OpenAI({
         apiKey: env.OPENAI_API_KEY,
       });
 
-      console.log("Creating OpenAI stream...");
-
       const stream = await openai.chat.completions.create({
-        model: AI_CONFIG.MODEL,
+        model: "gpt-3.5-turbo",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
-        max_tokens: AI_CONFIG.MAX_TOKENS,
-        temperature: AI_CONFIG.TEMPERATURE,
+        max_tokens: 1000,
+        temperature: 0.7,
         stream: true,
       });
-
-      console.log("Stream created successfully");
 
       const encoder = new TextEncoder();
       const readable = new ReadableStream({
@@ -250,7 +193,7 @@ Instructions:
           } catch (error) {
             console.error("Streaming error:", error);
             controller.enqueue(
-              encoder.encode("\n\n[Error occurred while streaming response]"),
+              encoder.encode("\n\nError streaming response"),
             );
           } finally {
             controller.close();
@@ -265,21 +208,15 @@ Instructions:
         },
       });
     } catch (openaiError) {
-      console.error("OpenAI API error:", openaiError);
-      // Fallback to simple response
-      const simpleResponse = `I found ${filteredEmails.length} emails matching your query. ${
-        filteredEmails.length > 0
-          ? `Here they are:\n\n${filteredEmails
-              .slice(0, 5)
-              .map(
-                (e, i) =>
-                  `${i + 1}. ${e.subject} (from ${e.from?.name || e.from?.address || "Unknown"})\n   Date: ${new Date(e.sentAt).toLocaleDateString()}`,
-              )
-              .join("\n\n")}`
-          : "Try refining your search query."
-      }`;
+      console.error("OpenAI error:", openaiError);
+      const resp = filteredEmails.length > 0
+        ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
+            .slice(0, 5)
+            .map((e, i) => `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`)
+            .join("\n\n")}`
+        : "No emails found.";
 
-      return new Response(simpleResponse, {
+      return new Response(resp, {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "no-cache",
@@ -287,14 +224,10 @@ Instructions:
       });
     }
   } catch (error) {
-    console.error("Chat API error:", error);
-    console.error(
-      "Error stack:",
-      error instanceof Error ? error.stack : "No stack trace",
-    );
+    console.error("Chat error:", error);
 
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
+      error instanceof Error ? error.message : "Unknown error";
 
     return new Response(
       JSON.stringify({

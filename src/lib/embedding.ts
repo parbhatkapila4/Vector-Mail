@@ -3,7 +3,6 @@ import { GoogleGenAI } from "@google/genai";
 const genAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export async function getGenerateEmbeddings(summary: String) {
-  console.log("Generating embeddings");
   try {
     const response = await genAi.models.embedContent({
       model: "gemini-embedding-001",
@@ -12,14 +11,12 @@ export async function getGenerateEmbeddings(summary: String) {
         outputDimensionality: 768,
       },
     });
-    if (!response?.embeddings) {
-      return [];
-    }
-    const embeddingLength = response?.embeddings[0]?.values;
-
-    return embeddingLength;
+    
+    if (!response?.embeddings) return [];
+    
+    return response.embeddings[0]?.values;
   } catch (error) {
-    console.error("Error generating embeddings:", error);
+    console.error("Embedding generation failed:", error);
     return [];
   }
 }

@@ -34,7 +34,7 @@ class JobQueue {
 
   registerHandler<T = any>(type: string, handler: JobHandler<T>) {
     this.handlers.set(type, handler);
-    logger.info(`Registered job handler: ${type}`);
+    logger.info(`Handler registered: ${type}`);
   }
 
   async add<T = any>(
@@ -53,7 +53,7 @@ class JobQueue {
     };
 
     this.jobs.set(job.id, job);
-    logger.debug(`Added job: ${type}`, { jobId: job.id });
+    logger.debug(`Job added: ${type}`, { jobId: job.id });
 
     return job.id;
   }
@@ -86,31 +86,31 @@ class JobQueue {
     }
 
     try {
-      logger.debug(`Processing job: ${job.type}`, { jobId: job.id });
+      logger.debug(`Processing: ${job.type}`, { jobId: job.id });
       await handler(job.data);
 
       job.status = "completed";
       job.processedAt = Date.now();
-      logger.info(`Job completed: ${job.type}`, { jobId: job.id });
+      logger.info(`Completed: ${job.type}`, { jobId: job.id });
 
       setTimeout(() => this.jobs.delete(job.id), 3600000);
     } catch (error) {
       logger.error(`Job failed: ${job.type}`, {
         jobId: job.id,
         attempt: job.attempts,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown",
       });
 
       if (job.attempts >= job.maxAttempts) {
         job.status = "failed";
-        job.error = error instanceof Error ? error.message : "Unknown error";
-        logger.error(`Job permanently failed: ${job.type}`, { jobId: job.id });
+        job.error = error instanceof Error ? error.message : "Unknown";
+        logger.error(`Permanently failed: ${job.type}`, { jobId: job.id });
       } else {
         job.status = "pending";
-        logger.info(`Job will be retried: ${job.type}`, {
+        logger.info(`Retrying: ${job.type}`, {
           jobId: job.id,
           attempt: job.attempts,
-          maxAttempts: job.maxAttempts,
+          max: job.maxAttempts,
         });
       }
     } finally {
