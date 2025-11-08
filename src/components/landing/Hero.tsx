@@ -6,33 +6,20 @@ import { useUser } from "@clerk/nextjs";
 import { EmailClientMockup } from "./EmailClientMockup";
 import { AnimatedEmail3D } from "./AnimatedEmail3D";
 import { LampContainer } from "../ui/lamp";
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { X } from "lucide-react";
 
 export function Hero() {
   const { isSignedIn } = useUser();
-  const [showNewsletterModal, setShowNewsletterModal] = useState(false);
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState("");
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setSubmitMessage("Thanks! We'll notify you when the demo is ready. 🎉");
-      setEmail("");
-      setIsSubmitting(false);
-
-      // Close modal after 2 seconds
-      setTimeout(() => {
-        setShowNewsletterModal(false);
-        setSubmitMessage("");
-      }, 2000);
-    }, 1000);
-  };
+  useEffect(() => {
+    if (!isVideoOpen && videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [isVideoOpen]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -120,7 +107,7 @@ export function Hero() {
               </button>
             </Link>
             <button
-              onClick={() => setShowNewsletterModal(true)}
+              onClick={() => setIsVideoOpen(true)}
               className="w-full rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/5 via-purple-400/5 to-amber-400/5 px-8 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 active:scale-95 sm:w-auto sm:px-10 sm:py-4 sm:text-lg"
             >
               Watch Demo
@@ -163,21 +150,21 @@ export function Hero() {
               <div className="h-12 rounded-lg border border-purple-500/20 bg-white/5"></div>
             </div>
             <p className="mt-4 text-center text-xs text-purple-300">
-              View on desktop for full experience
+              View on desktop for better experience
             </p>
           </div>
         </div>
       </div>
 
-      {/* Newsletter Modal */}
+      {/* Video Modal */}
       <AnimatePresence>
-        {showNewsletterModal && (
+        {isVideoOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-            onClick={() => setShowNewsletterModal(false)}
+            onClick={() => setIsVideoOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -185,73 +172,21 @@ export function Hero() {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", duration: 0.5 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 shadow-2xl sm:p-8"
+              className="relative aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-purple-500/30 bg-black shadow-2xl"
             >
-              {/* Close Button */}
               <button
-                onClick={() => setShowNewsletterModal(false)}
-                className="absolute right-4 top-4 text-gray-400 transition-colors hover:text-white"
+                onClick={() => setIsVideoOpen(false)}
+                className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-1 text-gray-300 transition-colors hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
-
-              {/* Icon */}
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50">
-                  <span className="text-3xl">🎬</span>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="mb-6 text-center">
-                <h3 className="mb-3 text-2xl font-black text-white sm:text-3xl">
-                  Demo Coming Soon!
-                </h3>
-                <p className="text-sm text-gray-400 sm:text-base">
-                  We're working on an amazing demo. Drop your email and we'll
-                  notify you when it's ready!
-                </p>
-              </div>
-
-              {/* Form */}
-              {submitMessage ? (
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="py-4 text-center"
-                >
-                  <p className="font-semibold text-purple-300">
-                    {submitMessage}
-                  </p>
-                </motion.div>
-              ) : (
-                <form onSubmit={handleNewsletterSubmit} className="space-y-4">
-                  <div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      required
-                      className="w-full rounded-lg border border-purple-500/30 bg-white/5 px-4 py-3 text-white outline-none transition-all placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-6 py-3 font-semibold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isSubmitting ? "Submitting..." : "Notify Me"}
-                  </button>
-                </form>
-              )}
-
-              {/* Badge */}
-              <div className="mt-6 text-center">
-                <p className="text-xs text-gray-500">
-                  🔒 We respect your privacy. No spam, ever.
-                </p>
-              </div>
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                src="/Vector-Mail-1762579701087.mp4"
+                controls
+                autoPlay
+              />
             </motion.div>
           </motion.div>
         )}
