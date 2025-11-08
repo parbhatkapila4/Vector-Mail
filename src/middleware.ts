@@ -25,7 +25,16 @@ export default clerkMiddleware(async (auth, req) => {
   if (process.env.NODE_ENV === "production") {
     response.headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' *.clerk.accounts.dev *.clerk.com *.aurinko.io *.openai.com;",
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev",
+        "script-src-elem 'self' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https:",
+        "font-src 'self' data:",
+        "connect-src 'self' *.clerk.accounts.dev *.clerk.com *.aurinko.io *.openai.com clerk.parhbat.dev *.parhbat.dev",
+        "frame-src 'self' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev",
+      ].join("; "),
     );
   }
 
