@@ -27,13 +27,13 @@ export default clerkMiddleware(async (auth, req) => {
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev",
-        "script-src-elem 'self' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev",
+        "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
+        "script-src-elem 'self' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
         "font-src 'self' data:",
-        "connect-src 'self' *.clerk.accounts.dev *.clerk.com *.aurinko.io *.openai.com clerk.parhbat.dev *.parhbat.dev",
-        "frame-src 'self' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev",
+        "connect-src 'self' *.clerk.accounts.dev *.clerk.com *.aurinko.io *.openai.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
+        "frame-src 'self' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
       ].join("; "),
     );
   }
