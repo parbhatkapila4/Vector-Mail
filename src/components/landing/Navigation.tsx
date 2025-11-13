@@ -93,7 +93,7 @@ export function Navigation() {
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-4 py-3 transition-colors hover:bg-white/10"
+                className="block rounded-lg px-4 py-3 text-center transition-colors hover:bg-white/10"
               >
                 <span className="font-medium text-white">Features</span>
               </Link>
@@ -101,7 +101,7 @@ export function Navigation() {
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-4 py-3 transition-colors hover:bg-white/10"
+                className="block rounded-lg px-4 py-3 text-center transition-colors hover:bg-white/10"
               >
                 <span className="font-medium text-white">Pricing</span>
               </Link>
@@ -110,7 +110,7 @@ export function Navigation() {
                 <Link
                   href="/mail"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-4 py-3 transition-colors hover:bg-white/10"
+                  className="block rounded-lg px-4 py-3 text-center transition-colors hover:bg-white/10"
                 >
                   <span className="font-medium text-white">Inbox</span>
                 </Link>
@@ -118,14 +118,14 @@ export function Navigation() {
                 <Link
                   href="/about"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-4 py-3 transition-colors hover:bg-white/10"
+                  className="block rounded-lg px-4 py-3 text-center transition-colors hover:bg-white/10"
                 >
                   <span className="font-medium text-white">About</span>
                 </Link>
               )}
 
               {isSignedIn ? (
-                <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex items-center justify-center gap-3 px-4 py-3">
                   <UserButton />
                   <span className="text-base font-medium text-white">
                     {user?.fullName || user?.firstName || "User"}

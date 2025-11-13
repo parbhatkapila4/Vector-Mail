@@ -318,7 +318,7 @@ export default function FeaturesPage() {
       </div>
 
       {/* Mobile Back Button - In content flow */}
-      <div className="px-4 pt-20 sm:hidden">
+      <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
             <ArrowLeft className="h-3 w-3" />
@@ -453,7 +453,7 @@ export default function FeaturesPage() {
               <button
                 key={feature.id}
                 onClick={() => setActiveTab(feature.id)}
-                className={`rounded-lg px-6 py-3 text-sm font-semibold transition-all ${
+                className={`rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${
                   activeTab === feature.id
                     ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white shadow-lg shadow-purple-500/50"
                     : "border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
@@ -490,7 +490,7 @@ export default function FeaturesPage() {
                   </div>
 
                   {/* Feature Details */}
-                  <div className="space-y-6">
+                  <div className="space-y-6 text-center sm:text-left">
                     <h3 className="text-3xl font-black text-white">
                       {feature.title}
                     </h3>
@@ -548,8 +548,8 @@ export default function FeaturesPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 transition-all hover:border-purple-500/50">
-                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 transition-all hover:border-purple-500/50 text-center sm:text-left">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 mx-auto sm:mx-0">
                     <feature.icon className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 text-xl font-bold text-white">
@@ -642,8 +642,8 @@ export default function FeaturesPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all hover:border-purple-500/50">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all hover:border-purple-500/50 text-center sm:text-left">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 mx-auto sm:mx-0">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
@@ -692,8 +692,8 @@ export default function FeaturesPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all hover:border-purple-500/50">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all hover:border-purple-500/50 text-center sm:text-left">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 mx-auto sm:mx-0">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
@@ -740,7 +740,7 @@ export default function FeaturesPage() {
               viewport={{ once: true }}
               className="space-y-4"
             >
-              <div className="mb-8 flex items-center gap-3">
+              <div className="mb-8 flex items-center justify-center gap-3 sm:justify-start">
                 <div className="h-3 w-3 rounded-full bg-red-500" />
                 <h3 className="text-3xl font-bold text-white">
                   Traditional Email
@@ -750,7 +750,7 @@ export default function FeaturesPage() {
                 {comparisonPoints.traditional.map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-4"
+                    className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-center sm:text-left"
                   >
                     <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
                     <span className="text-sm text-gray-400">{item.text}</span>
@@ -767,7 +767,7 @@ export default function FeaturesPage() {
               viewport={{ once: true }}
               className="space-y-4"
             >
-              <div className="mb-8 flex items-center gap-3">
+              <div className="mb-8 flex items-center justify-center gap-3 sm:justify-start">
                 <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 to-amber-500" />
                 <h3 className="text-3xl font-bold text-white">VectorMail</h3>
               </div>
@@ -775,7 +775,7 @@ export default function FeaturesPage() {
                 {comparisonPoints.vectormail.map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/5 via-purple-400/5 to-amber-400/5 p-4 transition-colors hover:border-purple-500/50"
+                    className="flex items-start gap-3 rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/5 via-purple-400/5 to-amber-400/5 p-4 text-center transition-colors hover:border-purple-500/50 sm:text-left"
                   >
                     <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
                     <span className="text-sm text-gray-300">{item.text}</span>
@@ -813,17 +813,11 @@ export default function FeaturesPage() {
               you focus on what matters.
             </p>
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/sign-up">
-                <button className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-12 py-5 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50">
-                  Start Free Today
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </Link>
               <Link
                 href="https://github.com/parbhatkapila4/Vector-Mail"
                 target="_blank"
               >
-                <button className="inline-flex items-center gap-3 rounded-xl border border-purple-500/30 px-12 py-5 text-lg font-bold text-white transition-all hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/20">
+                <button className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-12 py-5 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50">
                   View on GitHub
                   <GitBranch className="h-5 w-5" />
                 </button>

@@ -103,7 +103,7 @@ export default function AboutPage() {
       </div>
 
       {/* Mobile Back Button */}
-      <div className="px-4 pt-20 sm:hidden">
+      <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
             <ArrowLeft className="h-3 w-3" />
@@ -206,8 +206,10 @@ export default function AboutPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
-                  <problem.icon className="mb-4 h-10 w-10 text-purple-400" />
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50 text-center sm:text-left">
+                  <div className="flex justify-center sm:justify-start">
+                    <problem.icon className="mb-4 h-10 w-10 text-purple-400" />
+                  </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
                     {problem.title}
                   </h3>
@@ -228,7 +230,7 @@ export default function AboutPage() {
             className="mx-auto mt-16 max-w-4xl"
           >
             <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
-              <div className="mb-4 flex items-start gap-4">
+              <div className="mb-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
                   <Heart className="h-6 w-6 text-white" />
                 </div>
@@ -299,8 +301,8 @@ export default function AboutPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50 text-center sm:text-left">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50 mx-auto sm:mx-0">
                     <motivation.icon className="h-7 w-7 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
@@ -325,6 +327,7 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
+              className="text-center sm:text-left"
             >
               <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
                 Email Reimagined for 2025
@@ -368,7 +371,7 @@ export default function AboutPage() {
               <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/30 via-purple-400/30 to-amber-400/30 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
               <div className="relative rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 shadow-2xl">
                 <div className="space-y-6">
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-purple-400">
                       <Rocket className="h-5 w-5 text-white" />
                     </div>
@@ -382,7 +385,7 @@ export default function AboutPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-400 to-amber-400">
                       <Brain className="h-5 w-5 text-white" />
                     </div>
@@ -396,7 +399,7 @@ export default function AboutPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-purple-600">
                       <Shield className="h-5 w-5 text-white" />
                     </div>
@@ -473,7 +476,7 @@ export default function AboutPage() {
               <h3 className="mb-6 text-center text-2xl font-black text-white sm:text-3xl">
                 Why This Matters to the Market
               </h3>
-              <div className="space-y-4 text-sm leading-relaxed text-gray-400 sm:text-base">
+              <div className="space-y-4 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
                 <p>
                   <span className="font-semibold text-purple-300">
                     The email market is ripe for disruption.
@@ -494,7 +497,7 @@ export default function AboutPage() {
                   </span>
                 </p>
                 <p>VectorMail fills that gap. We're building for:</p>
-                <ul className="ml-4 space-y-2">
+                <ul className="ml-0 space-y-2 text-left sm:ml-4">
                   <li className="flex items-start gap-3">
                     <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
                     <span>
@@ -559,9 +562,9 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6"
+              className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center sm:text-left"
             >
-              <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-white">
+              <h3 className="mb-4 flex flex-col items-center gap-3 text-xl font-bold text-white sm:flex-row">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-purple-500/30 bg-purple-500/20">
                   <Zap className="h-5 w-5 text-purple-400" />
                 </div>
@@ -594,9 +597,9 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6"
+              className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center sm:text-left"
             >
-              <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-white">
+              <h3 className="mb-4 flex flex-col items-center gap-3 text-xl font-bold text-white sm:flex-row">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/20">
                   <Brain className="h-5 w-5 text-amber-400" />
                 </div>
@@ -680,9 +683,11 @@ export default function AboutPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   viewport={{ once: true }}
-                  className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-left"
+                  className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center sm:text-left"
                 >
-                  <item.icon className="mb-3 h-8 w-8 text-purple-400" />
+                  <div className="flex justify-center sm:justify-start">
+                    <item.icon className="mb-3 h-8 w-8 text-purple-400" />
+                  </div>
                   <h3 className="mb-2 font-bold text-white">{item.title}</h3>
                   <p className="text-sm text-gray-500">{item.description}</p>
                 </motion.div>
@@ -690,13 +695,8 @@ export default function AboutPage() {
             </div>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/we" className="w-full sm:w-auto">
-                <button className="w-full rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 active:scale-95 sm:w-auto">
-                  Join the Community →
-                </button>
-              </Link>
               <Link href="/features" className="w-full sm:w-auto">
-                <button className="w-full rounded-xl border border-purple-500/30 px-10 py-4 text-lg font-semibold text-white transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-white/5 active:scale-95 sm:w-auto">
+                <button className="w-full rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 active:scale-95 sm:w-auto">
                   Explore Features
                 </button>
               </Link>
