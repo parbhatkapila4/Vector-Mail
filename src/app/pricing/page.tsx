@@ -280,7 +280,7 @@ export default function PricingPage() {
                   {/* Features */}
                   <ul className="mb-8 flex-grow space-y-3">
                     {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3 justify-center sm:justify-start">
+                      <li key={idx} className="flex items-start gap-3 mx-auto sm:mx-0 max-w-fit sm:max-w-none">
                         <div
                           className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
                             plan.isPopular
@@ -290,7 +290,7 @@ export default function PricingPage() {
                         >
                           <CheckCircle className="h-3 w-3 text-white" />
                         </div>
-                        <span className="text-sm text-gray-300 text-center sm:text-left flex-1">{feature}</span>
+                        <span className="text-sm text-gray-300 text-center sm:text-left">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -384,7 +384,7 @@ export default function PricingPage() {
                 We're here to help
               </span>
             </h2>
-            <p className="mb-8 text-gray-400 text-center sm:text-left">
+            <p className="mx-auto mb-8 max-w-2xl text-gray-400">
               Our team is ready to answer any questions about plans, features,
               or custom requirements.
             </p>

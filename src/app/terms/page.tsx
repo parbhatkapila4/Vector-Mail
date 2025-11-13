@@ -1,5 +1,9 @@
-import type { Metadata } from "next";
+"use client";
+
+import { motion } from "framer-motion";
 import Link from "next/link";
+import { Navigation } from "@/components/landing/Navigation";
+import { Footer } from "@/components/landing/Footer";
 import {
   ArrowLeft,
   FileText,
@@ -7,16 +11,11 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Rocket,
 } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "Terms of Service - VectorMail",
-  description:
-    "Read VectorMail's Terms of Service to understand your rights and responsibilities when using our AI email management platform.",
-};
-
 export default function TermsOfService() {
-  const lastUpdated = "September 2025";
+  const lastUpdated = "November 2025";
 
   const sections = [
     {
@@ -70,194 +69,269 @@ export default function TermsOfService() {
     "Distributing malware or harmful content",
   ];
 
+  const betaTerms = [
+    "The service may contain bugs, errors, or limitations",
+    "Features may change or be removed without notice",
+    "We may collect feedback and usage data to improve the service",
+    "Beta access is provided at no cost and may be terminated at any time",
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-          <Link
-            href="/"
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-black dark:text-gray-400 dark:hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-lg"
-              style={{ backgroundColor: "#875276" }}
-            >
-              <FileText className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-black dark:text-white">
-                Terms of Service
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Last updated: {lastUpdated}
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen w-full overflow-x-hidden bg-black">
+      <Navigation />
+
+      {/* Back Button - Desktop */}
+      <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
+        <Link href="/">
+          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-xs font-medium sm:text-sm">Back</span>
+          </button>
+        </Link>
       </div>
 
-      {/* Content */}
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-        {/* Introduction */}
-        <div className="mb-12">
-          <h2 className="mb-4 text-2xl font-bold text-black dark:text-white">
-            Welcome to VectorMail
-          </h2>
-          <p className="leading-relaxed text-gray-600 dark:text-gray-400">
-            These Terms of Service ("Terms") govern your use of VectorMail's
-            AI-powered email management platform. Please read these terms
-            carefully before using our service. By accessing or using
-            VectorMail, you agree to be bound by these Terms.
-          </p>
-        </div>
+      {/* Mobile Back Button */}
+      <div className="px-4 pt-28 sm:hidden">
+        <Link href="/">
+          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
+            <ArrowLeft className="h-3 w-3" />
+            <span className="text-xs font-medium">Back</span>
+          </button>
+        </Link>
+      </div>
 
-        {/* Key Sections */}
-        <div className="space-y-12">
-          {sections.map((section, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-border bg-card p-8"
+      {/* Hero Section */}
+      <section className="relative overflow-hidden pb-8 pt-12 sm:pb-12 sm:pt-16 md:pt-20 lg:pb-16 lg:pt-24 xl:pt-28">
+        {/* Background gradients */}
+        <div
+          className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute bottom-0 left-1/4 h-[250px] w-[250px] rounded-full opacity-20 blur-3xl lg:h-[500px] lg:w-[500px]"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            {/* Badge */}
+            <motion.div
+              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 mt-8 sm:mt-12 md:mt-16 lg:mt-20"
+              animate={{
+                borderColor: [
+                  "rgba(168, 85, 247, 0.3)",
+                  "rgba(251, 191, 36, 0.3)",
+                  "rgba(168, 85, 247, 0.3)",
+                ],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
             >
-              <div className="mb-6 flex items-center gap-4">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: "#875276" }}
-                >
-                  <section.icon className="h-6 w-6 text-white" />
+              <FileText className="mr-2 h-4 w-4 text-purple-300" />
+              <span className="text-sm font-semibold text-purple-300">
+                Terms of Service
+              </span>
+            </motion.div>
+
+            <h1 className="mb-6 w-full break-words text-4xl font-black leading-tight sm:text-5xl md:text-6xl lg:text-7xl">
+              <span className="block text-white">Welcome to</span>
+              <span className="mt-2 block bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+                VectorMail
+              </span>
+            </h1>
+
+            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-gray-400 sm:text-xl lg:text-2xl">
+              These Terms of Service govern your use of VectorMail's AI-powered
+              email management platform. Please read these terms carefully
+              before using our service.
+            </p>
+
+            <p className="mx-auto mt-4 max-w-3xl text-sm text-gray-500">
+              Last updated: {lastUpdated}
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <section className="relative overflow-hidden bg-black pt-8 pb-16 sm:pt-12 sm:pb-24 lg:pt-16 lg:pb-32">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+          {/* Key Sections */}
+          <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-2">
+            {sections.map((section, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className="group relative"
+              >
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                      <section.icon className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">
+                      {section.title}
+                    </h3>
+                  </div>
+                  <ul className="space-y-3">
+                    {section.content.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-start gap-3">
+                        <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-400" />
+                        <span className="text-sm leading-relaxed text-gray-400">
+                          {item}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <h3 className="text-xl font-bold text-black dark:text-white">
-                  {section.title}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Prohibited Uses Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="mx-auto mt-16 max-w-4xl"
+          >
+            <div className="rounded-2xl border border-red-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-red-600 to-red-400">
+                  <XCircle className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                  Prohibited Uses
                 </h3>
               </div>
+              <p className="mb-6 text-sm leading-relaxed text-gray-400 sm:text-base">
+                You agree not to use VectorMail for any of the following
+                prohibited activities:
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {prohibitedUses.map((use, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    viewport={{ once: true }}
+                    className="flex items-start gap-3"
+                  >
+                    <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
+                    <span className="text-sm text-gray-400">{use}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Beta Program Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="mx-auto mt-16 max-w-4xl"
+          >
+            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                  <Rocket className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                  Beta Program Terms
+                </h3>
+              </div>
+              <p className="mb-6 text-sm leading-relaxed text-gray-400 sm:text-base">
+                VectorMail is currently in beta testing. By participating in our
+                beta program, you acknowledge that:
+              </p>
               <ul className="space-y-3">
-                {section.content.map((item, itemIndex) => (
-                  <li key={itemIndex} className="flex items-start gap-3">
-                    <div
-                      className="mt-2 h-2 w-2 flex-shrink-0 rounded-full"
-                      style={{ backgroundColor: "#875276" }}
-                    ></div>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      {item}
+                {betaTerms.map((term, index) => (
+                  <motion.li
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    className="flex items-start gap-3"
+                  >
+                    <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-400" />
+                    <span className="text-sm leading-relaxed text-gray-400">
+                      {term}
                     </span>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             </div>
-          ))}
-        </div>
+          </motion.div>
 
-        {/* Prohibited Uses */}
-        <div className="mt-12 rounded-2xl bg-muted/30 p-8">
-          <div className="mb-6 flex items-center gap-4">
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded-xl"
-              style={{ backgroundColor: "#875276" }}
-            >
-              <XCircle className="h-6 w-6 text-white" />
+          {/* Contact Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="mx-auto mt-16 max-w-4xl text-center"
+          >
+            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+              <h3 className="mb-4 text-2xl font-bold text-white sm:text-3xl">
+                Questions About These Terms?
+              </h3>
+              <p className="mb-6 text-sm leading-relaxed text-gray-400 sm:text-base">
+                If you have any questions about these Terms of Service, please
+                contact us.
+              </p>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-white/5 px-6 py-3 backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
+              >
+                <FileText className="h-5 w-5 text-purple-400" />
+                <span className="font-medium text-white">
+                  help@productsolution.net
+                </span>
+              </motion.div>
             </div>
-            <h3 className="text-xl font-bold text-black dark:text-white">
-              Prohibited Uses
-            </h3>
-          </div>
-          <p className="mb-6 text-gray-600 dark:text-gray-400">
-            You agree not to use VectorMail for any of the following prohibited
-            activities:
-          </p>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {prohibitedUses.map((use, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {use}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Beta Program */}
-        <div className="mt-12 rounded-2xl border border-border bg-card p-8">
-          <h3 className="mb-4 text-xl font-bold text-black dark:text-white">
-            Beta Program Terms
-          </h3>
-          <div className="space-y-4">
-            <p className="text-gray-600 dark:text-gray-400">
-              VectorMail is currently in beta testing. By participating in our
-              beta program, you acknowledge that:
+          {/* Footer Note */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="mx-auto mt-16 max-w-4xl text-center"
+          >
+            <p className="text-sm text-gray-500">
+              These Terms of Service are effective as of {lastUpdated} and may
+              be updated from time to time. We will notify you of any material
+              changes.
             </p>
-            <ul className="space-y-2">
-              <li className="flex items-start gap-3">
-                <div
-                  className="mt-2 h-2 w-2 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: "#875276" }}
-                ></div>
-                <span className="text-gray-600 dark:text-gray-400">
-                  The service may contain bugs, errors, or limitations
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div
-                  className="mt-2 h-2 w-2 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: "#875276" }}
-                ></div>
-                <span className="text-gray-600 dark:text-gray-400">
-                  Features may change or be removed without notice
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div
-                  className="mt-2 h-2 w-2 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: "#875276" }}
-                ></div>
-                <span className="text-gray-600 dark:text-gray-400">
-                  We may collect feedback and usage data to improve the service
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div
-                  className="mt-2 h-2 w-2 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: "#875276" }}
-                ></div>
-                <span className="text-gray-600 dark:text-gray-400">
-                  Beta access is provided at no cost and may be terminated at
-                  any time
-                </span>
-              </li>
-            </ul>
-          </div>
+          </motion.div>
         </div>
+      </section>
 
-        {/* Contact */}
-        <div className="mt-12 text-center">
-          <h3 className="mb-4 text-xl font-bold text-black dark:text-white">
-            Questions About These Terms?
-          </h3>
-          <p className="mb-6 text-gray-600 dark:text-gray-400">
-            If you have any questions about these Terms of Service, please
-            contact us.
-          </p>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3">
-            <FileText className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400">
-              help@productsolution.net
-            </span>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-16 border-t border-border pt-8 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-500">
-            These Terms of Service are effective as of {lastUpdated} and may be
-            updated from time to time. We will notify you of any material
-            changes.
-          </p>
-        </div>
-      </div>
+      <Footer />
     </div>
   );
 }

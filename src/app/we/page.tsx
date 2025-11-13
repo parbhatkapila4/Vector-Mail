@@ -143,7 +143,7 @@ export default function WePage() {
       </div>
 
       {/* Mobile Back Button */}
-      <div className="px-4 pt-20 sm:hidden">
+      <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
             <ArrowLeft className="h-3 w-3" />
@@ -243,13 +243,13 @@ export default function WePage() {
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 mx-auto sm:mx-0">
                     <item.icon className="h-6 w-6 text-purple-400" />
                   </div>
-                  <h3 className="mb-3 text-xl font-bold text-white">
+                  <h3 className="mb-3 text-xl font-bold text-white text-center sm:text-left">
                     {item.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400">
+                  <p className="text-sm leading-relaxed text-gray-400 text-center sm:text-left">
                     {item.description}
                   </p>
                 </div>
@@ -266,7 +266,7 @@ export default function WePage() {
             className="mx-auto mt-12 max-w-4xl"
           >
             <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
                   <Sparkles className="h-6 w-6 text-white" />
                 </div>
@@ -336,7 +336,7 @@ export default function WePage() {
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50 sm:p-8">
-                  <div className="mb-4 flex items-center gap-4">
+                  <div className="mb-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
                     <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50">
                       <type.icon className="h-7 w-7 text-white" />
                     </div>
@@ -344,18 +344,18 @@ export default function WePage() {
                       {type.title}
                     </h3>
                   </div>
-                  <p className="mb-4 text-sm leading-relaxed text-gray-400 sm:text-base">
+                  <p className="mb-4 text-sm leading-relaxed text-gray-400 sm:text-base text-center sm:text-left">
                     {type.description}
                   </p>
                   <div className="space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-300">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-300 text-center sm:text-left">
                       Examples:
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2 mx-auto max-w-fit sm:max-w-none sm:mx-0">
                       {type.examples.map((example, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 flex-shrink-0 text-purple-400" />
-                          <span className="text-xs text-gray-500">
+                        <div key={idx} className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-purple-400" />
+                          <span className="text-xs text-gray-500 text-center sm:text-left">
                             {example}
                           </span>
                         </div>
@@ -394,16 +394,16 @@ export default function WePage() {
                 viewport={{ once: true }}
                 className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 mx-auto sm:mx-0">
                   <story.icon className="h-5 w-5 text-purple-400" />
                 </div>
-                <h3 className="mb-3 text-lg font-bold text-white">
+                <h3 className="mb-3 text-lg font-bold text-white text-center sm:text-left">
                   {story.title}
                 </h3>
-                <blockquote className="mb-3 border-l-2 border-purple-500/30 pl-4 text-sm italic leading-relaxed text-gray-400">
+                <blockquote className="mb-3 border-l-0 sm:border-l-2 border-purple-500/30 pl-0 sm:pl-4 text-sm italic leading-relaxed text-gray-400 text-center sm:text-left">
                   "{story.quote}"
                 </blockquote>
-                <div className="text-xs font-semibold text-purple-300">
+                <div className="text-xs font-semibold text-purple-300 text-center sm:text-left">
                   — {story.author}
                 </div>
               </motion.div>

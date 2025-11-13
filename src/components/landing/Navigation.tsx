@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
@@ -8,11 +8,43 @@ import { Menu, X } from "lucide-react";
 export function Navigation() {
   const { isSignedIn, user } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isScrollingDown, setIsScrollingDown] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const heroSectionHeight = 600; // Approximate hero section height
+
+      // Show navbar if at top or in hero section
+      if (currentScrollY < heroSectionHeight) {
+        setIsScrollingDown(false);
+      } else {
+        // Hide on scroll down, show on scroll up
+        if (currentScrollY > lastScrollY && currentScrollY > heroSectionHeight) {
+          setIsScrollingDown(true);
+        } else if (currentScrollY < lastScrollY) {
+          setIsScrollingDown(false);
+        }
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   return (
     <div className="relative flex w-full items-center justify-center">
       {/* Desktop Navigation */}
-      <div className="fixed inset-x-0 top-10 z-[100] mx-auto hidden max-w-2xl px-4 lg:block">
+      <div
+        className={`fixed inset-x-0 z-[100] mx-auto hidden max-w-2xl px-4 transition-all duration-300 ease-in-out lg:block ${
+          isScrollingDown
+            ? "-translate-y-[calc(100%+2.5rem)] opacity-0"
+            : "translate-y-10 opacity-100"
+        }`}
+      >
         <nav
           className="relative flex items-center justify-center space-x-4 rounded-full border border-purple-500/30 bg-black/90 px-8 py-6 shadow-2xl shadow-purple-500/10 backdrop-blur-xl"
           style={{
@@ -64,7 +96,11 @@ export function Navigation() {
       </div>
 
       {/* Mobile Navigation */}
-      <div className="fixed inset-x-0 top-0 z-[100] px-4 pt-4 lg:hidden">
+      <div
+        className={`fixed inset-x-0 top-0 z-[100] px-4 pt-4 transition-transform duration-300 ease-in-out lg:hidden ${
+          isScrollingDown ? "-translate-y-full" : "translate-y-0"
+        }`}
+      >
         <nav
           className="relative rounded-2xl border border-purple-500/30 bg-black/90 shadow-2xl shadow-purple-500/10 backdrop-blur-xl"
           style={{

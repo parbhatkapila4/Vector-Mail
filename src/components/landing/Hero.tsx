@@ -12,7 +12,6 @@ import { X, Mail, Sparkles, Zap, ArrowRight, Search, Star, Archive, Send, Inbox,
 export function Hero() {
   const { isSignedIn } = useUser();
   const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [showApp, setShowApp] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -21,14 +20,6 @@ export function Hero() {
       videoRef.current.currentTime = 0;
     }
   }, [isVideoOpen]);
-
-  // Auto-open app after 3 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowApp(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -174,175 +165,16 @@ export function Hero() {
                 </div>
 
                 {/* Content Container */}
-                <div className="relative min-h-[600px] overflow-hidden rounded-[2.8rem] bg-black pt-16 pb-12">
-                  <AnimatePresence mode="wait">
-                    {!showApp ? (
-                      <motion.div
-                        key="home"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, scale: 1.1 }}
-                        transition={{ duration: 0.3 }}
-                        className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900 pt-16 pb-12"
-                      >
-                        {/* iOS Home Screen */}
-                        <div className="flex h-full flex-col px-6">
-                          {/* Time and Date */}
-                          <div className="mb-8 mt-4 text-center">
-                            <div className="text-4xl font-light text-white">9:41</div>
-                            <div className="mt-1 text-sm text-gray-400">Monday, March 18</div>
-                          </div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  viewport={{ once: true }}
+                  className="relative min-h-[600px] overflow-hidden rounded-[2.8rem] bg-black pt-16 pb-12"
+                >
 
-                          {/* App Icons Grid */}
-                          <div className="flex-1 space-y-6">
-                            {/* First Row */}
-                            <div className="flex justify-center gap-4">
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-blue-500 flex items-center justify-center">
-                                  <Mail className="h-7 w-7 text-white" />
-                                </div>
-                                <span className="text-[10px] text-white">Mail</span>
-                              </motion.div>
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-green-500 flex items-center justify-center">
-                                  <span className="text-xl">📱</span>
-                                </div>
-                                <span className="text-[10px] text-white">Messages</span>
-                              </motion.div>
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-orange-500 flex items-center justify-center">
-                                  <span className="text-xl">📷</span>
-                                </div>
-                                <span className="text-[10px] text-white">Photos</span>
-                              </motion.div>
-                            </div>
-
-                            {/* Second Row - VectorMail App */}
-                            <div className="flex justify-center gap-4">
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => {
-                                  setTimeout(() => setShowApp(true), 100);
-                                }}
-                                className="flex flex-col items-center gap-1 cursor-pointer"
-                              >
-                                <motion.div
-                                  className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 flex items-center justify-center shadow-lg"
-                                  animate={{
-                                    boxShadow: [
-                                      "0 0 0 0 rgba(168, 85, 247, 0.7)",
-                                      "0 0 20px 10px rgba(168, 85, 247, 0.3)",
-                                      "0 0 0 0 rgba(168, 85, 247, 0.7)",
-                                    ],
-                                  }}
-                                  transition={{
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    ease: "easeInOut",
-                                  }}
-                                >
-                                  <Mail className="h-7 w-7 text-white" />
-                                </motion.div>
-                                <span className="text-[10px] text-white font-medium">VectorMail</span>
-                              </motion.div>
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-blue-400 flex items-center justify-center">
-                                  <span className="text-xl">🌐</span>
-                                </div>
-                                <span className="text-[10px] text-white">Safari</span>
-                              </motion.div>
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-red-500 flex items-center justify-center">
-                                  <span className="text-xl">📺</span>
-                                </div>
-                                <span className="text-[10px] text-white">TV</span>
-                              </motion.div>
-                            </div>
-
-                            {/* Third Row */}
-                            <div className="flex justify-center gap-4">
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-purple-500 flex items-center justify-center">
-                                  <span className="text-xl">🎵</span>
-                                </div>
-                                <span className="text-[10px] text-white">Music</span>
-                              </motion.div>
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-yellow-500 flex items-center justify-center">
-                                  <span className="text-xl">⚙️</span>
-                                </div>
-                                <span className="text-[10px] text-white">Settings</span>
-                              </motion.div>
-                              <motion.div
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                className="flex flex-col items-center gap-1"
-                              >
-                                <div className="h-14 w-14 rounded-2xl bg-gray-600 flex items-center justify-center">
-                                  <span className="text-xl">📦</span>
-                                </div>
-                                <span className="text-[10px] text-white">Files</span>
-                              </motion.div>
-                            </div>
-                          </div>
-
-                          {/* Dock */}
-                          <div className="mb-4 flex justify-center gap-3 rounded-3xl bg-white/10 px-4 py-2 backdrop-blur-xl">
-                            <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                              <span className="text-lg">📞</span>
-                            </div>
-                            <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                              <span className="text-lg">💬</span>
-                            </div>
-                            <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                              <span className="text-lg">📧</span>
-                            </div>
-                            <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                              <span className="text-lg">🎵</span>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="app"
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 1.05 }}
-                        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="relative min-h-[600px] pt-16 pb-12"
-                      >
-                        {/* Premium Header */}
-                        <div className="relative mb-4 flex items-center justify-between border-b border-white/10 px-5 pb-4 pt-2">
+                  {/* Premium Header */}
+                  <div className="relative mb-4 flex items-center justify-between border-b border-white/10 px-5 pb-4 pt-2">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 via-amber-500 to-purple-500"></div>
                       <div>
@@ -359,10 +191,10 @@ export function Hero() {
                         <Sparkles className="h-4 w-4 text-white" />
                       </div>
                     </motion.div>
-                        </div>
+                  </div>
 
-                        {/* Interactive Search Bar */}
-                        <motion.div
+                  {/* Interactive Search Bar */}
+                  <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.5 }}
@@ -389,13 +221,13 @@ export function Hero() {
                         className="rounded border border-white/10 bg-white/10 px-2 py-0.5"
                         whileHover={{ scale: 1.05 }}
                       >
-                        <span className="text-[10px] text-gray-300">⌘K                        </span>
-                        </motion.div>
-                        </div>
-                        </motion.div>
+                        <span className="text-[10px] text-gray-300">⌘K</span>
+                      </motion.div>
+                    </div>
+                  </motion.div>
 
-                        {/* Quick Actions */}
-                        <motion.div
+                  {/* Quick Actions */}
+                  <motion.div
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     transition={{ delay: 0.4, duration: 0.5 }}
@@ -425,10 +257,10 @@ export function Hero() {
                         </motion.button>
                       );
                     })}
-                        </motion.div>
+                  </motion.div>
 
-                        {/* Premium Email List with Rich Content */}
-                        <div className="relative space-y-2 px-5">
+                  {/* Premium Email List with Rich Content */}
+                  <div className="relative space-y-2 px-5">
                     {[
                       {
                         avatar: "DT",
@@ -566,10 +398,10 @@ export function Hero() {
                         </div>
                       </motion.div>
                     ))}
-                        </div>
+                  </div>
 
-                        {/* AI Summary Badge */}
-                        <motion.div
+                  {/* AI Summary Badge */}
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.1, duration: 0.5 }}
@@ -583,10 +415,10 @@ export function Hero() {
                     <p className="text-[10px] leading-relaxed text-gray-300">
                       3 unread emails from Design, Finance, and Engineering teams. 2 require action.
                     </p>
-                        </motion.div>
+                  </motion.div>
 
-                        {/* Animated CTA Footer */}
-                        <motion.div
+                  {/* Animated CTA Footer */}
+                  <motion.div
                     className="relative mt-4 px-5 text-center"
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
@@ -618,16 +450,13 @@ export function Hero() {
                     >
                       Open on desktop for the complete VectorMail experience
                     </motion.p>
-                        </motion.div>
+                  </motion.div>
 
-                        {/* Home Indicator */}
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                          <div className="h-1 w-32 rounded-full bg-white/30"></div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                  {/* Home Indicator */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+                    <div className="h-1 w-32 rounded-full bg-white/30"></div>
+                  </div>
+                </motion.div>
               </div>
             </div>
           </motion.div>

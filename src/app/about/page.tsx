@@ -113,7 +113,7 @@ export default function AboutPage() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pb-16 pt-4 sm:pb-24 sm:pt-8 md:pt-12 lg:pb-32 lg:pt-16 xl:pt-20">
+      <section className="relative overflow-hidden pb-8 pt-4 sm:pb-12 sm:pt-8 md:pt-12 lg:pb-16 lg:pt-16 xl:pt-20">
         {/* Background gradients */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
@@ -138,7 +138,7 @@ export default function AboutPage() {
           >
             {/* Badge */}
             <motion.div
-              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2"
+              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 mt-8 sm:mt-12 md:mt-16 lg:mt-20"
               animate={{
                 borderColor: [
                   "rgba(168, 85, 247, 0.3)",
@@ -177,7 +177,7 @@ export default function AboutPage() {
       </section>
 
       {/* The Problem Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black pt-8 pb-16 sm:pt-12 sm:pb-24 lg:pt-16 lg:pb-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
