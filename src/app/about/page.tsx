@@ -113,7 +113,7 @@ export default function AboutPage() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pb-16 pt-8 sm:pb-24 sm:pt-16 md:pt-24 lg:pb-32 lg:pt-40 xl:pt-48">
+      <section className="relative overflow-hidden pb-16 pt-4 sm:pb-24 sm:pt-8 md:pt-12 lg:pb-32 lg:pt-16 xl:pt-20">
         {/* Background gradients */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
