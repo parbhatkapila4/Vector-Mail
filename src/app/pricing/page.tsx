@@ -5,12 +5,22 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle, Users, Grid, Boxes, Mail } from "lucide-react";
 import { Navigation } from "@/components/landing/Navigation";
 import { Footer } from "@/components/landing/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">(
     "annually",
   );
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const plans = [
     {
@@ -82,11 +92,15 @@ export default function PricingPage() {
       <Navigation />
 
       {/* Back Button */}
-      <div className="fixed left-8 top-32 z-40">
+      <div
+        className={`fixed left-4 top-28 z-40 transition-opacity duration-300 sm:left-8 sm:top-32 sm:opacity-100 ${
+          isScrolled ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
+      >
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-4 py-2 text-white transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm font-medium">Back</span>
+          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-xs font-medium sm:text-sm">Back</span>
           </button>
         </Link>
       </div>
@@ -149,7 +163,7 @@ export default function PricingPage() {
               Flexible Pricing Plans for Every Need
             </h1>
 
-            <p className="mx-auto mb-12 max-w-3xl text-lg text-gray-400 sm:text-xl">
+            <p className="mx-auto mb-12 max-w-3xl text-lg text-gray-400 text-center sm:text-left sm:text-xl">
               Choose the plan that best fits your requirements and start
               optimizing your time today!
             </p>
@@ -232,7 +246,7 @@ export default function PricingPage() {
 
                   {/* Icon */}
                   <div
-                    className={`mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 ${
+                    className={`mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 mx-auto sm:mx-0 ${
                       plan.isPopular
                         ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400"
                         : "bg-white/10"
@@ -242,18 +256,18 @@ export default function PricingPage() {
                   </div>
 
                   {/* Plan Name */}
-                  <h3 className="mb-3 text-2xl font-bold text-white">
+                  <h3 className="mb-3 text-2xl font-bold text-white text-center sm:text-left">
                     {plan.name}
                   </h3>
 
                   {/* Description */}
-                  <p className="mb-6 text-sm leading-relaxed text-gray-400">
+                  <p className="mb-6 text-sm leading-relaxed text-gray-400 text-center sm:text-left">
                     {plan.description}
                   </p>
 
                   {/* Price */}
                   <div className="mb-8">
-                    <div className="flex items-baseline gap-1">
+                    <div className="flex items-baseline gap-1 justify-center sm:justify-start">
                       <span className="text-5xl font-black text-white">
                         {plan.price}
                       </span>
@@ -266,7 +280,7 @@ export default function PricingPage() {
                   {/* Features */}
                   <ul className="mb-8 flex-grow space-y-3">
                     {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
+                      <li key={idx} className="flex items-start gap-3 justify-center sm:justify-start">
                         <div
                           className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
                             plan.isPopular
@@ -276,7 +290,7 @@ export default function PricingPage() {
                         >
                           <CheckCircle className="h-3 w-3 text-white" />
                         </div>
-                        <span className="text-sm text-gray-300">{feature}</span>
+                        <span className="text-sm text-gray-300 text-center sm:text-left flex-1">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -344,10 +358,10 @@ export default function PricingPage() {
                 >
                   <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 opacity-0 blur transition-opacity duration-500 group-hover:opacity-100" />
                   <div className="relative rounded-xl border border-purple-500/20 bg-white/5 p-6 transition-all hover:border-purple-500/40">
-                    <h3 className="mb-2 text-lg font-bold text-white">
+                    <h3 className="mb-2 text-lg font-bold text-white text-center sm:text-left">
                       {faq.q}
                     </h3>
-                    <p className="text-sm leading-relaxed text-gray-400">
+                    <p className="text-sm leading-relaxed text-gray-400 text-center sm:text-left">
                       {faq.a}
                     </p>
                   </div>
@@ -370,7 +384,7 @@ export default function PricingPage() {
                 We're here to help
               </span>
             </h2>
-            <p className="mb-8 text-gray-400">
+            <p className="mb-8 text-gray-400 text-center sm:text-left">
               Our team is ready to answer any questions about plans, features,
               or custom requirements.
             </p>

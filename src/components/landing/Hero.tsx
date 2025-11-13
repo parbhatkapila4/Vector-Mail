@@ -145,7 +145,7 @@ export function Hero() {
             className="relative mx-auto w-[375px] max-w-full"
           >
             {/* iPhone 16 Pro Frame */}
-            <div className="relative mx-auto w-full rounded-[3.5rem] border-[8px] border-zinc-900 bg-zinc-900 p-1 shadow-2xl">
+            <div className="relative mx-auto w-full rounded-[3.5rem] border-[8px] border-zinc-800 bg-zinc-800 p-1 shadow-2xl">
               {/* Screen Bezel */}
               <div className="relative overflow-hidden rounded-[2.8rem] bg-black">
                 {/* Dynamic Island */}
@@ -170,73 +170,16 @@ export function Hero() {
                   whileInView={{ opacity: 1 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
                   viewport={{ once: true }}
-                  className="relative min-h-[600px] overflow-hidden rounded-[2.8rem] bg-gradient-to-br from-zinc-950 via-black to-zinc-950 pt-16 pb-12"
+                  className="relative min-h-[600px] overflow-hidden rounded-[2.8rem] bg-black pt-16 pb-12"
                 >
-                  {/* Animated gradient background */}
-                  <motion.div
-                    className="absolute inset-0 opacity-30"
-                    animate={{
-                      background: [
-                        "radial-gradient(circle at 0% 0%, rgba(168,85,247,0.2) 0%, transparent 50%)",
-                        "radial-gradient(circle at 100% 100%, rgba(251,191,36,0.2) 0%, transparent 50%)",
-                        "radial-gradient(circle at 0% 0%, rgba(168,85,247,0.2) 0%, transparent 50%)",
-                      ],
-                    }}
-                    transition={{
-                      duration: 8,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-
-                  {/* Glowing border effect */}
-                  <motion.div
-                    className="absolute inset-0 rounded-[2.8rem] border border-purple-500/30"
-                    animate={{
-                      boxShadow: [
-                        "inset 0 0 20px rgba(168,85,247,0.1)",
-                        "inset 0 0 30px rgba(168,85,247,0.2)",
-                        "inset 0 0 20px rgba(168,85,247,0.1)",
-                      ],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
 
                   {/* Premium Header */}
-                  <div className="relative mb-4 flex items-center justify-between border-b border-purple-500/30 px-5 pb-4 pt-2">
+                  <div className="relative mb-4 flex items-center justify-between border-b border-white/10 px-5 pb-4 pt-2">
                     <div className="flex items-center gap-3">
-                      <motion.div
-                        className="relative"
-                        animate={{
-                          rotate: [0, 360],
-                        }}
-                        transition={{
-                          duration: 20,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                      >
-                        <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 via-amber-500 to-purple-500"></div>
-                        <motion.div
-                          className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-amber-500 opacity-50 blur-sm"
-                          animate={{
-                            scale: [1, 1.5, 1],
-                            opacity: [0.5, 0.8, 0.5],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                        />
-                      </motion.div>
+                      <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 via-amber-500 to-purple-500"></div>
                       <div>
                         <div className="text-base font-bold text-white">VectorMail</div>
-                        <div className="text-[10px] text-purple-300">AI-Powered Email</div>
+                        <div className="text-[10px] text-gray-400">AI-Powered Email</div>
                       </div>
                     </div>
                     <motion.div
@@ -244,7 +187,7 @@ export function Hero() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 shadow-lg">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
                         <Sparkles className="h-4 w-4 text-white" />
                       </div>
                     </motion.div>
@@ -258,8 +201,8 @@ export function Hero() {
                     viewport={{ once: true }}
                     className="relative mb-4 px-5"
                   >
-                    <div className="relative flex items-center gap-2 rounded-xl border border-purple-500/30 bg-white/5 px-3 py-2.5 backdrop-blur-sm">
-                      <Search className="h-4 w-4 text-purple-400" />
+                    <div className="relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-sm">
+                      <Search className="h-4 w-4 text-gray-400" />
                       <motion.input
                         type="text"
                         placeholder="Search emails..."
@@ -275,10 +218,10 @@ export function Hero() {
                         readOnly
                       />
                       <motion.div
-                        className="rounded border border-purple-500/30 bg-purple-500/20 px-2 py-0.5"
+                        className="rounded border border-white/10 bg-white/10 px-2 py-0.5"
                         whileHover={{ scale: 1.05 }}
                       >
-                        <span className="text-[10px] text-purple-300">⌘K</span>
+                        <span className="text-[10px] text-gray-300">⌘K</span>
                       </motion.div>
                     </div>
                   </motion.div>
@@ -306,11 +249,11 @@ export function Hero() {
                           viewport={{ once: true }}
                           whileHover={{ scale: 1.05, y: -2 }}
                           whileTap={{ scale: 0.95 }}
-                          className="flex-1 rounded-lg border border-purple-500/20 bg-white/5 px-2 py-2 text-center transition-all hover:border-purple-500/40 hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10"
+                          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-center transition-all hover:border-white/20 hover:bg-white/10"
                         >
-                          <Icon className="mx-auto mb-1 h-3.5 w-3.5 text-purple-400" />
+                          <Icon className="mx-auto mb-1 h-3.5 w-3.5 text-gray-300" />
                           <div className="text-[9px] font-medium text-white">{action.label}</div>
-                          <div className="text-[8px] text-purple-300">{action.count}</div>
+                          <div className="text-[8px] text-gray-400">{action.count}</div>
                         </motion.button>
                       );
                     })}
@@ -362,43 +305,19 @@ export function Hero() {
                         }}
                         viewport={{ once: true }}
                         whileHover={{ scale: 1.02, x: 4, z: 10 }}
-                        className="group relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-r from-white/5 to-white/0 p-3 shadow-lg transition-all hover:border-purple-500/50 hover:shadow-purple-500/20"
+                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3 shadow-lg transition-all hover:border-white/20 hover:bg-white/10"
                       >
-                        {/* Animated gradient overlay */}
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-purple-400/0 to-amber-400/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                          whileHover={{
-                            background:
-                              "linear-gradient(90deg, rgba(168,85,247,0.15) 0%, rgba(251,191,36,0.15) 100%)",
-                          }}
-                        />
 
                         <div className="relative z-10 flex gap-3">
                           {/* Animated Avatar */}
                           <motion.div
-                            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 text-xs font-bold text-white shadow-lg"
-                            animate={
-                              email.unread
-                                ? {
-                                    boxShadow: [
-                                      "0 0 0 0 rgba(168, 85, 247, 0.7)",
-                                      "0 0 0 6px rgba(168, 85, 247, 0)",
-                                      "0 0 0 0 rgba(168, 85, 247, 0)",
-                                    ],
-                                  }
-                                : {}
-                            }
-                            transition={{
-                              duration: 2,
-                              repeat: email.unread ? Infinity : 0,
-                              ease: "easeOut",
-                            }}
+                            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-bold text-white shadow-lg"
                             whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
                           >
                             {email.avatar}
                             {email.unread && (
                               <motion.div
-                                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-purple-400 ring-2 ring-black"
+                                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-black"
                                 animate={{
                                   scale: [1, 1.4, 1],
                                   opacity: [1, 0.6, 1],
@@ -435,7 +354,7 @@ export function Hero() {
                               </span>
                               {email.unread && (
                                 <motion.div
-                                  className="h-2 w-2 rounded-full bg-purple-400"
+                                  className="h-2 w-2 rounded-full bg-blue-500"
                                   animate={{
                                     scale: [1, 1.3, 1],
                                     opacity: [1, 0.5, 1],
@@ -460,11 +379,11 @@ export function Hero() {
                             <div className="flex items-center gap-2">
                               {email.attachments > 0 && (
                                 <motion.div
-                                  className="flex items-center gap-1 rounded px-1.5 py-0.5 bg-purple-500/20"
+                                  className="flex items-center gap-1 rounded px-1.5 py-0.5 bg-white/10"
                                   whileHover={{ scale: 1.1 }}
                                 >
-                                  <Paperclip className="h-2.5 w-2.5 text-purple-400" />
-                                  <span className="text-[9px] text-purple-300">{email.attachments}</span>
+                                  <Paperclip className="h-2.5 w-2.5 text-gray-400" />
+                                  <span className="text-[9px] text-gray-300">{email.attachments}</span>
                                 </motion.div>
                               )}
                               <motion.div
@@ -472,7 +391,7 @@ export function Hero() {
                                 whileHover={{ opacity: 1, x: 0 }}
                                 className="ml-auto"
                               >
-                                <ArrowRight className="h-3 w-3 text-purple-400" />
+                                <ArrowRight className="h-3 w-3 text-gray-400" />
                               </motion.div>
                             </div>
                           </div>
@@ -487,10 +406,10 @@ export function Hero() {
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.1, duration: 0.5 }}
                     viewport={{ once: true }}
-                    className="relative mx-5 mt-4 rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 p-3"
+                    className="relative mx-5 mt-4 rounded-xl border border-white/10 bg-white/5 p-3"
                   >
                     <div className="mb-2 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      <Sparkles className="h-4 w-4 text-gray-300" />
                       <span className="text-xs font-semibold text-white">AI Summary</span>
                     </div>
                     <p className="text-[10px] leading-relaxed text-gray-300">
@@ -519,7 +438,7 @@ export function Hero() {
                       </motion.button>
                     </Link>
                     <motion.p
-                      className="mt-2 text-[10px] text-purple-300"
+                      className="mt-2 text-[10px] text-gray-400"
                       animate={{
                         opacity: [0.6, 1, 0.6],
                       }}
