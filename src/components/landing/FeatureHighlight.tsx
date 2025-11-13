@@ -190,7 +190,7 @@ export function FeatureHighlight() {
                     ].map((suggestion, i) => (
                       <motion.button
                         key={i}
-                        className="rounded-lg bg-white/5 px-4 py-2 text-left text-sm text-gray-300 transition-all hover:border hover:border-purple-500/20 hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10"
+                        className="rounded-lg bg-white/5 px-4 py-2 text-center text-sm text-gray-300 transition-all hover:border hover:border-purple-500/20 hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 sm:text-left"
                         whileHover={{ scale: 1.02, x: 5 }}
                         transition={{ duration: 0.2 }}
                       >
@@ -205,7 +205,7 @@ export function FeatureHighlight() {
                     ].map((suggestion, i) => (
                       <motion.button
                         key={i}
-                        className="rounded-lg bg-white/5 px-4 py-2 text-left text-sm text-gray-300 transition-all hover:border hover:border-purple-500/20 hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10"
+                        className="rounded-lg bg-white/5 px-4 py-2 text-center text-sm text-gray-300 transition-all hover:border hover:border-purple-500/20 hover:bg-gradient-to-r hover:from-purple-600/10 hover:via-purple-400/10 hover:to-amber-400/10 sm:text-left"
                         whileHover={{ scale: 1.02, x: 5 }}
                         transition={{ duration: 0.2 }}
                       >

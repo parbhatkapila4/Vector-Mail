@@ -136,7 +136,7 @@ export function Hero() {
         </div>
 
         {/* Mobile placeholder - simplified view */}
-        <div className="relative mx-auto pb-12 md:hidden">
+        <div className="relative mx-auto mt-8 pb-12 md:hidden">
           <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between border-b border-purple-500/20 pb-3">
               <div className="text-sm font-semibold text-white">

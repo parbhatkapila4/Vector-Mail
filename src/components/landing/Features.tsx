@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Zap, Keyboard, Sparkles, Search, ArrowRight } from "lucide-react";
+import { Zap,Sparkles, Search } from "lucide-react";
 
 export function Features() {
   return (
@@ -40,9 +40,9 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-4 sm:space-y-6"
+              className="flex flex-col items-center space-y-4 sm:items-start sm:space-y-6"
             >
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-3 text-center sm:space-y-4 sm:text-left">
                 <h3 className="text-2xl font-black text-white sm:text-3xl lg:text-4xl">
                   Speed Is Everything
                 </h3>
@@ -61,7 +61,7 @@ export function Features() {
               className="group relative"
             >
               {/* Glow effect - subtle pulse */}
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75"/>
               <motion.div
                 className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-3 shadow-2xl sm:p-4 md:p-6"
                 whileHover={{ y: -4 }}
@@ -197,7 +197,7 @@ export function Features() {
           </div>
 
           {/* Lightning-Fast Interface */}
-          <div className="mb-40 grid items-center gap-16 lg:grid-cols-2">
+          <div className="mb-40 grid items-center gap-32 sm:gap-12 lg:grid-cols-2 lg:gap-16">
             {/* Inbox Mockup */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -338,12 +338,12 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-4 sm:space-y-6 lg:order-1"
+              className="flex flex-col items-center space-y-4 sm:items-start sm:space-y-6 lg:order-1"
             >
-              <h3 className="text-2xl font-black text-white sm:text-3xl lg:text-4xl">
+              <h3 className="text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl -mt-24">
                 Lightning-Fast Interface
               </h3>
-              <p className="text-base leading-relaxed text-gray-400 sm:text-lg lg:text-xl">
+              <p className="text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl">
                 Email at the speed of thought. Navigate your entire inbox using
                 just your keyboard. Process hundreds of emails in minutes.
               </p>
@@ -362,7 +362,7 @@ export function Features() {
               {/* Glow effect */}
               <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
               <motion.div
-                className="relative rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 shadow-2xl"
+                className="relative rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 -mt-2 shadow-2xl"
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
@@ -463,12 +463,12 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-4 sm:space-y-6"
+              className="flex flex-col items-center space-y-4 sm:items-start sm:space-y-6"
             >
-              <h3 className="text-2xl font-black text-white sm:text-3xl lg:text-4xl">
+              <h3 className="text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl ">
                 AI-Powered Summaries
               </h3>
-              <p className="text-base leading-relaxed text-gray-400 sm:text-lg lg:text-xl">
+              <p className="text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl">
                 Your personal email copilot. Let our AI draft responses,
                 summarize long threads, and extract action items automatically.
               </p>
@@ -487,12 +487,12 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="group relative lg:order-2"
+              className="group relative mr-4 lg:mr-0 lg:order-2"
             >
               {/* Glow effect */}
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75"/>
               <motion.div
-                className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black shadow-2xl"
+                className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black shadow-2xl "
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
@@ -616,12 +616,12 @@ export function Features() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-4 sm:space-y-6 lg:order-1"
+              className="flex w-full flex-col items-center space-y-4 sm:items-start sm:space-y-6 lg:order-1"
             >
-              <h3 className="text-2xl font-black text-white sm:text-3xl lg:text-4xl">
+              <h3 className="w-full text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl mr-6">
                 Smart Search
               </h3>
-              <p className="text-base leading-relaxed text-gray-400 sm:text-lg lg:text-xl">
+              <p className="w-full text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl mr-6">
                 Your inbox, your rules. Create personalized email processing
                 flows that match exactly how you organize, write, reply, and
                 work.
