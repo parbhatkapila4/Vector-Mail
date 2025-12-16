@@ -6,7 +6,6 @@ import { Navigation } from "@/components/landing/Navigation";
 import { Footer } from "@/components/landing/Footer";
 import {
   ArrowLeft,
-  Mail,
   Brain,
   Zap,
   Code,
@@ -21,7 +20,6 @@ import {
   Rocket,
   Shield,
   Globe,
-  Github,
 } from "lucide-react";
 
 export default function AboutPage() {
@@ -92,7 +90,6 @@ export default function AboutPage() {
     <div className="min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
 
-      {/* Back Button - Desktop */}
       <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
@@ -102,7 +99,6 @@ export default function AboutPage() {
         </Link>
       </div>
 
-      {/* Mobile Back Button */}
       <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
@@ -112,9 +108,7 @@ export default function AboutPage() {
         </Link>
       </div>
 
-      {/* Hero Section */}
       <section className="relative overflow-hidden pb-8 pt-4 sm:pb-12 sm:pt-8 md:pt-12 lg:pb-16 lg:pt-16 xl:pt-20">
-        {/* Background gradients */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
           style={{
@@ -136,9 +130,8 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* Badge */}
             <motion.div
-              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 mt-8 sm:mt-12 md:mt-16 lg:mt-20"
+              className="mb-6 mt-8 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 sm:mt-12 md:mt-16 lg:mt-20"
               animate={{
                 borderColor: [
                   "rgba(168, 85, 247, 0.3)",
@@ -176,8 +169,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* The Problem Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black pt-8 pb-16 sm:pt-12 sm:pb-24 lg:pt-16 lg:pb-32">
+      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black pb-16 pt-8 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -206,7 +198,7 @@ export default function AboutPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50 text-center sm:text-left">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all group-hover:border-purple-500/50 sm:text-left">
                   <div className="flex justify-center sm:justify-start">
                     <problem.icon className="mb-4 h-10 w-10 text-purple-400" />
                   </div>
@@ -221,7 +213,6 @@ export default function AboutPage() {
             ))}
           </div>
 
-          {/* Personal Story */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -269,7 +260,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* What Motivated Us */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
@@ -301,8 +291,8 @@ export default function AboutPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50 text-center sm:text-left">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50 mx-auto sm:mx-0">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all group-hover:border-purple-500/50 sm:text-left">
+                  <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50 sm:mx-0">
                     <motivation.icon className="h-7 w-7 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
@@ -318,7 +308,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* The Vision */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -420,7 +409,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Why It Matters */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
@@ -464,7 +452,6 @@ export default function AboutPage() {
             ))}
           </div>
 
-          {/* Market Necessity */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -537,7 +524,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* The Technology */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
@@ -629,7 +615,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* The Future We're Building */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
           <motion.div

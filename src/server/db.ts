@@ -2,14 +2,12 @@ import { PrismaClient } from "@prisma/client";
 
 import { env } from "@/env";
 
-const createPrismaClient = () => {
+const createPrismaClient = (): PrismaClient => {
   if (!env.DATABASE_URL) {
-    // Return a mock client when DATABASE_URL is not provided
     return {
       $connect: () => Promise.resolve(),
       $disconnect: () => Promise.resolve(),
-      // Add other methods as needed
-    } as any;
+    } as unknown as PrismaClient;
   }
 
   return new PrismaClient({

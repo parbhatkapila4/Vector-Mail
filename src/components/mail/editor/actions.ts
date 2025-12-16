@@ -1,7 +1,10 @@
 "use server";
 import OpenAI from "openai";
 
-export async function generateEmail(context: string, prompt: string) {
+export async function generateEmail(
+  context: string,
+  prompt: string,
+): Promise<{ content: string }> {
   console.log("context", context);
 
   try {
@@ -55,7 +58,7 @@ export async function generateEmail(context: string, prompt: string) {
           content: prompt,
         },
       ],
-      stream: false, // DISABLE STREAMING
+      stream: false,
     });
 
     const content = completion.choices[0]?.message?.content || "";
@@ -69,7 +72,10 @@ export async function generateEmail(context: string, prompt: string) {
   }
 }
 
-export async function generate(input: string, context?: string) {
+export async function generate(
+  input: string,
+  context?: string,
+): Promise<{ content: string }> {
   console.log("input", input);
   console.log("context", context?.substring(0, 200) + "...");
 
@@ -139,7 +145,7 @@ export async function generate(input: string, context?: string) {
 Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`,
         },
       ],
-      stream: false, // DISABLE STREAMING
+      stream: false,
     });
 
     const content = completion.choices[0]?.message?.content || "";

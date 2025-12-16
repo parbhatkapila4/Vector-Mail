@@ -175,7 +175,6 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
             className="fixed inset-x-4 inset-y-4 z-[95] overflow-hidden sm:inset-x-8 sm:inset-y-8 md:inset-x-12 md:inset-y-12 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-20"
           >
             <div className="h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
-              {/* Header */}
               <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6">
                 <div className="pr-16 text-center">
                   <motion.div
@@ -227,7 +226,6 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
                   }
                 `}</style>
                 <div className="p-8 pb-24">
-                  {/* Core AI Features */}
                   <div className="mb-16">
                     <div className="mb-10 text-center">
                       <h3 className="mb-2 text-2xl font-bold text-gray-900">
@@ -301,7 +299,6 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
                     </div>
                   </div>
 
-                  {/* Additional Capabilities */}
                   <div className="mb-16">
                     <div className="mb-10 text-center">
                       <h3 className="mb-2 text-2xl font-bold text-gray-900">
@@ -343,7 +340,6 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
                     </div>
                   </div>
 
-                  {/* CTA Section */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -372,7 +368,6 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
             </div>
           </motion.div>
 
-          {/* Feature Detail Overlay */}
           <AnimatePresence>
             {selectedFeature && (
               <>

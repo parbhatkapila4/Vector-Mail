@@ -72,7 +72,6 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
 
-      {/* Back Button - Desktop */}
       <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
@@ -82,7 +81,6 @@ export default function PrivacyPolicy() {
         </Link>
       </div>
 
-      {/* Mobile Back Button */}
       <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
@@ -92,9 +90,7 @@ export default function PrivacyPolicy() {
         </Link>
       </div>
 
-      {/* Hero Section */}
       <section className="relative overflow-hidden pb-8 pt-12 sm:pb-12 sm:pt-16 md:pt-20 lg:pb-16 lg:pt-24 xl:pt-28">
-        {/* Background gradients */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
           style={{
@@ -116,9 +112,8 @@ export default function PrivacyPolicy() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* Badge */}
             <motion.div
-              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 mt-8 sm:mt-12 md:mt-16 lg:mt-20"
+              className="mb-6 mt-8 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 sm:mt-12 md:mt-16 lg:mt-20"
               animate={{
                 borderColor: [
                   "rgba(168, 85, 247, 0.3)",
@@ -158,10 +153,8 @@ export default function PrivacyPolicy() {
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="relative overflow-hidden bg-black pt-8 pb-16 sm:pt-12 sm:pb-24 lg:pt-16 lg:pb-32">
+      <section className="relative overflow-hidden bg-black pb-16 pt-8 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          {/* Key Sections */}
           <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-2">
             {sections.map((section, i) => (
               <motion.div
@@ -174,7 +167,7 @@ export default function PrivacyPolicy() {
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
-                  <div className="mb-4 flex items-center gap-3 text-center sm:text-left justify-center sm:justify-start">
+                  <div className="mb-4 flex items-center justify-center gap-3 text-center sm:justify-start sm:text-left">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
                       <section.icon className="h-6 w-6 text-white" />
                     </div>
@@ -184,9 +177,12 @@ export default function PrivacyPolicy() {
                   </div>
                   <ul className="space-y-3">
                     {section.content.map((item, itemIndex) => (
-                      <li key={itemIndex} className="flex items-start gap-3 mx-auto sm:mx-0 max-w-fit sm:max-w-none">
+                      <li
+                        key={itemIndex}
+                        className="mx-auto flex max-w-fit items-start gap-3 sm:mx-0 sm:max-w-none"
+                      >
                         <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-400" />
-                        <span className="text-sm leading-relaxed text-gray-400 text-center sm:text-left">
+                        <span className="text-center text-sm leading-relaxed text-gray-400 sm:text-left">
                           {item}
                         </span>
                       </li>
@@ -197,7 +193,6 @@ export default function PrivacyPolicy() {
             ))}
           </div>
 
-          {/* Your Rights Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -206,7 +201,7 @@ export default function PrivacyPolicy() {
             className="mx-auto mt-16 max-w-4xl"
           >
             <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
-              <div className="mb-6 flex items-center gap-3 text-center sm:text-left justify-center sm:justify-start">
+              <div className="mb-6 flex items-center justify-center gap-3 text-center sm:justify-start sm:text-left">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
@@ -214,12 +209,12 @@ export default function PrivacyPolicy() {
                   Your Rights
                 </h3>
               </div>
-              <p className="mb-6 text-sm leading-relaxed text-gray-400 sm:text-base text-center sm:text-left">
+              <p className="mb-6 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
                 You have the right to access, update, or delete your personal
-                information at any time. You can also request a copy of your data
-                or opt out of certain data processing activities.
+                information at any time. You can also request a copy of your
+                data or opt out of certain data processing activities.
               </p>
-              <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+              <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
                 {rights.map((right, index) => (
                   <motion.div
                     key={index}
@@ -238,7 +233,6 @@ export default function PrivacyPolicy() {
             </div>
           </motion.div>
 
-          {/* Contact Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -267,7 +261,6 @@ export default function PrivacyPolicy() {
             </div>
           </motion.div>
 
-          {/* Footer Note */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}

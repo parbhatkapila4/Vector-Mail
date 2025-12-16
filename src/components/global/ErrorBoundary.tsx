@@ -5,6 +5,17 @@ import type { ErrorInfo, ReactNode } from "react";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
 
+interface WindowWithSentry extends Window {
+  Sentry?: {
+    captureException: (
+      error: Error,
+      options?: {
+        contexts?: { react?: { componentStack?: string | null } };
+      },
+    ) => void;
+  };
+}
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -39,14 +50,17 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    if (typeof window !== "undefined" && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, {
-        contexts: {
-          react: {
-            componentStack: errorInfo.componentStack,
+    if (typeof window !== "undefined") {
+      const windowWithSentry = window as WindowWithSentry;
+      if (windowWithSentry.Sentry) {
+        windowWithSentry.Sentry.captureException(error, {
+          contexts: {
+            react: {
+              componentStack: errorInfo.componentStack,
+            },
           },
-        },
-      });
+        });
+      }
     }
   }
 

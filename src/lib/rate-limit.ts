@@ -92,7 +92,7 @@ export function rateLimit(
         status: 429,
         headers: {
           "X-RateLimit-Limit": limiter["limit"].toString(),
-          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Remaining": remaining.toString(),
           "Retry-After": "60",
         },
       },

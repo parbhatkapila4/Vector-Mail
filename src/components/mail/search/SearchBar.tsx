@@ -12,13 +12,13 @@ export const searchValueAtom = atom("");
 const SearchBar = () => {
   const { isFetching } = useThreads();
   const [searchValue, setSearchValue] = useAtom(searchValueAtom);
-  const [isSearching, setIsSearching] = useAtom(isSearchingAtom);
+  const [, setIsSearching] = useAtom(isSearchingAtom);
   const ref = React.useRef<HTMLInputElement>(null);
-  const handleBlur = () => {
+  const handleBlur = React.useCallback(() => {
     if (!!searchValue) return;
     setIsSearching(false);
-  };
-  // add escape key to close
+  }, [searchValue, setIsSearching]);
+
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -37,7 +37,7 @@ const SearchBar = () => {
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [setIsSearching, searchValue, isSearching, document.activeElement]);
+  }, [handleBlur]);
 
   return (
     <div className="bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">

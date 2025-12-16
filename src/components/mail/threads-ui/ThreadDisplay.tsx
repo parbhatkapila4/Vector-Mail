@@ -1,60 +1,24 @@
-// import EmailEditor from "./email-editor";
-import {
-  Archive,
-  ArchiveX,
-  Clock,
-  Forward,
-  MoreVertical,
-  Reply,
-  ReplyAll,
-  Trash2,
-} from "lucide-react";
-
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { api, type RouterOutputs } from "@/trpc/react";
-import { addDays, addHours, format, nextSaturday } from "date-fns";
+import { format } from "date-fns";
 import EmailDisplay from "./EmailDisplay";
 import useThreads from "@/hooks/use-threads";
 import { useAtom } from "jotai";
-import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
-// import SearchDisplay from "../search/SearchDisplay";
-import { useLocalStorage } from "usehooks-ts";
+import { isSearchingAtom } from "../search/SearchBar";
 import ReplyBox from "./ReplyBox";
-// import ReplyBox from "./reply-box";
+
+type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 
 interface ThreadDisplayProps {
   threadId?: string | null;
 }
 
 export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
-  const { threads, isFetching, threadId: hookThreadId } = useThreads();
+  const { threads, threadId: hookThreadId } = useThreads();
   const threadId = propThreadId ?? hookThreadId;
-  const today = new Date();
   const _thread = threads?.find((t) => t.id === threadId);
-  const [isSearching, setIsSearching] = useAtom(isSearchingAtom);
+  const [isSearching] = useAtom(isSearchingAtom);
 
   const { data: foundThread } = api.account.getThreadById.useQuery(
     {
@@ -70,7 +34,6 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
       {isSearching ? (
         <></>
       ) : (
-        // <SearchDisplay />
         <>
           {thread ? (
             <div className="flex flex-1 flex-col overflow-scroll">
@@ -107,7 +70,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
               <Separator />
               <div className="flex max-h-[calc(100vh-100px)] flex-col overflow-scroll">
                 <div className="flex flex-col gap-4 p-6">
-                  {thread.emails.map((email: any) => {
+                  {thread.emails.map((email: Email) => {
                     return <EmailDisplay key={email.id} email={email} />;
                   })}
                 </div>

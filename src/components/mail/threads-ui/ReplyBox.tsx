@@ -48,7 +48,7 @@ const ReplyBox = () => {
     setCcValues([]);
   }, [lastEmail, threadId]);
 
-  // Show loading state
+  
   if (!currentThread && threadId) {
     return (
       <div className="flex h-[300px] items-center justify-center">
@@ -57,7 +57,7 @@ const ReplyBox = () => {
     );
   }
 
-  // Show message if no thread selected
+  
   if (!currentThread || !lastEmail) {
     return (
       <div className="flex h-[300px] items-center justify-center">

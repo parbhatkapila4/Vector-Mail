@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   Mail,
   Search,
@@ -27,7 +28,6 @@ import {
 export function EmailClientMockup() {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 via-purple-950/20 to-black shadow-2xl">
-      {/* Top Bar */}
       <div className="flex items-center justify-between border-b border-purple-500/20 bg-black/40 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 text-sm font-bold text-white shadow-lg shadow-purple-500/50">
@@ -69,10 +69,8 @@ export function EmailClientMockup() {
       </div>
 
       <div className="flex h-[600px]">
-        {/* Left Sidebar */}
         <div className="flex w-56 flex-col border-r border-purple-500/20 bg-black/20">
           <div className="p-4">
-            {/* Account */}
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 font-bold text-white shadow-lg shadow-purple-500/50">
                 V
@@ -87,13 +85,11 @@ export function EmailClientMockup() {
               </div>
             </div>
 
-            {/* New Email Button */}
             <button className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-3 font-semibold text-white shadow-lg shadow-purple-500/50 transition-colors hover:from-purple-700 hover:via-purple-500 hover:to-amber-500">
               <Mail className="h-4 w-4" />
               <span>New email</span>
             </button>
 
-            {/* Navigation */}
             <div className="space-y-1">
               <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-purple-300">
                 Core
@@ -119,16 +115,13 @@ export function EmailClientMockup() {
             </div>
           </div>
 
-          {/* Bottom Nav */}
           <div className="mt-auto space-y-1 border-t border-purple-500/20 p-4">
             <NavItem icon={Settings} label="Settings" color="gray" />
             <NavItem icon={HelpCircle} label="Support" color="blue" />
           </div>
         </div>
 
-        {/* Middle: Email List */}
         <div className="flex w-80 flex-col border-r border-purple-500/20 bg-black/10">
-          {/* Header */}
           <div className="border-b border-purple-500/20 p-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
@@ -140,7 +133,6 @@ export function EmailClientMockup() {
               </button>
             </div>
 
-            {/* Search */}
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-purple-500/20 bg-white/5 px-3 py-2">
               <Search className="h-4 w-4 text-purple-400" />
               <input
@@ -154,7 +146,6 @@ export function EmailClientMockup() {
               </span>
             </div>
 
-            {/* Filters */}
             <div className="flex gap-2">
               <button className="flex items-center gap-2 rounded-lg border border-purple-500/40 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20">
                 <Zap className="h-4 w-4 text-yellow-400" />
@@ -172,9 +163,7 @@ export function EmailClientMockup() {
             </div>
           </div>
 
-          {/* Email List */}
           <div className="flex-1 overflow-y-auto">
-            {/* Pinned Section */}
             <div className="p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex items-center gap-2 text-xs font-semibold text-purple-300">
@@ -243,7 +232,6 @@ export function EmailClientMockup() {
               />
             </div>
 
-            {/* Primary Section */}
             <div className="px-4 pb-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex items-center gap-2 text-xs font-semibold text-purple-300">
@@ -288,9 +276,7 @@ export function EmailClientMockup() {
           </div>
         </div>
 
-        {/* Right: Email Content */}
         <div className="flex flex-1 flex-col bg-gradient-to-br from-black/50 via-purple-950/5 to-black/50">
-          {/* Email Header */}
           <div className="border-b border-purple-500/20 p-6">
             <div className="mb-4 flex items-start justify-between">
               <div className="flex-1">
@@ -322,7 +308,6 @@ export function EmailClientMockup() {
               </div>
             </div>
 
-            {/* Participants */}
             <div className="flex items-center gap-3">
               {[
                 {
@@ -344,9 +329,7 @@ export function EmailClientMockup() {
             </div>
           </div>
 
-          {/* Email Content */}
           <div className="flex-1 space-y-6 overflow-y-auto p-6">
-            {/* AI Summary */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -373,7 +356,6 @@ export function EmailClientMockup() {
               </p>
             </motion.div>
 
-            {/* Attachments */}
             <div className="rounded-xl border border-blue-500/20 bg-white/5 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -430,9 +412,7 @@ export function EmailClientMockup() {
               </div>
             </div>
 
-            {/* Email Thread */}
             <div className="space-y-4">
-              {/* David's Message */}
               <div className="rounded-xl border border-purple-500/20 bg-white/5 p-4">
                 <div className="mb-3 flex items-start gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 font-bold text-white shadow-lg shadow-purple-500/50">
@@ -470,7 +450,6 @@ export function EmailClientMockup() {
                 </div>
               </div>
 
-              {/* Emma's Message */}
               <div className="rounded-xl border border-emerald-500/20 bg-white/5 p-4">
                 <div className="mb-3 flex items-start gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-500 font-bold text-white shadow-lg shadow-emerald-500/50">
@@ -522,7 +501,7 @@ function NavItem({
   active,
   color,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   count?: string;
   active?: boolean;
@@ -594,7 +573,7 @@ function EmailItem({
   subject: string;
   time: string;
   count?: string;
-  badges?: Array<{ icon: any; color: string; bg: string }>;
+  badges?: Array<{ icon: LucideIcon; color: string; bg: string }>;
   active?: boolean;
   logo?: string;
   avatarColor?: string;

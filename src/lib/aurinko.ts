@@ -31,7 +31,7 @@ export async function exchangeAurinkoCodeForToken(code: string) {
         },
       },
     );
-    
+
     return response.data as {
       accountId: number;
       accessToken: string;
@@ -53,7 +53,7 @@ export async function getAccountInfo(accessToken: string) {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    
+
     return response.data as {
       email: string;
       name: string;

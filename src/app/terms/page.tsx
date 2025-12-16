@@ -80,7 +80,6 @@ export default function TermsOfService() {
     <div className="min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
 
-      {/* Back Button - Desktop */}
       <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
@@ -90,7 +89,6 @@ export default function TermsOfService() {
         </Link>
       </div>
 
-      {/* Mobile Back Button */}
       <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
@@ -100,9 +98,7 @@ export default function TermsOfService() {
         </Link>
       </div>
 
-      {/* Hero Section */}
       <section className="relative overflow-hidden pb-8 pt-12 sm:pb-12 sm:pt-16 md:pt-20 lg:pb-16 lg:pt-24 xl:pt-28">
-        {/* Background gradients */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
           style={{
@@ -124,9 +120,8 @@ export default function TermsOfService() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* Badge */}
             <motion.div
-              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 mt-8 sm:mt-12 md:mt-16 lg:mt-20"
+              className="mb-6 mt-8 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 sm:mt-12 md:mt-16 lg:mt-20"
               animate={{
                 borderColor: [
                   "rgba(168, 85, 247, 0.3)",
@@ -166,10 +161,8 @@ export default function TermsOfService() {
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="relative overflow-hidden bg-black pt-8 pb-16 sm:pt-12 sm:pb-24 lg:pt-16 lg:pb-32">
+      <section className="relative overflow-hidden bg-black pb-16 pt-8 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          {/* Key Sections */}
           <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-2">
             {sections.map((section, i) => (
               <motion.div
@@ -205,7 +198,6 @@ export default function TermsOfService() {
             ))}
           </div>
 
-          {/* Prohibited Uses Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -244,7 +236,6 @@ export default function TermsOfService() {
             </div>
           </motion.div>
 
-          {/* Beta Program Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -285,7 +276,6 @@ export default function TermsOfService() {
             </div>
           </motion.div>
 
-          {/* Contact Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -314,7 +304,6 @@ export default function TermsOfService() {
             </div>
           </motion.div>
 
-          {/* Footer Note */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}

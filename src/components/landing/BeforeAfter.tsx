@@ -43,11 +43,9 @@ const comparison = {
 export function BeforeAfter() {
   return (
     <section className="relative overflow-hidden bg-white py-32">
-      {/* Grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:64px_64px]"></div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -66,9 +64,7 @@ export function BeforeAfter() {
           </p>
         </motion.div>
 
-        {/* Comparison Grid */}
         <div className="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-2">
-          {/* Before */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -116,7 +112,6 @@ export function BeforeAfter() {
             </div>
           </motion.div>
 
-          {/* After */}
           <motion.div
             initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -165,7 +160,6 @@ export function BeforeAfter() {
           </motion.div>
         </div>
 
-        {/* Bottom stat */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}

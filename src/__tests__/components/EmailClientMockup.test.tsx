@@ -1,10 +1,20 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
-import { EmailClientMockup } from "@/components/landing/EmailClientMockup";
+import "@testing-library/jest-dom";
+import { EmailClientMockup } from "../../components/landing/EmailClientMockup";
+
+jest.mock("framer-motion", () => ({
+  motion: {
+    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+      <div {...props}>{children}</div>
+    ),
+  },
+}));
 
 describe("EmailClientMockup Component", () => {
   it("renders the email mockup interface", () => {
     render(<EmailClientMockup />);
-    expect(screen.getAllByText("Inbox")[0]).toBeInTheDocument(); // Use getAllByText since "Inbox" appears multiple times
+    expect(screen.getAllByText("Inbox")[0]).toBeInTheDocument();
     expect(screen.getByText("Drafts")).toBeInTheDocument();
     expect(screen.getByText("Sent")).toBeInTheDocument();
   });

@@ -119,7 +119,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
             className="fixed inset-x-4 inset-y-4 z-[95] overflow-hidden sm:inset-x-8 md:inset-x-12 md:inset-y-8 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-20"
           >
             <div className="h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
-              {/* Header */}
               <div className="relative border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6">
                 <div className="pr-16 text-center">
                   <motion.div
@@ -172,7 +171,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                   }
                 `}</style>
                 <div className="p-8 pb-24">
-                  {/* Contact Methods */}
                   <div className="mb-16">
                     <div className="mb-10 text-center">
                       <h3 className="mb-2 text-2xl font-bold text-gray-900">
@@ -193,7 +191,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                           whileHover={{ y: -5, scale: 1.02 }}
                           className={`${method.bgColor} ${method.borderColor} group relative overflow-hidden rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-xl`}
                         >
-                          {/* Background decoration */}
                           <div className="absolute right-0 top-0 h-20 w-20 -translate-y-10 translate-x-10 rounded-full bg-gradient-to-br from-white/30 to-transparent"></div>
 
                           <div className="relative z-10">
@@ -225,7 +222,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                     </div>
                   </div>
 
-                  {/* Office Information */}
                   <div className="mb-16">
                     <div className="mb-10 text-center">
                       <h3 className="mb-2 text-2xl font-bold text-gray-900">
@@ -287,14 +283,12 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                     </div>
                   </div>
 
-                  {/* Quick Contact Summary */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.6 }}
                     className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8 text-center"
                   >
-                    {/* Background decorations */}
                     <div className="absolute left-0 top-0 h-32 w-32 -translate-x-16 -translate-y-16 rounded-full bg-gradient-to-br from-blue-200/30 to-purple-200/30"></div>
                     <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-20 translate-y-20 rounded-full bg-gradient-to-tl from-pink-200/30 to-purple-200/30"></div>
 
@@ -377,7 +371,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         </motion.div>
                       </div>
 
-                      {/* Social Links */}
                       <div className="flex items-center justify-center gap-4">
                         <span className="text-sm font-medium text-gray-600">
                           Follow us:
@@ -402,7 +395,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         transition={{ duration: 0.8, delay: 1 }}
                         className="mt-8 text-sm text-gray-500"
                       >
-                        <p>✨ We typically respond within 24 hours</p>
+                        <p>We typically respond within 24 hours</p>
                       </motion.div>
                     </div>
                   </motion.div>

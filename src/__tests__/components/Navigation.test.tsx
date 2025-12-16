@@ -1,5 +1,7 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
-import { Navigation } from "@/components/landing/Navigation";
+import "@testing-library/jest-dom";
+import { Navigation } from "../../components/landing/Navigation";
 import { useUser } from "@clerk/nextjs";
 
 jest.mock("@clerk/nextjs", () => ({

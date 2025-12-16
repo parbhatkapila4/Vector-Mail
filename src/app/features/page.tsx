@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  ArrowRight,
   Zap,
   Brain,
   Search,
@@ -11,7 +10,6 @@ import {
   Shield,
   Clock,
   TrendingUp,
-  Mail,
   Sparkles,
   Target,
   BarChart,
@@ -19,26 +17,19 @@ import {
   Code,
   Layers,
   GitBranch,
-  Terminal,
   Lock,
   Users,
   MessageSquare,
   FileText,
   Workflow,
-  Cpu,
   Globe,
-  Boxes,
   CheckCircle,
   XCircle,
   Filter,
   Tags,
-  Inbox,
-  Send,
-  Archive,
   ArrowLeft,
   Gauge,
   Webhook,
-  RefreshCw,
   Activity,
 } from "lucide-react";
 import { Navigation } from "@/components/landing/Navigation";
@@ -307,7 +298,6 @@ export default function FeaturesPage() {
     <div className="min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
 
-      {/* Back Button - Hidden on mobile to avoid overlap */}
       <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
@@ -317,7 +307,6 @@ export default function FeaturesPage() {
         </Link>
       </div>
 
-      {/* Mobile Back Button - In content flow */}
       <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
@@ -327,9 +316,7 @@ export default function FeaturesPage() {
         </Link>
       </div>
 
-      {/* Hero Section */}
       <section className="relative overflow-hidden bg-black pb-12 pt-8 sm:pb-20 sm:pt-16 md:pt-24 lg:pb-32 lg:pt-40 xl:pt-48">
-        {/* Background gradient */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[200px] w-[200px] rounded-full opacity-20 blur-3xl sm:h-[300px] sm:w-[300px] lg:h-[600px] lg:w-[600px]"
           style={{
@@ -378,7 +365,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-12 sm:py-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
@@ -425,7 +411,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Core Features with Tabs */}
       <section className="relative bg-black py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -447,7 +432,6 @@ export default function FeaturesPage() {
             </p>
           </motion.div>
 
-          {/* Feature Tabs */}
           <div className="mb-12 flex flex-wrap justify-center gap-4">
             {features.map((feature) => (
               <button
@@ -464,7 +448,6 @@ export default function FeaturesPage() {
             ))}
           </div>
 
-          {/* Active Tab Content */}
           {features.map(
             (feature) =>
               activeTab === feature.id && (
@@ -475,7 +458,6 @@ export default function FeaturesPage() {
                   transition={{ duration: 0.4 }}
                   className="grid items-center gap-12 lg:grid-cols-2"
                 >
-                  {/* Feature Icon/Visual */}
                   <div className="group relative">
                     <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
                     <div className="relative flex items-center justify-center rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-16">
@@ -489,7 +471,6 @@ export default function FeaturesPage() {
                     </div>
                   </div>
 
-                  {/* Feature Details */}
                   <div className="space-y-6 text-center sm:text-left">
                     <h3 className="text-3xl font-black text-white">
                       {feature.title}
@@ -515,7 +496,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Technical Architecture Section */}
       <section className="relative bg-gradient-to-b from-black via-zinc-950 to-black py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -548,8 +528,8 @@ export default function FeaturesPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 transition-all hover:border-purple-500/50 text-center sm:text-left">
-                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 mx-auto sm:mx-0">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 text-center transition-all hover:border-purple-500/50 sm:text-left">
+                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 sm:mx-0">
                     <feature.icon className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 text-xl font-bold text-white">
@@ -568,7 +548,6 @@ export default function FeaturesPage() {
             ))}
           </div>
 
-          {/* Tech Stack Badges */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -609,7 +588,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* AI Capabilities Grid */}
       <section className="relative bg-black py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -642,8 +620,8 @@ export default function FeaturesPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all hover:border-purple-500/50 text-center sm:text-left">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 mx-auto sm:mx-0">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all hover:border-purple-500/50 sm:text-left">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 sm:mx-0">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
@@ -659,7 +637,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Productivity Features */}
       <section className="relative bg-gradient-to-b from-black via-zinc-950 to-black py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -692,8 +669,8 @@ export default function FeaturesPage() {
                 className="group relative"
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all hover:border-purple-500/50 text-center sm:text-left">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 mx-auto sm:mx-0">
+                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all hover:border-purple-500/50 sm:text-left">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 sm:mx-0">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
@@ -709,7 +686,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Direct Comparison */}
       <section className="relative bg-black py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -732,7 +708,6 @@ export default function FeaturesPage() {
           </motion.div>
 
           <div className="grid gap-12 lg:grid-cols-2">
-            {/* Traditional Email Clients */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -759,7 +734,6 @@ export default function FeaturesPage() {
               </div>
             </motion.div>
 
-            {/* VectorMail */}
             <motion.div
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -787,7 +761,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="relative bg-black py-32">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <motion.div

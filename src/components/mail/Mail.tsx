@@ -241,7 +241,7 @@ export function Mail({
         </TabsContent>
       </Tabs>
     ),
-    [currentTab, handleTabChange, handleThreadSelect],
+    [currentTab, handleTabChange, handleThreadSelect, DesktopHeader],
   );
 
   if (isMobile) {

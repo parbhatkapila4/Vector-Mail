@@ -63,11 +63,11 @@
   * {
     @apply border-border;
   }
-  
+
   html {
     scroll-behavior: smooth;
   }
-  
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -75,7 +75,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Clean Scrollbar */
+
   ::-webkit-scrollbar {
     width: 8px;
   }
@@ -93,7 +93,7 @@
     background: #555;
   }
 
-  /* Selection */
+
   ::selection {
     background: rgba(0, 0, 0, 0.1);
   }
@@ -104,17 +104,20 @@
     text-wrap: balance;
   }
 
-  /* Animated blob */
+
   @keyframes blob {
     0% {
       transform: translate(0px, 0px) scale(1);
     }
+
     33% {
       transform: translate(30px, -50px) scale(1.1);
     }
+
     66% {
       transform: translate(-20px, 20px) scale(0.9);
     }
+
     100% {
       transform: translate(0px, 0px) scale(1);
     }
@@ -132,9 +135,9 @@
     animation-delay: 4s;
   }
 
-  /* Grid pattern */
+
   .bg-grid-pattern {
-    background-image: 
+    background-image:
       linear-gradient(to right, #80808012 1px, transparent 1px),
       linear-gradient(to bottom, #80808012 1px, transparent 1px);
     background-size: 24px 24px;

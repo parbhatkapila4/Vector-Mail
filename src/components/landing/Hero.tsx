@@ -7,7 +7,17 @@ import { EmailClientMockup } from "./EmailClientMockup";
 import { AnimatedEmail3D } from "./AnimatedEmail3D";
 import { LampContainer } from "../ui/lamp";
 import { useRef, useState, useEffect } from "react";
-import { X, Mail, Sparkles, Zap, ArrowRight, Search, Star, Archive, Send, Inbox, Filter, Paperclip } from "lucide-react";
+import {
+  X,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  Search,
+  Star,
+  Archive,
+  Inbox,
+  Paperclip,
+} from "lucide-react";
 
 export function Hero() {
   const { isSignedIn } = useUser();
@@ -23,7 +33,6 @@ export function Hero() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
-      {/* Static gradient orbs - no animation for performance */}
       <div
         className="pointer-events-none absolute left-5 top-20 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:left-10 lg:h-[600px] lg:w-[600px]"
         style={{
@@ -49,7 +58,6 @@ export function Hero() {
         }}
       />
 
-      {/* Simplified 3D Email in Background - static - hidden on mobile */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/3 hidden -translate-x-1/2 -translate-y-1/2 opacity-30 lg:block"
         style={{ zIndex: 0, willChange: "auto" }}
@@ -57,7 +65,6 @@ export function Hero() {
         <AnimatedEmail3D />
       </div>
 
-      {/* Lamp Effect */}
       <LampContainer>
         <motion.div
           initial={{ opacity: 0, y: 100 }}
@@ -69,7 +76,6 @@ export function Hero() {
           }}
           className="space-y-8"
         >
-          {/* Main Headline with Lamp Effect */}
           <h1 className="px-4 text-center text-4xl font-black leading-tight tracking-tight sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
             <span className="text-white">AI Powered Email,</span>
             <br />
@@ -84,7 +90,6 @@ export function Hero() {
             </span>
           </h1>
 
-          {/* Subtitle */}
           <p className="mx-auto max-w-3xl px-4 text-center text-base text-gray-400 sm:text-lg md:text-xl lg:text-2xl">
             VectorMail is an AI-native email client that manages your inbox, so
             you don't have to.
@@ -94,7 +99,6 @@ export function Hero() {
             100% Open Source • Production Grade • Modern Stack
           </p>
 
-          {/* CTA */}
           <div className="mt-12 flex flex-col items-center justify-center gap-4 px-4 sm:flex-row">
             <Link
               href={isSignedIn ? "/mail" : "/sign-up"}
@@ -120,9 +124,7 @@ export function Hero() {
         className="relative mx-auto -mt-10 max-w-7xl px-4 sm:-mt-20 sm:px-6"
         style={{ zIndex: 10 }}
       >
-        {/* Full Email Client Mockup - Hidden on mobile, shown on tablet+ */}
         <div className="relative mx-auto hidden max-w-[1400px] pb-20 md:block">
-          {/* Static glow */}
           <div
             className="pointer-events-none absolute -inset-4 rounded-3xl opacity-30 blur-3xl"
             style={{
@@ -135,7 +137,6 @@ export function Hero() {
           <EmailClientMockup />
         </div>
 
-        {/* Mobile placeholder - iPhone 16 Pro mockup */}
         <div className="relative mx-auto mt-8 pb-12 md:hidden">
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -144,42 +145,39 @@ export function Hero() {
             viewport={{ once: true }}
             className="relative mx-auto w-[375px] max-w-full"
           >
-            {/* iPhone 16 Pro Frame */}
             <div className="relative mx-auto w-full rounded-[3.5rem] border-[8px] border-zinc-800 bg-zinc-800 p-1 shadow-2xl">
-              {/* Screen Bezel */}
               <div className="relative overflow-hidden rounded-[2.8rem] bg-black">
-                {/* Dynamic Island */}
                 <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2">
                   <div className="h-7 w-32 rounded-full bg-black"></div>
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3">
+                  <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 px-3">
                     <div className="h-1 w-1 rounded-full bg-green-500"></div>
                     <div className="h-0.5 w-12 rounded-full bg-white/20"></div>
                   </div>
                 </div>
 
-                {/* Status Bar */}
-                <div className="absolute left-0 right-0 top-0 z-40 flex items-center justify-end px-6 pt-12 pb-2">
+                <div className="absolute left-0 right-0 top-0 z-40 flex items-center justify-end px-6 pb-2 pt-12">
                   <div className="h-2 w-6 rounded-sm border border-white bg-white">
                     <div className="h-full w-4/5 rounded-sm bg-white"></div>
                   </div>
                 </div>
 
-                {/* Content Container */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
                   viewport={{ once: true }}
-                  className="relative min-h-[600px] overflow-hidden rounded-[2.8rem] bg-black pt-16 pb-12"
+                  className="relative min-h-[600px] overflow-hidden rounded-[2.8rem] bg-black pb-12 pt-16"
                 >
-
-                  {/* Premium Header */}
                   <div className="relative mb-4 flex items-center justify-between border-b border-white/10 px-5 pb-4 pt-2">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 via-amber-500 to-purple-500"></div>
                       <div>
-                        <div className="text-base font-bold text-white">VectorMail</div>
-                        <div className="text-[10px] text-gray-400">AI-Powered Email</div>
+                        <div className="text-base font-bold text-white">
+                          VectorMail
+                        </div>
+                        <div className="text-[10px] text-gray-400">
+                          AI-Powered Email
+                        </div>
                       </div>
                     </div>
                     <motion.div
@@ -193,7 +191,6 @@ export function Hero() {
                     </motion.div>
                   </div>
 
-                  {/* Interactive Search Bar */}
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -226,7 +223,6 @@ export function Hero() {
                     </div>
                   </motion.div>
 
-                  {/* Quick Actions */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
@@ -252,21 +248,25 @@ export function Hero() {
                           className="flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-center transition-all hover:border-white/20 hover:bg-white/10"
                         >
                           <Icon className="mx-auto mb-1 h-3.5 w-3.5 text-gray-300" />
-                          <div className="text-[9px] font-medium text-white">{action.label}</div>
-                          <div className="text-[8px] text-gray-400">{action.count}</div>
+                          <div className="text-[9px] font-medium text-white">
+                            {action.label}
+                          </div>
+                          <div className="text-[8px] text-gray-400">
+                            {action.count}
+                          </div>
                         </motion.button>
                       );
                     })}
                   </motion.div>
 
-                  {/* Premium Email List with Rich Content */}
                   <div className="relative space-y-2 px-5">
                     {[
                       {
                         avatar: "DT",
                         sender: "Design Team",
                         subject: "VectorMail UI mockups ready for review",
-                        preview: "Hey team! The new dashboard designs are complete. Let me know your thoughts...",
+                        preview:
+                          "Hey team! The new dashboard designs are complete. Let me know your thoughts...",
                         time: "2m",
                         unread: true,
                         priority: "high",
@@ -276,7 +276,8 @@ export function Hero() {
                         avatar: "FT",
                         sender: "Finance Team",
                         subject: "Monthly expense report #1234",
-                        preview: "Please review the attached expense report for March. All receipts included.",
+                        preview:
+                          "Please review the attached expense report for March. All receipts included.",
                         time: "15m",
                         unread: false,
                         priority: "normal",
@@ -286,7 +287,8 @@ export function Hero() {
                         avatar: "ET",
                         sender: "Engineering",
                         subject: "Code review for Dashboard v2",
-                        preview: "PR #456 is ready for review. All tests passing. Need your approval...",
+                        preview:
+                          "PR #456 is ready for review. All tests passing. Need your approval...",
                         time: "1h",
                         unread: true,
                         priority: "high",
@@ -307,9 +309,7 @@ export function Hero() {
                         whileHover={{ scale: 1.02, x: 4, z: 10 }}
                         className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3 shadow-lg transition-all hover:border-white/20 hover:bg-white/10"
                       >
-
                         <div className="relative z-10 flex gap-3">
-                          {/* Animated Avatar */}
                           <motion.div
                             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-bold text-white shadow-lg"
                             whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
@@ -346,7 +346,6 @@ export function Hero() {
                             )}
                           </motion.div>
 
-                          {/* Email Content */}
                           <div className="min-w-0 flex-1">
                             <div className="mb-1 flex items-center gap-2">
                               <span className="truncate text-xs font-semibold text-white">
@@ -379,11 +378,13 @@ export function Hero() {
                             <div className="flex items-center gap-2">
                               {email.attachments > 0 && (
                                 <motion.div
-                                  className="flex items-center gap-1 rounded px-1.5 py-0.5 bg-white/10"
+                                  className="flex items-center gap-1 rounded bg-white/10 px-1.5 py-0.5"
                                   whileHover={{ scale: 1.1 }}
                                 >
                                   <Paperclip className="h-2.5 w-2.5 text-gray-400" />
-                                  <span className="text-[9px] text-gray-300">{email.attachments}</span>
+                                  <span className="text-[9px] text-gray-300">
+                                    {email.attachments}
+                                  </span>
                                 </motion.div>
                               )}
                               <motion.div
@@ -400,7 +401,6 @@ export function Hero() {
                     ))}
                   </div>
 
-                  {/* AI Summary Badge */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -410,14 +410,16 @@ export function Hero() {
                   >
                     <div className="mb-2 flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-gray-300" />
-                      <span className="text-xs font-semibold text-white">AI Summary</span>
+                      <span className="text-xs font-semibold text-white">
+                        AI Summary
+                      </span>
                     </div>
                     <p className="text-[10px] leading-relaxed text-gray-300">
-                      3 unread emails from Design, Finance, and Engineering teams. 2 require action.
+                      3 unread emails from Design, Finance, and Engineering
+                      teams. 2 require action.
                     </p>
                   </motion.div>
 
-                  {/* Animated CTA Footer */}
                   <motion.div
                     className="relative mt-4 px-5 text-center"
                     initial={{ opacity: 0 }}
@@ -452,7 +454,6 @@ export function Hero() {
                     </motion.p>
                   </motion.div>
 
-                  {/* Home Indicator */}
                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
                     <div className="h-1 w-32 rounded-full bg-white/30"></div>
                   </div>
@@ -463,7 +464,6 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Video Modal */}
       <AnimatePresence>
         {isVideoOpen && (
           <motion.div

@@ -92,21 +92,19 @@ export const accountRouter = createTRPCRouter({
       await authoriseAccountAccess(input.accountId, ctx.auth.userId);
       const contacts = await ctx.db.emailAddress.findMany({
         where: {
-          email: {
-            thread: {
-              accountId: input.accountId,
+          accountId: input.accountId,
+          sentEmails: {
+            some: {
+              thread: {
+                accountId: input.accountId,
+              },
             },
           },
         },
         distinct: ["address"],
         take: 10,
-        orderBy: {
-          email: {
-            sentAt: "desc",
-          },
-        },
       });
-      return contacts.map((c: any) => ({ name: c.name, address: c.address }));
+      return contacts.map((c) => ({ name: c.name, address: c.address }));
     }),
 
   getNumThreads: protectedProcedure
@@ -173,9 +171,8 @@ export const accountRouter = createTRPCRouter({
       await authoriseAccountAccess(input.accountId, ctx.auth.userId);
 
       try {
-        const { processExistingEmails } = await import(
-          "@/lib/process-existing-emails"
-        );
+        const { processExistingEmails } =
+          await import("@/lib/process-existing-emails");
         await processExistingEmails(input.accountId, 5);
         return {
           success: true,
@@ -215,12 +212,12 @@ export const accountRouter = createTRPCRouter({
 
         return {
           totalEmails: recentEmails.length,
-          emails: recentEmails.map((email: any) => ({
+          emails: recentEmails.map((email) => ({
             id: email.id,
             subject: email.subject,
             from: email.from.address,
             sentAt: email.sentAt,
-            hasEmbedding: !!email.vectorEmbedding,
+            hasEmbedding: false, // embedding is Unsupported type in Prisma
           })),
         };
       } catch (error) {

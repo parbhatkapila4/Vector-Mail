@@ -14,14 +14,15 @@ export function Navigation() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      const heroSectionHeight = 600; // Approximate hero section height
+      const heroSectionHeight = 600;
 
-      // Show navbar if at top or in hero section
       if (currentScrollY < heroSectionHeight) {
         setIsScrollingDown(false);
       } else {
-        // Hide on scroll down, show on scroll up
-        if (currentScrollY > lastScrollY && currentScrollY > heroSectionHeight) {
+        if (
+          currentScrollY > lastScrollY &&
+          currentScrollY > heroSectionHeight
+        ) {
           setIsScrollingDown(true);
         } else if (currentScrollY < lastScrollY) {
           setIsScrollingDown(false);
@@ -37,7 +38,6 @@ export function Navigation() {
 
   return (
     <div className="relative flex w-full items-center justify-center">
-      {/* Desktop Navigation */}
       <div
         className={`fixed inset-x-0 top-10 z-[100] mx-auto hidden max-w-2xl px-4 transition-all duration-300 ease-in-out lg:block ${
           isScrollingDown
@@ -95,7 +95,6 @@ export function Navigation() {
         </nav>
       </div>
 
-      {/* Mobile Navigation */}
       <div
         className={`fixed inset-x-0 top-0 z-[100] px-4 pt-4 transition-transform duration-300 ease-in-out lg:hidden ${
           isScrollingDown ? "-translate-y-full" : "translate-y-0"
@@ -108,7 +107,6 @@ export function Navigation() {
               "linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,0,50,0.9) 100%)",
           }}
         >
-          {/* Mobile Header */}
           <div className="flex items-center justify-between px-4 py-4">
             <span className="text-lg font-bold text-white">VectorMail</span>
             <button
@@ -123,7 +121,6 @@ export function Navigation() {
             </button>
           </div>
 
-          {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="space-y-2 border-t border-purple-500/20 px-4 pb-4 pt-4">
               <Link

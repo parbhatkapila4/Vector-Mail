@@ -12,13 +12,11 @@ export function ScrollProgress() {
 
   return (
     <>
-      {/* Progress bar */}
       <motion.div
         className="fixed left-0 right-0 top-0 z-50 h-1 origin-left bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500"
         style={{ scaleX }}
       />
 
-      {/* Floating scroll indicator */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

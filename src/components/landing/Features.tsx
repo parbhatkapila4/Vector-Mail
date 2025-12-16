@@ -1,14 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Zap,Sparkles, Search } from "lucide-react";
+import { Zap, Sparkles, Search } from "lucide-react";
 
 export function Features() {
   return (
     <>
-      {/* Section 1: Designed for power users */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
-        {/* Static gradient background */}
         <div
           className="pointer-events-none absolute right-1/3 top-0 h-[300px] w-[300px] rounded-full opacity-15 blur-3xl lg:h-[500px] lg:w-[500px]"
           style={{
@@ -33,7 +31,6 @@ export function Features() {
             <span className="text-white"> who value time</span>
           </motion.h2>
 
-          {/* Speed Feature */}
           <div className="mb-20 grid items-center gap-8 sm:mb-32 sm:gap-12 lg:mb-40 lg:grid-cols-2 lg:gap-16">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -52,7 +49,6 @@ export function Features() {
               </div>
             </motion.div>
 
-            {/* Email Compose Mockup */}
             <motion.div
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -60,14 +56,12 @@ export function Features() {
               viewport={{ once: true }}
               className="group relative"
             >
-              {/* Glow effect - subtle pulse */}
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75"/>
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
               <motion.div
                 className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-3 shadow-2xl sm:p-4 md:p-6"
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
-                {/* To field */}
                 <div className="mb-4 flex flex-col gap-2 border-b border-white/10 pb-4 sm:flex-row sm:items-center">
                   <span className="text-xs text-gray-500 sm:text-sm">To:</span>
                   <div className="flex flex-wrap gap-2">
@@ -91,7 +85,6 @@ export function Features() {
                   </div>
                 </div>
 
-                {/* Subject */}
                 <motion.div
                   className="mb-4 flex items-center gap-2"
                   initial={{ opacity: 0.8 }}
@@ -103,7 +96,6 @@ export function Features() {
                   </span>
                 </motion.div>
 
-                {/* Email Body */}
                 <motion.div
                   className="mb-4 rounded-lg border border-purple-500/10 bg-white/5 p-3 sm:p-4"
                   whileHover={{ borderColor: "rgba(168, 85, 247, 0.2)" }}
@@ -123,7 +115,6 @@ export function Features() {
                   </p>
                 </motion.div>
 
-                {/* Actions */}
                 <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center sm:gap-0">
                   <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <motion.button
@@ -169,7 +160,6 @@ export function Features() {
                   </div>
                 </div>
 
-                {/* Keyboard Shortcuts */}
                 <div className="mt-4 flex gap-4 border-t border-purple-500/10 pt-4 text-xs text-gray-500">
                   <motion.div
                     className="flex items-center gap-1"
@@ -196,9 +186,7 @@ export function Features() {
             </motion.div>
           </div>
 
-          {/* Lightning-Fast Interface */}
           <div className="mb-40 grid items-center gap-32 sm:gap-12 lg:grid-cols-2 lg:gap-16">
-            {/* Inbox Mockup */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -206,14 +194,12 @@ export function Features() {
               viewport={{ once: true }}
               className="group relative lg:order-2"
             >
-              {/* Glow effect */}
               <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
               <motion.div
                 className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black shadow-2xl"
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
-                {/* Header */}
                 <div className="flex items-center justify-between border-b border-purple-500/10 p-4">
                   <div className="flex items-center gap-4">
                     <motion.div
@@ -232,7 +218,6 @@ export function Features() {
                   </div>
                 </div>
 
-                {/* Search Bar */}
                 <div className="border-b border-purple-500/10 p-4">
                   <motion.div
                     className="flex items-center gap-2 rounded-lg border border-purple-500/10 bg-white/5 px-3 py-2"
@@ -252,7 +237,6 @@ export function Features() {
                   </motion.div>
                 </div>
 
-                {/* Category Badge */}
                 <div className="p-4">
                   <motion.div
                     className="rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 p-4"
@@ -278,7 +262,6 @@ export function Features() {
                   </motion.div>
                 </div>
 
-                {/* Email List */}
                 <div className="space-y-2 p-4">
                   <div className="flex items-center justify-between px-2 text-xs text-gray-500">
                     <span>Pinned</span>
@@ -340,7 +323,7 @@ export function Features() {
               viewport={{ once: true }}
               className="flex flex-col items-center space-y-4 sm:items-start sm:space-y-6 lg:order-1"
             >
-              <h3 className="text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl -mt-24">
+              <h3 className="-mt-24 text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl">
                 Lightning-Fast Interface
               </h3>
               <p className="text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl">
@@ -350,7 +333,6 @@ export function Features() {
             </motion.div>
           </div>
 
-          {/* AI Summaries */}
           <div className="grid items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -359,14 +341,12 @@ export function Features() {
               viewport={{ once: true }}
               className="group relative"
             >
-              {/* Glow effect */}
               <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
               <motion.div
-                className="relative rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 -mt-2 shadow-2xl"
+                className="relative -mt-2 rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 shadow-2xl"
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
-                {/* Thread Header */}
                 <motion.div
                   className="mb-4 flex items-center justify-between"
                   initial={{ opacity: 0.8 }}
@@ -382,7 +362,6 @@ export function Features() {
                   </div>
                 </motion.div>
 
-                {/* Participants */}
                 <div className="mb-4 flex gap-2">
                   {["David", "Emma", "Mike"].map((name, i) => (
                     <motion.div
@@ -403,7 +382,6 @@ export function Features() {
                   ))}
                 </div>
 
-                {/* AI Summary Box */}
                 <motion.div
                   className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-600/10 via-purple-400/10 to-amber-400/10 p-4"
                   whileHover={{
@@ -426,7 +404,6 @@ export function Features() {
                   </p>
                 </motion.div>
 
-                {/* Attachments */}
                 <div className="mt-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium text-purple-300">
@@ -465,7 +442,7 @@ export function Features() {
               viewport={{ once: true }}
               className="flex flex-col items-center space-y-4 sm:items-start sm:space-y-6"
             >
-              <h3 className="text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl ">
+              <h3 className="text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl">
                 AI-Powered Summaries
               </h3>
               <p className="text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl">
@@ -477,26 +454,22 @@ export function Features() {
         </div>
       </section>
 
-      {/* Section 2: Smart Search */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24 lg:py-32">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
-            {/* Search Mockup */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="group relative mr-4 lg:mr-0 lg:order-2"
+              className="group relative mr-4 lg:order-2 lg:mr-0"
             >
-              {/* Glow effect */}
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75"/>
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
               <motion.div
-                className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black shadow-2xl "
+                className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black shadow-2xl"
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
               >
-                {/* Search Header */}
                 <div className="border-b border-purple-500/10 p-6">
                   <motion.div
                     className="flex items-center gap-3 rounded-lg border border-purple-500/10 bg-white/5 px-4 py-3"
@@ -515,7 +488,6 @@ export function Features() {
                   </motion.div>
                 </div>
 
-                {/* Recently Interacted */}
                 <div className="p-6">
                   <div className="mb-4 text-sm font-medium text-purple-300">
                     Recently interacted
@@ -576,7 +548,6 @@ export function Features() {
                     ))}
                   </div>
 
-                  {/* Keyboard Shortcuts */}
                   <div className="mt-6 border-t border-purple-500/10 pt-4">
                     <div className="mb-3 text-xs font-medium text-purple-300">
                       Open
@@ -618,10 +589,10 @@ export function Features() {
               viewport={{ once: true }}
               className="flex w-full flex-col items-center space-y-4 sm:items-start sm:space-y-6 lg:order-1"
             >
-              <h3 className="w-full text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl mr-6">
+              <h3 className="mr-6 w-full text-center text-2xl font-black text-white sm:text-left sm:text-3xl lg:text-4xl">
                 Smart Search
               </h3>
-              <p className="w-full text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl mr-6">
+              <p className="mr-6 w-full text-center text-base leading-relaxed text-gray-400 sm:text-left sm:text-lg lg:text-xl">
                 Your inbox, your rules. Create personalized email processing
                 flows that match exactly how you organize, write, reply, and
                 work.

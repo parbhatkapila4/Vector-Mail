@@ -1,6 +1,5 @@
 "use client";
 
-// import Link from "next/link"
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -10,7 +9,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import Link from "next/link";
 import { useLocalStorage } from "usehooks-ts";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -25,7 +23,7 @@ interface NavProps {
 }
 
 export function Nav({ links, isCollapsed }: NavProps) {
-  const [_, setTab] = useLocalStorage("vector-mail", "inbox");
+  const [, setTab] = useLocalStorage("vector-mail", "inbox");
   const isMobile = useIsMobile();
 
   return (

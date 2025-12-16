@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Avatar from "react-avatar";
 import Select from "react-select";
-import type { MultiValue, ActionMeta } from "react-select";
+import type { MultiValue } from "react-select";
 
 type OptionType = {
   label: string | React.ReactNode;

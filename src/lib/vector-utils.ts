@@ -1,30 +1,16 @@
-/**
- * Utility functions for working with pgvector embeddings
- */
-
-/**
- * Convert embedding array to pgvector string format
- */
 export function arrayToVector(embedding: number[]): string {
   return `[${embedding.join(",")}]`;
 }
 
-/**
- * Parse pgvector string to array
- */
 export function vectorToArray(vector: string | null | undefined): number[] {
   if (!vector) return [];
 
-  // Remove brackets and split by comma
   const cleaned = vector.replace(/^\[|\]$/g, "").trim();
   if (!cleaned) return [];
 
   return cleaned.split(",").map((v) => parseFloat(v.trim()));
 }
 
-/**
- * Calculate cosine similarity between two vectors
- */
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length || vecA.length === 0) {
     return 0;

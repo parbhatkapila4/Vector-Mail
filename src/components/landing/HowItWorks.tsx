@@ -33,11 +33,9 @@ const steps = [
 export function HowItWorks() {
   return (
     <section className="relative overflow-hidden bg-black py-32">
-      {/* Grid background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)]"></div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -67,7 +65,6 @@ export function HowItWorks() {
           </p>
         </motion.div>
 
-        {/* Steps */}
         <div className="space-y-24">
           {steps.map((step, index) => (
             <motion.div
@@ -83,7 +80,6 @@ export function HowItWorks() {
                   index % 2 === 1 ? "lg:flex-row-reverse" : ""
                 }`}
               >
-                {/* Content */}
                 <motion.div
                   initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
                   whileInView={{ opacity: 1, x: 0 }}
@@ -91,7 +87,6 @@ export function HowItWorks() {
                   viewport={{ once: true }}
                   className={index % 2 === 1 ? "lg:order-2" : ""}
                 >
-                  {/* Step number */}
                   <div className="mb-6 flex items-center gap-4">
                     <motion.div
                       whileHover={{ scale: 1.1, rotate: 5 }}
@@ -116,7 +111,6 @@ export function HowItWorks() {
                     {step.description}
                   </p>
 
-                  {/* Features list */}
                   <div className="space-y-3">
                     {[
                       "Works with any email provider",
@@ -140,7 +134,6 @@ export function HowItWorks() {
                   </div>
                 </motion.div>
 
-                {/* Visual */}
                 <motion.div
                   initial={{
                     opacity: 0,
@@ -160,12 +153,10 @@ export function HowItWorks() {
                     transition={{ duration: 0.3 }}
                     className="relative flex aspect-square items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-12 backdrop-blur-xl"
                   >
-                    {/* Gradient glow */}
                     <div
                       className={`absolute inset-0 bg-gradient-to-br ${step.color} opacity-10 blur-2xl`}
                     ></div>
 
-                    {/* Icon */}
                     <motion.div
                       animate={{
                         rotate: [0, 10, -10, 0],
@@ -184,7 +175,6 @@ export function HowItWorks() {
                       ></div>
                     </motion.div>
 
-                    {/* Floating particles */}
                     {[...Array(5)].map((_, i) => (
                       <motion.div
                         key={i}
@@ -209,7 +199,6 @@ export function HowItWorks() {
                 </motion.div>
               </div>
 
-              {/* Connecting line */}
               {index < steps.length - 1 && (
                 <motion.div
                   initial={{ scaleY: 0 }}
@@ -223,7 +212,6 @@ export function HowItWorks() {
           ))}
         </div>
 
-        {/* CTA at the end */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}

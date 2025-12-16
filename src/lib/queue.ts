@@ -2,7 +2,7 @@ import { logger } from "./logger";
 
 type JobStatus = "pending" | "processing" | "completed" | "failed";
 
-interface Job<T = any> {
+interface Job<T = unknown> {
   id: string;
   type: string;
   data: T;
@@ -14,11 +14,11 @@ interface Job<T = any> {
   error?: string;
 }
 
-type JobHandler<T = any> = (data: T) => Promise<void>;
+type JobHandler<T = unknown> = (data: T) => Promise<void>;
 
 class JobQueue {
   private jobs: Map<string, Job> = new Map();
-  private handlers: Map<string, JobHandler> = new Map();
+  private handlers: Map<string, JobHandler<unknown>> = new Map();
   private processing: Set<string> = new Set();
   private interval: NodeJS.Timeout | null = null;
 
@@ -32,12 +32,12 @@ class JobQueue {
     }, 5000);
   }
 
-  registerHandler<T = any>(type: string, handler: JobHandler<T>) {
-    this.handlers.set(type, handler);
+  registerHandler<T = unknown>(type: string, handler: JobHandler<T>) {
+    this.handlers.set(type, handler as JobHandler<unknown>);
     logger.info(`Handler registered: ${type}`);
   }
 
-  async add<T = any>(
+  async add<T = unknown>(
     type: string,
     data: T,
     options: { maxAttempts?: number } = {},

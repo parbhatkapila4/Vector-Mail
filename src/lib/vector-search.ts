@@ -1,8 +1,28 @@
 import { db } from "@/server/db";
-import { generateQueryEmbedding, cosineSimilarity } from "./email-analysis";
+import { generateQueryEmbedding } from "./email-analysis";
+import type {
+  Email,
+  Thread,
+  EmailAddress,
+  EmailAttachment,
+} from "@prisma/client";
+
+type EmailWithRelations = Email & {
+  thread: Thread;
+  from: EmailAddress;
+  to: EmailAddress[];
+  cc: EmailAddress[];
+  attachments: EmailAttachment[];
+};
+
+interface RawEmailResult {
+  id: string;
+  distance: number;
+  [key: string]: unknown;
+}
 
 export interface SearchResult {
-  email: any;
+  email: EmailWithRelations;
   similarity: number;
   relevanceScore: number;
 }
@@ -23,20 +43,20 @@ export async function searchEmailsByVector(
     const emails = (await db.$queryRaw`
       SELECT 
         e.*,
-        (e."vectorEmbedding" <=> ${JSON.stringify(queryEmbedding)}::vector) as distance
+        (e."embedding" <=> ${JSON.stringify(queryEmbedding)}::vector) as distance
       FROM "Email" e
       JOIN "Thread" t ON e."threadId" = t.id
       WHERE t."accountId" = ${accountId}
-        AND e."vectorEmbedding" IS NOT NULL
+        AND e."embedding" IS NOT NULL
       ORDER BY distance ASC
       LIMIT ${limit * 2}
-    `) as any[];
+    `) as RawEmailResult[];
 
     if (emails.length === 0) {
       return await fallbackTextSearch(query, accountId, limit);
     }
 
-    const topEmailIds = emails.slice(0, limit).map((e: any) => e.id);
+    const topEmailIds = emails.slice(0, limit).map((e) => e.id);
 
     const fullEmails = await db.email.findMany({
       where: {
@@ -49,14 +69,12 @@ export async function searchEmailsByVector(
         cc: true,
         attachments: true,
       },
-      });
+    });
 
-    const emailDistanceMap = new Map(
-      emails.map((e: any) => [e.id, e.distance]),
-    );
+    const emailDistanceMap = new Map(emails.map((e) => [e.id, e.distance]));
 
     const results: SearchResult[] = fullEmails
-      .map((email: any) => {
+      .map((email) => {
         const distance = emailDistanceMap.get(email.id) || 1;
         const similarity = 1 - distance;
         const relevanceScore = calculateRelevanceScore(
@@ -71,8 +89,8 @@ export async function searchEmailsByVector(
           relevanceScore,
         };
       })
-      .filter((result: any) => result.similarity > 0.1)
-      .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
+      .filter((result) => result.similarity > 0.1)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
       .slice(0, limit);
 
     return results;
@@ -113,7 +131,7 @@ async function fallbackTextSearch(
         take: limit,
       });
 
-      return emails.map((email: any) => ({
+      return emails.map((email) => ({
         email,
         similarity: 0.5,
         relevanceScore: 0.5,
@@ -139,13 +157,13 @@ async function fallbackTextSearch(
             },
           },
           {
-            aiSummary: {
+            summary: {
               contains: query,
               mode: "insensitive",
             },
           },
           {
-            aiTags: {
+            keywords: {
               hasSome: searchTerms,
             },
           },
@@ -165,7 +183,7 @@ async function fallbackTextSearch(
     });
 
     const results: SearchResult[] = emails
-      .map((email: any) => {
+      .map((email) => {
         const relevanceScore = calculateTextRelevanceScore(
           email,
           query,
@@ -177,8 +195,8 @@ async function fallbackTextSearch(
           relevanceScore,
         };
       })
-      .filter((result: any) => result.relevanceScore > 0.1)
-      .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
+      .filter((result) => result.relevanceScore > 0.1)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
       .slice(0, limit);
 
     return results;
@@ -189,7 +207,7 @@ async function fallbackTextSearch(
 }
 
 function calculateRelevanceScore(
-  email: any,
+  email: EmailWithRelations,
   query: string,
   similarity: number,
 ): number {
@@ -208,7 +226,7 @@ function calculateRelevanceScore(
 
   const queryTerms = queryLower.split(" ").filter((term) => term.length > 2);
   const matchingTags =
-    email.aiTags?.filter((tag: string) =>
+    email.keywords?.filter((tag: string) =>
       queryTerms.some((term) => tag.includes(term)),
     ) || [];
 
@@ -218,7 +236,7 @@ function calculateRelevanceScore(
 }
 
 function calculateTextRelevanceScore(
-  email: any,
+  email: EmailWithRelations,
   query: string,
   searchTerms: string[],
 ): number {
@@ -229,7 +247,9 @@ function calculateTextRelevanceScore(
   if (subj.includes(q)) {
     score += 3;
   } else {
-    const subjMatches = searchTerms.filter((term) => subj.includes(term)).length;
+    const subjMatches = searchTerms.filter((term) =>
+      subj.includes(term),
+    ).length;
     score += subjMatches * 0.5;
   }
 
@@ -237,11 +257,13 @@ function calculateTextRelevanceScore(
   if (body.includes(q)) {
     score += 2;
   } else {
-    const bodyMatches = searchTerms.filter((term) => body.includes(term)).length;
+    const bodyMatches = searchTerms.filter((term) =>
+      body.includes(term),
+    ).length;
     score += bodyMatches * 0.3;
   }
 
-  const summary = email.aiSummary?.toLowerCase() || "";
+  const summary = email.summary?.toLowerCase() || "";
   if (summary.includes(q)) {
     score += 1.5;
   } else {
@@ -252,7 +274,7 @@ function calculateTextRelevanceScore(
   }
 
   const tagMatches =
-    email.aiTags?.filter((tag: string) =>
+    email.keywords?.filter((tag: string) =>
       searchTerms.some((term) => tag.includes(term)),
     ).length || 0;
   score += tagMatches * 0.4;

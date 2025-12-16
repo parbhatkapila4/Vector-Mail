@@ -11,9 +11,8 @@ import {
   Reply,
   ChevronLeft,
   ChevronRight,
-  Paperclip,
   FileText,
-  Image,
+  Image as ImageIcon,
   File,
 } from "lucide-react";
 
@@ -21,7 +20,6 @@ export function ProductShowcase() {
   return (
     <section className="bg-gray-50 py-24">
       <div className="mx-auto max-w-7xl px-6">
-        {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -38,7 +36,6 @@ export function ProductShowcase() {
           </p>
         </motion.div>
 
-        {/* Product Interface Mockup */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -46,9 +43,7 @@ export function ProductShowcase() {
           viewport={{ once: true }}
           className="relative"
         >
-          {/* Browser Window */}
           <div className="overflow-hidden rounded-lg bg-white shadow-2xl">
-            {/* Browser Header */}
             <div className="flex items-center gap-2 bg-gray-100 px-4 py-3">
               <div className="flex gap-2">
                 <div className="h-3 w-3 rounded-full bg-red-500"></div>
@@ -60,11 +55,8 @@ export function ProductShowcase() {
               </div>
             </div>
 
-            {/* Email Interface */}
             <div className="flex h-[600px] bg-gray-900 text-white">
-              {/* Left Sidebar */}
               <div className="w-80 border-r border-gray-700 bg-gray-800 p-4">
-                {/* Account Switcher */}
                 <div className="mb-6 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 font-semibold text-white">
                     V
@@ -77,7 +69,6 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* Compose Button */}
                 <button className="mb-6 w-full rounded-lg bg-gray-700 px-4 py-3 text-left transition-colors hover:bg-gray-600">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
@@ -85,7 +76,6 @@ export function ProductShowcase() {
                   </div>
                 </button>
 
-                {/* Navigation */}
                 <div className="space-y-1">
                   <div className="mb-3 text-xs uppercase tracking-wider text-gray-400">
                     Core
@@ -148,7 +138,6 @@ export function ProductShowcase() {
                 </div>
               </div>
 
-              {/* Middle Column - Email List */}
               <div className="flex-1 border-r border-gray-700">
                 <div className="border-b border-gray-700 p-4">
                   <div className="mb-4 flex items-center justify-between">
@@ -175,7 +164,6 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* Filter Buttons */}
                 <div className="border-b border-gray-700 p-4">
                   <div className="flex items-center gap-2">
                     <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white">
@@ -196,7 +184,6 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* Email List */}
                 <div className="p-4">
                   <div className="mb-4">
                     <div className="mb-2 text-xs uppercase tracking-wider text-gray-400">
@@ -283,9 +270,7 @@ export function ProductShowcase() {
                 </div>
               </div>
 
-              {/* Right Column - Email Content */}
               <div className="w-96 bg-gray-800">
-                {/* Email Header */}
                 <div className="border-b border-gray-700 p-4">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -337,7 +322,6 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* AI Summary */}
                 <div className="border-b border-gray-700 p-4">
                   <div className="rounded-lg border border-purple-500/30 bg-purple-900/20 p-3">
                     <div className="mb-2 text-sm font-medium text-purple-300">
@@ -352,7 +336,6 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* Attachments */}
                 <div className="border-b border-gray-700 p-4">
                   <div className="mb-3 text-sm font-medium">
                     Attachments [4]
@@ -373,7 +356,7 @@ export function ProductShowcase() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 rounded-lg p-2 hover:bg-gray-700">
-                      <Image className="h-4 w-4 text-purple-400" />
+                      <ImageIcon className="h-4 w-4 text-purple-400" />
                       <div className="flex-1">
                         <div className="text-sm">img.png</div>
                         <div className="text-xs text-gray-400">2.3 MB</div>
@@ -389,7 +372,6 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* Email Content */}
                 <div className="p-4">
                   <div className="mb-4 flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold">

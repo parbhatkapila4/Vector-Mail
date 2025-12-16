@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import type { EmailAddress, EmailAttachment, EmailMessage } from "@/types";
-import pLimit from "p-limit";
+import type { Prisma } from "@prisma/client";
 import { analyzeEmail } from "./email-analysis";
 import { arrayToVector } from "./vector-utils";
 
@@ -8,22 +8,16 @@ export async function syncEmailsToDatabase(
   emails: EmailMessage[],
   accountId: string,
 ) {
-  const limit = pLimit(10);
-
   try {
     for (const email of emails) {
-      await upsertEmail(email, accountId, 0);
+      await upsertEmail(email, accountId);
     }
   } catch (error) {
     console.log("Sync error:", error);
   }
 }
 
-async function upsertEmail(
-  email: EmailMessage,
-  accountId: string,
-  index: number,
-) {
+async function upsertEmail(email: EmailMessage, accountId: string) {
   try {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
     if (
@@ -143,13 +137,15 @@ async function upsertEmail(
         bcc: { set: bccAddresses.map((a) => ({ id: a!.id })) },
         replyTo: { set: replyToAddresses.map((a) => ({ id: a!.id })) },
         hasAttachments: email.hasAttachments,
-        internetHeaders: email.internetHeaders as any,
+        internetHeaders:
+          email.internetHeaders as unknown as Prisma.InputJsonValue[],
         body: email.body,
         bodySnippet: email.bodySnippet,
         inReplyTo: email.inReplyTo,
         references: email.references,
         threadIndex: email.threadIndex,
-        nativeProperties: email.nativeProperties as any,
+        nativeProperties:
+          email.nativeProperties as unknown as Prisma.InputJsonValue,
         folderId: email.folderId,
         omitted: email.omitted,
         emailLabel: emailLabelType,
@@ -166,7 +162,8 @@ async function upsertEmail(
         internetMessageId: email.internetMessageId,
         subject: email.subject,
         sysLabels: email.sysLabels,
-        internetHeaders: email.internetHeaders as any,
+        internetHeaders:
+          email.internetHeaders as unknown as Prisma.InputJsonValue[],
         keywords: email.keywords,
         sysClassifications: email.sysClassifications,
         sensitivity: email.sensitivity,
@@ -182,14 +179,14 @@ async function upsertEmail(
         inReplyTo: email.inReplyTo,
         references: email.references,
         threadIndex: email.threadIndex,
-        nativeProperties: email.nativeProperties as any,
+        nativeProperties:
+          email.nativeProperties as unknown as Prisma.InputJsonValue,
         folderId: email.folderId,
         omitted: email.omitted,
         summary: analysis.summary,
       },
     });
 
-    // Update embedding separately using raw SQL since it's an Unsupported type
     await db.$executeRaw`
             UPDATE "Email" 
             SET embedding = ${embeddingVector}::vector
@@ -274,7 +271,7 @@ async function upsertEmailAddress(address: EmailAddress, accountId: string) {
         data: { name: address.name, raw: address.raw },
       });
     }
-    
+
     return await db.emailAddress.create({
       data: {
         address: address.address ?? "",

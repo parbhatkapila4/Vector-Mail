@@ -1,17 +1,18 @@
 "use client";
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, type Transition } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import type { ComponentPropsWithoutRef } from "react";
 
-const transition = {
-  type: "spring" as const,
+const transition: Transition = {
+  type: "spring",
   mass: 0.5,
   damping: 11.5,
   stiffness: 100,
   restDelta: 0.001,
   restSpeed: 0.001,
-} as any;
+};
 
 export const MenuItem = ({
   setActive,
@@ -49,17 +50,14 @@ export const MenuItem = ({
             <div className="absolute left-1/2 top-[calc(100%_+_1.2rem)] -translate-x-1/2 transform pt-4">
               <motion.div
                 transition={transition}
-                layoutId="active" // layoutId ensures smooth animation
+                layoutId="active"
                 className="overflow-hidden rounded-2xl border border-purple-500/30 bg-black/90 shadow-2xl shadow-purple-500/20 backdrop-blur-xl"
                 style={{
                   background:
                     "linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,0,50,0.9) 100%)",
                 }}
               >
-                <motion.div
-                  layout // layout ensures smooth animation
-                  className="h-full w-max p-4"
-                >
+                <motion.div layout className="h-full w-max p-4">
                   {children}
                 </motion.div>
               </motion.div>
@@ -80,7 +78,7 @@ export const Menu = ({
 }) => {
   return (
     <nav
-      onMouseLeave={() => setActive(null)} // resets the state
+      onMouseLeave={() => setActive(null)}
       className="relative flex justify-center space-x-4 rounded-full border border-purple-500/30 bg-black/80 px-8 py-6 shadow-2xl shadow-purple-500/10 backdrop-blur-xl"
       style={{
         background:
@@ -120,7 +118,10 @@ export const ProductItem = ({
   );
 };
 
-export const HoveredLink = ({ children, ...rest }: any) => {
+export const HoveredLink = ({
+  children,
+  ...rest
+}: ComponentPropsWithoutRef<typeof Link>) => {
   return (
     <Link
       {...rest}

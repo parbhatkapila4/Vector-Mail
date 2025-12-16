@@ -8,22 +8,26 @@ const compat = new FlatCompat({
 export default tseslint.config(
   {
     ignores: [
-      ".next",
+      ".next/**",
       "**/*.test.ts",
       "**/*.test.tsx",
       "**/*.spec.ts",
       "**/*.spec.tsx",
       "e2e/**",
+      "**/bun.lock",
+      "bun.lock",
+      "**/package-lock.json",
+      "**/yarn.lock",
+      "**/pnpm-lock.yaml",
+      "**/*.lock",
+      "**/*.prisma",
+      "prisma/**",
     ],
   },
   ...compat.extends("next/core-web-vitals"),
   {
     files: ["**/*.ts", "**/*.tsx"],
-    extends: [
-      ...tseslint.configs.recommended,
-      // ...tseslint.configs.recommendedTypeChecked,
-      // ...tseslint.configs.stylisticTypeChecked,
-    ],
+    extends: [...tseslint.configs.recommended],
     rules: {
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/consistent-type-definitions": "off",

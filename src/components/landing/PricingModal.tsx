@@ -115,7 +115,7 @@ interface PricingModalProps {
 }
 
 export function PricingModal({ isOpen, onClose }: PricingModalProps) {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [, setSelectedPlan] = useState<string | null>(null);
   const [showFAQ, setShowFAQ] = useState<number | null>(null);
   const { isSignedIn } = useUser();
 
@@ -207,7 +207,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                   }
                 `}</style>
                 <div className="p-8 pb-24">
-                  {/* Pricing Cards */}
+                  
                   <div className="mb-16">
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                       {pricingPlans.map((plan, index) => (
@@ -314,7 +314,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     </div>
                   </div>
 
-                  {/* FAQ Section */}
+                  
                   <div className="mb-16">
                     <div className="mb-10 text-center">
                       <h3 className="mb-2 text-2xl font-bold text-gray-900">
@@ -384,7 +384,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     </div>
                   </div>
 
-                  {/* Trust Badges */}
+                  
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

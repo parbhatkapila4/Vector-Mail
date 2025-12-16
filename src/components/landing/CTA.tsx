@@ -2,15 +2,12 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
 import { Sparkles, ArrowRight } from "lucide-react";
 
 export function CTA() {
-  const { isSignedIn } = useUser();
 
   return (
     <section className="relative overflow-hidden bg-black py-20 sm:py-32 lg:py-40">
-      {/* Static background gradients */}
       <div
         className="pointer-events-none absolute left-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[500px] lg:w-[500px]"
         style={{
@@ -36,7 +33,6 @@ export function CTA() {
           viewport={{ once: true }}
           className="space-y-8"
         >
-          {/* Simplified Logo/Icon */}
           <div className="mb-8 flex justify-center">
             <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 via-purple-500 to-amber-500 shadow-lg shadow-purple-500/50">
               <Sparkles className="h-12 w-12 text-white" />

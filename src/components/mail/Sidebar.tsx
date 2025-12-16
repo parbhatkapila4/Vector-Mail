@@ -2,19 +2,7 @@
 import React from "react";
 import { Nav } from "./Nav";
 
-import {
-  AlertCircle,
-  Archive,
-  ArchiveX,
-  File,
-  Inbox,
-  MessagesSquare,
-  Send,
-  ShoppingCart,
-  Trash2,
-  Users2,
-} from "lucide-react";
-import { usePathname } from "next/navigation";
+import { File, Inbox, Send } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 type Props = { isCollapsed: boolean };

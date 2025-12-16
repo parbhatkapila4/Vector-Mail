@@ -1,5 +1,4 @@
 "use client";
-import TurndownService from "turndown";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,10 +12,12 @@ import {
 import React from "react";
 import { generateEmail } from "./actions";
 import { Bot } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import useThreads from "@/hooks/use-threads";
 import { turndown } from "@/lib/turndown";
+import type { RouterOutputs } from "@/trpc/react";
+
+type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 
 type Props = {
   onGenerate: (value: string) => void;
@@ -34,7 +35,7 @@ const AIComposeButton = (props: Props) => {
       if (!props.isComposing) {
         context = thread?.emails
           .map(
-            (m: any) =>
+            (m: Email) =>
               `Subject: ${m.subject}\nFrom: ${m.from.address}\n\n${turndown.turndown(m.body ?? m.bodySnippet ?? "")}`,
           )
           .join("\n");
@@ -51,7 +52,7 @@ const AIComposeButton = (props: Props) => {
         prompt,
       );
 
-      // Send complete content at once (no streaming)
+      
       if (result.content && result.content.trim()) {
         props.onGenerate(result.content);
       }

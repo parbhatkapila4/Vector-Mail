@@ -9,7 +9,6 @@ export function Footer() {
 
   return (
     <footer className="relative overflow-hidden border-t border-purple-500/20 bg-black py-12 sm:py-16">
-      {/* Subtle gradient background */}
       <div className="absolute left-1/2 top-0 h-px w-full -translate-x-1/2 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
       <div
         className="pointer-events-none absolute bottom-0 left-1/4 h-[200px] w-[200px] rounded-full opacity-10 blur-3xl sm:h-[400px] sm:w-[400px]"
@@ -22,7 +21,6 @@ export function Footer() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mb-8 grid gap-8 sm:mb-12 sm:gap-12 md:grid-cols-2">
-          {/* Left: Logo & Social */}
           <div className="space-y-6">
             <Link href="/" className="group inline-flex items-center gap-3">
               <motion.div
@@ -38,12 +36,11 @@ export function Footer() {
               </span>
             </Link>
 
-            {/* Social Links */}
             <div className="flex items-center gap-4">
               {[
                 {
                   icon: Twitter,
-                  href: "https://x.com/Devcodies",
+                  href: "https://x.com/Parbhat03",
                   label: "Twitter",
                   color: "from-blue-500 to-cyan-500",
                 },
@@ -100,7 +97,6 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Right: Links */}
           <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
             <div>
               <h3 className="mb-4 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-sm font-semibold text-transparent text-white">
@@ -186,7 +182,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-purple-500/10 pt-8 sm:flex-row">
           <p className="text-sm text-gray-500">
             © {currentYear} VectorMail Inc, All Rights Reserved

@@ -14,7 +14,6 @@ export function FloatingElements() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {/* Floating gradient orbs */}
       {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
@@ -40,7 +39,6 @@ export function FloatingElements() {
         />
       ))}
 
-      {/* Floating particles */}
       {[...Array(15)].map((_, i) => (
         <motion.div
           key={`particle-${i}`}

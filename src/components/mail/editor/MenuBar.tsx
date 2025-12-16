@@ -1,10 +1,7 @@
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type { Editor } from "@tiptap/react";
 import {
   Bold,
   Code,
-  CodepenIcon,
   Heading1,
   Heading2,
   Heading3,

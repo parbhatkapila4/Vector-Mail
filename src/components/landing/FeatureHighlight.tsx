@@ -6,7 +6,6 @@ import { Sparkles, Send, ArrowRight } from "lucide-react";
 export function FeatureHighlight() {
   return (
     <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
-      {/* Static gradient background */}
       <div
         className="pointer-events-none absolute left-1/3 top-1/3 h-[300px] w-[300px] rounded-full opacity-15 blur-3xl lg:h-[600px] lg:w-[600px]"
         style={{
@@ -47,7 +46,6 @@ export function FeatureHighlight() {
         </motion.div>
 
         <div className="grid items-start gap-12 lg:grid-cols-2">
-          {/* Left: Email List */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -55,7 +53,6 @@ export function FeatureHighlight() {
             viewport={{ once: true }}
             className="group relative"
           >
-            {/* Glow effect */}
             <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
             <div className="relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-zinc-900 to-black shadow-2xl">
               <div className="p-6">
@@ -119,7 +116,6 @@ export function FeatureHighlight() {
             </div>
           </motion.div>
 
-          {/* Right: AI Chat */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -127,11 +123,9 @@ export function FeatureHighlight() {
             viewport={{ once: true }}
             className="group relative"
           >
-            {/* Glow effect */}
             <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
             <div className="relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-zinc-900 to-black shadow-2xl">
               <div className="p-6">
-                {/* Chat Header */}
                 <div className="mb-6 flex items-center gap-2 border-b border-purple-500/20 pb-4">
                   <motion.div
                     className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg"
@@ -158,7 +152,6 @@ export function FeatureHighlight() {
                   />
                 </div>
 
-                {/* Chat Icon */}
                 <div className="mb-6 flex justify-center">
                   <motion.div
                     className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl"
@@ -170,7 +163,6 @@ export function FeatureHighlight() {
                   </motion.div>
                 </div>
 
-                {/* Instructions */}
                 <div className="mb-6 space-y-2 text-center">
                   <p className="font-medium text-white">
                     Ask anything about your emails
@@ -180,7 +172,6 @@ export function FeatureHighlight() {
                   </p>
                 </div>
 
-                {/* Suggestion Pills */}
                 <div className="mb-6 space-y-3">
                   <div className="grid grid-cols-1 gap-2">
                     {[
@@ -215,7 +206,6 @@ export function FeatureHighlight() {
                   </div>
                 </div>
 
-                {/* Input */}
                 <div className="flex items-center gap-2 rounded-lg bg-white/5 px-4 py-3">
                   <input
                     type="text"

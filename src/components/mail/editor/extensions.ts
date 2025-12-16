@@ -5,8 +5,6 @@ import GhostText from "./ghostText";
 export default Node.create({
   name: "ghostText",
 
-  // content: 'inline*',
-
   group: "inline",
   inline: true,
   selectable: false,

@@ -1,11 +1,8 @@
 import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
 import type { EmailMessage } from "@/types";
+import { Prisma } from "@prisma/client";
 
-/**
- * Process existing emails to add AI analysis
- * This should be run once to backfill existing emails with AI analysis
- */
 export async function processExistingEmails(
   accountId?: string,
   batchSize: number = 10,
@@ -13,12 +10,8 @@ export async function processExistingEmails(
   try {
     console.log("Starting to process existing emails with AI analysis...");
 
-    let whereClause: any = {
-      OR: [
-        { aiSummary: null },
-        { vectorEmbedding: null },
-        { vectorEmbedding: { isEmpty: true } },
-      ],
+    let whereClause: Prisma.EmailWhereInput = {
+      OR: [{ summary: null }],
     };
 
     if (accountId) {
@@ -39,7 +32,6 @@ export async function processExistingEmails(
     let hasMore = true;
 
     while (hasMore) {
-      // Get a batch of emails that need AI analysis
       const emails = await db.email.findMany({
         where: whereClause,
         include: {
@@ -47,6 +39,8 @@ export async function processExistingEmails(
           from: true,
           to: true,
           cc: true,
+          bcc: true,
+          replyTo: true,
           attachments: true,
         },
         take: batchSize,
@@ -64,7 +58,6 @@ export async function processExistingEmails(
 
       for (const email of emails) {
         try {
-          // Convert database email to EmailMessage format for analysis
           const emailMessage: EmailMessage = {
             id: email.id,
             threadId: email.threadId,
@@ -74,35 +67,37 @@ export async function processExistingEmails(
             receivedAt: email.receivedAt.toISOString(),
             internetMessageId: email.internetMessageId,
             subject: email.subject,
-            sysLabels: email.sysLabels as any[],
+            sysLabels: email.sysLabels as EmailMessage["sysLabels"],
             keywords: email.keywords,
-            sysClassifications: email.sysClassifications as any[],
-            sensitivity: email.sensitivity as any,
-            meetingMessageMethod: email.meetingMessageMethod as any,
+            sysClassifications:
+              email.sysClassifications as EmailMessage["sysClassifications"],
+            sensitivity: email.sensitivity as EmailMessage["sensitivity"],
+            meetingMessageMethod:
+              email.meetingMessageMethod as EmailMessage["meetingMessageMethod"],
             from: {
               address: email.from.address,
               name: email.from.name || "",
             },
-            to: email.to.map((t: any) => ({
+            to: email.to.map((t) => ({
               address: t.address,
               name: t.name || "",
             })),
-            cc: email.cc.map((c: any) => ({
+            cc: email.cc.map((c) => ({
               address: c.address,
               name: c.name || "",
             })),
-            bcc: email.bcc.map((b: any) => ({
+            bcc: email.bcc.map((b) => ({
               address: b.address,
               name: b.name || "",
             })),
-            replyTo: email.replyTo.map((r: any) => ({
+            replyTo: email.replyTo.map((r) => ({
               address: r.address,
               name: r.name || "",
             })),
             hasAttachments: email.hasAttachments,
             body: email.body || undefined,
             bodySnippet: email.bodySnippet || undefined,
-            attachments: email.attachments.map((a: any) => ({
+            attachments: email.attachments.map((a) => ({
               id: a.id,
               name: a.name,
               mimeType: a.mimeType,
@@ -115,23 +110,23 @@ export async function processExistingEmails(
             inReplyTo: email.inReplyTo || undefined,
             references: email.references || undefined,
             threadIndex: email.threadIndex || undefined,
-            internetHeaders: email.internetHeaders as any[],
-            nativeProperties: email.nativeProperties as any,
+            internetHeaders:
+              email.internetHeaders as unknown as EmailMessage["internetHeaders"],
+            nativeProperties:
+              email.nativeProperties as EmailMessage["nativeProperties"],
             folderId: email.folderId || undefined,
-            omitted: email.omitted,
+            omitted: email.omitted as EmailMessage["omitted"],
           };
 
-          // Generate AI analysis
           console.log(`Analyzing email: ${email.subject}`);
           const analysis = await analyzeEmail(emailMessage);
 
-          // Update the email with AI analysis using raw SQL
           await db.$executeRaw`
             UPDATE "Email" 
             SET 
-                "aiSummary" = ${analysis.summary},
-                "aiTags" = ${analysis.tags},
-                "vectorEmbedding" = ${JSON.stringify(analysis.vectorEmbedding)}::vector
+                "summary" = ${analysis.summary},
+                "keywords" = ${JSON.stringify(analysis.tags)}::text[],
+                "embedding" = ${JSON.stringify(analysis.vectorEmbedding)}::vector
             WHERE id = ${email.id}
           `;
 
@@ -142,19 +137,16 @@ export async function processExistingEmails(
             `✓ Processed email: ${email.subject} (${totalProcessed} total)`,
           );
 
-          // Add a small delay to avoid overwhelming the AI service
           if (processed % 5 === 0) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         } catch (error) {
           console.error(`Error processing email ${email.id}:`, error);
-          // Continue with next email
         }
       }
 
       console.log(`Completed batch. Total processed: ${totalProcessed}`);
 
-      // Add delay between batches
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
@@ -168,12 +160,9 @@ export async function processExistingEmails(
   }
 }
 
-/**
- * Get statistics about email processing status
- */
 export async function getEmailProcessingStats(accountId?: string) {
   try {
-    let whereClause: any = {};
+    let whereClause: Prisma.EmailWhereInput = {};
     if (accountId) {
       whereClause = {
         thread: {
@@ -184,17 +173,22 @@ export async function getEmailProcessingStats(accountId?: string) {
 
     const totalEmails = await db.email.count({ where: whereClause });
 
-    const emailsWithAnalysis = await db.email.count({
-      where: {
-        AND: [
-          whereClause,
-          {
-            aiSummary: { not: null },
-            vectorEmbedding: { not: null },
-          },
-        ],
-      },
-    });
+    const emailsWithAnalysisResult = accountId
+      ? await db.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(*) as count
+          FROM "Email" e
+          JOIN "Thread" t ON e."threadId" = t.id
+          WHERE t."accountId" = ${accountId}
+            AND e."summary" IS NOT NULL
+            AND e."embedding" IS NOT NULL
+        `
+      : await db.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(*) as count
+          FROM "Email" e
+          WHERE e."summary" IS NOT NULL
+            AND e."embedding" IS NOT NULL
+        `;
+    const emailsWithAnalysis = Number(emailsWithAnalysisResult[0]?.count || 0);
 
     const emailsNeedingAnalysis = totalEmails - emailsWithAnalysis;
 

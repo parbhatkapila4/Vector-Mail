@@ -4,7 +4,16 @@ interface LogEntry {
   level: LogLevel;
   message: string;
   timestamp: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
+}
+
+interface WindowWithSentry extends Window {
+  Sentry?: {
+    captureException: (
+      error: Error,
+      options?: { level?: string; extra?: Record<string, unknown> },
+    ) => void;
+  };
 }
 
 class Logger {
@@ -14,7 +23,7 @@ class Logger {
   private formatMessage(
     level: LogLevel,
     message: string,
-    context?: Record<string, any>,
+    context?: Record<string, unknown>,
   ): LogEntry {
     return {
       level,
@@ -24,13 +33,18 @@ class Logger {
     };
   }
 
-  private log(level: LogLevel, message: string, context?: Record<string, any>) {
+  private log(
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>,
+  ) {
     const entry = this.formatMessage(level, message, context);
 
     if (this.isProduction) {
-      if (typeof window !== "undefined" && (window as any).Sentry) {
-        if (level === "error") {
-          (window as any).Sentry.captureException(new Error(message), {
+      if (typeof window !== "undefined") {
+        const windowWithSentry = window as WindowWithSentry;
+        if (windowWithSentry.Sentry && level === "error") {
+          windowWithSentry.Sentry.captureException(new Error(message), {
             level,
             extra: context,
           });
@@ -56,19 +70,19 @@ class Logger {
     }
   }
 
-  info(message: string, context?: Record<string, any>) {
+  info(message: string, context?: Record<string, unknown>) {
     this.log("info", message, context);
   }
 
-  warn(message: string, context?: Record<string, any>) {
+  warn(message: string, context?: Record<string, unknown>) {
     this.log("warn", message, context);
   }
 
-  error(message: string, context?: Record<string, any>) {
+  error(message: string, context?: Record<string, unknown>) {
     this.log("error", message, context);
   }
 
-  debug(message: string, context?: Record<string, any>) {
+  debug(message: string, context?: Record<string, unknown>) {
     if (this.isDevelopment) {
       this.log("debug", message, context);
     }

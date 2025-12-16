@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, type RouterOutputs } from "@/trpc/react";
+import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { Plus } from "lucide-react";
 import { getAurinkoAuthUrl } from "@/lib/aurinko";
@@ -26,12 +26,10 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
 
   React.useEffect(() => {
     if (accounts && accounts.length > 0) {
-      // Check if the current accountId is valid
       const isCurrentAccountValid =
         accountId &&
         accounts.some((acc: { id: string }) => acc.id === accountId);
 
-      // If no accountId or current accountId is invalid, set to first account
       if (!isCurrentAccountValid) {
         setAccountId(accounts[0]!.id);
       }
@@ -50,7 +48,7 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
         },
       });
     }
-  }, [accounts]);
+  }, [accounts, accountId, setAccountId]);
 
   if (!accounts) return <></>;
 
@@ -98,13 +96,12 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
           {accounts.map((account: { id: string; emailAddress: string }) => (
             <SelectItem key={account.id} value={account.id}>
               <div className="flex items-center gap-3 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-foreground">
-                {/* {account.icon} */}
                 {account.emailAddress}
               </div>
             </SelectItem>
           ))}
           <div
-            onClick={async (e) => {
+            onClick={async () => {
               try {
                 const url = await getAurinkoAuthUrl("Google");
                 window.location.href = url;

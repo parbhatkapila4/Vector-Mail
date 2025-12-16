@@ -76,7 +76,7 @@ export class Account {
   }
 
   private async getUpdatedEmails(deltaToken?: string, pageToken?: string) {
-    let params: Record<string, string> = {};
+    const params: Record<string, string> = {};
     if (pageToken) {
       params.pageToken = pageToken;
     } else if (deltaToken) {
@@ -168,7 +168,6 @@ export class Account {
     let allEmails: EmailMessage[] = [];
     let storedDeltaToken: string;
 
-    // If no delta token or force full sync, perform initial sync
     if (!account.nextDeltaToken || forceFullSync) {
       console.log("Performing full initial sync...");
       const initialSyncResult = await this.performInitialSync();

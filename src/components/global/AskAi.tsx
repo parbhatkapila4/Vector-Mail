@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Transition } from "framer-motion";
 import { Send, Sparkles } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
@@ -19,21 +19,11 @@ interface EmailSearchProps {
   isCollapsed: boolean;
 }
 
-interface DebugData {
-  totalEmails: number;
-  emails: Array<{
-    id: string;
-    subject: string;
-    from: string;
-    sentAt: Date;
-    hasEmbedding: boolean;
-  }>;
-}
-
-const animationConfig = {
-  type: "easeOut" as const,
+const animationConfig: Transition = {
+  type: "tween",
+  ease: "easeOut",
   duration: 0.2,
-} as any;
+};
 
 const suggestedQueries = [
   { label: "Orders", query: "Show me emails about orders", icon: "📦" },
@@ -247,9 +237,8 @@ export default function EmailSearchAssistant({
   }
 
   return (
-    <div className="p-2 pb-20 pt-15">
+    <div className="pt-15 p-2 pb-20">
       <motion.div className="flex max-h-[700px] flex-col overflow-hidden rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black shadow-lg">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-purple-500/30 p-2">
           <div className="flex items-center gap-1.5">
             <div className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
@@ -264,7 +253,6 @@ export default function EmailSearchAssistant({
           </div>
         </div>
 
-        {/* Messages Area */}
         {messages.length > 0 && (
           <div
             className="max-h-[450px] overflow-y-auto border-b border-purple-500/30 p-2"
@@ -309,11 +297,9 @@ export default function EmailSearchAssistant({
           </div>
         )}
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-2">
           {messages.length === 0 && (
             <div className="mb-2">
-              {/* Description */}
               <div className="mb-2 text-center">
                 <p className="text-[10px] text-gray-300">
                   Using semantic search to find relevant emails
@@ -333,7 +319,6 @@ export default function EmailSearchAssistant({
                 ))}
               </div>
 
-              {/* Process Emails Button */}
               <div className="mb-2">
                 <button
                   onClick={handleProcessEmails}
@@ -347,13 +332,12 @@ export default function EmailSearchAssistant({
                 </button>
               </div>
 
-              {/* Debug Information */}
               {debugData && (
                 <div className="mb-2 rounded border border-purple-500/30 bg-white/5 p-1.5 text-[10px]">
                   <div className="mb-0.5 text-purple-300">System Status:</div>
                   <div className="text-[9px] text-gray-400">
                     Total: {debugData.totalEmails} | Processed:{" "}
-                    {debugData.emails.filter((e: any) => e.hasEmbedding).length}
+                    {debugData.emails.filter((e) => e.hasEmbedding).length}
                   </div>
                   <div className="truncate text-[9px] text-gray-400">
                     Latest: {debugData.emails[0]?.subject || "None"}
@@ -363,7 +347,6 @@ export default function EmailSearchAssistant({
             </div>
           )}
 
-          {/* Search Input */}
           <form onSubmit={handleSubmit} className="mt-auto flex w-full gap-1">
             <div className="relative flex-1">
               <input

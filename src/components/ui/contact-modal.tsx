@@ -27,7 +27,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -36,7 +35,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
             onClick={onClose}
           />
 
-          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -45,7 +43,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
             className="fixed inset-x-4 top-1/2 z-[95] mx-auto max-w-md -translate-y-1/2"
           >
             <div className="rounded-2xl border border-border bg-background p-8 shadow-2xl">
-              {/* Header */}
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
@@ -66,7 +63,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 </button>
               </div>
 
-              {/* Content */}
               <div className="text-center">
                 <p className="mb-6 text-gray-600 dark:text-gray-400">
                   Have a question or need help? We'd love to hear from you.
@@ -104,7 +100,6 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 </p>
               </div>
 
-              {/* Close Button */}
               <div className="mt-8 flex justify-center">
                 <button
                   onClick={onClose}

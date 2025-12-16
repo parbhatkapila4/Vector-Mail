@@ -157,11 +157,11 @@ export async function analyzeEmail(
 ): Promise<EmailAnalysis> {
   try {
     console.log(`Analyzing: ${email.subject}`);
-    
+
     const summary = await generateEmailSummary(email);
     const vectorEmbedding = await generateEmailEmbedding(summary, email);
     const tags = await generateEmailTags(email);
-    
+
     console.log(`Tags: ${tags.join(", ")}`);
 
     return {

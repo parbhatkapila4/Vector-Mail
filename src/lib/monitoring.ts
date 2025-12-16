@@ -7,6 +7,20 @@ interface MetricData {
   timestamp: number;
 }
 
+interface WindowWithAnalytics extends Window {
+  gtag?: (
+    command: string,
+    targetId: string,
+    config?: Record<string, unknown>,
+  ) => void;
+  Sentry?: {
+    captureException: (
+      error: Error,
+      options?: { extra?: Record<string, unknown> },
+    ) => void;
+  };
+}
+
 class MetricsCollector {
   private metrics: MetricData[] = [];
   private flushInterval: NodeJS.Timeout | null = null;
@@ -69,19 +83,25 @@ class MetricsCollector {
 
 export const metrics = new MetricsCollector();
 
-export function trackEvent(event: string, properties?: Record<string, any>) {
+export function trackEvent(
+  event: string,
+  properties?: Record<string, unknown>,
+) {
   if (process.env.NODE_ENV === "production") {
     logger.info(`Event: ${event}`, properties);
 
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", event, properties);
+    if (typeof window !== "undefined") {
+      const windowWithAnalytics = window as WindowWithAnalytics;
+      if (windowWithAnalytics.gtag) {
+        windowWithAnalytics.gtag("event", event, properties);
+      }
     }
   } else {
     logger.debug(`Event: ${event}`, properties);
   }
 }
 
-export function trackError(error: Error, context?: Record<string, any>) {
+export function trackError(error: Error, context?: Record<string, unknown>) {
   logger.error(error.message, {
     ...context,
     stack: error.stack,
@@ -92,10 +112,13 @@ export function trackError(error: Error, context?: Record<string, any>) {
     type: error.name,
   });
 
-  if (typeof window !== "undefined" && (window as any).Sentry) {
-    (window as any).Sentry.captureException(error, {
-      extra: context,
-    });
+  if (typeof window !== "undefined") {
+    const windowWithAnalytics = window as WindowWithAnalytics;
+    if (windowWithAnalytics.Sentry) {
+      windowWithAnalytics.Sentry.captureException(error, {
+        extra: context,
+      });
+    }
   }
 }
 
@@ -103,6 +126,9 @@ export function trackPageView(url: string) {
   trackEvent("page_view", { page_path: url });
 }
 
-export function trackUserAction(action: string, context?: Record<string, any>) {
+export function trackUserAction(
+  action: string,
+  context?: Record<string, unknown>,
+) {
   trackEvent("user_action", { action, ...context });
 }

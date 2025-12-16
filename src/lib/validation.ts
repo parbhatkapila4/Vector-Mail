@@ -1,4 +1,5 @@
 import { z } from "zod";
+import DOMPurify from "dompurify";
 
 export const emailSchema = z.object({
   to: z
@@ -43,7 +44,6 @@ export const threadSchema = z.object({
 });
 
 export function sanitizeHtml(html: string): string {
-  const DOMPurify = require("dompurify");
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       "p",

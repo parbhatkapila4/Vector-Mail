@@ -44,7 +44,7 @@ export class PerformanceMonitor {
 
 export const perf = new PerformanceMonitor();
 
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
@@ -63,7 +63,7 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number,
 ): (...args: Parameters<T>) => void {
@@ -78,22 +78,37 @@ export function throttle<T extends (...args: any[]) => any>(
   };
 }
 
-export function memoize<T extends (...args: any[]) => any>(fn: T): T {
+export function memoize<T extends (...args: unknown[]) => unknown>(fn: T): T {
   const cache = new Map<string, ReturnType<T>>();
 
   return ((...args: Parameters<T>) => {
     const key = JSON.stringify(args);
     if (cache.has(key)) {
-      return cache.get(key)!;
+      return cache.get(key)! as ReturnType<T>;
     }
 
-    const result = fn(...args);
+    const result = fn(...args) as ReturnType<T>;
     cache.set(key, result);
     return result;
   }) as T;
 }
 
-export function measureWebVitals(metric: any) {
+interface WebVitalMetric {
+  name: string;
+  value: number;
+  id: string;
+  label?: string;
+}
+
+interface WindowWithGtag extends Window {
+  gtag?: (
+    command: string,
+    targetId: string,
+    config?: Record<string, unknown>,
+  ) => void;
+}
+
+export function measureWebVitals(metric: WebVitalMetric) {
   if (process.env.NODE_ENV === "production") {
     logger.info("Web Vital", {
       name: metric.name,
@@ -102,14 +117,17 @@ export function measureWebVitals(metric: any) {
       label: metric.label,
     });
 
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", metric.name, {
-        value: Math.round(
-          metric.name === "CLS" ? metric.value * 1000 : metric.value,
-        ),
-        event_label: metric.id,
-        non_interaction: true,
-      });
+    if (typeof window !== "undefined") {
+      const windowWithGtag = window as WindowWithGtag;
+      if (windowWithGtag.gtag) {
+        windowWithGtag.gtag("event", metric.name, {
+          value: Math.round(
+            metric.name === "CLS" ? metric.value * 1000 : metric.value,
+          ),
+          event_label: metric.id,
+          non_interaction: true,
+        });
+      }
     }
   }
 }

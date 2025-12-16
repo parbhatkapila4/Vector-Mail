@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import React from "react";
-import { ModeToggle } from "@/components/global/ThemeToggle";
 import { UserButton } from "@clerk/nextjs";
 import ComposeButton from "@/components/mail/ComposeButton";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,7 +15,7 @@ const Mail = dynamic(
   { ssr: false },
 );
 
-function page() {
+function MailPage() {
   const isMobile = useIsMobile();
   const router = useRouter();
 
@@ -26,7 +25,6 @@ function page() {
 
   return (
     <div className="relative h-screen w-full">
-      {/* Back to Home Button - Top Right */}
       <div
         className={cn(
           "z-50",
@@ -44,7 +42,6 @@ function page() {
         </Button>
       </div>
 
-      {/* User Controls - Bottom Left */}
       <div
         className={cn(
           "z-50 flex items-center gap-2",
@@ -66,4 +63,4 @@ function page() {
   );
 }
 
-export default page;
+export default MailPage;

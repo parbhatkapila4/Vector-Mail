@@ -48,11 +48,9 @@ export function InteractiveDemo() {
 
   return (
     <section className="relative overflow-hidden bg-white py-32">
-      {/* Grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:80px_80px]"></div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -84,7 +82,6 @@ export function InteractiveDemo() {
           </p>
         </motion.div>
 
-        {/* Interactive Demo Grid */}
         <div className="mb-16 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {demoFeatures.map((feature, index) => (
             <motion.div
@@ -103,7 +100,6 @@ export function InteractiveDemo() {
                 activeFeature === index ? "border-black/20" : "border-black/10"
               } cursor-pointer overflow-hidden transition-all duration-300`}
             >
-              {/* Animated gradient background */}
               <motion.div
                 className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 transition-opacity duration-300 group-hover:opacity-10`}
                 animate={
@@ -111,7 +107,6 @@ export function InteractiveDemo() {
                 }
               />
 
-              {/* Icon */}
               <motion.div
                 whileHover={{ rotate: 360, scale: 1.1 }}
                 transition={{ duration: 0.6 }}
@@ -120,13 +115,11 @@ export function InteractiveDemo() {
                 <feature.icon className="h-8 w-8 text-white" />
               </motion.div>
 
-              {/* Content */}
               <h3 className="mb-2 text-2xl font-bold text-black">
                 {feature.title}
               </h3>
               <p className="mb-6 text-gray-600">{feature.description}</p>
 
-              {/* Metric */}
               <div className="space-y-1">
                 <div
                   className={`bg-gradient-to-r text-4xl font-bold ${feature.color} bg-clip-text text-transparent`}
@@ -138,7 +131,6 @@ export function InteractiveDemo() {
                 </div>
               </div>
 
-              {/* Shine effect */}
               <motion.div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100"
                 initial={{ x: "-100%" }}
@@ -153,7 +145,6 @@ export function InteractiveDemo() {
           ))}
         </div>
 
-        {/* Why Choose Us */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -161,7 +152,6 @@ export function InteractiveDemo() {
           viewport={{ once: true }}
           className="relative overflow-hidden rounded-3xl border border-gray-800 bg-black p-8 md:p-12"
         >
-          {/* Gradient accents */}
           <div className="absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 bg-gradient-to-b from-blue-600/20 to-transparent blur-3xl" />
 
           <div className="relative text-center">

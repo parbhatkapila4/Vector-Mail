@@ -18,8 +18,8 @@ interface Thread {
   subject: string;
   lastMessageDate: Date;
   emails: Array<{
-    from?: { name: string };
-    bodySnippet?: string;
+    from?: { name: string | null };
+    bodySnippet?: string | null;
     sysLabels: string[];
   }>;
 }
@@ -27,12 +27,6 @@ interface Thread {
 interface GroupedThreads {
   [date: string]: Thread[];
 }
-
-const LOADING_STATES = {
-  ACCOUNTS: "accounts",
-  THREADS: "threads",
-  SYNC: "sync",
-} as const;
 
 const CONNECTION_ERROR_MESSAGES = {
   NO_ACCOUNT: "No account connected",
@@ -283,7 +277,6 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   return (
     <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
-      {/* Header with refresh button */}
       <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold">Inbox</h2>

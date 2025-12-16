@@ -3,9 +3,6 @@ import { analyzeEmail } from "./email-analysis";
 import type { EmailMessage } from "@/types";
 import { arrayToVector } from "./vector-utils";
 
-/**
- * Backfill analysis (summary and embeddings) for existing emails that don't have them
- */
 export async function backfillEmailAnalysis(
   accountId: string,
   limit: number = 50,
@@ -13,13 +10,12 @@ export async function backfillEmailAnalysis(
   console.log(`Starting backfill for account ${accountId}`);
 
   try {
-    // Find emails without summaries
     const emailsWithoutAnalysis = await db.email.findMany({
       where: {
         thread: {
           accountId: accountId,
         },
-        summary: null, // Only process emails without summary
+        summary: null,
       },
       include: {
         from: true,
@@ -30,7 +26,7 @@ export async function backfillEmailAnalysis(
       },
       take: limit,
       orderBy: {
-        sentAt: "desc", // Process most recent first
+        sentAt: "desc",
       },
     });
 
@@ -43,7 +39,6 @@ export async function backfillEmailAnalysis(
 
     for (const email of emailsWithoutAnalysis) {
       try {
-        // Convert database email to EmailMessage format
         const emailMessage: EmailMessage = {
           id: email.id,
           threadId: email.threadId,
@@ -78,22 +73,22 @@ export async function backfillEmailAnalysis(
             address: email.from.address,
             raw: email.from.raw || "",
           },
-          to: email.to.map((addr: any) => ({
+          to: email.to.map((addr) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
           })),
-          cc: email.cc.map((addr: any) => ({
+          cc: email.cc.map((addr) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
           })),
-          bcc: email.bcc.map((addr: any) => ({
+          bcc: email.bcc.map((addr) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
           })),
-          replyTo: email.replyTo.map((addr: any) => ({
+          replyTo: email.replyTo.map((addr) => ({
             name: addr.name || "",
             address: addr.address,
             raw: addr.raw || "",
@@ -121,13 +116,10 @@ export async function backfillEmailAnalysis(
           `Analyzing email ${processed + 1}/${emailsWithoutAnalysis.length}: ${email.subject}`,
         );
 
-        // Generate analysis
         const analysis = await analyzeEmail(emailMessage);
 
-        // Convert embedding array to pgvector format
         const embeddingVector = arrayToVector(analysis.vectorEmbedding);
 
-        // Update email with analysis
         await db.email.update({
           where: { id: email.id },
           data: {
@@ -135,7 +127,6 @@ export async function backfillEmailAnalysis(
           },
         });
 
-        // Update embedding separately using raw SQL since it's an Unsupported type
         await db.$executeRaw`
                     UPDATE "Email" 
                     SET embedding = ${embeddingVector}::vector
@@ -145,7 +136,6 @@ export async function backfillEmailAnalysis(
         processed++;
         console.log(`✓ Processed: ${email.subject.substring(0, 50)}...`);
 
-        // Add small delay to avoid rate limiting
         await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
         failed++;
@@ -168,9 +158,6 @@ export async function backfillEmailAnalysis(
   }
 }
 
-/**
- * Get count of emails without analysis for an account
- */
 export async function getEmailsNeedingAnalysisCount(
   accountId: string,
 ): Promise<number> {

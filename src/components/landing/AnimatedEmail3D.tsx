@@ -1,14 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Mail, Sparkles, Zap } from "lucide-react";
+import { Mail } from "lucide-react";
 
 export function AnimatedEmail3D() {
   return (
     <div className="pointer-events-none relative flex h-[500px] w-full items-center justify-center">
-      {/* Main 3D Email Container */}
       <div className="relative h-[500px] w-[500px]">
-        {/* Static glowing orbs - no animation */}
         <div
           className="absolute left-1/4 top-1/4 h-[300px] w-[300px] rounded-full opacity-40 blur-3xl"
           style={{
@@ -26,12 +23,10 @@ export function AnimatedEmail3D() {
           }}
         />
 
-        {/* 3D Email Icon - Simplified static version */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* Email back layer */}
           <div
             className="absolute h-48 w-64 rounded-2xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 via-purple-800/20 to-amber-900/20 backdrop-blur-xl"
             style={{
@@ -42,7 +37,6 @@ export function AnimatedEmail3D() {
             }}
           />
 
-          {/* Email main layer */}
           <div
             className="relative h-48 w-64 overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-gray-900 via-purple-900/50 to-amber-900/50 backdrop-blur-xl"
             style={{
@@ -52,7 +46,6 @@ export function AnimatedEmail3D() {
               willChange: "auto",
             }}
           >
-            {/* Envelope flap - static */}
             <div
               className="absolute left-0 right-0 top-0 h-24 bg-gradient-to-br from-purple-600/40 via-purple-400/40 to-amber-400/40 opacity-50"
               style={{
@@ -61,12 +54,10 @@ export function AnimatedEmail3D() {
               }}
             />
 
-            {/* Mail icon in center - static */}
             <div className="absolute inset-0 flex items-center justify-center">
               <Mail className="h-16 w-16 text-purple-300" strokeWidth={1.5} />
             </div>
 
-            {/* Static glowing lines */}
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
@@ -76,7 +67,6 @@ export function AnimatedEmail3D() {
             ))}
           </div>
 
-          {/* Email front layer (slight offset) */}
           <div
             className="absolute h-48 w-64 rounded-2xl border border-purple-400/20"
             style={{
@@ -89,7 +79,6 @@ export function AnimatedEmail3D() {
         </div>
       </div>
 
-      {/* Bottom glow reflection - static */}
       <div
         className="absolute bottom-0 left-1/2 h-32 w-[400px] -translate-x-1/2 rounded-full opacity-40 blur-3xl"
         style={{

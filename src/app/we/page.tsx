@@ -18,7 +18,6 @@ import {
   Sparkles,
   Lightbulb,
   Target,
-  TrendingUp,
   Award,
   Zap,
   CheckCircle,
@@ -132,7 +131,6 @@ export default function WePage() {
     <div className="min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
 
-      {/* Back Button - Desktop */}
       <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
@@ -142,7 +140,6 @@ export default function WePage() {
         </Link>
       </div>
 
-      {/* Mobile Back Button */}
       <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
@@ -152,9 +149,7 @@ export default function WePage() {
         </Link>
       </div>
 
-      {/* Hero Section */}
       <section className="relative overflow-hidden pb-16 pt-8 sm:pb-24 sm:pt-16 md:pt-24 lg:pb-32 lg:pt-40 xl:pt-48">
-        {/* Background gradients */}
         <div
           className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
           style={{
@@ -176,7 +171,6 @@ export default function WePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* GitHub Icon */}
             <div className="mb-8 flex justify-center">
               <motion.div
                 className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50 sm:h-24 sm:w-24"
@@ -210,7 +204,6 @@ export default function WePage() {
         </div>
       </section>
 
-      {/* Why GitHub */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
@@ -243,13 +236,13 @@ export default function WePage() {
               >
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 mx-auto sm:mx-0">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 sm:mx-0">
                     <item.icon className="h-6 w-6 text-purple-400" />
                   </div>
-                  <h3 className="mb-3 text-xl font-bold text-white text-center sm:text-left">
+                  <h3 className="mb-3 text-center text-xl font-bold text-white sm:text-left">
                     {item.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400 text-center sm:text-left">
+                  <p className="text-center text-sm leading-relaxed text-gray-400 sm:text-left">
                     {item.description}
                   </p>
                 </div>
@@ -257,7 +250,6 @@ export default function WePage() {
             ))}
           </div>
 
-          {/* GitHub as Brain */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -302,7 +294,6 @@ export default function WePage() {
         </div>
       </section>
 
-      {/* How to Contribute */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
@@ -344,18 +335,18 @@ export default function WePage() {
                       {type.title}
                     </h3>
                   </div>
-                  <p className="mb-4 text-sm leading-relaxed text-gray-400 sm:text-base text-center sm:text-left">
+                  <p className="mb-4 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
                     {type.description}
                   </p>
                   <div className="space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-300 text-center sm:text-left">
+                    <div className="text-center text-xs font-semibold uppercase tracking-wider text-purple-300 sm:text-left">
                       Examples:
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mx-auto max-w-fit sm:max-w-none sm:mx-0">
+                    <div className="mx-auto grid max-w-fit grid-cols-2 gap-2 sm:mx-0 sm:max-w-none">
                       {type.examples.map((example, idx) => (
                         <div key={idx} className="flex items-start gap-2">
                           <CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-purple-400" />
-                          <span className="text-xs text-gray-500 text-center sm:text-left">
+                          <span className="text-center text-xs text-gray-500 sm:text-left">
                             {example}
                           </span>
                         </div>
@@ -369,7 +360,6 @@ export default function WePage() {
         </div>
       </section>
 
-      {/* Impact Stories */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <motion.div
@@ -394,16 +384,16 @@ export default function WePage() {
                 viewport={{ once: true }}
                 className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 mx-auto sm:mx-0">
+                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 sm:mx-0">
                   <story.icon className="h-5 w-5 text-purple-400" />
                 </div>
-                <h3 className="mb-3 text-lg font-bold text-white text-center sm:text-left">
+                <h3 className="mb-3 text-center text-lg font-bold text-white sm:text-left">
                   {story.title}
                 </h3>
-                <blockquote className="mb-3 border-l-0 sm:border-l-2 border-purple-500/30 pl-0 sm:pl-4 text-sm italic leading-relaxed text-gray-400 text-center sm:text-left">
+                <blockquote className="mb-3 border-l-0 border-purple-500/30 pl-0 text-center text-sm italic leading-relaxed text-gray-400 sm:border-l-2 sm:pl-4 sm:text-left">
                   "{story.quote}"
                 </blockquote>
-                <div className="text-xs font-semibold text-purple-300 text-center sm:text-left">
+                <div className="text-center text-xs font-semibold text-purple-300 sm:text-left">
                   — {story.author}
                 </div>
               </motion.div>
@@ -412,7 +402,6 @@ export default function WePage() {
         </div>
       </section>
 
-      {/* Your Contribution = Your Voice */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
           <motion.div
@@ -452,7 +441,6 @@ export default function WePage() {
               </p>
             </div>
 
-            {/* Contribution Stats */}
             <div className="mb-12 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
               {[
                 { label: "Contributors", value: "Growing", icon: Users },
@@ -481,7 +469,6 @@ export default function WePage() {
               ))}
             </div>
 
-            {/* CTA Button */}
             <div className="flex justify-center">
               <Link
                 href="https://github.com/parbhatkapila4/Vector-Mail"
@@ -499,7 +486,6 @@ export default function WePage() {
         </div>
       </section>
 
-      {/* Getting Started */}
       <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <motion.div
@@ -570,7 +556,6 @@ export default function WePage() {
         </div>
       </section>
 
-      {/* Final CTA - Be Part of We */}
       <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-4xl px-4 text-center sm:px-6">
           <motion.div
@@ -599,7 +584,6 @@ export default function WePage() {
               </span>
             </p>
 
-            {/* GitHub Stats Preview */}
             <div className="mx-auto mb-8 max-w-2xl rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
               <div className="flex flex-wrap items-center justify-center gap-8">
                 <div className="text-center">
@@ -625,7 +609,6 @@ export default function WePage() {
               </div>
             </div>
 
-            {/* Main CTA */}
             <Link
               href="https://github.com/parbhatkapila4/Vector-Mail"
               target="_blank"

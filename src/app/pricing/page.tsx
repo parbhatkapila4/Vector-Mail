@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, Users, Grid, Boxes, Mail } from "lucide-react";
+import { ArrowLeft, CheckCircle, Users, Grid, Boxes } from "lucide-react";
 import { Navigation } from "@/components/landing/Navigation";
 import { Footer } from "@/components/landing/Footer";
 import { useState, useEffect } from "react";
@@ -109,10 +109,9 @@ export default function PricingPage() {
     <div className="min-h-screen w-full overflow-x-hidden bg-black">
       <Navigation />
 
-      {/* Back Button */}
       <div
         className={`fixed left-4 top-28 z-40 transition-opacity duration-300 sm:left-8 sm:top-32 sm:opacity-100 ${
-          isScrolled ? "opacity-0 pointer-events-none" : "opacity-100"
+          isScrolled ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
         <Link href="/">
@@ -123,11 +122,8 @@ export default function PricingPage() {
         </Link>
       </div>
 
-      {/* Pricing Section */}
       <section className="relative overflow-hidden pb-32 pt-48">
-        {/* Background effects */}
         <div className="absolute inset-0 bg-black">
-          {/* Grid pattern */}
           <div
             className="absolute inset-0 opacity-10"
             style={{
@@ -136,7 +132,6 @@ export default function PricingPage() {
             }}
           />
 
-          {/* Diagonal gradient streak */}
           <div
             className="absolute right-0 top-0 h-[800px] w-[800px] opacity-30"
             style={{
@@ -149,14 +144,12 @@ export default function PricingPage() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-6">
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="mb-16 text-center"
           >
-            {/* Pricing Badge */}
             <motion.div
               className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2"
               animate={{
@@ -181,12 +174,11 @@ export default function PricingPage() {
               Flexible Pricing Plans for Every Need
             </h1>
 
-            <p className="mx-auto mb-12 max-w-3xl text-lg text-gray-400 text-center sm:text-left sm:text-xl">
+            <p className="mx-auto mb-12 max-w-3xl text-center text-lg text-gray-400 sm:text-left sm:text-xl">
               Choose the plan that best fits your requirements and start
               optimizing your time today!
             </p>
 
-            {/* Billing Toggle */}
             <div className="inline-flex items-center gap-4 rounded-full border border-purple-500/30 bg-white/5 p-2">
               <button
                 onClick={() => setBillingCycle("monthly")}
@@ -216,7 +208,6 @@ export default function PricingPage() {
             </div>
           </motion.div>
 
-          {/* Pricing Cards */}
           <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
             {plans.map((plan, i) => (
               <motion.div
@@ -231,7 +222,6 @@ export default function PricingPage() {
                 className={`group relative ${plan.isPopular ? "md:scale-105" : ""}`}
                 style={{ willChange: "transform" }}
               >
-                {/* Static glow effect - hover activated */}
                 <div
                   className={`absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 blur-xl transition-opacity duration-300 ${
                     plan.isPopular ? "opacity-60" : "opacity-40"
@@ -239,7 +229,6 @@ export default function PricingPage() {
                   style={{ willChange: "opacity" }}
                 />
 
-                {/* Card */}
                 <div
                   className={`relative flex h-full flex-col rounded-2xl border bg-gradient-to-br from-zinc-900 to-black p-8 transition-all duration-300 ${
                     plan.isPopular
@@ -248,7 +237,6 @@ export default function PricingPage() {
                   } group-hover:-translate-y-2`}
                   style={{ willChange: "transform, border-color" }}
                 >
-                  {/* Popular Badge */}
                   {plan.isPopular && (
                     <motion.div
                       className="absolute -top-4 left-1/2 -translate-x-1/2"
@@ -262,9 +250,8 @@ export default function PricingPage() {
                     </motion.div>
                   )}
 
-                  {/* Icon */}
                   <div
-                    className={`mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 mx-auto sm:mx-0 ${
+                    className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 sm:mx-0 ${
                       plan.isPopular
                         ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400"
                         : "bg-white/10"
@@ -273,19 +260,16 @@ export default function PricingPage() {
                     <plan.icon className="h-7 w-7 text-white" />
                   </div>
 
-                  {/* Plan Name */}
-                  <h3 className="mb-3 text-2xl font-bold text-white text-center sm:text-left">
+                  <h3 className="mb-3 text-center text-2xl font-bold text-white sm:text-left">
                     {plan.name}
                   </h3>
 
-                  {/* Description */}
-                  <p className="mb-6 text-sm leading-relaxed text-gray-400 text-center sm:text-left">
+                  <p className="mb-6 text-center text-sm leading-relaxed text-gray-400 sm:text-left">
                     {plan.description}
                   </p>
 
-                  {/* Price */}
                   <div className="mb-8">
-                    <div className="flex items-baseline gap-1 justify-center sm:justify-start">
+                    <div className="flex items-baseline justify-center gap-1 sm:justify-start">
                       <span className="text-5xl font-black text-white">
                         {plan.price}
                       </span>
@@ -295,10 +279,12 @@ export default function PricingPage() {
                     </div>
                   </div>
 
-                  {/* Features */}
                   <ul className="mb-8 flex-grow space-y-3">
                     {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3 mx-auto sm:mx-0 max-w-fit sm:max-w-none">
+                      <li
+                        key={idx}
+                        className="mx-auto flex max-w-fit items-start gap-3 sm:mx-0 sm:max-w-none"
+                      >
                         <div
                           className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
                             plan.isPopular
@@ -308,12 +294,13 @@ export default function PricingPage() {
                         >
                           <CheckCircle className="h-3 w-3 text-white" />
                         </div>
-                        <span className="text-sm text-gray-300 text-center sm:text-left">{feature}</span>
+                        <span className="text-center text-sm text-gray-300 sm:text-left">
+                          {feature}
+                        </span>
                       </li>
                     ))}
                   </ul>
 
-                  {/* CTA Button */}
                   {plan.name === "Basic" ? (
                     <Link href={plan.ctaLink}>
                       <button
@@ -357,7 +344,6 @@ export default function PricingPage() {
             ))}
           </div>
 
-          {/* FAQ Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -402,10 +388,10 @@ export default function PricingPage() {
                 >
                   <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 opacity-0 blur transition-opacity duration-500 group-hover:opacity-100" />
                   <div className="relative rounded-xl border border-purple-500/20 bg-white/5 p-6 transition-all hover:border-purple-500/40">
-                    <h3 className="mb-2 text-lg font-bold text-white text-center sm:text-left">
+                    <h3 className="mb-2 text-center text-lg font-bold text-white sm:text-left">
                       {faq.q}
                     </h3>
-                    <p className="text-sm leading-relaxed text-gray-400 text-center sm:text-left">
+                    <p className="text-center text-sm leading-relaxed text-gray-400 sm:text-left">
                       {faq.a}
                     </p>
                   </div>
@@ -414,7 +400,6 @@ export default function PricingPage() {
             </div>
           </motion.div>
 
-          {/* CTA Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
