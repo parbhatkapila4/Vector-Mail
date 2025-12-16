@@ -39,10 +39,10 @@ export function Navigation() {
     <div className="relative flex w-full items-center justify-center">
       {/* Desktop Navigation */}
       <div
-        className={`fixed inset-x-0 z-[100] mx-auto hidden max-w-2xl px-4 transition-all duration-300 ease-in-out lg:block ${
+        className={`fixed inset-x-0 top-10 z-[100] mx-auto hidden max-w-2xl px-4 transition-all duration-300 ease-in-out lg:block ${
           isScrollingDown
             ? "-translate-y-[calc(100%+2.5rem)] opacity-0"
-            : "translate-y-10 opacity-100"
+            : "translate-y-0 opacity-100"
         }`}
       >
         <nav

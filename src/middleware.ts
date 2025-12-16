@@ -2,8 +2,14 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const isProtectedRoute = createRouteMatcher(["/mail(.*)"]);
+const isWebhookRoute = createRouteMatcher(["/api/webhook(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Bypass authentication for webhook routes
+  if (isWebhookRoute(req)) {
+    return NextResponse.next();
+  }
+
   if (isProtectedRoute(req)) {
     await auth.protect();
   }

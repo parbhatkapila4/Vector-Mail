@@ -22,6 +22,24 @@ export default function PricingPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const handleProCheckout = () => {
+    const proUrl = process.env.NEXT_PUBLIC_DODO_PRO_URL;
+    if (!proUrl) {
+      alert("Payment link not configured. Please try again later.");
+      return;
+    }
+    window.location.href = proUrl;
+  };
+
+  const handleEnterpriseCheckout = () => {
+    const enterpriseUrl = process.env.NEXT_PUBLIC_DODO_ENTERPRISE_URL;
+    if (!enterpriseUrl) {
+      alert("Payment link not configured. Please try again later.");
+      return;
+    }
+    window.location.href = enterpriseUrl;
+  };
+
   const plans = [
     {
       name: "Basic",
@@ -68,8 +86,8 @@ export default function PricingPage() {
       icon: Boxes,
       description:
         "Tailored for teams requiring enterprise-grade features, security, and dedicated support.",
-      price: "Custom",
-      period: "pricing",
+      price: "$60",
+      period: "/month",
       isPopular: false,
       features: [
         "All Pro Plan Features",
@@ -82,8 +100,8 @@ export default function PricingPage() {
         "24/7 Premium Support",
         "Custom SLA & Uptime Guarantee",
       ],
-      cta: "Contact Sales",
-      ctaLink: "mailto:help@productionsolution.net",
+      cta: "Get Started",
+      ctaLink: "/sign-up",
     },
   ];
 
@@ -296,8 +314,22 @@ export default function PricingPage() {
                   </ul>
 
                   {/* CTA Button */}
-                  <Link href={plan.ctaLink}>
+                  {plan.name === "Basic" ? (
+                    <Link href={plan.ctaLink}>
+                      <button
+                        className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
+                          plan.isPopular
+                            ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white hover:shadow-lg hover:shadow-purple-500/50"
+                            : "border border-purple-500/30 bg-white/5 text-white hover:border-purple-500/50 hover:bg-white/10"
+                        }`}
+                        style={{ willChange: "transform" }}
+                      >
+                        {plan.cta}
+                      </button>
+                    </Link>
+                  ) : plan.name === "Pro" ? (
                     <button
+                      onClick={handleProCheckout}
                       className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
                         plan.isPopular
                           ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white hover:shadow-lg hover:shadow-purple-500/50"
@@ -307,7 +339,19 @@ export default function PricingPage() {
                     >
                       {plan.cta}
                     </button>
-                  </Link>
+                  ) : (
+                    <button
+                      onClick={handleEnterpriseCheckout}
+                      className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
+                        plan.isPopular
+                          ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white hover:shadow-lg hover:shadow-purple-500/50"
+                          : "border border-purple-500/30 bg-white/5 text-white hover:border-purple-500/50 hover:bg-white/10"
+                      }`}
+                      style={{ willChange: "transform" }}
+                    >
+                      {plan.cta}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))}
