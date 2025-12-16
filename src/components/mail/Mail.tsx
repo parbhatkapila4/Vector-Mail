@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { Menu } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import {
   ResizableHandle,
@@ -10,30 +9,23 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-
-import { useLocalStorage } from "usehooks-ts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AccountSwitcher } from "./AccountSwitcher";
 import SideBar from "./Sidebar";
 import { ThreadList } from "./threads-ui/ThreadList";
 import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
+import SearchBar from "./search/SearchBar";
+import ComposeButton from "./ComposeButton";
+import { UserButton } from "@clerk/nextjs";
 
 interface MailLayoutProps {
   defaultLayout: number[] | readonly number[] | undefined;
   defaultCollapsed?: boolean;
   navCollapsedSize: number;
-}
-
-type TabValue = "inbox" | "important" | "unread";
-
-interface TabState {
-  important: boolean;
-  unread: boolean;
 }
 
 const DEFAULT_LAYOUT = [20, 32, 48] as const;
@@ -44,34 +36,10 @@ export function Mail({
   defaultCollapsed = false,
   navCollapsedSize,
 }: MailLayoutProps) {
-  const [important, setImportant] = useLocalStorage(
-    "vector-mail-important",
-    false,
-  );
-  const [unread, setUnread] = useLocalStorage("vector-mail-unread", false);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
 
   const isMobile = useIsMobile();
-
-  const currentTab = useMemo((): TabValue => {
-    if (important) return "important";
-    if (unread) return "unread";
-    return "inbox";
-  }, [important, unread]);
-
-  const handleTabChange = useCallback(
-    (tab: string) => {
-      const tabState: TabState = {
-        important: tab === "important",
-        unread: tab === "unread",
-      };
-
-      setImportant(tabState.important);
-      setUnread(tabState.unread);
-    },
-    [setImportant, setUnread],
-  );
 
   const handleThreadSelect = useCallback((threadId: string) => {
     setSelectedThread(threadId);
@@ -107,10 +75,11 @@ export function Mail({
           <AccountSwitcher isCollapsed={isCollapsed} />
         </div>
         <Separator />
-        <div className="flex-1 overflow-y-auto">
+        <div className="shrink-0">
           <SideBar isCollapsed={isCollapsed} />
         </div>
-        <div className="mt-auto pb-20">
+        <Separator />
+        <div className="min-h-0 flex-1 pb-4">
           <EmailSearchAssistant isCollapsed={isCollapsed} />
         </div>
       </div>
@@ -133,17 +102,21 @@ export function Mail({
                 <AccountSwitcher isCollapsed={false} />
               </div>
               <Separator />
-              <div className="flex-1 overflow-y-auto">
+              <div className="shrink-0">
                 <SideBar isCollapsed={false} />
               </div>
-              <div className="mt-auto">
+              <Separator />
+              <div className="min-h-0 flex-1 pb-4">
                 <EmailSearchAssistant isCollapsed={false} />
               </div>
             </div>
           </SheetContent>
         </Sheet>
         <h1 className="text-xl font-bold">Inbox</h1>
-        <div className="w-10" />
+        <div className="flex items-center gap-2">
+          <ComposeButton />
+          <UserButton />
+        </div>
       </div>
     ),
     [],
@@ -151,28 +124,12 @@ export function Mail({
 
   const DesktopHeader = useCallback(
     () => (
-      <div className="flex items-center px-4 py-2">
+      <div className="flex items-center justify-between px-4 py-2">
         <h1 className="text-xl font-bold">Inbox</h1>
-        <TabsList className="ml-auto border border-purple-500/30 bg-white/5">
-          <TabsTrigger
-            value="inbox"
-            className="text-zinc-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white dark:text-zinc-200"
-          >
-            Inbox
-          </TabsTrigger>
-          <TabsTrigger
-            value="important"
-            className="text-zinc-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white dark:text-zinc-200"
-          >
-            Important
-          </TabsTrigger>
-          <TabsTrigger
-            value="unread"
-            className="text-zinc-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white dark:text-zinc-200"
-          >
-            Unread
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center gap-2">
+          <ComposeButton />
+          <UserButton />
+        </div>
       </div>
     ),
     [],
@@ -180,68 +137,28 @@ export function Mail({
 
   const MobileTabs = useCallback(
     () => (
-      <Tabs
-        defaultValue="inbox"
-        value={currentTab}
-        onValueChange={handleTabChange}
-      >
-        <div className="flex items-center px-4 py-2">
-          <TabsList className="w-full border border-purple-500/30 bg-white/5">
-            <TabsTrigger
-              value="inbox"
-              className="flex-1 text-zinc-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white dark:text-zinc-200"
-            >
-              Inbox
-            </TabsTrigger>
-            <TabsTrigger
-              value="important"
-              className="flex-1 text-zinc-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white dark:text-zinc-200"
-            >
-              Important
-            </TabsTrigger>
-            <TabsTrigger
-              value="unread"
-              className="flex-1 text-zinc-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/20 data-[state=active]:via-purple-400/20 data-[state=active]:to-amber-400/20 data-[state=active]:text-white dark:text-zinc-200"
-            >
-              Unread
-            </TabsTrigger>
-          </TabsList>
+      <div className="flex h-[calc(100vh-120px)] flex-col">
+        <SearchBar />
+        <div className="flex-1 overflow-hidden">
+          <ThreadList onThreadSelect={handleThreadSelect} />
         </div>
-        <TabsContent value="inbox" className="m-0 h-[calc(100vh-120px)]">
-          <ThreadList onThreadSelect={handleThreadSelect} />
-        </TabsContent>
-        <TabsContent value="important" className="m-0 h-[calc(100vh-120px)]">
-          <ThreadList onThreadSelect={handleThreadSelect} />
-        </TabsContent>
-        <TabsContent value="unread" className="m-0 h-[calc(100vh-120px)]">
-          <ThreadList onThreadSelect={handleThreadSelect} />
-        </TabsContent>
-      </Tabs>
+      </div>
     ),
-    [currentTab, handleTabChange, handleThreadSelect],
+    [handleThreadSelect],
   );
 
   const DesktopTabs = useCallback(
     () => (
-      <Tabs
-        defaultValue="inbox"
-        value={currentTab}
-        onValueChange={handleTabChange}
-      >
+      <div className="flex h-full flex-col">
         <DesktopHeader />
         <Separator />
-        <TabsContent value="inbox" className="m-0">
+        <SearchBar />
+        <div className="flex-1 overflow-hidden">
           <ThreadList onThreadSelect={handleThreadSelect} />
-        </TabsContent>
-        <TabsContent value="important" className="m-0">
-          <ThreadList onThreadSelect={handleThreadSelect} />
-        </TabsContent>
-        <TabsContent value="unread" className="m-0">
-          <ThreadList onThreadSelect={handleThreadSelect} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     ),
-    [currentTab, handleTabChange, handleThreadSelect, DesktopHeader],
+    [handleThreadSelect, DesktopHeader],
   );
 
   if (isMobile) {

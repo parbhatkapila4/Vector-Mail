@@ -11,13 +11,14 @@ const SideBar = ({ isCollapsed }: Props) => {
   const [tab] = useLocalStorage("vector-mail", "inbox");
   const [accountId] = useLocalStorage("accountId", "");
 
-  const refetchInterval = 5000;
+  const currentTab = tab ?? "inbox";
+
   const { data: inboxThreads } = api.account.getNumThreads.useQuery(
     {
       accountId,
       tab: "inbox",
     },
-    { enabled: !!accountId && !!tab, refetchInterval },
+    { enabled: !!accountId && !!currentTab },
   );
 
   const { data: draftsThreads } = api.account.getNumThreads.useQuery(
@@ -25,7 +26,7 @@ const SideBar = ({ isCollapsed }: Props) => {
       accountId,
       tab: "drafts",
     },
-    { enabled: !!accountId && !!tab, refetchInterval },
+    { enabled: !!accountId && !!currentTab },
   );
 
   const { data: sentThreads } = api.account.getNumThreads.useQuery(
@@ -33,7 +34,7 @@ const SideBar = ({ isCollapsed }: Props) => {
       accountId,
       tab: "sent",
     },
-    { enabled: !!accountId && !!tab, refetchInterval },
+    { enabled: !!accountId && !!currentTab },
   );
 
   return (
@@ -45,19 +46,19 @@ const SideBar = ({ isCollapsed }: Props) => {
             title: "Inbox",
             label: inboxThreads?.toString() || "0",
             icon: Inbox,
-            variant: tab === "inbox" ? "default" : "ghost",
+            variant: currentTab === "inbox" ? "default" : "ghost",
           },
           {
             title: "Drafts",
             label: draftsThreads?.toString() || "0",
             icon: File,
-            variant: tab === "drafts" ? "default" : "ghost",
+            variant: currentTab === "drafts" ? "default" : "ghost",
           },
           {
             title: "Sent",
             label: sentThreads?.toString() || "0",
             icon: Send,
-            variant: tab === "sent" ? "default" : "ghost",
+            variant: currentTab === "sent" ? "default" : "ghost",
           },
         ]}
       />

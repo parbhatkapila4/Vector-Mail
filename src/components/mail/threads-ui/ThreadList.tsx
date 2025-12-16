@@ -1,13 +1,16 @@
 import React, { useRef, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow, format } from "date-fns";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Info } from "lucide-react";
+import { useAtom } from "jotai";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
+import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
+import { SearchResults } from "../search/SearchResults";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
@@ -47,6 +50,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     accountId,
     refetch,
   } = useThreads();
+  const [isSearching] = useAtom(isSearchingAtom);
+  const [searchValue] = useAtom(searchValueAtom);
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
@@ -65,9 +70,20 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const handleRefresh = useCallback(() => {
     if (accountId) {
-      syncEmailsMutation.mutate({ accountId, forceFullSync: true });
+      console.log("[ThreadList] Manual refresh triggered");
+      syncEmailsMutation.mutate(
+        { accountId, forceFullSync: false },
+        {
+          onSuccess: () => {
+            console.log("[ThreadList] Sync completed, refetching threads...");
+            setTimeout(() => {
+              refetch();
+            }, 500);
+          },
+        },
+      );
     }
-  }, [accountId, syncEmailsMutation]);
+  }, [accountId, syncEmailsMutation, refetch]);
 
   const handleAccountConnection = useCallback(async () => {
     try {
@@ -108,6 +124,14 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const allThreads = threads ?? [];
   const lastThreadId = allThreads[allThreads.length - 1]?.id;
+
+  const handleSearchResultSelect = useCallback(
+    (threadId: string) => {
+      setThreadId(threadId);
+      onThreadSelect?.(threadId);
+    },
+    [setThreadId, onThreadSelect],
+  );
 
   const renderLoadingState = () => (
     <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
@@ -247,25 +271,43 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     </button>
   );
 
-  const renderThreadsList = () => (
-    <div className="flex flex-col gap-2 p-4 pt-0">
-      {Object.entries(groupedThreads).map(([date, threads]) => (
-        <React.Fragment key={date}>
-          <div className="mt-4 text-xs font-medium text-muted-foreground first:mt-0">
-            {format(new Date(date), "MMMM d, yyyy")}
-          </div>
-          {threads.map((thread) =>
-            renderThreadItem(thread, thread.id === lastThreadId),
-          )}
-        </React.Fragment>
-      ))}
-      {isFetchingNextPage && (
-        <div className="flex justify-center py-4">
-          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
+  const renderThreadsList = () => {
+    if (threads.length === 0 && !isFetching) {
+      console.log(
+        `[ThreadList] No threads found. AccountId: ${accountId}, Threads array: ${threads.length}`,
+      );
+    }
+
+    if (Object.keys(groupedThreads).length === 0 && !isFetching) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8">
+          <p className="text-gray-500 dark:text-gray-400">
+            No emails found. Click refresh to sync emails.
+          </p>
         </div>
-      )}
-    </div>
-  );
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2 p-4 pt-0">
+        {Object.entries(groupedThreads).map(([date, threads]) => (
+          <React.Fragment key={date}>
+            <div className="mt-4 text-xs font-medium text-muted-foreground first:mt-0">
+              {format(new Date(date), "MMMM d, yyyy")}
+            </div>
+            {threads.map((thread) =>
+              renderThreadItem(thread, thread.id === lastThreadId),
+            )}
+          </React.Fragment>
+        ))}
+        {isFetchingNextPage && (
+          <div className="flex justify-center py-4">
+            <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (accountsLoading) {
     return renderLoadingState();
@@ -279,11 +321,23 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
       <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Inbox</h2>
+          <h2 className="text-lg font-semibold">
+            {isSearching && searchValue ? "Search Results" : "Inbox"}
+          </h2>
           {isFetching && (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           )}
         </div>
+
+        {!isSearching && (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="flex items-center gap-2 rounded-md border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs text-purple-300 dark:bg-purple-500/20 dark:text-purple-200">
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              <span>Click the refresh button to see mails</span>
+            </div>
+          </div>
+        )}
+
         <Button
           variant="outline"
           size="sm"
@@ -298,7 +352,11 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         </Button>
       </div>
 
-      {renderThreadsList()}
+      {isSearching && searchValue ? (
+        <SearchResults onResultSelect={handleSearchResultSelect} />
+      ) : (
+        renderThreadsList()
+      )}
     </div>
   );
 }

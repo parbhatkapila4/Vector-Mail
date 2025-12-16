@@ -1,17 +1,28 @@
 import { db } from "@/server/db";
 import type { EmailAddress, EmailAttachment, EmailMessage } from "@/types";
 import type { Prisma } from "@prisma/client";
-import { analyzeEmail } from "./email-analysis";
-import { arrayToVector } from "./vector-utils";
+
+async function processBatch<T>(
+  items: T[],
+  processor: (item: T) => Promise<void>,
+  concurrency: number = 10,
+): Promise<void> {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    batches.push(items.slice(i, i + concurrency));
+  }
+
+  for (const batch of batches) {
+    await Promise.all(batch.map(processor));
+  }
+}
 
 export async function syncEmailsToDatabase(
   emails: EmailMessage[],
   accountId: string,
 ) {
   try {
-    for (const email of emails) {
-      await upsertEmail(email, accountId);
-    }
+    await processBatch(emails, (email) => upsertEmail(email, accountId), 10);
   } catch (error) {
     console.log("Sync error:", error);
   }
@@ -20,19 +31,18 @@ export async function syncEmailsToDatabase(
 async function upsertEmail(email: EmailMessage, accountId: string) {
   try {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
-    if (
+    if (email.sysLabels.includes("draft")) {
+      emailLabelType = "draft";
+    } else if (email.sysLabels.includes("sent")) {
+      emailLabelType = "sent";
+    } else if (
       email.sysLabels.includes("inbox") ||
       email.sysLabels.includes("important")
     ) {
       emailLabelType = "inbox";
-    } else if (email.sysLabels.includes("sent")) {
-      emailLabelType = "sent";
-    } else if (email.sysLabels.includes("draft")) {
-      emailLabelType = "draft";
     }
 
-    const analysis = await analyzeEmail(email);
-    const embeddingVector = arrayToVector(analysis.vectorEmbedding);
+    const embeddingVector = null;
 
     const addressToUpsert = new Map();
     for (const address of [
@@ -149,7 +159,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         folderId: email.folderId,
         omitted: email.omitted,
         emailLabel: emailLabelType,
-        summary: analysis.summary,
+        summary: null,
       },
       create: {
         id: email.id,
@@ -183,15 +193,17 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
           email.nativeProperties as unknown as Prisma.InputJsonValue,
         folderId: email.folderId,
         omitted: email.omitted,
-        summary: analysis.summary,
+        summary: null,
       },
     });
 
-    await db.$executeRaw`
+    if (embeddingVector) {
+      await db.$executeRaw`
             UPDATE "Email" 
             SET embedding = ${embeddingVector}::vector
             WHERE id = ${email.id}
         `;
+    }
 
     const threadEmails = await db.email.findMany({
       where: { threadId: thread.id },
@@ -199,14 +211,22 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     });
 
     let threadFolderType = "sent";
+
     for (const threadEmail of threadEmails) {
-      if (threadEmail.emailLabel === "inbox") {
+      if (
+        threadEmail.emailLabel === "inbox" ||
+        threadEmail.sysLabels?.includes("inbox")
+      ) {
         threadFolderType = "inbox";
         break;
-      } else if (threadEmail.emailLabel === "draft") {
+      } else if (
+        threadEmail.emailLabel === "draft" ||
+        threadEmail.sysLabels?.includes("draft")
+      ) {
         threadFolderType = "draft";
       }
     }
+
     await db.thread.update({
       where: { id: thread.id },
       data: {
@@ -216,7 +236,11 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       },
     });
 
-    for (const attachment of email.attachments) {
+    const metadataOnlyAttachments = email.attachments.map((att) => ({
+      ...att,
+      content: undefined,
+    }));
+    for (const attachment of metadataOnlyAttachments) {
       await upsertAttachment(email.id, attachment);
     }
   } catch (error) {

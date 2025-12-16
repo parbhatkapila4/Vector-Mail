@@ -205,165 +205,164 @@ export default function EmailSearchAssistant({
 
   if (!accountId) {
     return (
-      <div className="mb-14 p-4">
-        <div className="h-4" />
+      <div className="flex h-full flex-col p-3">
         <motion.div
-          className="flex flex-col rounded-lg border bg-white p-4 pb-4 shadow-inner dark:bg-gray-800"
+          className="flex h-full flex-col rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black p-4 shadow-lg"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="flex items-center gap-4 py-2">
-            <Sparkles className="size-6 text-gray-500" />
+          <div className="flex items-center gap-3 py-2">
+            <Sparkles className="h-6 w-6 text-purple-400" />
             <div>
-              <p className="text-gray-900 dark:text-gray-100">
+              <p className="text-sm font-medium text-white">
                 No account connected
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-400">
                 Connect your Google account to get started
               </p>
             </div>
           </div>
-          <div className="h-2" />
-          <button
-            onClick={handleAccountConnection}
-            className="w-full rounded-md bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-purple-500/50"
-          >
-            Connect Google Account
-          </button>
+          <div className="mt-4">
+            <button
+              onClick={handleAccountConnection}
+              className="w-full rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-purple-500/50"
+            >
+              Connect Google Account
+            </button>
+          </div>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="pt-15 p-2 pb-20">
-      <motion.div className="flex max-h-[700px] flex-col overflow-hidden rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black shadow-lg">
-        <div className="flex items-center justify-between border-b border-purple-500/30 p-2">
-          <div className="flex items-center gap-1.5">
-            <div className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
-              <Sparkles className="h-2.5 w-2.5 text-white" />
+    <div className="flex h-full flex-col p-3">
+      <motion.div className="flex h-full flex-col overflow-hidden rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black shadow-lg">
+        <div className="flex items-center justify-between border-b border-purple-500/30 p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+              <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <h3 className="text-[10px] font-bold text-white">
+            <h3 className="text-sm font-bold text-white">
               Email Search Assistant
             </h3>
           </div>
-          <div className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-r from-purple-600 to-amber-400">
-            <span className="text-[10px] text-white">🚀</span>
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-purple-600 to-amber-400">
+            <span className="text-sm text-white">🚀</span>
           </div>
         </div>
 
-        {messages.length > 0 && (
-          <div
-            className="max-h-[450px] overflow-y-auto border-b border-purple-500/30 p-2"
-            ref={messageContainerRef}
-          >
-            <AnimatePresence mode="wait">
-              {messages.map((message) => (
-                <motion.div
-                  key={message.id}
-                  layout="position"
-                  className={cn("z-10 mt-1.5 break-words rounded-xl", {
-                    "max-w-[220px] self-end bg-white/10 text-white":
-                      message.role === "user",
-                    "max-w-[400px] self-start border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 text-white shadow-lg":
-                      message.role === "assistant",
-                  })}
-                  layoutId={`container-[${messages.length - 1}]`}
-                  transition={animationConfig}
-                >
-                  <div
-                    className={cn("text-[11px] leading-[1.3]", {
-                      "px-3 py-2 text-white": message.role === "user",
-                      "px-3 py-2.5 text-white": message.role === "assistant",
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {messages.length > 0 ? (
+            <div
+              className="flex-1 overflow-y-auto p-3"
+              ref={messageContainerRef}
+            >
+              <AnimatePresence mode="wait">
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    layout="position"
+                    className={cn("z-10 mb-3 break-words rounded-xl", {
+                      "max-w-[80%] ml-auto bg-white/10 text-white":
+                        message.role === "user",
+                      "max-w-[90%] mr-auto border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 text-white shadow-lg":
+                        message.role === "assistant",
                     })}
+                    layoutId={`container-[${messages.length - 1}]`}
+                    transition={animationConfig}
                   >
-                    {message.role === "assistant" ? (
-                      <div className="space-y-1">
-                        <div className="mb-1 text-[10px] font-medium text-purple-300">
-                          ✨ Assistant
+                    <div
+                      className="text-sm leading-relaxed px-4 py-3 text-white"
+                    >
+                      {message.role === "assistant" ? (
+                        <div className="space-y-2">
+                          <div className="mb-2 text-xs font-medium text-purple-300">
+                            ✨ Assistant
+                          </div>
+                          <div className="whitespace-pre-wrap text-sm">
+                            {message.content}
+                          </div>
                         </div>
-                        <div className="whitespace-pre-wrap text-[11px]">
-                          {message.content}
-                        </div>
-                      </div>
-                    ) : (
-                      message.content
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto p-2">
-          {messages.length === 0 && (
-            <div className="mb-2">
-              <div className="mb-2 text-center">
-                <p className="text-[10px] text-gray-300">
-                  Using semantic search to find relevant emails
-                </p>
-              </div>
-
-              <div className="mb-2 grid grid-cols-2 gap-1">
-                {suggestedQueries.map(({ label, query, icon }) => (
-                  <button
-                    key={label}
-                    onClick={() => handleQuerySuggestion(query)}
-                    className="flex cursor-pointer items-center justify-center gap-0.5 rounded border border-purple-500/30 bg-white/5 px-1.5 py-1 text-[10px] font-medium text-white transition-all duration-200 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
-                  >
-                    <span className="text-[10px]">{icon}</span>
-                    <span>{label}</span>
-                  </button>
+                      ) : (
+                        message.content
+                      )}
+                    </div>
+                  </motion.div>
                 ))}
-              </div>
-
-              <div className="mb-2">
-                <button
-                  onClick={handleProcessEmails}
-                  disabled={processEmailsMutation.isPending || !accountId}
-                  className="flex w-full cursor-pointer items-center justify-center gap-0.5 rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-2 py-1 text-[10px] font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span className="text-[10px]">🤖</span>
-                  {processEmailsMutation.isPending
-                    ? "Processing..."
-                    : "Process Emails for Search"}
-                </button>
-              </div>
-
-              {debugData && (
-                <div className="mb-2 rounded border border-purple-500/30 bg-white/5 p-1.5 text-[10px]">
-                  <div className="mb-0.5 text-purple-300">System Status:</div>
-                  <div className="text-[9px] text-gray-400">
-                    Total: {debugData.totalEmails} | Processed:{" "}
-                    {debugData.emails.filter((e) => e.hasEmbedding).length}
-                  </div>
-                  <div className="truncate text-[9px] text-gray-400">
-                    Latest: {debugData.emails[0]?.subject || "None"}
-                  </div>
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-3">
+              <div className="mb-4 space-y-3">
+                <div className="text-center">
+                  <p className="text-xs text-gray-300">
+                    Using semantic search to find relevant emails
+                  </p>
                 </div>
-              )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  {suggestedQueries.map(({ label, query, icon }) => (
+                    <button
+                      key={label}
+                      onClick={() => handleQuerySuggestion(query)}
+                      className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2.5 text-xs font-medium text-white transition-all duration-200 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
+                    >
+                      <span className="text-sm">{icon}</span>
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <button
+                    onClick={handleProcessEmails}
+                    disabled={processEmailsMutation.isPending || !accountId}
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="text-base">🤖</span>
+                    {processEmailsMutation.isPending
+                      ? "Processing..."
+                      : "Process Emails for Search"}
+                  </button>
+                </div>
+
+                {debugData && (
+                  <div className="rounded-lg border border-purple-500/30 bg-white/5 p-3">
+                    <div className="mb-1.5 text-xs font-medium text-purple-300">
+                      System Status:
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Total: {debugData.totalEmails} | Processed:{" "}
+                      {debugData.emails.filter((e) => e.hasEmbedding).length}
+                    </div>
+                    <div className="truncate text-xs text-gray-400">
+                      Latest: {debugData.emails[0]?.subject || "None"}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-auto flex w-full gap-1">
+          <form onSubmit={handleSubmit} className="mt-auto flex w-full gap-2 p-3">
             <div className="relative flex-1">
               <input
                 type="text"
                 onChange={handleInputChange}
                 value={input}
-                className="h-7 w-full rounded-full border border-purple-500/30 bg-white/5 px-2.5 text-[11px] text-white outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
+                className="h-10 w-full rounded-full border border-purple-500/30 bg-white/5 px-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
                 placeholder="Search your emails..."
                 disabled={isLoading}
               />
             </div>
             <button
               type="submit"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isLoading || !input.trim()}
             >
-              <Send className="h-2.5 w-2.5 text-white" />
+              <Send className="h-4 w-4 text-white" />
             </button>
           </form>
         </div>

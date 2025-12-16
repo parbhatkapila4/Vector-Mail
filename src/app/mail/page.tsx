@@ -42,17 +42,12 @@ function MailPage() {
         </Button>
       </div>
 
-      <div
-        className={cn(
-          "z-50 flex items-center gap-2",
-          isMobile
-            ? "fixed bottom-4 left-4 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm"
-            : "absolute bottom-4 left-4 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm",
-        )}
-      >
-        <UserButton />
-        <ComposeButton />
-      </div>
+      {isMobile && (
+        <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm">
+          <UserButton />
+          <ComposeButton />
+        </div>
+      )}
 
       <Mail
         defaultLayout={isMobile ? [0, 100, 0] : [20, 32, 48]}

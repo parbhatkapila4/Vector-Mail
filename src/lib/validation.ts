@@ -68,6 +68,61 @@ export function sanitizeHtml(html: string): string {
   });
 }
 
+export function sanitizeEmailHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "em",
+      "u",
+      "s",
+      "a",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "div",
+      "span",
+      "table",
+      "tbody",
+      "thead",
+      "tr",
+      "td",
+      "th",
+      "img",
+      "hr",
+    ],
+    ALLOWED_ATTR: [
+      "href",
+      "target",
+      "rel",
+      "src",
+      "alt",
+      "width",
+      "height",
+      "style",
+      "class",
+      "id",
+      "align",
+      "valign",
+      "colspan",
+      "rowspan",
+      "border",
+      "cellpadding",
+      "cellspacing",
+    ],
+    ALLOW_DATA_ATTR: true,
+    ALLOW_UNKNOWN_PROTOCOLS: false,
+  });
+}
+
 export function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

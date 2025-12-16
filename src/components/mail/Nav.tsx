@@ -56,7 +56,9 @@ export function Nav({ links, isCollapsed }: NavProps) {
                   <link.icon
                     className={cn(
                       "h-4 w-4",
-                      link.variant === "default" && "text-purple-400",
+                      link.variant === "default"
+                        ? "text-black dark:text-black"
+                        : "text-white dark:text-white",
                     )}
                   />
                   <span className="sr-only">{link.title}</span>
@@ -81,7 +83,8 @@ export function Nav({ links, isCollapsed }: NavProps) {
                   size: isMobile ? "lg" : "sm",
                 }),
                 link.variant === "default" &&
-                  "border-purple-500/30 dark:bg-gradient-to-r dark:from-purple-600/20 dark:via-purple-400/20 dark:to-amber-400/20 dark:text-white dark:hover:from-purple-600/30 dark:hover:via-purple-400/30 dark:hover:to-amber-400/30",
+                  "border-purple-500/30 text-black dark:bg-gradient-to-r dark:from-purple-600/20 dark:via-purple-400/20 dark:to-amber-400/20 dark:text-black dark:hover:from-purple-600/30 dark:hover:via-purple-400/30 dark:hover:to-amber-400/30",
+                link.variant === "ghost" && "text-white dark:text-white",
                 "cursor-pointer justify-start",
                 isMobile && "h-12 text-base",
               )}
@@ -90,16 +93,27 @@ export function Nav({ links, isCollapsed }: NavProps) {
                 className={cn(
                   "mr-2 h-4 w-4",
                   isMobile && "h-5 w-5",
-                  link.variant === "default" && "text-purple-400",
+                  link.variant === "default"
+                    ? "text-black dark:text-black"
+                    : "text-white dark:text-white",
                 )}
               />
-              {link.title}
+              <span
+                className={
+                  link.variant === "default"
+                    ? "text-black dark:text-black"
+                    : "text-white dark:text-white"
+                }
+              >
+                {link.title}
+              </span>
               {link.label && (
                 <span
                   className={cn(
-                    "ml-auto",
-                    link.variant === "default" &&
-                      "text-background dark:text-white",
+                    "ml-auto font-medium",
+                    link.variant === "default"
+                      ? "text-black dark:text-black"
+                      : "text-white dark:text-white",
                   )}
                 >
                   {link.label}

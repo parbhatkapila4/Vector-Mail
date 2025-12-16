@@ -1,6 +1,7 @@
 import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { atom, useAtom } from "jotai";
+import { useEffect, useRef } from "react";
 
 export const threadIdAtom = atom<string | null>(null);
 function useThreads() {
@@ -8,9 +9,13 @@ function useThreads() {
   const [accountId] = useLocalStorage("accountId", "");
   const [tab] = useLocalStorage("vector-mail", "inbox");
 
+  const currentTab = tab ?? "inbox";
+
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
   const [threadId, setThreadId] = useAtom(threadIdAtom);
+  const utils = api.useUtils();
+  const lastProcessedSyncRef = useRef<string | null>(null);
 
   const {
     data,
@@ -22,17 +27,43 @@ function useThreads() {
   } = api.account.getThreads.useInfiniteQuery(
     {
       accountId,
-      tab,
+      tab: currentTab,
       important,
       unread,
       limit: 15,
     },
     {
-      enabled: !!accountId && !!tab,
+      enabled: !!accountId && !!currentTab,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchInterval: 5000,
     },
   );
+
+  useEffect(() => {
+    if (!data?.pages || !accountId) return;
+
+    const lastPage = data.pages[data.pages.length - 1];
+    const syncStatus = lastPage?.syncStatus;
+
+    if (syncStatus?.success && syncStatus.count > 0) {
+      const pageHash =
+        data.pages.length > 0
+          ? (data.pages[data.pages.length - 1]?.threads?.length ?? 0)
+          : 0;
+      const syncKey = `${accountId}-${currentTab}-${syncStatus.count}-${pageHash}`;
+
+      if (lastProcessedSyncRef.current !== syncKey) {
+        console.log(
+          `[Auto-Update] ${syncStatus.count} new email(s) synced, refreshing inbox...`,
+        );
+
+        lastProcessedSyncRef.current = syncKey;
+
+        setTimeout(() => {
+          void utils.account.getThreads.invalidate();
+        }, 100);
+      }
+    }
+  }, [data?.pages, utils, accountId, currentTab]);
 
   const threads = data?.pages.flatMap((page) => page.threads) ?? [];
 

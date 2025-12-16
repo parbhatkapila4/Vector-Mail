@@ -6,14 +6,52 @@ import React from "react";
 import useThreads from "@/hooks/use-threads";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { api } from "@/trpc/react";
+import { sanitizeEmailHtml } from "@/lib/validation";
 
 type Props = {
   email: RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 };
 
 const EmailDisplay = ({ email }: Props) => {
-  const { account } = useThreads();
+  const { account, accountId } = useThreads();
   const letterRef = React.useRef<HTMLDivElement>(null);
+  const [emailBody, setEmailBody] = React.useState<string | null>(
+    email.body || null,
+  );
+  const [isLoadingBody, setIsLoadingBody] = React.useState(false);
+
+  const needsFullBody = !emailBody || emailBody.length < 100;
+
+  const { data: fullBodyData, isLoading: isLoadingQuery, isError } =
+    api.account.getEmailBody.useQuery(
+      {
+        accountId: accountId ?? "",
+        emailId: email.id,
+      },
+      {
+        enabled: !!accountId && !!email.id && needsFullBody,
+      },
+    );
+
+  React.useEffect(() => {
+    if (fullBodyData?.body && !emailBody) {
+      setEmailBody(fullBodyData.body);
+      setIsLoadingBody(false);
+    }
+  }, [fullBodyData, emailBody]);
+
+  React.useEffect(() => {
+    if (isLoadingQuery && needsFullBody) {
+      setIsLoadingBody(true);
+    }
+  }, [isLoadingQuery, needsFullBody]);
+
+  React.useEffect(() => {
+    if (isError) {
+      setIsLoadingBody(false);
+    }
+  }, [isError]);
 
   React.useEffect(() => {
     if (letterRef.current) {
@@ -24,9 +62,11 @@ const EmailDisplay = ({ email }: Props) => {
         gmailQuote.innerHTML = "";
       }
     }
-  }, [email]);
+  }, [emailBody]);
 
   const isMe = account?.emailAddress === email.from.address;
+  const displayBody = emailBody || email.bodySnippet || "";
+  const showLoading = isLoadingBody && !emailBody;
 
   return (
     <div
@@ -60,10 +100,18 @@ const EmailDisplay = ({ email }: Props) => {
         </p>
       </div>
       <div className="h-4"></div>
-      <Letter
-        className="min-h-[500px] overflow-y-auto rounded-md bg-white text-black"
-        html={email?.body ?? ""}
-      />
+      {showLoading ? (
+        <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
+          <div className="text-sm text-muted-foreground">
+            Loading email content...
+          </div>
+        </div>
+      ) : (
+        <Letter
+          className="min-h-[500px] overflow-y-auto rounded-md bg-white text-black"
+          html={sanitizeEmailHtml(displayBody)}
+        />
+      )}
     </div>
   );
 };
