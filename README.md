@@ -15,7 +15,7 @@
 
 <br />
 
-[**Try VectorMail Free →**](https://vectormail.parbhat.dev) &nbsp;&nbsp;|&nbsp;&nbsp; [**Watch Demo**](https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Visura%20AI-1762578271796.mp4) &nbsp;&nbsp;|&nbsp;&nbsp; [**Documentation**](#quick-start)
+[**Try VectorMail Free →**](https://vectormail.parbhat.dev) &nbsp;&nbsp;|&nbsp;&nbsp; [**Watch Demo**](https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Vector-Mail-1762579701087.mp4) &nbsp;&nbsp;|&nbsp;&nbsp; [**Documentation**](#quick-start)
 
 <br />
 
