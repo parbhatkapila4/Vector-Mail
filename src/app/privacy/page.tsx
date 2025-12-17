@@ -23,7 +23,8 @@ export default function PrivacyPolicy() {
       icon: Eye,
       title: "Information We Collect",
       content: [
-        "Email content and metadata for AI processing",
+        "Gmail API access: We use Google OAuth and the Gmail API to access your Gmail account",
+        "Gmail data accessed: Email content, email headers, email metadata (sender, recipient, subject, timestamps), and message threads",
         "Account information (name, email address)",
         "Usage analytics to improve our service",
         "Device and browser information for security",
@@ -33,8 +34,9 @@ export default function PrivacyPolicy() {
       icon: Lock,
       title: "How We Use Your Information",
       content: [
-        "Provide AI-powered email management services",
-        "Improve our AI models and service quality",
+        "Gmail data is accessed solely to provide email search, summarization, and organization features",
+        "Email content and metadata are processed using AI to enable semantic search and intelligent email management",
+        "We use Aurinko for Gmail synchronization to maintain your email data",
         "Ensure security and prevent fraud",
         "Communicate important service updates",
       ],
@@ -44,17 +46,21 @@ export default function PrivacyPolicy() {
       title: "Data Storage & Security",
       content: [
         "End-to-end encryption for all email content",
-        "Zero-knowledge architecture - we can't read your emails",
+        "Each user's Gmail data is logically isolated and not shared between users",
         "SOC 2 Type II compliant infrastructure",
         "Regular security audits and updates",
+        "Gmail data is stored securely and deleted upon account deletion",
       ],
     },
     {
       icon: Globe,
-      title: "Data Sharing",
+      title: "Data Sharing & Restrictions",
       content: [
-        "We never sell your personal information",
-        "No third-party access to your email content",
+        "We never sell your personal information or Gmail data",
+        "We do not use your Gmail data for advertising purposes",
+        "We do not share your Gmail data with third parties except as required by law",
+        "We do not use your Gmail data to train public AI models",
+        "We do not resell or transfer your Gmail data to any third party",
         "Limited sharing only with your explicit consent",
         "Anonymous usage data for service improvement",
       ],
@@ -203,6 +209,37 @@ export default function PrivacyPolicy() {
             <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
               <div className="mb-6 flex items-center justify-center gap-3 text-center sm:justify-start sm:text-left">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                  <Database className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                  Gmail API Usage & Google Compliance
+                </h3>
+              </div>
+              <p className="mb-6 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
+                VectorMail uses Google OAuth 2.0 and the Gmail API to access
+                your Gmail account. We access your Gmail data (email content,
+                headers, and metadata) exclusively to provide email search,
+                summarization, and organization features. We do not use your
+                Gmail data for advertising, we do not sell it, we do not share
+                it with third parties, and we do not use it to train public AI
+                models. You can revoke access at any time through your Google
+                account settings. VectorMail complies with the Google API
+                Services User Data Policy, including the requirement to limit
+                use of data to providing or improving user-facing features.
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="mx-auto mt-16 max-w-4xl"
+          >
+            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+              <div className="mb-6 flex items-center justify-center gap-3 text-center sm:justify-start sm:text-left">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white sm:text-3xl">
@@ -212,7 +249,13 @@ export default function PrivacyPolicy() {
               <p className="mb-6 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
                 You have the right to access, update, or delete your personal
                 information at any time. You can also request a copy of your
-                data or opt out of certain data processing activities.
+                data or opt out of certain data processing activities. You can
+                revoke Gmail API access at any time through your Google account
+                settings or by disconnecting your Gmail account in VectorMail.
+                All Gmail data will be deleted upon account deletion. VectorMail
+                complies with Google API Services User Data Policy, including
+                the requirement to limit use of data to providing or improving
+                user-facing features.
               </p>
               <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
                 {rights.map((right, index) => (
@@ -255,7 +298,7 @@ export default function PrivacyPolicy() {
               >
                 <User className="h-5 w-5 text-purple-400" />
                 <span className="font-medium text-white">
-                  help@productsolution.net
+                  parbhat@parbhat.dev
                 </span>
               </motion.div>
             </div>

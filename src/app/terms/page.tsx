@@ -33,6 +33,8 @@ export default function TermsOfService() {
       title: "Service Description",
       content: [
         "VectorMail provides AI-powered email management and organization",
+        "We use Google OAuth and the Gmail API to access your Gmail account",
+        "Gmail data is accessed solely to provide email search, summarization, and organization features",
         "We offer intelligent email analysis, smart responses, and semantic search",
         "Our service is currently in beta and may have limitations",
         "Features and functionality may change during the beta period",
@@ -44,8 +46,10 @@ export default function TermsOfService() {
       content: [
         "Provide accurate information when creating your account",
         "Maintain the security of your login credentials",
+        "You control Gmail API access and can revoke it at any time through Google account settings",
         "Use the service in compliance with applicable laws and regulations",
         "Do not attempt to reverse engineer or exploit our systems",
+        "VectorMail complies with Google API Services User Data Policy",
       ],
     },
     {
@@ -281,6 +285,38 @@ export default function TermsOfService() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
+            className="mx-auto mt-16 max-w-4xl"
+          >
+            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                  Gmail API Access & User Control
+                </h3>
+              </div>
+              <p className="mb-6 text-sm leading-relaxed text-gray-400 sm:text-base">
+                VectorMail uses Google OAuth 2.0 and the Gmail API to access
+                your Gmail account. By using VectorMail, you grant us permission
+                to access your Gmail data (email content, headers, and metadata)
+                solely for the purpose of providing email search, summarization,
+                and organization features. You maintain full control over your
+                Gmail access and can revoke it at any time through your Google
+                account settings or by disconnecting your Gmail account in
+                VectorMail. Upon account deletion, all Gmail data will be
+                permanently deleted. VectorMail complies with the Google API
+                Services User Data Policy, including the requirement to limit
+                use of data to providing or improving user-facing features.
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
             className="mx-auto mt-16 max-w-4xl text-center"
           >
             <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
@@ -298,7 +334,7 @@ export default function TermsOfService() {
               >
                 <FileText className="h-5 w-5 text-purple-400" />
                 <span className="font-medium text-white">
-                  help@productsolution.net
+                  parbhat@parbhat.dev
                 </span>
               </motion.div>
             </div>
