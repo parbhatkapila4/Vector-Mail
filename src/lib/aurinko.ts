@@ -10,14 +10,21 @@ export const getAurinkoAuthUrl = async (
   if (!userId) {
     throw new Error("Unauthorized");
   }
+
   const params = new URLSearchParams({
     clientId: process.env.AURINKO_CLIENT_ID!,
     serviceType,
-    scopes: " Mail.Read Mail.Send Mail.Drafts Mail.All Mail.ReadWrite",
     responseType: "code",
     returnUrl: `${process.env.NEXT_PUBLIC_URL}/api/aurinko/callback`,
+    prompt: "consent",
   });
-  return `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
+
+  const authUrl = `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
+
+  console.log("[OAuth] Service Type:", serviceType);
+  console.log("[OAuth] URL (no scopes):", authUrl);
+
+  return authUrl;
 };
 
 export async function exchangeAurinkoCodeForToken(code: string) {

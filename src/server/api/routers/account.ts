@@ -2,7 +2,6 @@ import { Account } from "@/lib/accounts";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { emailAddressSchema } from "@/types";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 interface AccountAccess {
@@ -38,7 +37,7 @@ export const authoriseAccountAccess = async (
 
 export const accountRouter = createTRPCRouter({
   getAccounts: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.db.account.findMany({
+    const accounts = await ctx.db.account.findMany({
       where: {
         userId: ctx.auth.userId,
       },
@@ -46,7 +45,30 @@ export const accountRouter = createTRPCRouter({
         id: true,
         emailAddress: true,
         name: true,
+        token: true,
+        nextDeltaToken: true,
       },
+    });
+
+    for (const account of accounts) {
+      if (!account.nextDeltaToken) {
+        console.log("[Aurinko] Initial inbox sync started for account:", account.id);
+        setTimeout(() => {
+          new Account(account.token).syncEmails(true)
+            .then(() => {
+              console.log("[Aurinko] Initial inbox sync completed for account:", account.id);
+            })
+            .catch((err) => {
+              console.error("[Aurinko] Initial inbox sync failed for account:", account.id, err);
+            });
+        }, 0);
+      }
+    }
+
+    return accounts.map(({ token, nextDeltaToken, ...rest }) => {
+      void token;
+      void nextDeltaToken;
+      return rest;
     });
   }),
 
@@ -251,70 +273,93 @@ export const accountRouter = createTRPCRouter({
 
       const { cursor } = input;
 
-      const syncPromise = !cursor
+      let usingFallback = false;
+      if (input.tab === "inbox") {
+        try {
+          const inboxResult = await emailAccount.fetchInboxEmails();
+
+          console.log(
+            `[getThreads] Fetched ${inboxResult.emails.length} inbox emails from Gmail API`,
+          );
+
+          const inboxThreads = inboxResult.emails.map((email) => ({
+            id: `inbox-${email.id}`,
+            subject: email.subject,
+            lastMessageDate: new Date(email.date),
+            emails: [
+              {
+                id: email.id,
+                from: {
+                  name: email.from.name,
+                  address: email.from.address,
+                },
+                bodySnippet: email.snippet,
+                sysLabels: ["inbox"] as string[],
+                sentAt: new Date(email.date),
+                subject: email.subject,
+                to: [],
+                cc: [],
+                bcc: [],
+                replyTo: [],
+              },
+            ],
+          }));
+
+          return {
+            threads: inboxThreads,
+            nextCursor: undefined,
+            syncStatus: { success: true, count: inboxResult.emails.length },
+            source: "gmail" as const,
+          };
+        } catch (error) {
+          console.error(
+            "[getThreads] Direct inbox fetch failed, falling back to DB:",
+            error,
+          );
+          console.log(
+            "[getThreads] Using database fallback for inbox (source: fallback)",
+          );
+          usingFallback = true;
+        }
+      }
+
+      const syncPromise = !cursor && input.tab !== "inbox"
         ? (async () => {
             if (!accountWithToken?.nextDeltaToken) {
               console.log(
                 `[getThreads] Account ${account.id} has no delta token, running initial sync...`,
               );
               try {
-                await emailAccount.syncEmails(false);
+                void emailAccount.syncEmails(false).catch((error) => {
+                  console.error("[getThreads] Background sync failed:", error);
+                });
                 return { success: true, count: 1 };
               } catch (error) {
                 console.error("[getThreads] Initial sync failed:", error);
                 return { success: false, count: 0 };
               }
             } else {
-              return emailAccount.syncLatestEmails().catch((error) => {
+              void emailAccount.syncLatestEmails().catch((error) => {
                 console.error(
                   "[getThreads] Background latest email sync failed:",
                   error,
                 );
-                return { success: false, count: 0 };
               });
+              return { success: true, count: 0 };
             }
           })()
         : Promise.resolve({ success: false, count: 0 });
 
-      const baseFilters: Prisma.ThreadWhereInput = {
-        accountId: account.id,
-      };
-
-      if (input.tab === "inbox") {
-        baseFilters.inboxStatus = true;
-      } else if (input.tab === "drafts") {
-        baseFilters.draftStatus = true;
-      } else if (input.tab === "sent") {
-        baseFilters.sentStatus = true;
-      }
-
-      const filters: Prisma.ThreadWhereInput = { ...baseFilters };
-
-      if (input.important) {
-        filters.emails = {
-          some: {
-            sysLabels: {
-              has: "important",
-            },
-          },
-        };
-      }
-
-      if (input.unread) {
-        filters.emails = {
-          some: {
-            sysLabels: {
-              has: "unread",
-            },
-          },
-        };
-      }
-
-      const limit = Math.min(input.limit ?? 15, 50);
+      const limit = Math.min(
+        input.tab === "inbox" ? input.limit ?? 50 : input.limit ?? 15,
+        100,
+      );
 
       const threads = await ctx.db.thread.findMany({
         take: limit + 1,
-        where: filters,
+        where: {
+          accountId: account.id,
+        },
         cursor: cursor ? { id: cursor } : undefined,
         orderBy: {
           lastMessageDate: "desc",
@@ -331,6 +376,7 @@ export const accountRouter = createTRPCRouter({
             orderBy: {
               sentAt: "desc",
             },
+            take: 1,
           },
         },
       });
@@ -341,7 +387,11 @@ export const accountRouter = createTRPCRouter({
         nextCursor = lastThread?.id;
       }
 
-      const syncResult = await syncPromise;
+      
+      const syncResult = await syncPromise.catch(() => ({
+        success: false,
+        count: 0,
+      }));
 
       const totalThreadCount = await ctx.db.thread.count({
         where: { accountId: account.id },
@@ -463,10 +513,12 @@ export const accountRouter = createTRPCRouter({
         }
       }
 
+      
       return {
         threads,
         nextCursor,
         syncStatus: syncResult,
+        ...(usingFallback && { source: "fallback" as const }),
       };
     }),
 

@@ -1,15 +1,37 @@
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { atom, useAtom } from "jotai";
 import { useEffect, useRef } from "react";
 
 export const threadIdAtom = atom<string | null>(null);
+
+type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
+
 function useThreads() {
-  const { data: accounts } = api.account.getAccounts.useQuery();
-  const [accountId] = useLocalStorage("accountId", "");
+  const { isLoading: accountsLoading } = api.account.getAccounts.useQuery();
   const [tab] = useLocalStorage("vector-mail", "inbox");
 
+  const accountId = "158696";
+
+  const { data: myAccount, isLoading: myAccountLoading } =
+    api.account.getMyAccount.useQuery(
+      { accountId },
+      {
+        enabled: !!accountId && !accountsLoading,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        retry: false,
+      },
+    );
+
   const currentTab = tab ?? "inbox";
+  const hasValidAccount =
+    !accountsLoading &&
+    !myAccountLoading &&
+    !!accountId &&
+    accountId.length > 0;
+
+  console.log("[Inbox] accountId used:", accountId);
 
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
@@ -26,46 +48,55 @@ function useThreads() {
     refetch,
   } = api.account.getThreads.useInfiniteQuery(
     {
-      accountId,
+      accountId: hasValidAccount ? accountId : "",
       tab: currentTab,
       important,
       unread,
-      limit: 15,
+      limit: currentTab === "inbox" ? 50 : 15,
     },
     {
-      enabled: !!accountId && !!currentTab,
+      enabled: hasValidAccount && !!currentTab,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: false,
     },
   );
 
   useEffect(() => {
     if (!data?.pages || !accountId) return;
 
-    const lastPage = data.pages[data.pages.length - 1];
-    const syncStatus = lastPage?.syncStatus;
+    if (currentTab !== "inbox") {
+      const lastPage = data.pages[data.pages.length - 1];
+      const syncStatus = lastPage?.syncStatus;
 
-    if (syncStatus?.success && syncStatus.count > 0) {
-      const pageHash =
-        data.pages.length > 0
-          ? (data.pages[data.pages.length - 1]?.threads?.length ?? 0)
-          : 0;
-      const syncKey = `${accountId}-${currentTab}-${syncStatus.count}-${pageHash}`;
+      if (syncStatus?.success && syncStatus.count > 0) {
+        const pageHash =
+          data.pages.length > 0
+            ? (data.pages[data.pages.length - 1]?.threads?.length ?? 0)
+            : 0;
+        const syncKey = `${accountId}-${currentTab}-${syncStatus.count}-${pageHash}`;
 
-      if (lastProcessedSyncRef.current !== syncKey) {
-        console.log(
-          `[Auto-Update] ${syncStatus.count} new email(s) synced, refreshing inbox...`,
-        );
+        if (lastProcessedSyncRef.current !== syncKey) {
+          console.log(
+            `[Auto-Update] ${syncStatus.count} new email(s) synced, refreshing ${currentTab}...`,
+          );
 
-        lastProcessedSyncRef.current = syncKey;
+          lastProcessedSyncRef.current = syncKey;
 
-        setTimeout(() => {
-          void utils.account.getThreads.invalidate();
-        }, 100);
+          setTimeout(() => {
+            void utils.account.getThreads.invalidate();
+          }, 100);
+        }
       }
     }
   }, [data?.pages, utils, accountId, currentTab]);
 
-  const threads = data?.pages.flatMap((page) => page.threads) ?? [];
+  // Type assertion needed because getThreads returns a union type (inbox threads + DB threads)
+  const pages = (data?.pages ?? []) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const threads = pages.flatMap(
+    (page: unknown) => (page as { threads: Thread[] }).threads,
+  ) as Thread[];
 
   return {
     threads,
@@ -75,9 +106,7 @@ function useThreads() {
     fetchNextPage,
     refetch,
     accountId,
-    account: accounts?.find(
-      (account: { id: string }) => account.id === accountId,
-    ),
+    account: myAccount,
     threadId,
     setThreadId,
   };

@@ -1,13 +1,19 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, {
+  useRef,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+} from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow, format } from "date-fns";
 import { RefreshCw, Info } from "lucide-react";
 import { useAtom } from "jotai";
-
+import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
 import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
 import { SearchResults } from "../search/SearchResults";
@@ -15,6 +21,8 @@ import { SearchResults } from "../search/SearchResults";
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
 }
+
+type RouterThread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 interface Thread {
   id: string;
@@ -40,7 +48,7 @@ const CONNECTION_ERROR_MESSAGES = {
 
 export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const {
-    threads,
+    threads: rawThreads,
     threadId,
     setThreadId,
     isFetching,
@@ -50,40 +58,124 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     accountId,
     refetch,
   } = useThreads();
+  const threads = rawThreads as RouterThread[] | undefined;
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
 
-  const syncEmailsMutation = api.account.syncEmails.useMutation({
-    onSuccess: () => {
-      console.log("Email sync completed, refetching threads...");
-      refetch();
-    },
-    onError: (error) => {
-      console.error("Email sync failed:", error);
-    },
-  });
+  const [tab] = useLocalStorage("vector-mail", "inbox");
+  const currentTab = tab ?? "inbox";
+
+  const [inboxMessages, setInboxMessages] = useState<Thread[]>([]);
+  const [isLoadingInbox, setIsLoadingInbox] = useState(false);
+  const [inboxFetchAttempted, setInboxFetchAttempted] = useState(false);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const handleRefresh = useCallback(() => {
-    if (accountId) {
-      console.log("[ThreadList] Manual refresh triggered");
-      syncEmailsMutation.mutate(
-        { accountId, forceFullSync: false },
-        {
-          onSuccess: () => {
-            console.log("[ThreadList] Sync completed, refetching threads...");
-            setTimeout(() => {
-              refetch();
-            }, 500);
+  const mapInboxEmailToThread = useCallback(
+    (email: {
+      id: string;
+      from: { name: string | null; address: string };
+      subject: string;
+      date: string;
+      snippet: string;
+    }): Thread => {
+      return {
+        id: `inbox-${email.id}`,
+        subject: email.subject,
+        lastMessageDate: new Date(email.date),
+        emails: [
+          {
+            from: { name: email.from.name },
+            bodySnippet: email.snippet,
+            sysLabels: ["inbox"],
           },
-        },
+        ],
+      };
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (currentTab === "inbox" && !inboxFetchAttempted) {
+      setInboxFetchAttempted(true);
+      setIsLoadingInbox(true);
+      console.log(
+        "[ThreadList] Fetching inbox from /api/inbox (bypassing tRPC)",
       );
+
+      fetch(`/api/inbox`, {
+        credentials: "include",
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to fetch inbox: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          const messages = data.messages ?? [];
+          console.log("[ThreadList] Inbox messages count:", messages.length);
+
+          if (Array.isArray(messages) && messages.length > 0) {
+            const mappedThreads = messages.map(mapInboxEmailToThread);
+            console.log(
+              `[ThreadList] Mapped ${mappedThreads.length} inbox messages to threads`,
+            );
+            setInboxMessages(mappedThreads);
+          } else {
+            setInboxMessages([]);
+          }
+        })
+        .catch((error) => {
+          console.error("[ThreadList] Inbox fetch failed:", error);
+          setInboxMessages([]);
+        })
+        .finally(() => {
+          setIsLoadingInbox(false);
+        });
     }
-  }, [accountId, syncEmailsMutation, refetch]);
+  }, [currentTab, inboxFetchAttempted, mapInboxEmailToThread]);
+
+  const handleRefresh = useCallback(() => {
+    if (currentTab === "inbox") {
+      console.log(
+        "[ThreadList] Manual refresh triggered - refetching from /api/inbox",
+      );
+      setInboxFetchAttempted(false);
+      setIsLoadingInbox(true);
+
+      fetch(`/api/inbox`, {
+        credentials: "include",
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to fetch inbox: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          const messages = data.messages ?? [];
+          if (Array.isArray(messages) && messages.length > 0) {
+            const mappedThreads = messages.map(mapInboxEmailToThread);
+            setInboxMessages(mappedThreads);
+          } else {
+            setInboxMessages([]);
+          }
+        })
+        .catch((error) => {
+          console.error("[ThreadList] Inbox refresh failed:", error);
+          setInboxMessages([]);
+        })
+        .finally(() => {
+          setIsLoadingInbox(false);
+        });
+    } else {
+      refetch();
+    }
+  }, [currentTab, refetch, mapInboxEmailToThread]);
 
   const handleAccountConnection = useCallback(async () => {
     try {
@@ -109,10 +201,17 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     [isFetchingNextPage, hasNextPage, fetchNextPage],
   );
 
-  const groupedThreads = useMemo(() => {
-    if (!threads) return {};
+  const threadsToRender = useMemo(() => {
+    if (currentTab === "inbox") {
+      return inboxMessages;
+    }
+    return threads ?? [];
+  }, [currentTab, threads, inboxMessages]);
 
-    return threads.reduce((acc: GroupedThreads, thread) => {
+  const groupedThreads = useMemo(() => {
+    if (!threadsToRender || threadsToRender.length === 0) return {};
+
+    return threadsToRender.reduce((acc: GroupedThreads, thread: Thread) => {
       const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd");
       if (!acc[date]) {
         acc[date] = [];
@@ -120,9 +219,9 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       acc[date].push(thread);
       return acc;
     }, {});
-  }, [threads]);
+  }, [threadsToRender]);
 
-  const allThreads = threads ?? [];
+  const allThreads = threadsToRender ?? [];
   const lastThreadId = allThreads[allThreads.length - 1]?.id;
 
   const handleSearchResultSelect = useCallback(
@@ -184,106 +283,118 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     </div>
   );
 
-  const renderThreadItem = (thread: Thread, isLast: boolean) => (
-    <button
-      key={thread.id}
-      ref={isLast ? lastThreadElementRef : null}
-      className={cn(
-        "relative flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800",
-        threadId === thread.id && "bg-blue-50 dark:bg-blue-900/20",
-      )}
-      onClick={() => {
-        setThreadId(thread.id);
-        onThreadSelect?.(thread.id);
-      }}
-    >
-      {threadId === thread.id && (
-        <motion.div
-          className="absolute inset-0 z-[-1] rounded-lg bg-black/10 dark:bg-white/20"
-          layoutId="thread-list-item"
-          transition={{
-            duration: 0.1,
-            ease: "easeInOut",
-          }}
-        />
-      )}
-      <div className="flex w-full flex-col gap-1">
-        <div className="flex items-center">
-          <div className="flex items-center gap-2">
-            <div className="font-semibold">
-              {thread.emails.at(-1)?.from?.name}
+  const renderThreadItem = (thread: Thread, isLast: boolean) => {
+    const latestEmail = thread.emails?.[0] ?? null;
+    const fromName = latestEmail?.from?.name ?? "Unknown";
+    const subject = thread.subject || "(No subject)";
+    const date = thread.lastMessageDate ?? new Date();
+    const bodySnippet = latestEmail?.bodySnippet ?? null;
+    const sysLabels = latestEmail?.sysLabels ?? [];
+
+    return (
+      <button
+        key={thread.id}
+        ref={isLast ? lastThreadElementRef : null}
+        className={cn(
+          "relative flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800",
+          threadId === thread.id && "bg-blue-50 dark:bg-blue-900/20",
+        )}
+        onClick={() => {
+          setThreadId(thread.id);
+          onThreadSelect?.(thread.id);
+        }}
+      >
+        {threadId === thread.id && (
+          <motion.div
+            className="absolute inset-0 z-[-1] rounded-lg bg-black/10 dark:bg-white/20"
+            layoutId="thread-list-item"
+            transition={{
+              duration: 0.1,
+              ease: "easeInOut",
+            }}
+          />
+        )}
+        <div className="flex w-full flex-col gap-1">
+          <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              <div className="font-semibold">{fromName}</div>
+            </div>
+            <div
+              className={cn(
+                "ml-auto text-xs",
+                threadId === thread.id
+                  ? "text-foreground"
+                  : "text-muted-foreground",
+              )}
+            >
+              {formatDistanceToNow(date, {
+                addSuffix: true,
+              })}
             </div>
           </div>
-          <div
-            className={cn(
-              "ml-auto text-xs",
-              threadId === thread.id
-                ? "text-foreground"
-                : "text-muted-foreground",
+          <div className="line-clamp-2 text-xs font-medium">{subject}</div>
+          {bodySnippet && (
+            <div className="line-clamp-2 text-xs text-muted-foreground">
+              {bodySnippet}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {sysLabels.includes("important") && (
+              <Badge
+                variant="secondary"
+                className="bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
+              >
+                important
+              </Badge>
             )}
-          >
-            {formatDistanceToNow(new Date(thread.lastMessageDate), {
-              addSuffix: true,
-            })}
+            {sysLabels.includes("unread") && (
+              <Badge
+                variant="secondary"
+                className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+              >
+                unread
+              </Badge>
+            )}
+            {sysLabels.includes("inbox") && (
+              <Badge
+                variant="secondary"
+                className="bg-green-500/20 text-green-400 hover:bg-green-500/30"
+              >
+                inbox
+              </Badge>
+            )}
+            {sysLabels.includes("trash") && (
+              <Badge
+                variant="secondary"
+                className="bg-red-500/20 text-red-400 hover:bg-red-500/30"
+              >
+                trash
+              </Badge>
+            )}
           </div>
         </div>
-        <div className="line-clamp-2 text-xs font-medium">{thread.subject}</div>
-        {thread.emails.at(-1)?.bodySnippet && (
-          <div className="line-clamp-2 text-xs text-muted-foreground">
-            {thread.emails.at(-1)?.bodySnippet}
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          {thread.emails.at(-1)?.sysLabels.includes("important") && (
-            <Badge
-              variant="secondary"
-              className="bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
-            >
-              important
-            </Badge>
-          )}
-          {thread.emails.at(-1)?.sysLabels.includes("unread") && (
-            <Badge
-              variant="secondary"
-              className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
-            >
-              unread
-            </Badge>
-          )}
-          {thread.emails.at(-1)?.sysLabels.includes("inbox") && (
-            <Badge
-              variant="secondary"
-              className="bg-green-500/20 text-green-400 hover:bg-green-500/30"
-            >
-              inbox
-            </Badge>
-          )}
-          {thread.emails.at(-1)?.sysLabels.includes("trash") && (
-            <Badge
-              variant="secondary"
-              className="bg-red-500/20 text-red-400 hover:bg-red-500/30"
-            >
-              trash
-            </Badge>
-          )}
-        </div>
-      </div>
-    </button>
-  );
+      </button>
+    );
+  };
 
   const renderThreadsList = () => {
-    if (threads.length === 0 && !isFetching) {
-      console.log(
-        `[ThreadList] No threads found. AccountId: ${accountId}, Threads array: ${threads.length}`,
+    console.log("[ThreadList] Threads received:", threadsToRender?.length ?? 0);
+
+    if (currentTab === "inbox" && isLoadingInbox) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Loading inbox emails...
+          </p>
+        </div>
       );
     }
 
-    if (Object.keys(groupedThreads).length === 0 && !isFetching) {
+    if (Object.keys(groupedThreads).length === 0 && !isLoadingInbox) {
       return (
         <div className="flex flex-col items-center justify-center p-8">
-          <p className="text-gray-500 dark:text-gray-400">
-            No emails found. Click refresh to sync emails.
-          </p>
+          <p className="text-gray-500 dark:text-gray-400">No emails found.</p>
         </div>
       );
     }
@@ -324,7 +435,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           <h2 className="text-lg font-semibold">
             {isSearching && searchValue ? "Search Results" : "Inbox"}
           </h2>
-          {isFetching && (
+          {(currentTab === "inbox" ? isLoadingInbox : isFetching) && (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           )}
         </div>
@@ -342,13 +453,15 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           variant="outline"
           size="sm"
           onClick={handleRefresh}
-          disabled={syncEmailsMutation.isPending || !accountId}
+          disabled={currentTab === "inbox" ? isLoadingInbox : isFetching}
           className="flex items-center gap-2"
         >
           <RefreshCw
-            className={`h-4 w-4 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`}
+            className={`h-4 w-4 ${(currentTab === "inbox" ? isLoadingInbox : isFetching) ? "animate-spin" : ""}`}
           />
-          {syncEmailsMutation.isPending ? "Syncing..." : "Refresh"}
+          {(currentTab === "inbox" ? isLoadingInbox : isFetching)
+            ? "Refreshing..."
+            : "Refresh"}
         </Button>
       </div>
 

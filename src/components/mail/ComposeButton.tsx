@@ -26,7 +26,23 @@ const ComposeButton = () => {
   const [toValues, setToValues] = React.useState<OptionType[]>([]);
   const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
   const [subject, setSubject] = React.useState<string>("");
-  const { data: account } = api.account.getMyAccount.useQuery({ accountId });
+  const { data: accounts, isLoading: accountsLoading } =
+    api.account.getAccounts.useQuery();
+  const hasValidAccount =
+    !accountsLoading &&
+    !!accountId &&
+    accountId.length > 0 &&
+    accounts?.some((acc) => acc.id === accountId);
+
+  const { data: account } = api.account.getMyAccount.useQuery(
+    { accountId: hasValidAccount ? accountId : "" },
+    {
+      enabled: hasValidAccount,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: false,
+    },
+  );
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

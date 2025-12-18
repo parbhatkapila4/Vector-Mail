@@ -16,23 +16,39 @@ type Props = {
 const EmailDisplay = ({ email }: Props) => {
   const { account, accountId } = useThreads();
   const letterRef = React.useRef<HTMLDivElement>(null);
+  const getInitialBody = (): string | null => {
+    if ("body" in email && email.body) {
+      return email.body;
+    }
+    return null;
+  };
   const [emailBody, setEmailBody] = React.useState<string | null>(
-    email.body || null,
+    getInitialBody(),
   );
   const [isLoadingBody, setIsLoadingBody] = React.useState(false);
 
   const needsFullBody = !emailBody || emailBody.length < 100;
 
-  const { data: fullBodyData, isLoading: isLoadingQuery, isError } =
-    api.account.getEmailBody.useQuery(
-      {
-        accountId: accountId ?? "",
-        emailId: email.id,
-      },
-      {
-        enabled: !!accountId && !!email.id && needsFullBody,
-      },
-    );
+  const {
+    data: fullBodyData,
+    isLoading: isLoadingQuery,
+    isError,
+  } = api.account.getEmailBody.useQuery(
+    {
+      accountId: accountId ?? "",
+      emailId: email.id,
+    },
+    {
+      enabled:
+        !!accountId &&
+        accountId.length > 0 &&
+        !!email.id &&
+        email.id.length > 0 &&
+        needsFullBody,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
+  );
 
   React.useEffect(() => {
     if (fullBodyData?.body && !emailBody) {

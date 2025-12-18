@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 import { generate } from "./actions";
 import { Separator } from "@/components/ui/separator";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import TagInput from "./TagInput";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
@@ -17,6 +17,8 @@ import { useLocalStorage } from "usehooks-ts";
 import AIComposeButton from "./AiComposeButton";
 import { toast } from "sonner";
 import useThreads from "@/hooks/use-threads";
+
+type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 type OptionType = {
   label: string | React.ReactNode;
@@ -55,7 +57,11 @@ const EmailEditor = ({
   const [accountId] = useLocalStorage("accountId", "");
   const { data: suggestions } = api.account.getEmailSuggestions.useQuery(
     { accountId: accountId, query: "" },
-    { enabled: !!accountId },
+    {
+      enabled: !!accountId && accountId.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
   );
 
   const [expanded, setExpanded] = React.useState(defaultToolbarExpand ?? false);
@@ -64,7 +70,8 @@ const EmailEditor = ({
   const [displayContent, setDisplayContent] = React.useState("");
   const completeContentRef = React.useRef("");
 
-  const { threads, threadId, account } = useThreads();
+  const { threads: rawThreads, threadId, account } = useThreads();
+  const threads = rawThreads as Thread[] | undefined;
 
   const aiGenerate = async (prompt: string) => {
     if (isGenerating) return;
@@ -80,6 +87,12 @@ const EmailEditor = ({
       if (thread?.emails && thread.emails.length > 0) {
         const latestEmail = thread.emails[thread.emails.length - 1];
         if (latestEmail) {
+          const emailBody =
+            latestEmail.bodySnippet ||
+            ("body" in latestEmail && latestEmail.body
+              ? latestEmail.body
+              : "") ||
+            "";
           context = `EMAIL THREAD CONTEXT FOR REPLY GENERATION:
 
 ORIGINAL EMAIL DETAILS:
@@ -88,7 +101,7 @@ From: ${latestEmail.from.address}
 Date: ${latestEmail.sentAt.toLocaleDateString()}
 
 ORIGINAL EMAIL BODY:
-${latestEmail.bodySnippet || latestEmail.body || ""}
+${emailBody}
 
 REPLY CONTEXT:
 User's Name: ${account?.name || "User"}

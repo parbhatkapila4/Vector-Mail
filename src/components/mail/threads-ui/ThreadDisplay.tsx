@@ -9,24 +9,30 @@ import { isSearchingAtom } from "../search/SearchBar";
 import ReplyBox from "./ReplyBox";
 
 type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
+type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 interface ThreadDisplayProps {
   threadId?: string | null;
 }
 
 export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
-  const { threads, threadId: hookThreadId } = useThreads();
+  const { threads: rawThreads, threadId: hookThreadId } = useThreads();
   const threadId = propThreadId ?? hookThreadId;
-  const _thread = threads?.find((t) => t.id === threadId);
+  const threads = rawThreads as Thread[] | undefined;
+  const _thread = threads?.find((t: Thread) => t.id === threadId);
   const [isSearching] = useAtom(isSearchingAtom);
 
   const { data: foundThread } = api.account.getThreadById.useQuery(
     {
       threadId: threadId ?? "",
     },
-    { enabled: !!!_thread && !!threadId },
+    { 
+      enabled: !!!_thread && !!threadId && threadId.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
   );
-  const thread = _thread ?? foundThread;
+  const thread = (_thread ?? foundThread) as Thread | undefined;
 
   return (
     <div className="flex h-full flex-col">

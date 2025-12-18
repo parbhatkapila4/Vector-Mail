@@ -2,6 +2,11 @@ import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { env } from "@/env.js";
+import { storeSearchResults, getStoredEmails } from "@/lib/chat-session";
+import { detectIntent } from "@/lib/intent-detection";
+import { selectEmails, formatEmailOptions } from "@/lib/email-selection";
+import { generateConversationalSummary } from "@/lib/conversational-summary";
+import type { EmailAddress, Prisma } from "@prisma/client";
 
 interface ChatRequest {
   messages: Array<{
@@ -44,23 +49,98 @@ export async function POST(req: Request) {
       return new Response("Account not found", { status: 404 });
     }
 
+    const storedEmails = getStoredEmails(userId, accountId);
+    const hasStoredResults = storedEmails !== null && storedEmails.length > 0;
+
+    const intentResult = detectIntent(userQuery, hasStoredResults);
+    const { intent, extractedData } = intentResult;
+
+    console.log(
+      `[Chat] Intent: ${intent}, Confidence: ${intentResult.confidence}`,
+    );
+
+    if ((intent === "SUMMARIZE" || intent === "SELECT") && hasStoredResults) {
+      const matches = selectEmails(storedEmails!, extractedData || {});
+
+      if (matches.length === 0) {
+        const response = `I couldn't find an email matching that description in the previous search results. Could you be more specific, or try a new search?`;
+        return new Response(response, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+      }
+
+      if (matches.length > 1) {
+        const options = formatEmailOptions(matches.map((m) => m.email));
+        const response = `I found ${matches.length} emails that might match. Which one do you want?\n\n${options}\n\nYou can say "the first one", "the second one", or describe it more specifically.`;
+        return new Response(response, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+      }
+
+      const selectedEmail = matches[0]?.email;
+      if (!selectedEmail) {
+        return new Response("No email selected", { status: 400 });
+      }
+      try {
+        const summary = await generateConversationalSummary({
+          subject: selectedEmail.subject,
+          from: selectedEmail.from,
+          date: selectedEmail.date,
+          body: selectedEmail.body,
+        });
+
+        const response = `**${selectedEmail.subject}**\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+        return new Response(response, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+      } catch (summaryError) {
+        console.error("Summary generation failed:", summaryError);
+        const response = `This email from ${selectedEmail.from.name || selectedEmail.from.address} dated ${new Date(selectedEmail.date).toLocaleDateString()} is about "${selectedEmail.subject}". ${selectedEmail.snippet}...`;
+        return new Response(response, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+      }
+    }
+
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - recentDays);
 
-    let relevantEmails: any[] = [];
+    let relevantEmails: Array<{
+      id: string;
+      subject: string;
+      summary: string | null;
+      body: string | null;
+      bodySnippet: string | null;
+      sentAt: Date;
+      similarity: number;
+      from: EmailAddress;
+      to: EmailAddress[];
+    }> = [];
 
     const senderPattern = /(?:from|by|sent\s+by)\s+([a-zA-Z0-9._-]+)/i;
     const senderMatch = userQuery.match(senderPattern);
     const senderTerm = senderMatch?.[1]?.toLowerCase() || "";
 
     try {
-      const whereConditions: any = {
+      const whereConditions: Prisma.EmailWhereInput = {
         thread: {
           accountId: accountId,
         },
       };
 
-      const orConditions: any[] = [];
+      const orConditions: Prisma.EmailWhereInput[] = [];
 
       if (senderTerm) {
         orConditions.push({
@@ -100,7 +180,7 @@ export async function POST(req: Request) {
         take: 20,
       });
 
-      relevantEmails = searchResults.map((email: any) => ({
+      relevantEmails = searchResults.map((email) => ({
         id: email.id,
         subject: email.subject,
         summary: email.summary,
@@ -111,6 +191,8 @@ export async function POST(req: Request) {
         from: email.from,
         to: email.to,
       }));
+
+      storeSearchResults(userId, accountId, relevantEmails, userQuery);
     } catch (searchError) {
       console.error("Search failed:", searchError);
       throw searchError;
@@ -130,12 +212,25 @@ export async function POST(req: Request) {
         : "Unknown",
       to: email.to
         ? email.to
-            .map((t: any) => `${t.name || ""} <${t.address}>`.trim())
+            .map((t) => `${t.name || ""} <${t.address}>`.trim())
             .join(", ")
         : "",
     }));
 
-    const systemPrompt = `You're helping search through emails. ${filteredEmails.length > 0 ? `Found ${filteredEmails.length} emails:` : "No emails found."}
+    if (filteredEmails.length === 0) {
+      const response = hasStoredResults
+        ? `I didn't find any new emails matching that search. However, I have ${storedEmails!.length} emails from a previous search. Would you like me to help you with one of those?`
+        : "I couldn't find any emails matching that search. Try different keywords or check if your emails are synced.";
+
+      return new Response(response, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+        },
+      });
+    }
+
+    const systemPrompt = `You're helping search through emails. Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
 
 ${emailContext
   .map(
@@ -149,15 +244,19 @@ Preview: ${email.content.substring(0, 300)}...
   )
   .join("\n")}
 
-Answer based on these emails. Be specific about which email you're referencing. If nothing matches well, say so.`;
+Answer based on these emails. Be conversational and helpful. Reference specific emails by number or subject when relevant. If the user asks follow-up questions like "what was that email about" or "tell me about the first one", acknowledge that you have these results and can help them.`;
 
     if (!env.OPENAI_API_KEY) {
-      const resp = filteredEmails.length > 0
-        ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
-            .slice(0, 5)
-            .map((e, i) => `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`)
-            .join("\n\n")}`
-        : "No emails found for that query.";
+      const resp =
+        filteredEmails.length > 0
+          ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
+              .slice(0, 5)
+              .map(
+                (e, i) =>
+                  `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`,
+              )
+              .join("\n\n")}`
+          : "No emails found for that query.";
 
       return new Response(resp, {
         headers: {
@@ -192,9 +291,7 @@ Answer based on these emails. Be specific about which email you're referencing. 
             }
           } catch (error) {
             console.error("Streaming error:", error);
-            controller.enqueue(
-              encoder.encode("\n\nError streaming response"),
-            );
+            controller.enqueue(encoder.encode("\n\nError streaming response"));
           } finally {
             controller.close();
           }
@@ -209,12 +306,16 @@ Answer based on these emails. Be specific about which email you're referencing. 
       });
     } catch (openaiError) {
       console.error("OpenAI error:", openaiError);
-      const resp = filteredEmails.length > 0
-        ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
-            .slice(0, 5)
-            .map((e, i) => `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`)
-            .join("\n\n")}`
-        : "No emails found.";
+      const resp =
+        filteredEmails.length > 0
+          ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
+              .slice(0, 5)
+              .map(
+                (e, i) =>
+                  `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`,
+              )
+              .join("\n\n")}`
+          : "No emails found.";
 
       return new Response(resp, {
         headers: {

@@ -53,6 +53,8 @@ export async function GET(req: NextRequest) {
     },
     update: {
       token: token.accessToken,
+      userId: userId,
+      nextDeltaToken: null,
     },
     create: {
       id: token.accountId.toString(),
@@ -61,6 +63,7 @@ export async function GET(req: NextRequest) {
       name: accountInfo.name,
       userId: userId,
       provider: "gmail",
+      nextDeltaToken: null,
     },
   });
 

@@ -44,6 +44,13 @@ export default function EmailSearchAssistant({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messageContainerRef = useRef<HTMLDivElement>(null);
+  const { data: accounts, isLoading: accountsLoading } =
+    api.account.getAccounts.useQuery();
+  const hasValidAccount =
+    !accountsLoading &&
+    !!accountId &&
+    accountId.length > 0 &&
+    accounts?.some((acc) => acc.id === accountId);
 
   const processEmailsMutation = api.account.processEmailsForAI.useMutation({
     onSuccess: () => {
@@ -56,8 +63,13 @@ export default function EmailSearchAssistant({
   });
 
   const { data: debugData } = api.account.debugEmails.useQuery(
-    { accountId },
-    { enabled: !!accountId },
+    { accountId: hasValidAccount ? accountId : "" },
+    {
+      enabled: hasValidAccount,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: false,
+    },
   );
 
   const scrollToBottom = useCallback(() => {
@@ -265,17 +277,15 @@ export default function EmailSearchAssistant({
                     key={message.id}
                     layout="position"
                     className={cn("z-10 mb-3 break-words rounded-xl", {
-                      "max-w-[80%] ml-auto bg-white/10 text-white":
+                      "ml-auto max-w-[80%] bg-white/10 text-white":
                         message.role === "user",
-                      "max-w-[90%] mr-auto border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 text-white shadow-lg":
+                      "mr-auto max-w-[90%] border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 text-white shadow-lg":
                         message.role === "assistant",
                     })}
                     layoutId={`container-[${messages.length - 1}]`}
                     transition={animationConfig}
                   >
-                    <div
-                      className="text-sm leading-relaxed px-4 py-3 text-white"
-                    >
+                    <div className="px-4 py-3 text-sm leading-relaxed text-white">
                       {message.role === "assistant" ? (
                         <div className="space-y-2">
                           <div className="mb-2 text-xs font-medium text-purple-300">
@@ -346,7 +356,10 @@ export default function EmailSearchAssistant({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-auto flex w-full gap-2 p-3">
+          <form
+            onSubmit={handleSubmit}
+            className="mt-auto flex w-full gap-2 p-3"
+          >
             <div className="relative flex-1">
               <input
                 type="text"

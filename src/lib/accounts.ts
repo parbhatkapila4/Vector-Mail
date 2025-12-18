@@ -254,10 +254,16 @@ export class Account {
     let storedDeltaToken: string;
 
     if (!account.nextDeltaToken) {
-      console.log("Performing full initial sync (first connection)...");
+      console.log(
+        "[syncEmails] Performing full initial sync (first connection)...",
+      );
+      console.log("[syncEmails] Calling performInitialSync()...");
       const initialSyncResult = await this.performInitialSync();
       allEmails = initialSyncResult?.emails ?? [];
       storedDeltaToken = initialSyncResult?.deltaToken ?? "";
+      console.log(
+        `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
+      );
     } else {
       console.log(`Using delta token: ${account.nextDeltaToken}`);
       let response = await this.getUpdatedEmails(account.nextDeltaToken);
@@ -284,15 +290,23 @@ export class Account {
       }
     }
 
-    console.log(`Total emails to sync: ${allEmails.length}`);
+    console.log(`[syncEmails] Total emails to sync: ${allEmails.length}`);
 
     try {
+      console.log(
+        `[syncEmails] Starting DB insert for ${allEmails.length} emails...`,
+      );
       await syncEmailsToDatabase(allEmails, account.id);
-      console.log(`Successfully synced ${allEmails.length} emails to database`);
+      console.log(
+        `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
+      );
     } catch (error) {
-      console.error("Error syncing emails to database:", error);
+      console.error("[syncEmails] Error syncing emails to database:", error);
     }
 
+    console.log(
+      `[syncEmails] Updating delta token for account ${account.id}...`,
+    );
     await db.account.update({
       where: {
         id: account.id,
@@ -301,8 +315,11 @@ export class Account {
         nextDeltaToken: storedDeltaToken,
       },
     });
+    console.log(
+      `[syncEmails] Delta token updated successfully: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
+    );
 
-    console.log(`Email sync completed for account ${account.id}`);
+    console.log(`[syncEmails] Email sync completed for account ${account.id}`);
   }
 
   async syncLatestEmails(): Promise<{ success: boolean; count: number }> {
@@ -415,6 +432,76 @@ export class Account {
       }
 
       return { success: false, count: 0 };
+    }
+  }
+
+  async fetchInboxEmails(
+    pageToken?: string,
+    maxResults: number = 50,
+  ): Promise<{
+    emails: Array<{
+      id: string;
+      from: { name: string | null; address: string };
+      subject: string;
+      date: string;
+      snippet: string;
+    }>;
+    nextPageToken?: string;
+  }> {
+    try {
+      const params: Record<string, string | number> = {
+        q: "in:all",
+        maxResults: Math.min(maxResults, 100),
+        bodyType: "text",
+      };
+
+      if (pageToken) {
+        params.pageToken = pageToken;
+      }
+
+      const listResponse = await axios.get<{
+        messages?: Array<{ id: string }>;
+        nextPageToken?: string;
+      }>("https://api.aurinko.io/v1/email/messages", {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
+        params,
+      });
+
+      const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
+
+      if (messageIds.length === 0) {
+        return {
+          emails: [],
+          nextPageToken: listResponse.data.nextPageToken,
+        };
+      }
+
+      const emails = await Promise.all(
+        messageIds.map((id) => this.getEmailById(id)),
+      );
+
+      const mappedEmails = emails
+        .filter((e): e is EmailMessage => e !== null)
+        .map((e) => ({
+          id: e.id,
+          from: {
+            name: e.from.name || null,
+            address: e.from.address,
+          },
+          subject: e.subject || "(No subject)",
+          date: e.sentAt,
+          snippet: e.bodySnippet || e.body?.substring(0, 200) || "",
+        }));
+
+      return {
+        emails: mappedEmails,
+        nextPageToken: listResponse.data.nextPageToken,
+      };
+    } catch (error) {
+      console.error("[fetchInboxEmails] Failed:", error);
+      throw error;
     }
   }
 }

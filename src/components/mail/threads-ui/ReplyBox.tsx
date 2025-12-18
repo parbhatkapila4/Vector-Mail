@@ -1,10 +1,12 @@
 "use client";
 import React from "react";
 import useThreads from "@/hooks/use-threads";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { toast } from "sonner";
 import EmailEditor from "../editor/EmailEditor";
 import { useLocalStorage } from "usehooks-ts";
+
+type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 type OptionType = {
   label: string | React.ReactNode;
@@ -12,18 +14,23 @@ type OptionType = {
 };
 
 const ReplyBox = () => {
-  const { threadId, threads, account } = useThreads();
+  const { threadId, threads: rawThreads, account } = useThreads();
   const [accountId] = useLocalStorage("accountId", "");
+  const threads = rawThreads as Thread[] | undefined;
 
   const thread = threads?.find((t) => t.id === threadId);
   const { data: foundThread } = api.account.getThreadById.useQuery(
     {
       threadId: threadId ?? "",
     },
-    { enabled: !!!thread && !!threadId },
+    {
+      enabled: !!!thread && !!threadId && threadId.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
   );
 
-  const currentThread = thread ?? foundThread;
+  const currentThread = (thread ?? foundThread) as Thread | undefined;
   const lastEmail = currentThread?.emails?.[currentThread.emails.length - 1];
 
   const [subject, setSubject] = React.useState("");
@@ -48,7 +55,6 @@ const ReplyBox = () => {
     setCcValues([]);
   }, [lastEmail, threadId]);
 
-  
   if (!currentThread && threadId) {
     return (
       <div className="flex h-[300px] items-center justify-center">
@@ -57,7 +63,6 @@ const ReplyBox = () => {
     );
   }
 
-  
   if (!currentThread || !lastEmail) {
     return (
       <div className="flex h-[300px] items-center justify-center">
@@ -71,6 +76,14 @@ const ReplyBox = () => {
 
   const handleSend = async (value: string) => {
     if (!lastEmail || !account) return;
+
+    const getInReplyTo = (): string | undefined => {
+      if ("internetMessageId" in lastEmail && lastEmail.internetMessageId) {
+        return lastEmail.internetMessageId;
+      }
+      return undefined;
+    };
+
     sendEmail.mutate(
       {
         accountId,
@@ -92,7 +105,7 @@ const ReplyBox = () => {
           name: account.name ?? "Me",
           address: account.emailAddress ?? "me@example.com",
         },
-        inReplyTo: lastEmail.internetMessageId,
+        inReplyTo: getInReplyTo(),
       },
       {
         onSuccess: () => {
