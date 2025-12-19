@@ -103,6 +103,11 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         accountId,
         lastMessageDate: new Date(email.sentAt),
         done: false,
+        // FIX: Update status flags on UPDATE too, not just CREATE
+        // This ensures threads show up in the correct tab when new emails are added
+        draftStatus: emailLabelType === "draft",
+        inboxStatus: emailLabelType === "inbox",
+        sentStatus: emailLabelType === "sent",
         participantIds: [
           ...new Set([
             fromAddress.id,

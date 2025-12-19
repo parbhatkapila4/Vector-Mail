@@ -8,10 +8,15 @@ export const threadIdAtom = atom<string | null>(null);
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 function useThreads() {
-  const { isLoading: accountsLoading } = api.account.getAccounts.useQuery();
+  const { data: accounts, isLoading: accountsLoading } = api.account.getAccounts.useQuery();
   const [tab] = useLocalStorage("vector-mail", "inbox");
+  const [storedAccountId] = useLocalStorage("accountId", "");
 
-  const accountId = "158696";
+  // Use stored accountId if valid, otherwise use first account (matching Sidebar logic)
+  const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
+  const accountId = storedAccountId && accounts?.some((acc) => acc.id === storedAccountId)
+    ? storedAccountId
+    : firstAccountId;
 
   const { data: myAccount, isLoading: myAccountLoading } =
     api.account.getMyAccount.useQuery(
@@ -58,7 +63,7 @@ function useThreads() {
       enabled: hasValidAccount && !!currentTab,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       refetchOnWindowFocus: false,
-      refetchOnMount: false,
+      refetchOnMount: true, // Enable refetch on mount to ensure threads load
       retry: false,
     },
   );

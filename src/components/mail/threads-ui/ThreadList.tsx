@@ -68,114 +68,16 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const [tab] = useLocalStorage("vector-mail", "inbox");
   const currentTab = tab ?? "inbox";
 
-  const [inboxMessages, setInboxMessages] = useState<Thread[]>([]);
-  const [isLoadingInbox, setIsLoadingInbox] = useState(false);
-  const [inboxFetchAttempted, setInboxFetchAttempted] = useState(false);
+  // Removed inboxMessages state - now using threads from getThreads query for consistency
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const mapInboxEmailToThread = useCallback(
-    (email: {
-      id: string;
-      from: { name: string | null; address: string };
-      subject: string;
-      date: string;
-      snippet: string;
-    }): Thread => {
-      return {
-        id: `inbox-${email.id}`,
-        subject: email.subject,
-        lastMessageDate: new Date(email.date),
-        emails: [
-          {
-            from: { name: email.from.name },
-            bodySnippet: email.snippet,
-            sysLabels: ["inbox"],
-          },
-        ],
-      };
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (currentTab === "inbox" && !inboxFetchAttempted) {
-      setInboxFetchAttempted(true);
-      setIsLoadingInbox(true);
-      console.log(
-        "[ThreadList] Fetching inbox from /api/inbox (bypassing tRPC)",
-      );
-
-      fetch(`/api/inbox`, {
-        credentials: "include",
-      })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error(`Failed to fetch inbox: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          const messages = data.messages ?? [];
-          console.log("[ThreadList] Inbox messages count:", messages.length);
-
-          if (Array.isArray(messages) && messages.length > 0) {
-            const mappedThreads = messages.map(mapInboxEmailToThread);
-            console.log(
-              `[ThreadList] Mapped ${mappedThreads.length} inbox messages to threads`,
-            );
-            setInboxMessages(mappedThreads);
-          } else {
-            setInboxMessages([]);
-          }
-        })
-        .catch((error) => {
-          console.error("[ThreadList] Inbox fetch failed:", error);
-          setInboxMessages([]);
-        })
-        .finally(() => {
-          setIsLoadingInbox(false);
-        });
-    }
-  }, [currentTab, inboxFetchAttempted, mapInboxEmailToThread]);
+  // Removed /api/inbox fetch and mapInboxEmailToThread - now using getThreads tRPC query for all tabs
 
   const handleRefresh = useCallback(() => {
-    if (currentTab === "inbox") {
-      console.log(
-        "[ThreadList] Manual refresh triggered - refetching from /api/inbox",
-      );
-      setInboxFetchAttempted(false);
-      setIsLoadingInbox(true);
-
-      fetch(`/api/inbox`, {
-        credentials: "include",
-      })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error(`Failed to fetch inbox: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          const messages = data.messages ?? [];
-          if (Array.isArray(messages) && messages.length > 0) {
-            const mappedThreads = messages.map(mapInboxEmailToThread);
-            setInboxMessages(mappedThreads);
-          } else {
-            setInboxMessages([]);
-          }
-        })
-        .catch((error) => {
-          console.error("[ThreadList] Inbox refresh failed:", error);
-          setInboxMessages([]);
-        })
-        .finally(() => {
-          setIsLoadingInbox(false);
-        });
-    } else {
-      refetch();
-    }
-  }, [currentTab, refetch, mapInboxEmailToThread]);
+    console.log("[ThreadList] Manual refresh triggered - refetching threads");
+    void refetch();
+  }, [refetch]);
 
   const handleAccountConnection = useCallback(async () => {
     try {
@@ -202,11 +104,10 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   );
 
   const threadsToRender = useMemo(() => {
-    if (currentTab === "inbox") {
-      return inboxMessages;
-    }
+    // Use threads from getThreads query for ALL tabs (including inbox)
+    // This ensures consistency with the sidebar count
     return threads ?? [];
-  }, [currentTab, threads, inboxMessages]);
+  }, [threads]);
 
   const groupedThreads = useMemo(() => {
     if (!threadsToRender || threadsToRender.length === 0) return {};
@@ -380,18 +281,18 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const renderThreadsList = () => {
     console.log("[ThreadList] Threads received:", threadsToRender?.length ?? 0);
 
-    if (currentTab === "inbox" && isLoadingInbox) {
+    if (isFetching && threadsToRender.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center p-8">
           <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Loading inbox emails...
+            Loading emails...
           </p>
         </div>
       );
     }
 
-    if (Object.keys(groupedThreads).length === 0 && !isLoadingInbox) {
+    if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       return (
         <div className="flex flex-col items-center justify-center p-8">
           <p className="text-gray-500 dark:text-gray-400">No emails found.</p>
@@ -435,7 +336,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           <h2 className="text-lg font-semibold">
             {isSearching && searchValue ? "Search Results" : "Inbox"}
           </h2>
-          {(currentTab === "inbox" ? isLoadingInbox : isFetching) && (
+          {isFetching && (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           )}
         </div>
@@ -453,15 +354,13 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           variant="outline"
           size="sm"
           onClick={handleRefresh}
-          disabled={currentTab === "inbox" ? isLoadingInbox : isFetching}
+          disabled={isFetching}
           className="flex items-center gap-2"
         >
           <RefreshCw
-            className={`h-4 w-4 ${(currentTab === "inbox" ? isLoadingInbox : isFetching) ? "animate-spin" : ""}`}
+            className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
           />
-          {(currentTab === "inbox" ? isLoadingInbox : isFetching)
-            ? "Refreshing..."
-            : "Refresh"}
+          {isFetching ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 

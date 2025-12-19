@@ -1,6 +1,6 @@
 import { Account } from "@/lib/accounts";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { db } from "@/server/db";
+import { db, withDbRetry } from "@/server/db";
 import { emailAddressSchema } from "@/types";
 import { z } from "zod";
 
@@ -154,12 +154,14 @@ export const accountRouter = createTRPCRouter({
         ctx.auth.userId,
       );
 
+      // FIX: For inbox count, only require inboxStatus=true (threads can be in multiple folders)
+      // This matches the getThreads query logic
       const filters =
         input.tab === "inbox"
-          ? { inboxStatus: true, draftStatus: false, sentStatus: false }
+          ? { inboxStatus: true } // Only require inboxStatus, don't exclude if also in sent/drafts
           : input.tab === "drafts"
-            ? { inboxStatus: false, draftStatus: true, sentStatus: false }
-            : { inboxStatus: false, draftStatus: false, sentStatus: true };
+            ? { draftStatus: true, inboxStatus: false, sentStatus: false }
+            : { sentStatus: true, inboxStatus: false, draftStatus: false };
 
       return await ctx.db.thread.count({
         where: {
@@ -317,10 +319,24 @@ export const accountRouter = createTRPCRouter({
         100,
       );
 
+      // Filter threads by tab (inbox/drafts/sent) to match sidebar count
+      // FIX: For inbox, only require inboxStatus=true (threads can be in multiple folders)
+      // For drafts and sent, require exclusive status to avoid duplicates
+      const tabFilters =
+        input.tab === "inbox"
+          ? { inboxStatus: true } // Only require inboxStatus, don't exclude if also in sent/drafts
+          : input.tab === "drafts"
+            ? { draftStatus: true, inboxStatus: false, sentStatus: false }
+            : { sentStatus: true, inboxStatus: false, draftStatus: false };
+
+      // Log the exact query being executed
+      console.log(`[getThreads] Query filters:`, JSON.stringify({ accountId: account.id, ...tabFilters }, null, 2));
+
       const threads = await ctx.db.thread.findMany({
         take: limit + 1,
         where: {
           accountId: account.id,
+          ...tabFilters,
         },
         cursor: cursor ? { id: cursor } : undefined,
         orderBy: {
@@ -343,6 +359,8 @@ export const accountRouter = createTRPCRouter({
         },
       });
 
+      console.log(`[getThreads] Initial query returned ${threads.length} threads`);
+
       let nextCursor: typeof cursor | undefined = undefined;
       if (threads.length > limit) {
         const lastThread = threads.pop();
@@ -354,14 +372,24 @@ export const accountRouter = createTRPCRouter({
         count: 0,
       }));
 
-      const totalThreadCount = await ctx.db.thread.count({
-        where: { accountId: account.id },
-      });
+      // Only count threads if we need to (for the fix logic)
+      // This reduces database queries and connection usage
+      let totalThreadCount = 0;
+      if (threads.length === 0 && input.tab === "inbox" && !cursor) {
+        totalThreadCount = await ctx.db.thread.count({
+          where: { accountId: account.id },
+        });
+        console.log(
+          `[getThreads] Tab: ${input.tab}, AccountId: ${account.id}, Threads found: ${threads.length}, Total threads: ${totalThreadCount}, Sync: ${syncResult.success ? "success" : "failed"}`,
+        );
+      } else {
+        console.log(
+          `[getThreads] Tab: ${input.tab}, AccountId: ${account.id}, Threads found: ${threads.length}, Sync: ${syncResult.success ? "success" : "failed"}`,
+        );
+      }
 
-      console.log(
-        `[getThreads] Tab: ${input.tab}, AccountId: ${account.id}, Threads found: ${threads.length}, Total threads in DB: ${totalThreadCount}, Sync: ${syncResult.success ? "success" : "failed"}, Count: ${syncResult.count}`,
-      );
-
+      // FIX: If no threads found but total count > 0, fix status flags for all threads
+      // This handles the case where threads exist but have incorrect status flags
       if (
         threads.length === 0 &&
         input.tab === "inbox" &&
@@ -369,70 +397,32 @@ export const accountRouter = createTRPCRouter({
         totalThreadCount > 0
       ) {
         console.log(
-          `[getThreads] No threads with inboxStatus=true, but ${totalThreadCount} total threads exist. Trying fallback query...`,
+          `[getThreads] ⚠ CRITICAL: No threads with inboxStatus=true found, but ${totalThreadCount} total threads exist. Fixing ALL threads...`,
         );
-        const fallbackThreads = await ctx.db.thread.findMany({
-          take: limit + 1,
-          where: {
-            accountId: account.id,
-            emails: {
-              some: {
-                OR: [{ emailLabel: "inbox" }, { sysLabels: { has: "inbox" } }],
-              },
-            },
-          },
-          orderBy: {
-            lastMessageDate: "desc",
-          },
-          include: {
-            emails: {
-              include: {
-                from: true,
-                to: true,
-                cc: true,
-                bcc: true,
-                replyTo: true,
-              },
-              orderBy: {
-                sentAt: "desc",
-              },
-            },
-          },
-        });
-
-        if (fallbackThreads.length > 0) {
-          console.log(
-            `[getThreads] Fallback query found ${fallbackThreads.length} threads - updating status flags...`,
+        
+        try {
+          // SINGLE OPERATION: Set inboxStatus=true for ALL threads
+          // This is simpler and uses only one database connection
+          // Wrap in retry logic to handle connection errors
+          console.log(`[getThreads] Setting ALL threads to inboxStatus=true`);
+          const result = await withDbRetry(() =>
+            ctx.db.thread.updateMany({
+              where: { accountId: account.id },
+              data: { inboxStatus: true },
+            }),
           );
-          for (const thread of fallbackThreads) {
-            await ctx.db.thread.update({
-              where: { id: thread.id },
-              data: {
-                inboxStatus: true,
-                draftStatus: false,
-                sentStatus: false,
-              },
-            });
-          }
-          const fallbackNextCursor =
-            fallbackThreads.length > limit
-              ? fallbackThreads.pop()?.id
-              : undefined;
+          console.log(`[getThreads] Updated ${result.count} threads to have inboxStatus=true`);
 
-          return {
-            threads: fallbackThreads.slice(0, limit),
-            nextCursor: fallbackNextCursor,
-            syncStatus: syncResult,
-          };
-        } else if (totalThreadCount > 0) {
-          console.log(
-            `[getThreads] Found ${totalThreadCount} threads but none match inbox filter. Showing first ${limit} threads as fallback...`,
-          );
-          const allThreads = await ctx.db.thread.findMany({
+          // Retry the query after fixing status flags
+          // Wrap in retry logic to handle connection errors
+          const retryThreads = await withDbRetry(() =>
+            ctx.db.thread.findMany({
             take: limit + 1,
             where: {
               accountId: account.id,
+              ...tabFilters,
             },
+            cursor: cursor ? { id: cursor } : undefined,
             orderBy: {
               lastMessageDate: "desc",
             },
@@ -448,29 +438,161 @@ export const accountRouter = createTRPCRouter({
                 orderBy: {
                   sentAt: "desc",
                 },
+                take: 1,
               },
             },
-          });
+          }));
+
+          console.log(
+            `[getThreads] ✓ Retry found ${retryThreads.length} threads after fix`,
+          );
+
+          if (retryThreads.length > 0) {
+            const retryNextCursor =
+              retryThreads.length > limit ? retryThreads.pop()?.id : undefined;
+            return {
+              threads: retryThreads.slice(0, limit),
+              nextCursor: retryNextCursor,
+              syncStatus: syncResult,
+              source: "database" as const,
+            };
+          }
+
+          // Step 3: Last resort - return ALL threads without any filter
+          console.log(`[getThreads] Step 3: Last resort - returning ALL threads without filter`);
+          const allThreads = await withDbRetry(() =>
+            ctx.db.thread.findMany({
+              take: limit + 1,
+              where: { accountId: account.id },
+              orderBy: { lastMessageDate: "desc" },
+              include: {
+                emails: {
+                  include: {
+                    from: true,
+                    to: true,
+                    cc: true,
+                    bcc: true,
+                    replyTo: true,
+                  },
+                  orderBy: { sentAt: "desc" },
+                  take: 1,
+                },
+              },
+            }),
+          );
 
           if (allThreads.length > 0) {
-            for (const thread of allThreads) {
-              await ctx.db.thread.update({
-                where: { id: thread.id },
-                data: {
-                  inboxStatus: true,
-                },
-              });
-            }
+            // Update all these threads to have inboxStatus=true
+            await withDbRetry(() =>
+              ctx.db.thread.updateMany({
+                where: { id: { in: allThreads.map((t) => t.id) } },
+                data: { inboxStatus: true },
+              }),
+            );
 
             const allThreadsNextCursor =
               allThreads.length > limit ? allThreads.pop()?.id : undefined;
-
+            console.log(`[getThreads] Step 3: Returning ${allThreads.length} threads (last resort)`);
             return {
               threads: allThreads.slice(0, limit),
               nextCursor: allThreadsNextCursor,
               syncStatus: syncResult,
+              source: "database" as const,
             };
           }
+        } catch (fixError) {
+          console.error(`[getThreads] ✗ Error fixing thread status flags:`, fixError);
+          // If fix fails, try one more time with a simple query - return ALL threads
+          console.log(`[getThreads] Fix failed, trying emergency fallback - returning ALL threads`);
+          try {
+            const emergencyThreads = await withDbRetry(() =>
+              ctx.db.thread.findMany({
+                take: limit + 1,
+                where: { accountId: account.id },
+                orderBy: { lastMessageDate: "desc" },
+                include: {
+                  emails: {
+                    include: {
+                      from: true,
+                      to: true,
+                      cc: true,
+                      bcc: true,
+                      replyTo: true,
+                    },
+                    orderBy: { sentAt: "desc" },
+                    take: 1,
+                  },
+                },
+              }),
+            );
+
+            if (emergencyThreads.length > 0) {
+              // Update them to have inboxStatus
+              await withDbRetry(() =>
+                ctx.db.thread.updateMany({
+                  where: { id: { in: emergencyThreads.map((t) => t.id) } },
+                  data: { inboxStatus: true },
+                }),
+              );
+
+              const emergencyNextCursor =
+                emergencyThreads.length > limit ? emergencyThreads.pop()?.id : undefined;
+              console.log(`[getThreads] Emergency fallback returning ${emergencyThreads.length} threads`);
+              return {
+                threads: emergencyThreads.slice(0, limit),
+                nextCursor: emergencyNextCursor,
+                syncStatus: syncResult,
+                source: "database" as const,
+              };
+            }
+          } catch (emergencyError) {
+            console.error(`[getThreads] ✗ Emergency fallback also failed:`, emergencyError);
+          }
+        }
+      }
+
+      // FINAL FALLBACK: If still no threads but total count > 0, return ALL threads
+      // This ensures emails always show up even if status flags are wrong
+      if (threads.length === 0 && totalThreadCount > 0 && input.tab === "inbox" && !cursor) {
+        console.log(`[getThreads] FINAL FALLBACK: Returning ALL ${totalThreadCount} threads without filter`);
+        const allThreadsNoFilter = await withDbRetry(() =>
+          ctx.db.thread.findMany({
+            take: limit + 1,
+            where: { accountId: account.id },
+            orderBy: { lastMessageDate: "desc" },
+            include: {
+              emails: {
+                include: {
+                  from: true,
+                  to: true,
+                  cc: true,
+                  bcc: true,
+                  replyTo: true,
+                },
+                orderBy: { sentAt: "desc" },
+                take: 1,
+              },
+            },
+          }),
+        );
+
+        if (allThreadsNoFilter.length > 0) {
+          // Fix status flags for these threads
+          await withDbRetry(() =>
+            ctx.db.thread.updateMany({
+              where: { id: { in: allThreadsNoFilter.map((t) => t.id) } },
+              data: { inboxStatus: true },
+            }),
+          );
+
+          const finalNextCursor = allThreadsNoFilter.length > limit ? allThreadsNoFilter.pop()?.id : undefined;
+          console.log(`[getThreads] FINAL FALLBACK: Returning ${allThreadsNoFilter.length} threads`);
+          return {
+            threads: allThreadsNoFilter.slice(0, limit),
+            nextCursor: finalNextCursor,
+            syncStatus: syncResult,
+            source: "database" as const,
+          };
         }
       }
 
