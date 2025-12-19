@@ -23,12 +23,18 @@ export async function syncEmailsToDatabase(
 ) {
   try {
     await processBatch(emails, (email) => upsertEmail(email, accountId), 10);
+    console.log("EMAIL SAVE LOOP FINISHED");
   } catch (error) {
     console.log("Sync error:", error);
   }
 }
 
 async function upsertEmail(email: EmailMessage, accountId: string) {
+  console.log("SAVING EMAIL:", {
+    id: email.id,
+    threadId: email.threadId,
+    subject: email.subject,
+  });
   try {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
     if (email.sysLabels.includes("draft")) {

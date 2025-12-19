@@ -89,7 +89,7 @@ model Email {
   lastModifiedTime     DateTime
   sentAt               DateTime
   receivedAt           DateTime
-  internetMessageId    String
+  internetMessageId    String              @unique 
   subject              String
   sysLabels            String[]
   keywords             String[]

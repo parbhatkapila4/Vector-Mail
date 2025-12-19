@@ -52,14 +52,26 @@ export const accountRouter = createTRPCRouter({
 
     for (const account of accounts) {
       if (!account.nextDeltaToken) {
-        console.log("[Aurinko] Initial inbox sync started for account:", account.id);
+        console.log(
+          "[Aurinko] Initial inbox sync started for account:",
+          account.id,
+        );
         setTimeout(() => {
-          new Account(account.token).syncEmails(true)
+          new Account(account.id, account.token)
+            .syncEmails(true)
+
             .then(() => {
-              console.log("[Aurinko] Initial inbox sync completed for account:", account.id);
+              console.log(
+                "[Aurinko] Initial inbox sync completed for account:",
+                account.id,
+              );
             })
             .catch((err) => {
-              console.error("[Aurinko] Initial inbox sync failed for account:", account.id, err);
+              console.error(
+                "[Aurinko] Initial inbox sync failed for account:",
+                account.id,
+                err,
+              );
             });
         }, 0);
       }
@@ -103,7 +115,7 @@ export const accountRouter = createTRPCRouter({
         input.accountId,
         ctx.auth.userId,
       );
-      const emailAccount = new Account(account.token);
+      const emailAccount = new Account(account.id, account.token);
       await emailAccount.sendEmail(input);
       return { success: true };
     }),
@@ -169,7 +181,7 @@ export const accountRouter = createTRPCRouter({
         input.accountId,
         ctx.auth.userId,
       );
-      const emailAccount = new Account(account.token);
+      const emailAccount = new Account(account.id, account.token);
 
       try {
         await emailAccount.syncEmails(input.forceFullSync);
@@ -264,7 +276,7 @@ export const accountRouter = createTRPCRouter({
         input.accountId,
         ctx.auth.userId,
       );
-      const emailAccount = new Account(account.token);
+      const emailAccount = new Account(account.id, account.token);
 
       const accountWithToken = await ctx.db.account.findUnique({
         where: { id: account.id },
@@ -273,85 +285,35 @@ export const accountRouter = createTRPCRouter({
 
       const { cursor } = input;
 
-      let usingFallback = false;
-      if (input.tab === "inbox") {
-        try {
-          const inboxResult = await emailAccount.fetchInboxEmails();
-
-          console.log(
-            `[getThreads] Fetched ${inboxResult.emails.length} inbox emails from Gmail API`,
-          );
-
-          const inboxThreads = inboxResult.emails.map((email) => ({
-            id: `inbox-${email.id}`,
-            subject: email.subject,
-            lastMessageDate: new Date(email.date),
-            emails: [
-              {
-                id: email.id,
-                from: {
-                  name: email.from.name,
-                  address: email.from.address,
-                },
-                bodySnippet: email.snippet,
-                sysLabels: ["inbox"] as string[],
-                sentAt: new Date(email.date),
-                subject: email.subject,
-                to: [],
-                cc: [],
-                bcc: [],
-                replyTo: [],
-              },
-            ],
-          }));
-
-          return {
-            threads: inboxThreads,
-            nextCursor: undefined,
-            syncStatus: { success: true, count: inboxResult.emails.length },
-            source: "gmail" as const,
-          };
-        } catch (error) {
-          console.error(
-            "[getThreads] Direct inbox fetch failed, falling back to DB:",
-            error,
-          );
-          console.log(
-            "[getThreads] Using database fallback for inbox (source: fallback)",
-          );
-          usingFallback = true;
-        }
-      }
-
-      const syncPromise = !cursor && input.tab !== "inbox"
+      const syncPromise = !cursor
         ? (async () => {
-            if (!accountWithToken?.nextDeltaToken) {
-              console.log(
-                `[getThreads] Account ${account.id} has no delta token, running initial sync...`,
-              );
-              try {
+            try {
+              if (!accountWithToken?.nextDeltaToken) {
+                console.log(
+                  `[getThreads] Account ${account.id} has no delta token, running initial sync in background...`,
+                );
                 void emailAccount.syncEmails(false).catch((error) => {
                   console.error("[getThreads] Background sync failed:", error);
                 });
-                return { success: true, count: 1 };
-              } catch (error) {
-                console.error("[getThreads] Initial sync failed:", error);
-                return { success: false, count: 0 };
+                return { success: true, count: 0 };
+              } else {
+                void emailAccount.syncLatestEmails().catch((error) => {
+                  console.error(
+                    "[getThreads] Background latest email sync failed:",
+                    error,
+                  );
+                });
+                return { success: true, count: 0 };
               }
-            } else {
-              void emailAccount.syncLatestEmails().catch((error) => {
-                console.error(
-                  "[getThreads] Background latest email sync failed:",
-                  error,
-                );
-              });
-              return { success: true, count: 0 };
+            } catch (error) {
+              console.error("[getThreads] Sync error:", error);
+              return { success: false, count: 0 };
             }
           })()
         : Promise.resolve({ success: false, count: 0 });
 
       const limit = Math.min(
-        input.tab === "inbox" ? input.limit ?? 50 : input.limit ?? 15,
+        input.tab === "inbox" ? (input.limit ?? 50) : (input.limit ?? 15),
         100,
       );
 
@@ -387,7 +349,6 @@ export const accountRouter = createTRPCRouter({
         nextCursor = lastThread?.id;
       }
 
-      
       const syncResult = await syncPromise.catch(() => ({
         success: false,
         count: 0,
@@ -513,12 +474,11 @@ export const accountRouter = createTRPCRouter({
         }
       }
 
-      
       return {
         threads,
         nextCursor,
         syncStatus: syncResult,
-        ...(usingFallback && { source: "fallback" as const }),
+        source: "database" as const,
       };
     }),
 
@@ -696,7 +656,7 @@ export const accountRouter = createTRPCRouter({
         input.accountId,
         ctx.auth.userId,
       );
-      const emailAccount = new Account(account.token);
+      const emailAccount = new Account(account.id, account.token);
 
       const existingEmail = await ctx.db.email.findUnique({
         where: { id: input.emailId },

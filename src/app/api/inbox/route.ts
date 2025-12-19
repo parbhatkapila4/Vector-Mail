@@ -32,10 +32,12 @@ export async function GET(req: NextRequest) {
     const accountId = account.id;
     console.log("[Inbox API] Server-derived accountId:", accountId);
 
-    const emailAccount = new Account(account.token);
+    const emailAccount = new Account(account.id, account.token);
 
     try {
       const result = await emailAccount.fetchInboxEmails();
+
+      console.log("INBOX DB QUERY RESULT COUNT:", result.emails.length);
 
       const messages =
         maxResults > 0 ? result.emails.slice(0, maxResults) : result.emails;

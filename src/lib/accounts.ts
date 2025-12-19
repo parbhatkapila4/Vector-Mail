@@ -9,10 +9,23 @@ import { syncEmailsToDatabase } from "./sync-to-db";
 import { db } from "@/server/db";
 
 export class Account {
+  private id: string;
   private token: string;
 
-  constructor(token: string) {
+  constructor(id: string, token: string) {
+    this.id = id;
     this.token = token;
+  }
+
+  private get aurinkoHeaders() {
+    if (!this.token || !this.id) {
+      throw new Error("Missing Aurinko token or account id");
+    }
+
+    return {
+      Authorization: `Bearer ${this.token}`,
+      "X-Aurinko-Account-Id": String(this.id),
+    };
   }
 
   async performInitialSync() {
@@ -105,13 +118,12 @@ export class Account {
   }
 
   private async startSync() {
+    console.log("[AURINKO AUTH] Using accountToken for account:", this.id);
     const response = await axios.post<syncResponse>(
       `https://api.aurinko.io/v1/email/sync`,
       {},
       {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-        },
+        headers: this.aurinkoHeaders,
         params: {
           daysWithin: 30,
           bodyType: "text",
@@ -141,9 +153,7 @@ export class Account {
     const response = await axios.get<syncUpdateResponse>(
       `https://api.aurinko.io/v1/email/sync/updated`,
       {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-        },
+        headers: this.aurinkoHeaders,
         params,
       },
     );
@@ -192,7 +202,7 @@ export class Account {
           params: {
             returnIds: true,
           },
-          headers: { Authorization: `Bearer ${this.token}` },
+          headers: this.aurinkoHeaders,
         },
       );
 
@@ -216,9 +226,7 @@ export class Account {
       const response = await axios.get<EmailMessage>(
         `https://api.aurinko.io/v1/email/messages/${emailId}`,
         {
-          headers: {
-            Authorization: `Bearer ${this.token}`,
-          },
+          headers: this.aurinkoHeaders,
           params: {
             bodyType: "html",
           },
@@ -463,9 +471,7 @@ export class Account {
         messages?: Array<{ id: string }>;
         nextPageToken?: string;
       }>("https://api.aurinko.io/v1/email/messages", {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-        },
+        headers: this.aurinkoHeaders,
         params,
       });
 
