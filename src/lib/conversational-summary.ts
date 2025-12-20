@@ -20,10 +20,37 @@ interface EmailForSummary {
   body: string;
 }
 
+export type SummaryLength = "short" | "medium" | "long" | "auto";
+
 export async function generateConversationalSummary(
   email: EmailForSummary,
+  lengthPreference: SummaryLength = "auto",
+  userRequest?: string,
 ): Promise<string> {
   try {
+    let detectedLength: SummaryLength = lengthPreference;
+    if (userRequest) {
+      const lowerRequest = userRequest.toLowerCase();
+      if (
+        /(very\s+)?short|brief|quick|one\s+sentence|in\s+short|tl;?dr/i.test(
+          lowerRequest,
+        )
+      ) {
+        detectedLength = "short";
+      } else if (
+        /long|detailed|comprehensive|full|complete|everything/i.test(
+          lowerRequest,
+        )
+      ) {
+        detectedLength = "long";
+      } else if (
+        /medium|normal|standard|regular/i.test(lowerRequest) ||
+        lengthPreference === "auto"
+      ) {
+        detectedLength = "medium";
+      }
+    }
+
     const truncatedBody =
       email.body.length > 3000
         ? email.body.substring(0, 3000) + "..."
@@ -36,9 +63,34 @@ Date: ${new Date(email.date).toLocaleDateString()}
 Body: ${truncatedBody}
     `.trim();
 
-    const prompt = `Summarize this email in 2-3 sentences. Focus on:
+    let lengthInstruction = "";
+    let maxTokens = 200;
+
+    switch (detectedLength) {
+      case "short":
+        lengthInstruction =
+          "Summarize this email in ONE SHORT SENTENCE. Be extremely concise - just the essential point.";
+        maxTokens = 50;
+        break;
+      case "long":
+        lengthInstruction =
+          "Provide a comprehensive summary in 4-6 sentences. Include all important details, context, action items, and key information.";
+        maxTokens = 400;
+        break;
+      case "medium":
+      default:
+        lengthInstruction =
+          "Summarize this email in 2-3 sentences. Focus on the main topic and any action items or important information.";
+        maxTokens = 200;
+        break;
+    }
+
+    const prompt = `${lengthInstruction}
+
+Focus on:
 1. What the email is about (main topic)
 2. Any action items, deadlines, or important information the recipient needs to know
+${detectedLength === "long" ? "3. All relevant details, dates, amounts, names, and context\n4. Any follow-up actions or next steps" : ""}
 
 Be conversational and direct. Write as if you're telling a friend what the email says.
 
@@ -55,7 +107,7 @@ Summary:`;
           content: prompt,
         },
       ],
-      max_tokens: 200,
+      max_tokens: maxTokens,
       temperature: 0.5,
     });
 

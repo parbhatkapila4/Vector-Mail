@@ -257,7 +257,7 @@ export default function EmailSearchAssistant({
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <h3 className="text-sm font-bold text-white">
-              Email Search Assistant
+              Email Assistant
             </h3>
           </div>
           <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-purple-600 to-amber-400">
@@ -308,7 +308,7 @@ export default function EmailSearchAssistant({
               <div className="mb-4 space-y-3">
                 <div className="text-center">
                   <p className="text-xs text-gray-300">
-                    Using semantic search to find relevant emails
+                    Your AI email assistant - search, summarize, analyze, and more
                   </p>
                 </div>
 
@@ -366,7 +366,7 @@ export default function EmailSearchAssistant({
                 onChange={handleInputChange}
                 value={input}
                 className="h-10 w-full rounded-full border border-purple-500/30 bg-white/5 px-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
-                placeholder="Search your emails..."
+                placeholder="Ask me anything about your emails..."
                 disabled={isLoading}
               />
             </div>

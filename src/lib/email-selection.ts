@@ -80,39 +80,64 @@ export function selectEmails(
 
   if (criteria.datePattern) {
     const dateStr = criteria.datePattern;
-    const dateMatch = dateStr.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
-    if (dateMatch && dateMatch[1] && dateMatch[2] && dateMatch[3]) {
-      const part1 = dateMatch[1];
-      const part2 = dateMatch[2];
-      const year = dateMatch[3];
-      const fullYear = year.length === 2 ? `20${year}` : year;
 
-      let targetDate = new Date(
-        `${fullYear}-${part1.padStart(2, "0")}-${part2.padStart(2, "0")}`,
-      );
+    const dateMatch = dateStr.match(
+      /(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?/,
+    );
+    if (dateMatch && dateMatch[1] && dateMatch[2]) {
+      const part1 = parseInt(dateMatch[1]);
+      const part2 = parseInt(dateMatch[2]);
+      const year = dateMatch[3] ? parseInt(dateMatch[3]) : null;
 
-      if (isNaN(targetDate.getTime()) || parseInt(part1) > 12) {
-        targetDate = new Date(
-          `${fullYear}-${part2.padStart(2, "0")}-${part1.padStart(2, "0")}`,
-        );
+      let day: number;
+      let month: number;
+
+      if (part1 > 12) {
+        day = part1;
+        month = part2 - 1;
+      } else if (part2 > 12) {
+        day = part2;
+        month = part1 - 1;
+      } else {
+        day = part1;
+        month = part2 - 1;
+      }
+
+      const currentYear = new Date().getFullYear();
+      const targetYear = year ? (year < 100 ? 2000 + year : year) : currentYear;
+
+      let targetDate = new Date(targetYear, month, day);
+
+      if (isNaN(targetDate.getTime()) || (part1 <= 12 && part2 <= 12)) {
+        targetDate = new Date(targetYear, part1 - 1, part2);
       }
 
       if (!isNaN(targetDate.getTime())) {
-        const targetYear = targetDate.getFullYear();
+        const targetYearFinal = targetDate.getFullYear();
         const targetMonth = targetDate.getMonth();
         const targetDay = targetDate.getDate();
 
         for (const email of emails) {
           const emailDate = new Date(email.date);
-          if (
-            emailDate.getFullYear() === targetYear &&
-            emailDate.getMonth() === targetMonth &&
-            emailDate.getDate() === targetDay
-          ) {
+          const emailYear = emailDate.getFullYear();
+          const emailMonth = emailDate.getMonth();
+          const emailDay = emailDate.getDate();
+
+          const yearMatches = year === null || emailYear === targetYearFinal;
+          const monthMatches = emailMonth === targetMonth;
+          const dayMatches = emailDay === targetDay;
+
+          if (yearMatches && monthMatches && dayMatches) {
             matches.push({
               email,
               matchScore: 1.0,
               matchReason: `Date matches ${dateStr}`,
+            });
+          } else if (!year && monthMatches && dayMatches) {
+            matches.push({
+              email,
+              matchScore: 0.9,
+              matchReason: `Date matches ${dateStr} (month and day)`,
             });
           }
         }

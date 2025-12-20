@@ -56,13 +56,95 @@ export async function POST(req: Request) {
     const { intent, extractedData } = intentResult;
 
     console.log(
-      `[Chat] Intent: ${intent}, Confidence: ${intentResult.confidence}`,
+      `[Chat] Intent: ${intent}, Confidence: ${intentResult.confidence}, Extracted:`,
+      extractedData,
     );
 
-    if ((intent === "SUMMARIZE" || intent === "SELECT") && hasStoredResults) {
+    const hasDateReference = /(\d{1,2}[-\/]\d{1,2})/.test(userQuery);
+    const hasConversationalRef =
+      /(the|this|that|one)\s+(on|from|dated?|about)/i.test(userQuery);
+    const isFollowUpQuery =
+      hasStoredResults &&
+      (intent === "SUMMARIZE" ||
+        intent === "SELECT" ||
+        hasDateReference ||
+        hasConversationalRef ||
+        userQuery.toLowerCase().includes("about") ||
+        userQuery.toLowerCase().includes("what was") ||
+        userQuery.toLowerCase().includes("what is"));
+
+    if (isFollowUpQuery && hasStoredResults) {
       const matches = selectEmails(storedEmails!, extractedData || {});
 
       if (matches.length === 0) {
+        if (env.OPENAI_API_KEY && storedEmails && storedEmails.length > 0) {
+          try {
+            const openai = new OpenAI({
+              apiKey: env.OPENAI_API_KEY,
+            });
+
+            const emailList = storedEmails
+              .slice(0, 10)
+              .map(
+                (email, index) =>
+                  `${index + 1}. "${email.subject}" from ${email.from.name || email.from.address} on ${new Date(email.date).toLocaleDateString()}`,
+              )
+              .join("\n");
+
+            const smartSystemPrompt = `The user asked: "${userQuery}"
+
+I have these emails from a previous search:
+${emailList}
+
+The user is asking about one of these emails. Based on their query, which email number do they want? Consider:
+- Date references (like "13-12", "13/12", "on 13th", "from 13-12")
+- Position references (like "first", "second", "third", "the one", "that one")
+- Subject keywords
+- Sender references
+
+Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query. If you can't determine, respond with "0".`;
+
+            const completion = await openai.chat.completions.create({
+              model: "gpt-3.5-turbo",
+              messages: [
+                { role: "system", content: smartSystemPrompt },
+                { role: "user", content: userQuery },
+              ],
+              max_tokens: 10,
+              temperature: 0.3,
+            });
+
+            const llmResponse = completion.choices[0]?.message?.content?.trim();
+            const emailNumber = parseInt(llmResponse || "0");
+
+            if (emailNumber > 0 && emailNumber <= storedEmails.length) {
+              const selectedEmail = storedEmails[emailNumber - 1];
+              if (selectedEmail) {
+                const summary = await generateConversationalSummary(
+                  {
+                    subject: selectedEmail.subject,
+                    from: selectedEmail.from,
+                    date: selectedEmail.date,
+                    body: selectedEmail.body,
+                  },
+                  "auto",
+                  userQuery,
+                );
+
+                const response = `**${selectedEmail.subject}**\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+                return new Response(response, {
+                  headers: {
+                    "Content-Type": "text/plain; charset=utf-8",
+                    "Cache-Control": "no-cache",
+                  },
+                });
+              }
+            }
+          } catch (llmError) {
+            console.error("LLM fallback error:", llmError);
+          }
+        }
+
         const response = `I couldn't find an email matching that description in the previous search results. Could you be more specific, or try a new search?`;
         return new Response(response, {
           headers: {
@@ -88,12 +170,16 @@ export async function POST(req: Request) {
         return new Response("No email selected", { status: 400 });
       }
       try {
-        const summary = await generateConversationalSummary({
-          subject: selectedEmail.subject,
-          from: selectedEmail.from,
-          date: selectedEmail.date,
-          body: selectedEmail.body,
-        });
+        const summary = await generateConversationalSummary(
+          {
+            subject: selectedEmail.subject,
+            from: selectedEmail.from,
+            date: selectedEmail.date,
+            body: selectedEmail.body,
+          },
+          "auto",
+          userQuery,
+        );
 
         const response = `**${selectedEmail.subject}**\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
         return new Response(response, {
@@ -218,9 +304,78 @@ export async function POST(req: Request) {
     }));
 
     if (filteredEmails.length === 0) {
+      if (
+        !userQuery.toLowerCase().includes("email") &&
+        !userQuery.toLowerCase().includes("mail") &&
+        !userQuery.toLowerCase().includes("search") &&
+        !userQuery.toLowerCase().includes("find") &&
+        !userQuery.toLowerCase().includes("show")
+      ) {
+        const generalSystemPrompt = `You are a helpful AI assistant. The user asked: "${userQuery}"
+
+${
+  hasStoredResults
+    ? `Note: I have ${storedEmails!.length} emails from a previous search, but the user's question doesn't seem to be about searching emails.`
+    : "Note: The user's question doesn't seem to be about searching emails."
+}
+
+Try to help the user with their question. If it's email-related but you don't have the data, explain that you need them to search for emails first. Be helpful and conversational.`;
+
+        if (env.OPENAI_API_KEY) {
+          try {
+            const openai = new OpenAI({
+              apiKey: env.OPENAI_API_KEY,
+            });
+
+            const stream = await openai.chat.completions.create({
+              model: "gpt-3.5-turbo",
+              messages: [
+                { role: "system", content: generalSystemPrompt },
+                ...messages,
+              ],
+              max_tokens: 1000,
+              temperature: 0.7,
+              stream: true,
+            });
+
+            const encoder = new TextEncoder();
+            const readable = new ReadableStream({
+              async start(controller) {
+                try {
+                  for await (const chunk of stream) {
+                    const content = chunk.choices[0]?.delta?.content;
+                    if (content) {
+                      controller.enqueue(encoder.encode(content));
+                    }
+                  }
+                } catch (error) {
+                  console.error("Streaming error:", error);
+                  controller.enqueue(
+                    encoder.encode(
+                      "\n\nI'm here to help! Could you rephrase your question or ask me to search your emails?",
+                    ),
+                  );
+                } finally {
+                  controller.close();
+                }
+              },
+            });
+
+            return new Response(readable, {
+              headers: {
+                "Content-Type": "text/plain; charset=utf-8",
+                "Cache-Control": "no-cache",
+              },
+            });
+          } catch (error) {
+            console.error("General question handling error:", error);
+          }
+        }
+      }
+
       const response = hasStoredResults
         ? `I didn't find any new emails matching that search. However, I have ${storedEmails!.length} emails from a previous search. Would you like me to help you with one of those?`
-        : "I couldn't find any emails matching that search. Try different keywords or check if your emails are synced.";
+        : "I couldn't find any emails matching that search. Try different keywords or check if your emails are synced. I can also help you with other email-related questions!";
 
       return new Response(response, {
         headers: {
@@ -230,7 +385,31 @@ export async function POST(req: Request) {
       });
     }
 
-    const systemPrompt = `You're helping search through emails. Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
+    const systemPrompt = `You are an intelligent email assistant (like ChatGPT) that helps users manage and understand their emails. You can do ANYTHING the user asks related to their emails.
+
+YOUR CAPABILITIES:
+1. **Search & Find**: Search emails by subject, sender, content, date, or keywords
+2. **Summarize**: Provide summaries of emails - SHORT (one sentence), MEDIUM (2-3 sentences), or LONG (detailed) based on user preference
+3. **Answer Questions**: Answer any questions about email content, senders, dates, amounts, action items, etc.
+4. **Analyze**: Analyze patterns, trends, or insights across multiple emails
+5. **Extract Information**: Extract specific information like dates, amounts, names, addresses, etc.
+6. **Compare**: Compare different emails or find similarities/differences
+7. **Organize**: Help organize, categorize, or prioritize emails
+8. **General Assistance**: Help with ANY email-related task the user requests
+
+IMPORTANT RULES:
+- If user asks for a "short" summary or says "in short", provide a ONE SENTENCE summary
+- If user asks for "detailed", "long", or "full" summary, provide comprehensive 4-6 sentence summary
+- If no preference is specified, use 2-3 sentences (medium length)
+- Be conversational, friendly, and helpful - like ChatGPT
+- Do whatever the user asks - you're an all-rounder assistant
+- If you don't have enough information, ask clarifying questions
+- Always be accurate and reference specific emails when relevant
+- Understand informal language and conversational references like "the one on 13-12", "that email", "the third one", etc.
+- When user references dates like "13-12", "13/12", "on 13th", understand they mean day-month format
+- If user asks about a specific email from the list, provide details about that email
+
+Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
 
 ${emailContext
   .map(
@@ -244,7 +423,7 @@ Preview: ${email.content.substring(0, 300)}...
   )
   .join("\n")}
 
-Answer based on these emails. Be conversational and helpful. Reference specific emails by number or subject when relevant. If the user asks follow-up questions like "what was that email about" or "tell me about the first one", acknowledge that you have these results and can help them.`;
+Answer the user's request based on these emails. Be conversational, helpful, and do exactly what they ask. Reference specific emails by number or subject when relevant. If the user asks about "the one on [date]" or similar, identify which email they mean and provide details about it.`;
 
     if (!env.OPENAI_API_KEY) {
       const resp =

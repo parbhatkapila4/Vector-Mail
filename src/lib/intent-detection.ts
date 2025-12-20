@@ -12,11 +12,14 @@ interface IntentResult {
 }
 
 const SUMMARIZE_PATTERNS = [
-  /what (was|is) (the|this|that) (email|mail|message) (about|saying)/i,
+  /what (was|is) (the|this|that|one) (email|mail|message) (about|saying)/i,
   /(summarize|summarise|summary|tell me about|what did|what does)/i,
-  /what (was|did) (the|this|that) (.*?) (email|mail|message) (say|about)/i,
-  /explain (the|this|that) (email|mail|message)/i,
-  /what's (in|the content of) (the|this|that) (email|mail|message)/i,
+  /what (was|did) (the|this|that|one) (.*?) (email|mail|message) (say|about)/i,
+  /explain (the|this|that|one) (email|mail|message)/i,
+  /what's (in|the content of) (the|this|that|one) (email|mail|message)/i,
+  /what (was|is) (the|this|that|one) (on|from|dated?|about)/i,
+  /(what|tell me|show me) (about|regarding) (the|this|that|one)/i,
+  /(the|this|that|one) (on|from|dated?)/i,
 ];
 
 const SELECT_PATTERNS = [
@@ -26,10 +29,11 @@ const SELECT_PATTERNS = [
 ];
 
 const DATE_PATTERNS = [
-  /(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/i, // MM-DD-YYYY or DD-MM-YYYY
-  /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/i,
-  /on\s+(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/i,
   /(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/i,
+  /(\d{1,2})[-\/](\d{1,2})/i,
+  /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/i,
+  /on\s+(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?/i,
+  /(?:on|from|dated?|the)\s+(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?/i,
 ];
 
 const POSITION_MAP: Record<string, number> = {
@@ -67,6 +71,14 @@ export function detectIntent(
     if (pattern.test(query)) {
       const extractedData: IntentResult["extractedData"] = {};
 
+      for (const datePattern of DATE_PATTERNS) {
+        const dateMatch = query.match(datePattern);
+        if (dateMatch) {
+          extractedData.datePattern = dateMatch[0];
+          break;
+        }
+      }
+
       let subjectMatch = query.match(
         /(?:about|from|regarding|titled?|subject:?)\s+["']?([^"']+?)(?:\s+(?:email|mail|message))?["']?/i,
       );
@@ -88,17 +100,9 @@ export function detectIntent(
         extractedData.senderKeyword = senderMatch[1].trim();
       }
 
-      for (const datePattern of DATE_PATTERNS) {
-        const dateMatch = query.match(datePattern);
-        if (dateMatch) {
-          extractedData.datePattern = dateMatch[0];
-          break;
-        }
-      }
-
       return {
         intent: "SUMMARIZE",
-        confidence: 0.9,
+        confidence: 0.95,
         extractedData,
       };
     }
@@ -136,21 +140,65 @@ export function detectIntent(
   }
 
   const dateMatch =
-    query.match(/(?:on|from|dated?)\s+(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i) ||
-    query.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/);
+    query.match(
+      /(?:on|from|dated?|the)\s+(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/i,
+    ) || query.match(/(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/);
   if (dateMatch && dateMatch[1] && hasStoredResults) {
     return {
       intent: "SUMMARIZE",
-      confidence: 0.75,
+      confidence: 0.9,
       extractedData: {
         datePattern: dateMatch[1],
       },
     };
   }
 
+  if (
+    hasStoredResults &&
+    /(the|this|that|one)\s+(on|from|dated?|about|regarding)/i.test(query)
+  ) {
+    const extractedData: IntentResult["extractedData"] = {};
+
+    const convDateMatch = query.match(
+      /(?:on|from|dated?)\s+(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/i,
+    );
+    if (convDateMatch && convDateMatch[1]) {
+      extractedData.datePattern = convDateMatch[1];
+    }
+
+    return {
+      intent: "SUMMARIZE",
+      confidence: 0.85,
+      extractedData,
+    };
+  }
+
+  if (hasStoredResults) {
+    const isNewSearch =
+      normalizedQuery.length > 15 ||
+      /^(find|search|show me|get me|list|look for|any|all)/i.test(
+        normalizedQuery,
+      );
+
+    if (!isNewSearch) {
+      const extractedData: IntentResult["extractedData"] = {};
+
+      const dateMatch = query.match(/(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/);
+      if (dateMatch && dateMatch[1]) {
+        extractedData.datePattern = dateMatch[1];
+      }
+
+      return {
+        intent: "SUMMARIZE",
+        confidence: 0.7,
+        extractedData,
+      };
+    }
+  }
+
   const isNewSearch =
     normalizedQuery.length > 10 ||
-    /^(find|search|show|get|list|look)/i.test(normalizedQuery);
+    /^(find|search|show|get|list|look|any|all)/i.test(normalizedQuery);
 
   if (isNewSearch) {
     return {
