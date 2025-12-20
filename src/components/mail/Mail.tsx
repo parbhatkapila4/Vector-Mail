@@ -19,7 +19,6 @@ import { ThreadList } from "./threads-ui/ThreadList";
 import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
 import SearchBar from "./search/SearchBar";
-import ComposeButton from "./ComposeButton";
 import ComposeEmailGmail from "./ComposeEmailGmail";
 import { UserButton } from "@clerk/nextjs";
 
@@ -115,7 +114,6 @@ export function Mail({
         </Sheet>
         <h1 className="text-xl font-bold">Inbox</h1>
         <div className="flex items-center gap-2">
-          <ComposeButton />
           <ComposeEmailGmail />
           <UserButton />
         </div>
@@ -129,7 +127,6 @@ export function Mail({
       <div className="flex items-center justify-between px-4 py-2">
         <h1 className="text-xl font-bold">Inbox</h1>
         <div className="flex items-center gap-2">
-          <ComposeButton />
           <ComposeEmailGmail />
           <UserButton />
         </div>

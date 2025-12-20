@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import React from "react";
 import { UserButton } from "@clerk/nextjs";
-import ComposeButton from "@/components/mail/ComposeButton";
+import ComposeEmailGmail from "@/components/mail/ComposeEmailGmail";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ function MailPage() {
       {isMobile && (
         <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm">
           <UserButton />
-          <ComposeButton />
+          <ComposeEmailGmail />
         </div>
       )}
 
