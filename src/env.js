@@ -9,6 +9,12 @@ export const env = createEnv({
       .default("development"),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
+
+    ENABLE_EMAIL_SEND: z
+      .string()
+      .transform((val) => val === "true")
+      .default("false")
+      .optional(),
   },
 
   client: {},
@@ -18,6 +24,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ENABLE_EMAIL_SEND: process.env.ENABLE_EMAIL_SEND,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

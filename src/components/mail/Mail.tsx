@@ -20,6 +20,7 @@ import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
 import SearchBar from "./search/SearchBar";
 import ComposeButton from "./ComposeButton";
+import ComposeEmailGmail from "./ComposeEmailGmail";
 import { UserButton } from "@clerk/nextjs";
 
 interface MailLayoutProps {
@@ -115,6 +116,7 @@ export function Mail({
         <h1 className="text-xl font-bold">Inbox</h1>
         <div className="flex items-center gap-2">
           <ComposeButton />
+          <ComposeEmailGmail />
           <UserButton />
         </div>
       </div>
@@ -128,6 +130,7 @@ export function Mail({
         <h1 className="text-xl font-bold">Inbox</h1>
         <div className="flex items-center gap-2">
           <ComposeButton />
+          <ComposeEmailGmail />
           <UserButton />
         </div>
       </div>
