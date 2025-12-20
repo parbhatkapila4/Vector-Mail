@@ -1,6 +1,5 @@
 "use client";
 import Avatar from "react-avatar";
-import { Letter } from "react-letter";
 import type { RouterOutputs } from "@/trpc/react";
 import React from "react";
 import useThreads from "@/hooks/use-threads";
@@ -77,6 +76,75 @@ const EmailDisplay = ({ email }: Props) => {
       if (gmailQuote) {
         gmailQuote.innerHTML = "";
       }
+
+      const emailContainer = letterRef.current.querySelector(
+        ".email-body-wrapper",
+      );
+      if (emailContainer) {
+        const textElements = emailContainer.querySelectorAll(
+          "p, div, span, li, td, th, h1, h2, h3, h4, h5, h6",
+        );
+        textElements.forEach((element) => {
+          if (!(element instanceof HTMLElement)) return;
+          const currentStyle = element.getAttribute("style") || "";
+          if (
+            !currentStyle.includes("color") ||
+            currentStyle.match(
+              /color:\s*(#[fF]{3,6}|rgb\([^)]*255[^)]*\)|rgba\([^)]*255[^)]*\))/,
+            )
+          ) {
+            const computedColor = window.getComputedStyle(element).color;
+            const rgb = computedColor.match(/\d+/g);
+            if (rgb && rgb.length >= 3) {
+              const r = rgb[0];
+              const g = rgb[1];
+              const b = rgb[2];
+              if (r && g && b) {
+                const brightness =
+                  (parseInt(r, 10) + parseInt(g, 10) + parseInt(b, 10)) / 3;
+                if (brightness > 200 || !currentStyle.includes("color")) {
+                  element.style.color = "#000000";
+                }
+              } else if (!currentStyle.includes("color")) {
+                element.style.color = "#000000";
+              }
+            } else if (!currentStyle.includes("color")) {
+              element.style.color = "#000000";
+            }
+          }
+        });
+
+        const links = emailContainer.querySelectorAll("a");
+        links.forEach((link) => {
+          if (!link.getAttribute("target")) {
+            link.setAttribute("target", "_blank");
+          }
+          if (!link.getAttribute("rel")) {
+            link.setAttribute("rel", "noopener noreferrer");
+          }
+          const currentStyle = link.getAttribute("style") || "";
+          if (!currentStyle.includes("color")) {
+            link.style.color = "#1a73e8";
+            if (!currentStyle.includes("text-decoration")) {
+              link.style.textDecoration = "underline";
+            }
+          }
+        });
+
+        const images = emailContainer.querySelectorAll("img");
+        images.forEach((img) => {
+          const hasExplicitWidth =
+            img.hasAttribute("width") ||
+            (img.getAttribute("style") || "").includes("width");
+          if (!hasExplicitWidth) {
+            const currentStyle = img.getAttribute("style") || "";
+            if (!currentStyle.includes("max-width")) {
+              img.style.maxWidth = "100%";
+              img.style.height = "auto";
+            }
+          }
+        });
+      }
     }
   }, [emailBody]);
 
@@ -92,7 +160,6 @@ const EmailDisplay = ({ email }: Props) => {
           "border-l-4 border-l-gray-900": isMe,
         },
       )}
-      ref={letterRef}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -123,10 +190,76 @@ const EmailDisplay = ({ email }: Props) => {
           </div>
         </div>
       ) : (
-        <Letter
-          className="min-h-[500px] overflow-y-auto rounded-md bg-white text-black"
-          html={sanitizeEmailHtml(displayBody)}
-        />
+        <div
+          className="min-h-[500px] overflow-y-auto rounded-md bg-white"
+          ref={letterRef}
+        >
+          <div
+            className="email-body-wrapper"
+            style={{
+              padding: "16px",
+              wordWrap: "break-word",
+              overflowWrap: "break-word",
+              color: "#000000",
+            }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeEmailHtml(displayBody),
+            }}
+          />
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+                /* Isolated email container - preserve original Gmail-like rendering */
+                .email-body-wrapper {
+                  /* Reset any inherited styles that might interfere */
+                  box-sizing: border-box;
+                  /* Default dark black text color for all text */
+                  color: #000000;
+                }
+                /* Ensure all text elements inherit dark color by default */
+                .email-body-wrapper,
+                .email-body-wrapper p,
+                .email-body-wrapper div,
+                .email-body-wrapper span,
+                .email-body-wrapper li,
+                .email-body-wrapper td,
+                .email-body-wrapper th,
+                .email-body-wrapper h1,
+                .email-body-wrapper h2,
+                .email-body-wrapper h3,
+                .email-body-wrapper h4,
+                .email-body-wrapper h5,
+                .email-body-wrapper h6 {
+                  color: #000000;
+                }
+                /* Only apply responsive image styles if email doesn't specify */
+                .email-body-wrapper img:not([width]):not([style*="width"]):not([style*="max-width"]) {
+                  max-width: 100% !important;
+                  height: auto !important;
+                }
+                /* Ensure links are clickable and visible */
+                .email-body-wrapper a {
+                  cursor: pointer;
+                }
+                /* Links without explicit color should be blue */
+                .email-body-wrapper a:not([style*="color"]) {
+                  color: #1a73e8;
+                  text-decoration: underline;
+                }
+                /* Preserve email's original table formatting */
+                .email-body-wrapper table {
+                  border-collapse: separate;
+                  border-spacing: 0;
+                  width: 100%;
+                }
+                /* Preserve email's paragraph spacing */
+                .email-body-wrapper p {
+                  /* Let email's styles control margin/padding */
+                }
+              `,
+            }}
+          />
+        </div>
       )}
     </div>
   );

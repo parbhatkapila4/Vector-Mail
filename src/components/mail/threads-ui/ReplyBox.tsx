@@ -5,6 +5,8 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import { toast } from "sonner";
 import EmailEditor from "../editor/EmailEditor";
 import { useLocalStorage } from "usehooks-ts";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
@@ -36,6 +38,7 @@ const ReplyBox = () => {
   const [subject, setSubject] = React.useState("");
   const [toValues, setToValues] = React.useState<OptionType[]>([]);
   const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
 
   const sendEmail = api.account.sendEmail.useMutation();
 
@@ -120,21 +123,54 @@ const ReplyBox = () => {
   };
 
   return (
-    <EmailEditor
-      toValues={toValues || []}
-      ccValues={ccValues}
-      onToChange={(values) => {
-        setToValues(values);
-      }}
-      onCcChange={(values) => {
-        setCcValues(values || []);
-      }}
-      subject={subject}
-      setSubject={setSubject}
-      to={toValues.map((to) => to.value).filter(Boolean)}
-      handleSend={handleSend}
-      isSending={sendEmail.isPending}
-    />
+    <div className="sticky bottom-0 z-50 flex flex-col border-t bg-background shadow-lg">
+      {/* Collapse/Expand Header - Always Visible */}
+      <div className="flex items-center justify-between border-b bg-background px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            Reply
+          </span>
+          {toValues.length > 0 && (
+            <span className="text-sm text-muted-foreground">
+              to {toValues[0]?.value || "..."}
+            </span>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="h-8 w-8 p-0"
+          aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
+        >
+          {isCollapsed ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {!isCollapsed && (
+        <div className="max-h-[60vh] overflow-hidden">
+          <EmailEditor
+            toValues={toValues || []}
+            ccValues={ccValues}
+            onToChange={(values) => {
+              setToValues(values);
+            }}
+            onCcChange={(values) => {
+              setCcValues(values || []);
+            }}
+            subject={subject}
+            setSubject={setSubject}
+            to={toValues.map((to) => to.value).filter(Boolean)}
+            handleSend={handleSend}
+            isSending={sendEmail.isPending}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 

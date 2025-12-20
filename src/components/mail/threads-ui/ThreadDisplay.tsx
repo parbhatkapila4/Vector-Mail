@@ -26,7 +26,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
     {
       threadId: threadId ?? "",
     },
-    { 
+    {
       enabled: !!!_thread && !!threadId && threadId.length > 0,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -74,18 +74,14 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
                 )}
               </div>
               <Separator />
-              <div className="flex max-h-[calc(100vh-100px)] flex-col overflow-scroll">
+              <div className="flex max-h-[calc(100vh-100px)] flex-col overflow-scroll pb-4">
                 <div className="flex flex-col gap-4 p-6">
                   {thread.emails.map((email: Email) => {
                     return <EmailDisplay key={email.id} email={email} />;
                   })}
                 </div>
               </div>
-              <div className="flex-1"></div>
-              <Separator className="mt-auto" />
-              <div className="h-[300px]">
-                <ReplyBox />
-              </div>
+              <ReplyBox />
             </div>
           ) : (
             <>

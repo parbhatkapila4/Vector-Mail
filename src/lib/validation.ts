@@ -69,7 +69,21 @@ export function sanitizeHtml(html: string): string {
 }
 
 export function sanitizeEmailHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
+  if (!html || typeof html !== "string") {
+    return "";
+  }
+
+  let processedHtml = html;
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (bodyMatch && bodyMatch[1]) {
+    processedHtml = bodyMatch[1];
+    const styleMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    if (styleMatch && styleMatch.length > 0) {
+      processedHtml = styleMatch.join("") + processedHtml;
+    }
+  }
+
+  return DOMPurify.sanitize(processedHtml, {
     ALLOWED_TAGS: [
       "p",
       "br",
@@ -77,6 +91,7 @@ export function sanitizeEmailHtml(html: string): string {
       "em",
       "u",
       "s",
+      "strike",
       "a",
       "ul",
       "ol",
@@ -93,11 +108,27 @@ export function sanitizeEmailHtml(html: string): string {
       "table",
       "tbody",
       "thead",
+      "tfoot",
       "tr",
       "td",
       "th",
       "img",
       "hr",
+      "pre",
+      "code",
+      "font",
+      "b",
+      "i",
+      "sub",
+      "sup",
+      "center",
+      "section",
+      "article",
+      "header",
+      "footer",
+      "main",
+      "style",
+      "link",
     ],
     ALLOWED_ATTR: [
       "href",
@@ -109,6 +140,7 @@ export function sanitizeEmailHtml(html: string): string {
       "height",
       "style",
       "class",
+      "className",
       "id",
       "align",
       "valign",
@@ -117,9 +149,35 @@ export function sanitizeEmailHtml(html: string): string {
       "border",
       "cellpadding",
       "cellspacing",
+      "bgcolor",
+      "background",
+      "color",
+      "face",
+      "size",
+      "dir",
+      "lang",
+      "title",
+      "data-*",
+      "aria-*",
+      "role",
+      "type",
+      "media",
+      "margin",
+      "margin-top",
+      "margin-bottom",
+      "margin-left",
+      "margin-right",
+      "padding",
+      "padding-top",
+      "padding-bottom",
+      "padding-left",
+      "padding-right",
     ],
     ALLOW_DATA_ATTR: true,
     ALLOW_UNKNOWN_PROTOCOLS: false,
+    KEEP_CONTENT: true,
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
 }
 
