@@ -6,7 +6,25 @@ import { storeSearchResults, getStoredEmails } from "@/lib/chat-session";
 import { detectIntent } from "@/lib/intent-detection";
 import { selectEmails, formatEmailOptions } from "@/lib/email-selection";
 import { generateConversationalSummary } from "@/lib/conversational-summary";
+import { searchEmailsByVector } from "@/lib/vector-search";
 import type { EmailAddress, Prisma } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+function removeAllSymbols(text: string): string {
+  text = text.replace(/\*+/g, "");
+
+  text = text.replace(/^\s*-\s+/gm, "");
+
+  text = text.replace(/•/g, "");
+
+  text = text.replace(/^\s*[▪▫◦‣⁃]\s+/gm, "");
+
+  text = text.replace(/\n\s*\n\s*\n/g, "\n\n");
+
+  return text;
+}
 
 interface ChatRequest {
   messages: Array<{
@@ -18,6 +36,75 @@ interface ChatRequest {
 
 const recentDays = 365;
 const similarityThreshold = 0.1;
+const vectorSimilarityThreshold = 0.3;
+
+function isFindOrSummarizeQuery(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+
+  if (lowerQuery.length < 3) {
+    return true;
+  }
+
+  const simpleConversational = [
+    /^(hi|hello|hey|hey\s+dude|hey\s+there|greetings|sup|what's\s+up|wassup)$/i,
+    /^(thanks|thank\s+you|thx|ty|appreciate\s+it|cheers)$/i,
+    /^(cool|nice|awesome|great|ok|okay|sure|alright|sounds\s+good)$/i,
+    /^(yes|yeah|yep|yup|no|nope|maybe|sure)$/i,
+    /^(bye|goodbye|see\s+ya|later|cya)$/i,
+    /^(help|what\s+can\s+you\s+do|what\s+do\s+you\s+do|capabilities)$/i,
+  ];
+
+  const isSimpleConversation = simpleConversational.some((pattern) =>
+    pattern.test(lowerQuery),
+  );
+  if (isSimpleConversation) {
+    return true;
+  }
+
+  const findPatterns = [
+    /\b(find|search|show|get|look|fetch|retrieve|display|list)\b/i,
+    /\b(mail|email|message|inbox)\s+(from|about|with|regarding|concerning)\b/i,
+    /\b(any|all|some|my)\s+(mail|email|message|emails)\b/i,
+    /\b(emails?|mail|messages?)\s+(from|about|with|regarding|concerning)\b/i,
+    /\b(orders?|flights?|meetings?|payments?|receipts?|bookings?|invoices?|confirmations?)\b/i,
+    /\b(what|which|where|when|who|how|do|does|did|is|are|was|were)\s+(mail|email|message|emails)\b/i,
+    /\b(do\s+i\s+have|have\s+i|got\s+any)\s+(mail|email|message|emails?)\b/i,
+  ];
+
+  const summarizePatterns = [
+    /\b(summarize|summary|summarise|summaries)\b/i,
+    /\b(what\s+(is|was|does|did|are|were)|tell\s+me\s+about|explain|describe|what\s+about|what's)\b/i,
+    /\b(about\s+(this|that|the|it|them))\b/i,
+    /\b(the|this|that|one|first|second|third|fourth|fifth)\s+(on|from|dated?|about|email|mail)\b/i,
+  ];
+
+  const isFindQuery = findPatterns.some((pattern) => pattern.test(lowerQuery));
+
+  const isSummarizeQuery = summarizePatterns.some((pattern) =>
+    pattern.test(lowerQuery),
+  );
+
+  const hasEmailWords =
+    /\b(mail|email|message|inbox|emails?|messages?)\b/i.test(lowerQuery);
+  const hasActionWords = /\b(from|about|with|regarding|concerning|for)\b/i.test(
+    lowerQuery,
+  );
+
+  if (hasEmailWords && hasActionWords) {
+    return true;
+  }
+
+  if (
+    /^(what|which|where|when|who|how|do|does|did|is|are|was|were)\b/i.test(
+      lowerQuery,
+    ) &&
+    hasEmailWords
+  ) {
+    return true;
+  }
+
+  return isFindQuery || isSummarizeQuery;
+}
 
 export async function POST(req: Request) {
   try {
@@ -37,6 +124,18 @@ export async function POST(req: Request) {
     }
 
     const userQuery = lastMessage.content;
+
+    if (!isFindOrSummarizeQuery(userQuery)) {
+      const redirectMessage =
+        "I can only help you find and summarize emails. For other tasks like generating emails, answering general questions, or coding help, please use AI Buddy - he'll surely help you with this. I can't do that here.";
+
+      return new Response(redirectMessage, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+        },
+      });
+    }
 
     const account = await db.account.findFirst({
       where: {
@@ -77,10 +176,15 @@ export async function POST(req: Request) {
       const matches = selectEmails(storedEmails!, extractedData || {});
 
       if (matches.length === 0) {
-        if (env.OPENAI_API_KEY && storedEmails && storedEmails.length > 0) {
+        if (env.OPENROUTER_API_KEY && storedEmails && storedEmails.length > 0) {
           try {
             const openai = new OpenAI({
-              apiKey: env.OPENAI_API_KEY,
+              baseURL: "https://openrouter.ai/api/v1",
+              apiKey: env.OPENROUTER_API_KEY,
+              defaultHeaders: {
+                "HTTP-Referer": "https://vectormail-ai.vercel.app",
+                "X-Title": "VectorMail AI",
+              },
             });
 
             const emailList = storedEmails
@@ -105,7 +209,7 @@ The user is asking about one of these emails. Based on their query, which email 
 Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query. If you can't determine, respond with "0".`;
 
             const completion = await openai.chat.completions.create({
-              model: "gpt-3.5-turbo",
+              model: "google/gemini-2.0-flash-exp:free",
               messages: [
                 { role: "system", content: smartSystemPrompt },
                 { role: "user", content: userQuery },
@@ -131,7 +235,8 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
                   userQuery,
                 );
 
-                const response = `**${selectedEmail.subject}**\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+                const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+                const response = removeAllSymbols(rawResponse);
                 return new Response(response, {
                   headers: {
                     "Content-Type": "text/plain; charset=utf-8",
@@ -181,7 +286,8 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           userQuery,
         );
 
-        const response = `**${selectedEmail.subject}**\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+        const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+        const response = removeAllSymbols(rawResponse);
         return new Response(response, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -220,63 +326,139 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
     const senderTerm = senderMatch?.[1]?.toLowerCase() || "";
 
     try {
-      const whereConditions: Prisma.EmailWhereInput = {
-        thread: {
-          accountId: accountId,
-        },
-      };
+      let vectorSearchResults: Array<{
+        id: string;
+        subject: string;
+        summary: string | null;
+        body: string | null;
+        bodySnippet: string | null;
+        sentAt: Date;
+        similarity: number;
+        from: EmailAddress;
+        to: EmailAddress[];
+      }> = [];
 
-      const orConditions: Prisma.EmailWhereInput[] = [];
+      try {
+        const vectorResults = await searchEmailsByVector(
+          userQuery,
+          accountId,
+          20,
+        );
 
-      if (senderTerm) {
-        orConditions.push({
-          from: {
-            OR: [
-              { address: { contains: senderTerm, mode: "insensitive" } },
-              { name: { contains: senderTerm, mode: "insensitive" } },
-            ],
-          },
-        });
-      }
+        vectorSearchResults = vectorResults.map((result) => ({
+          id: result.email.id,
+          subject: result.email.subject,
+          summary: result.email.summary,
+          body: result.email.body,
+          bodySnippet: result.email.bodySnippet,
+          sentAt: result.email.sentAt,
+          similarity: result.similarity,
+          from: result.email.from,
+          to: result.email.to,
+        }));
 
-      const cleanQuery = userQuery
-        .toLowerCase()
-        .replace(/from|by|sent/gi, "")
-        .trim();
-      if (cleanQuery.length > 2) {
-        orConditions.push(
-          { subject: { contains: cleanQuery, mode: "insensitive" } },
-          { bodySnippet: { contains: cleanQuery, mode: "insensitive" } },
+        if (senderTerm && vectorSearchResults.length > 0) {
+          vectorSearchResults = vectorSearchResults.filter((email) => {
+            const fromAddress = email.from.address?.toLowerCase() || "";
+            const fromName = email.from.name?.toLowerCase() || "";
+            return (
+              fromAddress.includes(senderTerm) || fromName.includes(senderTerm)
+            );
+          });
+        }
+
+        vectorSearchResults = vectorSearchResults.filter(
+          (email) => email.similarity >= vectorSimilarityThreshold,
+        );
+
+        if (vectorSearchResults.length > 0) {
+          relevantEmails = vectorSearchResults;
+        }
+      } catch (vectorError) {
+        console.log(
+          "Vector search not available or failed, falling back to text search:",
+          vectorError,
         );
       }
 
-      if (orConditions.length > 0) {
-        whereConditions.OR = orConditions;
+      if (relevantEmails.length === 0) {
+        const whereConditions: Prisma.EmailWhereInput = {
+          thread: {
+            accountId: accountId,
+          },
+        };
+
+        const orConditions: Prisma.EmailWhereInput[] = [];
+
+        if (senderTerm) {
+          orConditions.push({
+            from: {
+              OR: [
+                { address: { contains: senderTerm, mode: "insensitive" } },
+                { name: { contains: senderTerm, mode: "insensitive" } },
+              ],
+            },
+          });
+        }
+
+        const cleanQuery = userQuery
+          .toLowerCase()
+          .replace(
+            /from|by|sent|is there|any kind of|mail that|has|something like|and|something|that|this type of|things in/gi,
+            "",
+          )
+          .trim();
+
+        const searchTerms = cleanQuery
+          .split(/\s+/)
+          .filter((term) => term.length > 2);
+
+        if (searchTerms.length > 0) {
+          orConditions.push(
+            { subject: { contains: searchTerms[0], mode: "insensitive" } },
+            { bodySnippet: { contains: searchTerms[0], mode: "insensitive" } },
+            { summary: { contains: searchTerms[0], mode: "insensitive" } },
+          );
+
+          if (searchTerms.length > 1) {
+            searchTerms.slice(1).forEach((term) => {
+              orConditions.push(
+                { subject: { contains: term, mode: "insensitive" } },
+                { bodySnippet: { contains: term, mode: "insensitive" } },
+                { summary: { contains: term, mode: "insensitive" } },
+              );
+            });
+          }
+        }
+
+        if (orConditions.length > 0) {
+          whereConditions.OR = orConditions;
+        }
+
+        const searchResults = await db.email.findMany({
+          where: whereConditions,
+          include: {
+            from: true,
+            to: true,
+          },
+          orderBy: {
+            sentAt: "desc",
+          },
+          take: 20,
+        });
+
+        relevantEmails = searchResults.map((email) => ({
+          id: email.id,
+          subject: email.subject,
+          summary: email.summary,
+          body: email.body,
+          bodySnippet: email.bodySnippet,
+          sentAt: email.sentAt,
+          similarity: 0.5,
+          from: email.from,
+          to: email.to,
+        }));
       }
-
-      const searchResults = await db.email.findMany({
-        where: whereConditions,
-        include: {
-          from: true,
-          to: true,
-        },
-        orderBy: {
-          sentAt: "desc",
-        },
-        take: 20,
-      });
-
-      relevantEmails = searchResults.map((email) => ({
-        id: email.id,
-        subject: email.subject,
-        summary: email.summary,
-        body: email.body,
-        bodySnippet: email.bodySnippet,
-        sentAt: email.sentAt,
-        similarity: 0.5,
-        from: email.from,
-        to: email.to,
-      }));
 
       storeSearchResults(userId, accountId, relevantEmails, userQuery);
     } catch (searchError) {
@@ -284,9 +466,85 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
       throw searchError;
     }
 
-    const filteredEmails = relevantEmails.filter(
+    let filteredEmails = relevantEmails.filter(
       (email) => email.similarity >= similarityThreshold,
     );
+
+    if (filteredEmails.length > 0 && env.OPENROUTER_API_KEY) {
+      try {
+        const openai = new OpenAI({
+          baseURL: "https://openrouter.ai/api/v1",
+          apiKey: env.OPENROUTER_API_KEY,
+          defaultHeaders: {
+            "HTTP-Referer": "https://vectormail-ai.vercel.app",
+            "X-Title": "VectorMail AI",
+          },
+        });
+
+        const emailList = filteredEmails
+          .slice(0, 20)
+          .map(
+            (email, index) =>
+              `${index + 1}. Subject: "${email.subject}" | From: ${email.from.name || email.from.address} | Summary: ${email.summary || email.bodySnippet?.substring(0, 150) || "No summary"} | Body snippet: ${email.bodySnippet?.substring(0, 200) || email.body?.substring(0, 200) || "No content"}`,
+          )
+          .join("\n");
+
+        const filterPrompt = `The user asked: "${userQuery}"
+
+Here are emails that were found by the search system:
+${emailList}
+
+Your task: Return ONLY the numbers (comma-separated) of emails that are ACTUALLY and DIRECTLY relevant to the user's query. 
+
+CRITICAL RULES:
+- If the user asked about "flight bookings", ONLY include emails about flights, bookings, travel, airlines, airports, tickets, reservations, etc.
+- If the user asked about "orders", ONLY include emails about purchases, orders, deliveries, shipments, etc.
+- If the user asked about "meetings", ONLY include emails about meetings, appointments, calendar invites, etc.
+- Be VERY strict - exclude ANY email that is not directly related to what the user asked for
+- If an email is about something completely different (e.g., job applications when user asked about flights), DO NOT include it
+
+Return format: Just numbers separated by commas, like: 1,3,5,7
+If NONE are relevant, return: 0`;
+
+        const filterResponse = await openai.chat.completions.create({
+          model: "google/gemini-2.0-flash-exp:free",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a strict email filter. Your job is to ONLY return emails that are directly relevant to the user's query. Be very strict - if an email is not clearly related, exclude it.",
+            },
+            { role: "user", content: filterPrompt },
+          ],
+          max_tokens: 50,
+          temperature: 0.1,
+        });
+
+        const relevantIndices =
+          filterResponse.choices[0]?.message?.content?.trim();
+        if (relevantIndices && relevantIndices !== "0") {
+          const indices = relevantIndices
+            .split(",")
+            .map((i) => parseInt(i.trim()) - 1)
+            .filter((i) => !isNaN(i) && i >= 0 && i < filteredEmails.length);
+
+          if (indices.length > 0) {
+            filteredEmails = indices
+              .map((i) => filteredEmails[i])
+              .filter(
+                (email): email is (typeof filteredEmails)[0] =>
+                  email !== undefined,
+              );
+          } else {
+            filteredEmails = [];
+          }
+        } else if (relevantIndices === "0") {
+          filteredEmails = [];
+        }
+      } catch (filterError) {
+        console.log("AI filtering failed, using all results:", filterError);
+      }
+    }
 
     const emailContext = filteredEmails.map((email) => ({
       subject: email.subject,
@@ -311,71 +569,18 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
         !userQuery.toLowerCase().includes("find") &&
         !userQuery.toLowerCase().includes("show")
       ) {
-        const generalSystemPrompt = `You are a helpful AI assistant. The user asked: "${userQuery}"
+        const redirectMessage =
+          "I can only help you find and summarize emails. For other tasks like generating emails, answering general questions, or coding help, please use AI Buddy - he'll surely help you with this. I can't do that here.";
 
-${
-  hasStoredResults
-    ? `Note: I have ${storedEmails!.length} emails from a previous search, but the user's question doesn't seem to be about searching emails.`
-    : "Note: The user's question doesn't seem to be about searching emails."
-}
-
-Try to help the user with their question. If it's email-related but you don't have the data, explain that you need them to search for emails first. Be helpful and conversational.`;
-
-        if (env.OPENAI_API_KEY) {
-          try {
-            const openai = new OpenAI({
-              apiKey: env.OPENAI_API_KEY,
-            });
-
-            const stream = await openai.chat.completions.create({
-              model: "gpt-3.5-turbo",
-              messages: [
-                { role: "system", content: generalSystemPrompt },
-                ...messages,
-              ],
-              max_tokens: 1000,
-              temperature: 0.7,
-              stream: true,
-            });
-
-            const encoder = new TextEncoder();
-            const readable = new ReadableStream({
-              async start(controller) {
-                try {
-                  for await (const chunk of stream) {
-                    const content = chunk.choices[0]?.delta?.content;
-                    if (content) {
-                      controller.enqueue(encoder.encode(content));
-                    }
-                  }
-                } catch (error) {
-                  console.error("Streaming error:", error);
-                  controller.enqueue(
-                    encoder.encode(
-                      "\n\nI'm here to help! Could you rephrase your question or ask me to search your emails?",
-                    ),
-                  );
-                } finally {
-                  controller.close();
-                }
-              },
-            });
-
-            return new Response(readable, {
-              headers: {
-                "Content-Type": "text/plain; charset=utf-8",
-                "Cache-Control": "no-cache",
-              },
-            });
-          } catch (error) {
-            console.error("General question handling error:", error);
-          }
-        }
+        return new Response(redirectMessage, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
       }
 
-      const response = hasStoredResults
-        ? `I didn't find any new emails matching that search. However, I have ${storedEmails!.length} emails from a previous search. Would you like me to help you with one of those?`
-        : "I couldn't find any emails matching that search. Try different keywords or check if your emails are synced. I can also help you with other email-related questions!";
+      const response = "No mails found regarding your query. I'm Sorry!";
 
       return new Response(response, {
         headers: {
@@ -385,29 +590,43 @@ Try to help the user with their question. If it's email-related but you don't ha
       });
     }
 
-    const systemPrompt = `You are an intelligent email assistant (like ChatGPT) that helps users manage and understand their emails. You can do ANYTHING the user asks related to their emails.
+    const systemPrompt = `You are an email assistant that ONLY helps users find and summarize emails. Your capabilities are LIMITED to:
 
-YOUR CAPABILITIES:
-1. **Search & Find**: Search emails by subject, sender, content, date, or keywords
-2. **Summarize**: Provide summaries of emails - SHORT (one sentence), MEDIUM (2-3 sentences), or LONG (detailed) based on user preference
-3. **Answer Questions**: Answer any questions about email content, senders, dates, amounts, action items, etc.
-4. **Analyze**: Analyze patterns, trends, or insights across multiple emails
-5. **Extract Information**: Extract specific information like dates, amounts, names, addresses, etc.
-6. **Compare**: Compare different emails or find similarities/differences
-7. **Organize**: Help organize, categorize, or prioritize emails
-8. **General Assistance**: Help with ANY email-related task the user requests
+1. Finding Emails: Search and find emails by subject, sender, content, date, or keywords
+2. Summarizing Emails: Provide summaries of emails - SHORT (one sentence), MEDIUM (2-3 sentences), or LONG (detailed) based on user preference
 
 IMPORTANT RULES:
+- You can ONLY find and summarize emails - nothing else
 - If user asks for a "short" summary or says "in short", provide a ONE SENTENCE summary
 - If user asks for "detailed", "long", or "full" summary, provide comprehensive 4-6 sentence summary
 - If no preference is specified, use 2-3 sentences (medium length)
-- Be conversational, friendly, and helpful - like ChatGPT
-- Do whatever the user asks - you're an all-rounder assistant
+- Be conversational, friendly, and helpful
 - If you don't have enough information, ask clarifying questions
 - Always be accurate and reference specific emails when relevant
 - Understand informal language and conversational references like "the one on 13-12", "that email", "the third one", etc.
 - When user references dates like "13-12", "13/12", "on 13th", understand they mean day-month format
 - If user asks about a specific email from the list, provide details about that email
+- If the user asks for something that is NOT about finding or summarizing emails, politely redirect them to use AI Buddy for that task
+
+FORMATTING RULES - ABSOLUTELY CRITICAL - NO SYMBOLS ALLOWED:
+- FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (•), NO special characters
+- For lists, use ONLY numbers (1., 2., 3.) or letters (a., b., c.) - NO symbols
+- NEVER use asterisks (*), dashes (-), dots (•), or any other symbols for lists or emphasis
+- Use plain text formatting only - NO markdown symbols at all
+- Keep formatting clean and professional with plain text only
+
+CORRECT LIST FORMAT EXAMPLES:
+1. First item
+2. Second item
+a. Or using letters
+b. Another item
+
+ABSOLUTELY FORBIDDEN - DO NOT USE:
+* Any asterisk
+- Any dash
+• Any dot
+* For any purpose
+* Ever
 
 Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
 
@@ -423,9 +642,15 @@ Preview: ${email.content.substring(0, 300)}...
   )
   .join("\n")}
 
-Answer the user's request based on these emails. Be conversational, helpful, and do exactly what they ask. Reference specific emails by number or subject when relevant. If the user asks about "the one on [date]" or similar, identify which email they mean and provide details about it.`;
+CRITICAL: Only mention emails that are ACTUALLY relevant to what the user asked for. If the user asked about "flights", only mention emails about flights, travel, bookings, airlines, etc. Do NOT mention emails that are unrelated to the query, even if they appear in the list.
 
-    if (!env.OPENAI_API_KEY) {
+Answer the user's request based on these emails. Be conversational, helpful, and do exactly what they ask. Reference specific emails by number or subject when relevant. If the user asks about "the one on [date]" or similar, identify which email they mean and provide details about it.
+
+IMPORTANT: If none of the emails in the list are actually relevant to the user's query, respond with: "No mails found regarding your query. I'm Sorry!"
+
+If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in a friendly, brief way and remind them you can help find and summarize emails.`;
+
+    if (!env.OPENROUTER_API_KEY) {
       const resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
@@ -447,11 +672,16 @@ Answer the user's request based on these emails. Be conversational, helpful, and
 
     try {
       const openai = new OpenAI({
-        apiKey: env.OPENAI_API_KEY,
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey: env.OPENROUTER_API_KEY,
+        defaultHeaders: {
+          "HTTP-Referer": "https://vectormail-ai.vercel.app",
+          "X-Title": "VectorMail AI",
+        },
       });
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "google/gemini-2.0-flash-exp:free",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         max_tokens: 1000,
         temperature: 0.7,
@@ -459,13 +689,23 @@ Answer the user's request based on these emails. Be conversational, helpful, and
       });
 
       const encoder = new TextEncoder();
+      let accumulatedRaw = "";
+      let accumulatedProcessed = "";
       const readable = new ReadableStream({
         async start(controller) {
           try {
             for await (const chunk of stream) {
               const content = chunk.choices[0]?.delta?.content;
               if (content) {
-                controller.enqueue(encoder.encode(content));
+                accumulatedRaw += content;
+                const fullyProcessed = removeAllSymbols(accumulatedRaw);
+                const newContent = fullyProcessed.slice(
+                  accumulatedProcessed.length,
+                );
+                if (newContent) {
+                  controller.enqueue(encoder.encode(newContent));
+                  accumulatedProcessed = fullyProcessed;
+                }
               }
             }
           } catch (error) {
@@ -484,7 +724,7 @@ Answer the user's request based on these emails. Be conversational, helpful, and
         },
       });
     } catch (openaiError) {
-      console.error("OpenAI error:", openaiError);
+      console.error("OpenRouter error:", openaiError);
       const resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails

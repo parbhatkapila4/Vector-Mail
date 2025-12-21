@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Nav } from "./Nav";
-import { File, Inbox, Send } from "lucide-react";
+import { Bot, Inbox, Send } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 type Props = { isCollapsed: boolean };
@@ -48,19 +48,6 @@ const SideBar = ({ isCollapsed }: Props) => {
     },
   );
 
-  const { data: draftsThreads } = api.account.getNumThreads.useQuery(
-    {
-      accountId: isEnabled ? accountId : "",
-      tab: "drafts",
-    },
-    {
-      enabled: isEnabled,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      retry: false,
-    },
-  );
-
   const { data: sentThreads } = api.account.getNumThreads.useQuery(
     {
       accountId: isEnabled ? accountId : "",
@@ -93,10 +80,8 @@ const SideBar = ({ isCollapsed }: Props) => {
           },
           {
             title: "AI Buddy",
-            label: draftsThreads?.toString() || "0",
-            icon: File,
-            variant: currentTab === "drafts" ? "default" : "ghost",
-            comingSoon: true,
+            icon: Bot,
+            variant: "ghost",
           },
         ]}
       />

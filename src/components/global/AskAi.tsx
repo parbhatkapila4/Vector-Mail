@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
-import { Send, Bot, Plus } from "lucide-react";
+import { Send, Bot, Plus, Loader2 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -308,7 +308,27 @@ export default function EmailSearchAssistant({
                     </div>
                   </motion.div>
                 ))}
-              </AnimatePresence>
+                  </AnimatePresence>
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mr-auto max-w-[90%] mb-3"
+                >
+                  <div className="border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 rounded-xl px-4 py-3 shadow-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500">
+                        <Bot className="h-3.5 w-3.5 text-white" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:-0.3s]" />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:-0.15s]" />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-white" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-3">
@@ -382,7 +402,11 @@ export default function EmailSearchAssistant({
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isLoading || !input.trim()}
             >
-              <Send className="h-4 w-4 text-white" />
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              ) : (
+                <Send className="h-4 w-4 text-white" />
+              )}
             </button>
           </form>
         </div>
