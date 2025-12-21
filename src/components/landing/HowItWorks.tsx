@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Mail, Sparkles, Zap, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Mail, Zap, CheckCircle2 } from "lucide-react";
 
 const steps = [
   {
@@ -17,7 +17,7 @@ const steps = [
     title: "AI Analyzes Everything",
     description:
       "Our AI instantly processes your inbox, understanding context, priority, and relationships.",
-    icon: Sparkles,
+    icon: Mail,
     color: "from-purple-500 to-pink-500",
   },
   {

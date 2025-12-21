@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, Mail, Brain, Zap, Clock } from "lucide-react";
+import { Mail, Brain, Zap, Clock } from "lucide-react";
 import { useState } from "react";
 
 const demoFeatures = [
@@ -65,7 +65,7 @@ export function InteractiveDemo() {
             viewport={{ once: true }}
             className="mb-8 inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/5 px-4 py-2 backdrop-blur-xl"
           >
-            <Sparkles className="h-4 w-4 text-blue-500" />
+            <Mail className="h-4 w-4 text-blue-500" />
             <span className="text-sm font-medium text-gray-700">
               Built for performance
             </span>

@@ -7,7 +7,6 @@ import {
   Zap,
   Search,
   Mail,
-  Sparkles,
   Bot,
   Shield,
   Clock,
@@ -71,7 +70,7 @@ const coreFeatures = [
     ],
   },
   {
-    icon: Sparkles,
+    icon: Mail,
     title: "Priority Detection",
     description:
       "AI identifies urgent emails and highlights them so you never miss important messages.",
@@ -182,7 +181,7 @@ export function FeaturesModal({ isOpen, onClose }: FeaturesModalProps) {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/80 px-4 py-2 backdrop-blur-sm"
                   >
-                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    <Mail className="h-4 w-4 text-purple-600" />
                     <span className="text-sm font-semibold text-gray-700">
                       AI-Powered Features
                     </span>

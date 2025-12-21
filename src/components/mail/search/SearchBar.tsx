@@ -113,13 +113,13 @@ const SearchBar = () => {
   }, [setSearchValue, setIsSearching, setSearchResults]);
 
   return (
-    <div className="bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="border-b border-slate-800 bg-[#0a0a0a] p-4">
       <motion.div className="relative" layoutId="search-bar">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-2 top-2.5 h-4 w-4 text-blue-500" />
         <Input
           ref={ref}
           placeholder="Search emails..."
-          className="pl-8"
+          className="border-slate-800 bg-slate-900/50 pl-8 text-white placeholder:text-slate-500 focus:border-slate-700 focus:ring-slate-700"
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           onFocus={() => setIsSearching(true)}
@@ -127,14 +127,14 @@ const SearchBar = () => {
         />
         <div className="absolute right-2 top-2.5 flex items-center gap-2">
           {(isSearchingAPI || isFetching) && (
-            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
           )}
           {searchValue && (
             <button
-              className="rounded-sm hover:bg-gray-800"
+              className="rounded-sm hover:bg-slate-800"
               onClick={handleClear}
             >
-              <X className="size-4 text-gray-400" />
+              <X className="size-4 text-slate-400" />
             </button>
           )}
         </div>

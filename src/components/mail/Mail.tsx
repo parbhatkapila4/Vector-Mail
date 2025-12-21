@@ -65,20 +65,20 @@ export function Mail({
 
   const SidebarContent = useCallback(
     () => (
-      <div className="flex h-full flex-1 flex-col">
+      <div className="flex h-full flex-1 flex-col bg-slate-900/30 border-r border-slate-800">
         <div
           className={cn(
-            "flex h-[52px] items-center justify-center",
+            "flex h-[52px] items-center justify-center border-b border-slate-800 bg-slate-900/50",
             isCollapsed ? "h-[52px]" : "px-2",
           )}
         >
           <AccountSwitcher isCollapsed={isCollapsed} />
         </div>
-        <Separator />
+        <Separator className="bg-slate-800" />
         <div className="shrink-0">
           <SideBar isCollapsed={isCollapsed} />
         </div>
-        <Separator />
+        <Separator className="bg-slate-800" />
         <div className="min-h-0 flex-1 pb-4">
           <EmailSearchAssistant isCollapsed={isCollapsed} />
         </div>
@@ -89,30 +89,30 @@ export function Mail({
 
   const MobileHeader = useCallback(
     () => (
-      <div className="flex items-center justify-between border-b px-4 py-2">
+      <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0a0a] px-4 py-2">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="text-white hover:bg-slate-800">
+              <Menu className="h-5 w-5 text-white" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className={`w-${MOBILE_SHEET_WIDTH} p-0`}>
+          <SheetContent side="left" className={`w-${MOBILE_SHEET_WIDTH} bg-[#0a0a0a] border-slate-800 p-0`}>
             <div className="flex h-full flex-col">
-              <div className="flex h-[52px] items-center justify-center px-4">
+              <div className="flex h-[52px] items-center justify-center border-b border-slate-800 bg-slate-900/50 px-4">
                 <AccountSwitcher isCollapsed={false} />
               </div>
-              <Separator />
+              <Separator className="bg-slate-800" />
               <div className="shrink-0">
                 <SideBar isCollapsed={false} />
               </div>
-              <Separator />
+              <Separator className="bg-slate-800" />
               <div className="min-h-0 flex-1 pb-4">
                 <EmailSearchAssistant isCollapsed={false} />
               </div>
             </div>
           </SheetContent>
         </Sheet>
-        <h1 className="text-xl font-bold">Inbox</h1>
+        <h1 className="text-xl font-bold text-white">Inbox</h1>
         <div className="flex items-center gap-2">
           <ComposeEmailGmail />
           <UserButton />
@@ -124,8 +124,8 @@ export function Mail({
 
   const DesktopHeader = useCallback(
     () => (
-      <div className="flex items-center justify-between px-4 py-2">
-        <h1 className="text-xl font-bold">Inbox</h1>
+      <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0a0a] px-4 py-2">
+        <h1 className="text-xl font-bold text-white">Inbox</h1>
         <div className="flex items-center gap-2">
           <ComposeEmailGmail />
           <UserButton />
@@ -149,9 +149,9 @@ export function Mail({
 
   const DesktopTabs = useCallback(
     () => (
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col bg-[#0a0a0a]">
         <DesktopHeader />
-        <Separator />
+        <Separator className="bg-slate-800" />
         <SearchBar />
         <div className="flex-1 overflow-hidden">
           <ThreadList onThreadSelect={handleThreadSelect} />
@@ -171,12 +171,12 @@ export function Mail({
               <MobileTabs />
             </div>
           ) : (
-            <div className="h-full">
-              <div className="flex items-center border-b px-4 py-2">
-                <Button variant="ghost" size="icon" onClick={handleThreadClose}>
+            <div className="h-full bg-[#0a0a0a]">
+              <div className="flex items-center border-b border-slate-800 bg-[#0a0a0a] px-4 py-2">
+                <Button variant="ghost" size="icon" onClick={handleThreadClose} className="text-white hover:bg-slate-800">
                   ←
                 </Button>
-                <h1 className="ml-2 text-xl font-bold">Email</h1>
+                <h1 className="ml-2 text-xl font-bold text-white">Email</h1>
               </div>
               <div className="h-[calc(100vh-80px)]">
                 <ThreadDisplay threadId={selectedThread} />
@@ -193,7 +193,7 @@ export function Mail({
       <ResizablePanelGroup
         direction="horizontal"
         onLayout={handleLayoutChange}
-        className="h-full min-h-screen items-stretch"
+        className="h-full min-h-screen items-stretch bg-[#0a0a0a]"
       >
         <ResizablePanel
           defaultSize={defaultLayout[0]}

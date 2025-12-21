@@ -307,15 +307,15 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white transition-all hover:shadow-lg hover:shadow-purple-500/50"
+          className="border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white transition-all hover:shadow-lg hover:shadow-orange-500/50"
         >
-          <Pencil className="mr-2 size-4" />
+          <Pencil className="mr-2 size-4 text-white" />
           Compose
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-slate-800 bg-[#0a0a0a] text-white">
         <DialogHeader>
-          <DialogTitle>Compose Email</DialogTitle>
+          <DialogTitle className="text-white">Compose Email</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -441,13 +441,13 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   disabled={isSending || isGenerating}
                   className="flex items-center gap-2"
                 >
-                  <Link className="size-4" />
+                  <Link className="size-4 text-blue-500" />
                   Insert Link
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="border-slate-800 bg-[#0a0a0a] text-white">
                 <DialogHeader>
-                  <DialogTitle>Insert Link</DialogTitle>
+                  <DialogTitle className="text-white">Insert Link</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -482,7 +482,6 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                     <Button
                       onClick={() => {
                         if (linkUrl && linkText) {
-                          // Ensure URL has protocol
                           const formattedUrl =
                             linkUrl.startsWith("http://") ||
                             linkUrl.startsWith("https://")
@@ -597,7 +596,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   disabled={isSending || isGenerating}
                   className="flex items-center gap-2"
                 >
-                  <Smile className="size-4" />
+                  <Smile className="size-4 text-yellow-500" />
                   Emoji
                 </Button>
               </PopoverTrigger>
@@ -794,13 +793,13 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             <Button
               onClick={handleSend}
               disabled={isSending || isGenerating}
-              className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white"
+              className="bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white"
             >
               {isSending ? (
                 "Sending..."
               ) : (
                 <>
-                  <Send className="mr-2 size-4" />
+                  <Send className="mr-2 size-4 text-white" />
                   Send Email
                 </>
               )}

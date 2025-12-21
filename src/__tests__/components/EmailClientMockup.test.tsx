@@ -15,7 +15,7 @@ describe("EmailClientMockup Component", () => {
   it("renders the email mockup interface", () => {
     render(<EmailClientMockup />);
     expect(screen.getAllByText("Inbox")[0]).toBeInTheDocument();
-    expect(screen.getByText("Drafts")).toBeInTheDocument();
+    expect(screen.getByText("AI Buddy")).toBeInTheDocument();
     expect(screen.getByText("Sent")).toBeInTheDocument();
   });
 

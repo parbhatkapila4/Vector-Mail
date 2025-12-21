@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Bot, Plus } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -219,13 +219,13 @@ export default function EmailSearchAssistant({
     return (
       <div className="flex h-full flex-col p-3">
         <motion.div
-          className="flex h-full flex-col rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black p-4 shadow-lg"
+          className="flex h-full flex-col rounded-lg border border-slate-800 bg-[#0a0a0a] p-4 shadow-lg"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
           <div className="flex items-center gap-3 py-2">
-            <Sparkles className="h-6 w-6 text-purple-400" />
+            <Bot className="h-6 w-6 text-orange-400" />
             <div>
               <p className="text-sm font-medium text-white">
                 No account connected
@@ -250,19 +250,26 @@ export default function EmailSearchAssistant({
 
   return (
     <div className="flex h-full flex-col p-3">
-      <motion.div className="flex h-full flex-col overflow-hidden rounded-lg border border-purple-500/30 bg-gradient-to-br from-gray-900 to-black shadow-lg">
-        <div className="flex items-center justify-between border-b border-purple-500/30 p-3">
+      <motion.div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-800 bg-[#0a0a0a] shadow-lg">
+        <div className="flex items-center justify-between border-b border-slate-800 p-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
-              <Sparkles className="h-4 w-4 text-white" />
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500">
+              <Bot className="h-4 w-4 text-white" />
             </div>
             <h3 className="text-sm font-bold text-white">
               Email Assistant
             </h3>
           </div>
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-purple-600 to-amber-400">
-            <span className="text-sm text-white">🚀</span>
-          </div>
+          <button
+            onClick={() => {
+              setMessages([]);
+              setInput("");
+            }}
+            className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-r from-orange-600 to-amber-500 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/50"
+            title="New chat"
+          >
+            <Plus className="h-3.5 w-3.5 text-white" />
+          </button>
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -288,7 +295,7 @@ export default function EmailSearchAssistant({
                     <div className="px-4 py-3 text-sm leading-relaxed text-white">
                       {message.role === "assistant" ? (
                         <div className="space-y-2">
-                          <div className="mb-2 text-xs font-medium text-purple-300">
+                          <div className="mb-2 text-xs font-medium text-orange-300">
                             ✨ Assistant
                           </div>
                           <div className="whitespace-pre-wrap text-sm">
@@ -329,7 +336,7 @@ export default function EmailSearchAssistant({
                   <button
                     onClick={handleProcessEmails}
                     disabled={processEmailsMutation.isPending || !accountId}
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="text-base">🤖</span>
                     {processEmailsMutation.isPending
@@ -365,14 +372,14 @@ export default function EmailSearchAssistant({
                 type="text"
                 onChange={handleInputChange}
                 value={input}
-                className="h-10 w-full rounded-full border border-purple-500/30 bg-white/5 px-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
+                className="h-10 w-full rounded-full border border-slate-800 bg-slate-900/50 px-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-slate-500 focus:border-slate-700 focus:ring-2 focus:ring-orange-500/20"
                 placeholder="Ask me anything about your emails..."
                 disabled={isLoading}
               />
             </div>
             <button
               type="submit"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isLoading || !input.trim()}
             >
               <Send className="h-4 w-4 text-white" />

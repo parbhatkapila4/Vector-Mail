@@ -8,7 +8,7 @@ import { Footer } from "@/components/landing/Footer";
 
 export default function Page() {
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
+    <div className="relative min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
       <Navigation />
       <main className="w-full overflow-hidden">
         <Hero />

@@ -2,8 +2,6 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Navigation } from "@/components/landing/Navigation";
-import { Footer } from "@/components/landing/Footer";
 import {
   ArrowLeft,
   Brain,
@@ -87,12 +85,10 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-black">
-      <Navigation />
-
-      <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
+      <div className="fixed left-4 top-4 z-40 hidden sm:left-8 sm:top-6 sm:block">
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
             <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="text-xs font-medium sm:text-sm">Back</span>
           </button>
@@ -101,66 +97,35 @@ export default function AboutPage() {
 
       <div className="px-4 pt-28 sm:hidden">
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:border-slate-700 hover:bg-slate-800/50">
             <ArrowLeft className="h-3 w-3" />
             <span className="text-xs font-medium">Back</span>
           </button>
         </Link>
       </div>
 
-      <section className="relative overflow-hidden pb-8 pt-4 sm:pb-12 sm:pt-8 md:pt-12 lg:pb-16 lg:pt-16 xl:pt-20">
-        <div
-          className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 left-1/4 h-[250px] w-[250px] rounded-full opacity-20 blur-3xl lg:h-[500px] lg:w-[500px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
-          }}
-        />
-
+      <section className="relative overflow-hidden bg-[#0a0a0a] pb-8 pt-16 sm:pb-12 sm:pt-20 lg:pb-16 lg:pt-24">
         <div className="relative mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <motion.div
-              className="mb-6 mt-8 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2 sm:mt-12 md:mt-16 lg:mt-20"
-              animate={{
-                borderColor: [
-                  "rgba(168, 85, 247, 0.3)",
-                  "rgba(251, 191, 36, 0.3)",
-                  "rgba(168, 85, 247, 0.3)",
-                ],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            >
-              <span className="text-sm font-semibold text-purple-300">
+            <motion.div className="mb-6 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2">
+              <span className="text-sm font-semibold text-white">
                 Our Story
               </span>
             </motion.div>
 
-            <h1 className="mb-6 w-full break-words text-4xl font-black leading-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              <span className="block text-white">Why We Built</span>
-              <span className="mt-2 block bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                VectorMail
-              </span>
+            <h1 className="mb-6 w-full break-words text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
+              <span className="block">Why We Built</span>
+              <span className="mt-2 block text-white">VectorMail</span>
             </h1>
 
-            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-gray-400 sm:text-xl lg:text-2xl">
+            <p className="mx-auto max-w-3xl text-lg font-semibold leading-relaxed text-white sm:text-xl lg:text-2xl">
               Because email shouldn't feel like a second job. We built the email
               client we always wanted -
-              <span className="font-semibold text-purple-300">
+              <span className="font-bold">
                 {" "}
                 fast, intelligent, and respectful of your time.
               </span>
@@ -169,7 +134,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black pb-16 pt-8 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16">
+      <section className="relative overflow-hidden bg-[#0a0a0a] pb-16 pt-8 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -181,7 +146,7 @@ export default function AboutPage() {
             <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
               The Problem We Faced
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
               Like millions of others, we were stuck with email clients built
               for a different era.
             </p>
@@ -197,15 +162,15 @@ export default function AboutPage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all group-hover:border-purple-500/50 sm:text-left">
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all group-hover:border-slate-700 sm:text-left">
                   <div className="flex justify-center sm:justify-start">
-                    <problem.icon className="mb-4 h-10 w-10 text-purple-400" />
+                    <problem.icon className="mb-4 h-10 w-10 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
                     {problem.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400">
+                  <p className="text-sm font-medium leading-relaxed text-white">
                     {problem.description}
                   </p>
                 </div>
@@ -220,36 +185,32 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="mx-auto mt-16 max-w-4xl"
           >
-            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+            <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
               <div className="mb-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
                   <Heart className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <h3 className="mb-2 text-xl font-bold text-white sm:text-2xl">
                     Why I Stopped Using Gmail
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400 sm:text-base">
+                  <p className="text-sm font-medium leading-relaxed text-white sm:text-base">
                     I was a power user of Gmail for over a decade. But as a
                     developer, I needed something different. I needed{" "}
-                    <span className="font-semibold text-purple-300">
-                      semantic search
-                    </span>{" "}
-                    that understood context, not just keywords. I needed{" "}
-                    <span className="font-semibold text-purple-300">
+                    <span className="font-bold">semantic search</span> that
+                    understood context, not just keywords. I needed{" "}
+                    <span className="font-bold">
                       AI that actually saved time
                     </span>
                     , not just auto-suggested three-word responses. I needed{" "}
-                    <span className="font-semibold text-purple-300">
-                      keyboard shortcuts
-                    </span>{" "}
-                    for everything, because every mouse movement is wasted time.
+                    <span className="font-bold">keyboard shortcuts</span> for
+                    everything, because every mouse movement is wasted time.
                   </p>
-                  <p className="mt-4 text-sm leading-relaxed text-gray-400 sm:text-base">
+                  <p className="mt-4 text-sm font-medium leading-relaxed text-white sm:text-base">
                     Gmail, Outlook, Apple Mail - they're all built for the
                     average user. But developers, founders, and power users
                     aren't average. We live in our inboxes.{" "}
-                    <span className="font-semibold text-amber-400">
+                    <span className="font-bold">
                       We needed something built for us.
                     </span>
                   </p>
@@ -260,7 +221,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -269,13 +230,11 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="mb-16 text-center"
           >
-            <h2 className="mb-4 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="text-white">What </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                Motivated Us
-              </span>
+            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span>What </span>
+              <span className="text-white">Motivated Us</span>
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
               Three core beliefs drive everything we build.
             </p>
           </motion.div>
@@ -290,15 +249,15 @@ export default function AboutPage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all group-hover:border-purple-500/50 sm:text-left">
-                  <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50 sm:mx-0">
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all group-hover:border-slate-700 sm:text-left">
+                  <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-800 sm:mx-0">
                     <motivation.icon className="h-7 w-7 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
                     {motivation.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400">
+                  <p className="text-sm font-medium leading-relaxed text-white">
                     {motivation.description}
                   </p>
                 </div>
@@ -308,7 +267,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <motion.div
@@ -321,7 +280,7 @@ export default function AboutPage() {
               <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
                 Email Reimagined for 2025
               </h2>
-              <div className="space-y-4 text-sm leading-relaxed text-gray-400 sm:text-base">
+              <div className="space-y-4 text-sm font-medium leading-relaxed text-white sm:text-base">
                 <p>
                   VectorMail started as a frustration. A frustration with
                   spending hours searching for emails. A frustration with
@@ -331,7 +290,7 @@ export default function AboutPage() {
                 </p>
                 <p>
                   We asked ourselves:{" "}
-                  <span className="font-semibold text-purple-300">
+                  <span className="font-bold">
                     What if email understood you, instead of you having to
                     understand it?
                   </span>
@@ -343,7 +302,7 @@ export default function AboutPage() {
                   inbox worked at the speed of thought, entirely from the
                   keyboard?
                 </p>
-                <p className="font-semibold text-white">
+                <p className="font-bold">
                   That's VectorMail. Email built for how we actually work in
                   2025.
                 </p>
@@ -357,46 +316,46 @@ export default function AboutPage() {
               viewport={{ once: true }}
               className="group relative"
             >
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/30 via-purple-400/30 to-amber-400/30 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-              <div className="relative rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 shadow-2xl">
+              <div className="absolute -inset-1 rounded-2xl opacity-0" />
+              <div className="relative rounded-2xl border border-slate-800 bg-[#0a0a0a] p-8 shadow-2xl">
                 <div className="space-y-6">
                   <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-purple-400">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
                       <Rocket className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <h4 className="mb-2 font-semibold text-white">
                         Production-Grade from Day One
                       </h4>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm font-medium text-white">
                         Built with Next.js 14, tRPC, Prisma, and PostgreSQL.
                         Enterprise architecture, open source.
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-400 to-amber-400">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
                       <Brain className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <h4 className="mb-2 font-semibold text-white">
                         AI That Actually Works
                       </h4>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm font-medium text-white">
                         Vector embeddings with pgvector. Semantic search with
                         sub-50ms latency. Multi-provider AI fallback.
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-purple-600">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
                       <Shield className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <h4 className="mb-2 font-semibold text-white">
                         Privacy First
                       </h4>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm font-medium text-white">
                         Zero-knowledge architecture. Your data stays yours. Open
                         source means full transparency.
                       </p>
@@ -409,7 +368,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -418,11 +377,9 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="mb-16 text-center"
           >
-            <h2 className="mb-4 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="text-white">Why Email Needs to </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                Evolve Now
-              </span>
+            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span>Why Email Needs to </span>
+              <span className="text-white">Evolve Now</span>
             </h2>
           </motion.div>
 
@@ -436,16 +393,16 @@ export default function AboutPage() {
                 viewport={{ once: true }}
                 className="text-center"
               >
-                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20">
-                  <item.icon className="h-8 w-8 text-purple-400" />
+                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full border border-slate-800 bg-slate-900/50">
+                  <item.icon className="h-8 w-8 text-white" />
                 </div>
-                <div className="mb-2 bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-4xl font-black text-transparent sm:text-5xl">
+                <div className="mb-2 text-4xl font-black text-white sm:text-5xl">
                   {item.stat}
                 </div>
                 <div className="mb-2 text-sm font-semibold text-white sm:text-base">
                   {item.label}
                 </div>
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-xs font-medium text-white sm:text-sm">
                   {item.insight}
                 </p>
               </motion.div>
@@ -459,13 +416,13 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="mx-auto max-w-4xl"
           >
-            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+            <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
               <h3 className="mb-6 text-center text-2xl font-black text-white sm:text-3xl">
                 Why This Matters to the Market
               </h3>
-              <div className="space-y-4 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
+              <div className="space-y-4 text-center text-sm font-medium leading-relaxed text-white sm:text-left sm:text-base">
                 <p>
-                  <span className="font-semibold text-purple-300">
+                  <span className="font-bold">
                     The email market is ripe for disruption.
                   </span>{" "}
                   While every other productivity tool has been transformed by AI
@@ -477,7 +434,7 @@ export default function AboutPage() {
                   in 15 years. Outlook is bloated with enterprise features
                   nobody uses. Superhuman charges $30/month for keyboard
                   shortcuts and basic AI.
-                  <span className="font-semibold text-amber-400">
+                  <span className="font-bold">
                     {" "}
                     There's a massive gap for a truly intelligent, open-source
                     email client.
@@ -486,35 +443,31 @@ export default function AboutPage() {
                 <p>VectorMail fills that gap. We're building for:</p>
                 <ul className="ml-0 space-y-2 text-left sm:ml-4">
                   <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
+                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
                     <span>
-                      <span className="font-semibold text-white">
-                        Developers
-                      </span>{" "}
-                      who want keyboard-first workflows and extensibility
+                      <span className="font-bold">Developers</span> who want
+                      keyboard-first workflows and extensibility
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
+                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
                     <span>
-                      <span className="font-semibold text-white">Founders</span>{" "}
-                      who process 500+ emails daily and need intelligent triage
+                      <span className="font-bold">Founders</span> who process
+                      500+ emails daily and need intelligent triage
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
+                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
                     <span>
-                      <span className="font-semibold text-white">
-                        Privacy-conscious users
-                      </span>{" "}
+                      <span className="font-bold">Privacy-conscious users</span>{" "}
                       who want transparency and control over their data
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
+                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
                     <span>
-                      <span className="font-semibold text-white">Teams</span>{" "}
-                      who want modern collaboration without vendor lock-in
+                      <span className="font-bold">Teams</span> who want modern
+                      collaboration without vendor lock-in
                     </span>
                   </li>
                 </ul>
@@ -524,7 +477,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -536,7 +489,7 @@ export default function AboutPage() {
             <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
               Built Different
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
               Modern problems require modern solutions. Here's what makes
               VectorMail different.
             </p>
@@ -548,11 +501,11 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center sm:text-left"
+              className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center sm:text-left"
             >
               <h3 className="mb-4 flex flex-col items-center gap-3 text-xl font-bold text-white sm:flex-row">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-purple-500/30 bg-purple-500/20">
-                  <Zap className="h-5 w-5 text-purple-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50">
+                  <Zap className="h-5 w-5 text-white" />
                 </div>
                 Vector Search vs Keywords
               </h3>
@@ -561,7 +514,7 @@ export default function AboutPage() {
                   <div className="mb-1 font-semibold text-red-400">
                     ❌ Traditional Email:
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs font-medium text-white">
                     Search "flight booking" → only finds emails with those exact
                     words
                   </p>
@@ -570,7 +523,7 @@ export default function AboutPage() {
                   <div className="mb-1 font-semibold text-green-400">
                     ✅ VectorMail:
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs font-medium text-white">
                     Search "flight booking" → finds confirmations, itineraries,
                     check-in reminders, even if they never mention "booking"
                   </p>
@@ -583,11 +536,11 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center sm:text-left"
+              className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center sm:text-left"
             >
               <h3 className="mb-4 flex flex-col items-center gap-3 text-xl font-bold text-white sm:flex-row">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/20">
-                  <Brain className="h-5 w-5 text-amber-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50">
+                  <Brain className="h-5 w-5 text-white" />
                 </div>
                 AI That Saves Time
               </h3>
@@ -596,7 +549,7 @@ export default function AboutPage() {
                   <div className="mb-1 font-semibold text-red-400">
                     ❌ Gmail Smart Compose:
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs font-medium text-white">
                     "Thanks for reaching out!" - 3 word suggestions
                   </p>
                 </div>
@@ -604,7 +557,7 @@ export default function AboutPage() {
                   <div className="mb-1 font-semibold text-green-400">
                     ✅ VectorMail AI:
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs font-medium text-white">
                     Full draft responses understanding context, tone, and your
                     writing style. 50-email thread summaries in 2 seconds.
                   </p>
@@ -615,7 +568,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -623,14 +576,12 @@ export default function AboutPage() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="text-white">What's </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                Next?
-              </span>
+            <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span>What's </span>
+              <span className="text-white">Next?</span>
             </h2>
 
-            <p className="mx-auto mb-12 max-w-3xl text-base leading-relaxed text-gray-400 sm:text-lg">
+            <p className="mx-auto mb-12 max-w-3xl text-base font-semibold leading-relaxed text-white sm:text-lg">
               VectorMail is just getting started. Here's what we're building
               next.
             </p>
@@ -668,20 +619,22 @@ export default function AboutPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   viewport={{ once: true }}
-                  className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center sm:text-left"
+                  className="rounded-xl border border-slate-800 bg-[#0a0a0a] p-6 text-center sm:text-left"
                 >
                   <div className="flex justify-center sm:justify-start">
-                    <item.icon className="mb-3 h-8 w-8 text-purple-400" />
+                    <item.icon className="mb-3 h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-2 font-bold text-white">{item.title}</h3>
-                  <p className="text-sm text-gray-500">{item.description}</p>
+                  <p className="text-sm font-medium text-white">
+                    {item.description}
+                  </p>
                 </motion.div>
               ))}
             </div>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/features" className="w-full sm:w-auto">
-                <button className="w-full rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 active:scale-95 sm:w-auto">
+                <button className="w-full rounded-xl border border-slate-800 bg-slate-900/50 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 hover:shadow-lg active:scale-95 sm:w-auto">
                   Explore Features
                 </button>
               </Link>
@@ -689,8 +642,6 @@ export default function AboutPage() {
           </motion.div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }

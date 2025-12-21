@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -55,7 +54,7 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
   if (accounts.length === 0) {
     return (
       <div className="flex w-full items-center gap-2">
-        <div className="flex w-full flex-1 items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex w-full flex-1 items-center gap-2 px-3 py-2 text-sm text-slate-400">
           No accounts connected
         </div>
       </div>
@@ -101,10 +100,10 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
             </span>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="border-slate-800 bg-slate-900 text-white">
           {accounts.map((account: { id: string; emailAddress: string }) => (
-            <SelectItem key={account.id} value={account.id}>
-              <div className="flex items-center gap-3 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-foreground">
+            <SelectItem key={account.id} value={account.id} className="text-white focus:bg-slate-800">
+              <div className="flex items-center gap-3 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-purple-500">
                 {account.emailAddress}
               </div>
             </SelectItem>
@@ -118,9 +117,9 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
                 toast.error((error as Error).message);
               }
             }}
-            className="relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+            className="relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-8 text-sm text-white outline-none hover:bg-slate-800 focus:bg-slate-800 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
           >
-            <Plus className="mr-1 size-4 text-purple-400" />
+            <Plus className="mr-1 size-4 text-green-500" />
             Add account
           </div>
         </SelectContent>

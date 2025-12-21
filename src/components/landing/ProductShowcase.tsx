@@ -97,7 +97,7 @@ export function ProductShowcase() {
                     <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-700">
                       <div className="flex items-center gap-3">
                         <FileText className="h-4 w-4" />
-                        <span className="text-sm">Drafts</span>
+                        <span className="text-sm">AI Buddy</span>
                       </div>
                       <span className="rounded-full bg-gray-600 px-2 py-1 text-xs">
                         13

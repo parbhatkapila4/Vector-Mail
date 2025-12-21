@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Star, Zap, Crown, Sparkles, HelpCircle } from "lucide-react";
+import { X, Check, Star, Zap, Crown, Mail, HelpCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -155,7 +155,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
             className="fixed inset-x-4 inset-y-4 z-[95] overflow-hidden sm:inset-x-8 md:inset-x-12 md:inset-y-8 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-20"
           >
             <div className="relative h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
-              {/* Header */}
+              
               <div className="relative border-b border-gray-200 bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 p-6">
                 <div className="pr-16 text-center">
                   <motion.div
@@ -163,7 +163,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/80 px-4 py-2 backdrop-blur-sm"
                   >
-                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    <Mail className="h-4 w-4 text-purple-600" />
                     <span className="text-sm font-semibold text-gray-700">
                       Simple, Transparent Pricing
                     </span>

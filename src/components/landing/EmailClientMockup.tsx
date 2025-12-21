@@ -18,7 +18,6 @@ import {
   Reply,
   Forward,
   Paperclip,
-  Sparkles,
   ChevronDown,
   Zap,
   User,
@@ -27,71 +26,71 @@ import {
 
 export function EmailClientMockup() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 via-purple-950/20 to-black shadow-2xl">
-      <div className="flex items-center justify-between border-b border-purple-500/20 bg-black/40 px-4 py-3 backdrop-blur-sm">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#0a0a0a] shadow-2xl">
+      <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/30 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 text-sm font-bold text-white shadow-lg shadow-purple-500/50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500 text-sm font-bold text-white shadow-lg shadow-orange-500/50">
             V
           </div>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-bold text-white">
             W
           </div>
-          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 text-emerald-400 transition-colors hover:from-emerald-500/30 hover:to-blue-500/30">
+          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-green-500/30 bg-green-500/20 text-green-400 transition-colors hover:bg-green-500/30">
             <Plus className="h-4 w-4" />
           </button>
         </div>
 
         <div className="mx-4 max-w-md flex-1">
-          <div className="flex items-center gap-2 rounded-lg border border-purple-500/20 bg-white/5 px-3 py-2">
-            <Search className="h-4 w-4 text-purple-400" />
+          <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
+            <Search className="h-4 w-4 text-blue-500" />
             <input
               type="text"
               placeholder="Search emails..."
-              className="flex-1 bg-transparent text-sm text-white outline-none"
+              className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
               readOnly
             />
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-orange-500/30 bg-gradient-to-br from-orange-500/20 to-red-500/20 text-orange-400 transition-colors hover:from-orange-500/30 hover:to-red-500/30">
+          <button className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/20 text-orange-400 transition-colors hover:bg-orange-500/30">
             <Bell className="h-4 w-4" />
-            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border border-black bg-red-500" />
+            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#0a0a0a] bg-red-500" />
           </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/30 bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 transition-colors hover:from-blue-500/30 hover:to-purple-500/30">
+          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/20 text-blue-400 transition-colors hover:bg-blue-500/30">
             <HelpCircle className="h-4 w-4" />
           </button>
-          <div className="h-8 w-8 rounded-full border-2 border-purple-500/50 bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400" />
-          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-500/30 bg-gradient-to-br from-gray-500/20 to-gray-700/20 text-gray-400 transition-colors hover:from-gray-500/30 hover:to-gray-700/30">
+          <div className="h-8 w-8 rounded-full border-2 border-slate-800 bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500" />
+          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white">
             <Settings className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       <div className="flex h-[600px]">
-        <div className="flex w-56 flex-col border-r border-purple-500/20 bg-black/20">
+        <div className="flex w-56 flex-col border-r border-slate-800 bg-slate-900/30">
           <div className="p-4">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 font-bold text-white shadow-lg shadow-purple-500/50">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500 font-bold text-white shadow-lg shadow-orange-500/50">
                 V
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-white">
                   VectorMail
                 </div>
-                <div className="truncate text-xs text-purple-300">
+                <div className="truncate text-xs text-slate-400">
                   work@vectormail.ai
                 </div>
               </div>
             </div>
 
-            <button className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-3 font-semibold text-white shadow-lg shadow-purple-500/50 transition-colors hover:from-purple-700 hover:via-purple-500 hover:to-amber-500">
+            <button className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 px-4 py-3 font-semibold text-white shadow-lg shadow-orange-500/50 transition-colors hover:opacity-90">
               <Mail className="h-4 w-4" />
               <span>New email</span>
             </button>
 
             <div className="space-y-1">
-              <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-purple-300">
+              <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Core
               </div>
               <NavItem
@@ -102,7 +101,7 @@ export function EmailClientMockup() {
                 color="purple"
               />
               <NavItem icon={Star} label="Favorites" color="yellow" />
-              <NavItem icon={Clock} label="Drafts" count="13" color="blue" />
+              <NavItem icon={Clock} label="AI Buddy" count="13" color="blue" />
               <NavItem icon={Send} label="Sent" color="emerald" />
               <NavItem icon={Archive} label="Archive" color="indigo" />
               <NavItem
@@ -115,50 +114,50 @@ export function EmailClientMockup() {
             </div>
           </div>
 
-          <div className="mt-auto space-y-1 border-t border-purple-500/20 p-4">
+          <div className="mt-auto space-y-1 border-t border-slate-800 p-4">
             <NavItem icon={Settings} label="Settings" color="gray" />
             <NavItem icon={HelpCircle} label="Support" color="blue" />
           </div>
         </div>
 
-        <div className="flex w-80 flex-col border-r border-purple-500/20 bg-black/10">
-          <div className="border-b border-purple-500/20 p-4">
+        <div className="flex w-80 flex-col border-r border-slate-800 bg-[#0a0a0a]">
+          <div className="border-b border-slate-800 p-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-                <span className="h-2 w-2 rounded-full bg-purple-500" />
+                <span className="h-2 w-2 rounded-full bg-orange-500" />
                 Inbox
               </h2>
-              <button className="text-sm font-medium text-purple-400 transition-colors hover:text-purple-300">
+              <button className="text-sm font-medium text-slate-400 transition-colors hover:text-white">
                 ✓ Select
               </button>
             </div>
 
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-purple-500/20 bg-white/5 px-3 py-2">
-              <Search className="h-4 w-4 text-purple-400" />
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
+              <Search className="h-4 w-4 text-blue-500" />
               <input
                 type="text"
                 placeholder="Search"
-                className="flex-1 bg-transparent text-sm text-white outline-none"
+                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
                 readOnly
               />
-              <span className="rounded border border-purple-500/30 bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300">
+              <span className="rounded border border-slate-800 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-400">
                 ⌘K
               </span>
             </div>
 
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 rounded-lg border border-purple-500/40 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20">
+              <button className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/20 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-500/20">
                 <Zap className="h-4 w-4 text-yellow-400" />
                 Primary
               </button>
-              <button className="rounded-lg border border-red-500/30 bg-gradient-to-br from-red-500/10 to-orange-500/10 p-2 transition-colors hover:from-red-500/20 hover:to-orange-500/20">
+              <button className="rounded-lg border border-red-500/30 bg-red-500/20 p-2 transition-colors hover:bg-red-500/30">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
               </button>
-              <button className="rounded-lg border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-purple-500/10 p-2 transition-colors hover:from-blue-500/20 hover:to-purple-500/20">
+              <button className="rounded-lg border border-blue-500/30 bg-blue-500/20 p-2 transition-colors hover:bg-blue-500/30">
                 <User className="h-4 w-4 text-blue-400" />
               </button>
-              <button className="rounded-lg border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-green-500/10 p-2 transition-colors hover:from-emerald-500/20 hover:to-green-500/20">
-                <Bell className="h-4 w-4 text-emerald-400" />
+              <button className="rounded-lg border border-green-500/30 bg-green-500/20 p-2 transition-colors hover:bg-green-500/30">
+                <Bell className="h-4 w-4 text-green-400" />
               </button>
             </div>
           </div>
@@ -166,11 +165,11 @@ export function EmailClientMockup() {
           <div className="flex-1 overflow-y-auto">
             <div className="p-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs font-semibold text-purple-300">
+                <span className="flex items-center gap-2 text-xs font-semibold text-white">
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                   Pinned
                 </span>
-                <span className="rounded border border-purple-500/30 bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300">
+                <span className="rounded border border-slate-800 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-400">
                   3
                 </span>
               </div>
@@ -234,11 +233,11 @@ export function EmailClientMockup() {
 
             <div className="px-4 pb-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs font-semibold text-purple-300">
+                <span className="flex items-center gap-2 text-xs font-semibold text-white">
                   <Zap className="h-3 w-3 text-yellow-400" />
                   Primary
                 </span>
-                <span className="rounded border border-purple-500/30 bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300">
+                <span className="rounded border border-slate-800 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-400">
                   278
                 </span>
               </div>
@@ -276,33 +275,33 @@ export function EmailClientMockup() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col bg-gradient-to-br from-black/50 via-purple-950/5 to-black/50">
-          <div className="border-b border-purple-500/20 p-6">
+        <div className="flex flex-1 flex-col bg-[#0a0a0a]">
+          <div className="border-b border-slate-800 p-6">
             <div className="mb-4 flex items-start justify-between">
               <div className="flex-1">
                 <h3 className="mb-2 flex items-center gap-2 text-xl font-semibold text-white">
                   Re: VectorMail v2.0 roadmap
-                  <span className="rounded border border-purple-500/30 bg-purple-500/20 px-2 py-0.5 text-sm text-purple-300">
+                  <span className="rounded border border-slate-800 bg-slate-900/50 px-2 py-0.5 text-sm text-slate-400">
                     6
                   </span>
                 </h3>
-                <div className="flex items-center gap-2 text-sm text-purple-300">
-                  <Clock className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <Clock className="h-4 w-4 text-amber-500" />
                   <span>March 25 - March 29</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 px-3 py-2 text-sm text-white transition-colors hover:from-purple-600/30 hover:via-purple-400/30 hover:to-amber-400/30">
+                <button className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/20 px-3 py-2 text-sm text-white transition-colors hover:bg-orange-500/30">
                   <Reply className="h-4 w-4" />
                   Reply all
                 </button>
-                <button className="rounded-lg border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 p-2 text-yellow-400 transition-colors hover:from-yellow-500/20 hover:to-orange-500/20 hover:text-yellow-300">
+                <button className="rounded-lg border border-yellow-500/30 bg-yellow-500/20 p-2 text-yellow-400 transition-colors hover:bg-yellow-500/30">
                   <Star className="h-4 w-4" />
                 </button>
-                <button className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-400 transition-colors hover:bg-white/10 hover:text-white">
+                <button className="rounded-lg border border-slate-800 bg-slate-900/50 p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
-                <button className="rounded-lg border border-red-500/30 bg-gradient-to-br from-red-500/10 to-rose-500/10 p-2 text-red-400 transition-colors hover:from-red-500/20 hover:to-rose-500/20 hover:text-red-300">
+                <button className="rounded-lg border border-red-500/30 bg-red-500/20 p-2 text-red-400 transition-colors hover:bg-red-500/30">
                   <Trash className="h-4 w-4" />
                 </button>
               </div>
@@ -323,7 +322,7 @@ export function EmailClientMockup() {
                   >
                     {person.name[0]}
                   </div>
-                  <span className="text-sm text-gray-300">{person.name}</span>
+                  <span className="text-sm text-slate-300">{person.name}</span>
                 </div>
               ))}
             </div>
@@ -334,21 +333,21 @@ export function EmailClientMockup() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-600/10 via-purple-400/10 to-amber-400/10 p-4 shadow-lg shadow-purple-500/10"
+              className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 shadow-lg shadow-orange-500/10"
             >
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  <Mail className="h-4 w-4 text-orange-400" />
                   <span className="text-sm font-semibold text-white">
                     AI Summary
                   </span>
-                  <span className="rounded-full border border-purple-500/50 bg-purple-500/30 px-2 py-0.5 text-xs text-purple-300">
+                  <span className="rounded-full border border-orange-500/50 bg-orange-500/30 px-2 py-0.5 text-xs text-orange-300">
                     New
                   </span>
                 </div>
-                <ChevronDown className="h-4 w-4 text-purple-400" />
+                <ChevronDown className="h-4 w-4 text-orange-400" />
               </div>
-              <p className="text-sm leading-relaxed text-gray-300">
+              <p className="text-sm leading-relaxed text-slate-300">
                 VectorMail v2.0 product roadmap discussion. Team reviewed
                 AI-powered features, semantic search improvements, and inbox
                 management tools. Positive feedback on the new dashboard design
@@ -356,18 +355,18 @@ export function EmailClientMockup() {
               </p>
             </motion.div>
 
-            <div className="rounded-xl border border-blue-500/20 bg-white/5 p-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Paperclip className="h-4 w-4 text-blue-400" />
+                  <Paperclip className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold text-white">
                     Attachments
                   </span>
-                  <span className="rounded border border-blue-500/30 bg-blue-500/20 px-2 py-0.5 text-xs text-blue-300">
+                  <span className="rounded border border-slate-800 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-400">
                     4
                   </span>
                 </div>
-                <ChevronDown className="h-4 w-4 text-blue-400" />
+                <ChevronDown className="h-4 w-4 text-blue-500" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
@@ -394,7 +393,7 @@ export function EmailClientMockup() {
                 ].map((file, i) => (
                   <div
                     key={i}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2 transition-colors hover:bg-white/10"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 p-2 transition-colors hover:bg-slate-800"
                   >
                     <div
                       className={`h-8 w-8 bg-gradient-to-br ${file.color} flex items-center justify-center rounded-lg shadow-lg`}
@@ -405,7 +404,7 @@ export function EmailClientMockup() {
                       <div className="truncate text-xs font-medium text-white">
                         {file.name}
                       </div>
-                      <div className="text-xs text-gray-400">{file.size}</div>
+                      <div className="text-xs text-slate-400">{file.size}</div>
                     </div>
                   </div>
                 ))}
@@ -413,9 +412,9 @@ export function EmailClientMockup() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-purple-500/20 bg-white/5 p-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
                 <div className="mb-3 flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 via-purple-400 to-amber-400 font-bold text-white shadow-lg shadow-purple-500/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500 font-bold text-white shadow-lg shadow-orange-500/50">
                     D
                   </div>
                   <div className="flex-1">
@@ -423,14 +422,14 @@ export function EmailClientMockup() {
                       <span className="text-sm font-semibold text-white">
                         David Chen
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400">
                         March 25, 10:15 AM
                       </span>
                     </div>
-                    <div className="mb-3 text-xs text-purple-300">
+                    <div className="mb-3 text-xs text-slate-400">
                       To: Emma, Mike
                     </div>
-                    <p className="text-sm leading-relaxed text-gray-300">
+                    <p className="text-sm leading-relaxed text-slate-300">
                       Hey team! Just pushed the latest VectorMail dashboard
                       updates. The new semantic search is lightning fast and the
                       AI summaries are incredibly accurate. Ready for your
@@ -439,20 +438,20 @@ export function EmailClientMockup() {
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <button className="flex items-center gap-1 rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 px-3 py-1.5 text-xs text-white transition-colors hover:from-purple-600/30 hover:via-purple-400/30 hover:to-amber-400/30">
+                  <button className="flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-orange-500/30">
                     <Reply className="h-3 w-3" />
                     Reply
                   </button>
-                  <button className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:from-blue-500/30 hover:to-cyan-500/30">
+                  <button className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-blue-500/30">
                     <Forward className="h-3 w-3" />
                     Forward
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-emerald-500/20 bg-white/5 p-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
                 <div className="mb-3 flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-500 font-bold text-white shadow-lg shadow-emerald-500/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500 font-bold text-white shadow-lg shadow-green-500/50">
                     E
                   </div>
                   <div className="flex-1">
@@ -460,14 +459,12 @@ export function EmailClientMockup() {
                       <span className="text-sm font-semibold text-white">
                         Emma Rodriguez
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400">
                         March 25, 2:30 PM
                       </span>
                     </div>
-                    <div className="mb-3 text-xs text-purple-300">
-                      To: David
-                    </div>
-                    <p className="text-sm leading-relaxed text-gray-300">
+                    <div className="mb-3 text-xs text-slate-400">To: David</div>
+                    <p className="text-sm leading-relaxed text-slate-300">
                       Tested the new features thoroughly and I'm impressed! The
                       keyboard shortcuts are incredibly intuitive and the
                       AI-powered responses save so much time. This is exactly
@@ -476,11 +473,11 @@ export function EmailClientMockup() {
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <button className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:from-emerald-500/30 hover:to-green-500/30">
+                  <button className="flex items-center gap-1 rounded-lg border border-green-500/30 bg-green-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-green-500/30">
                     <Reply className="h-3 w-3" />
                     Reply
                   </button>
-                  <button className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:from-blue-500/30 hover:to-cyan-500/30">
+                  <button className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-blue-500/30">
                     <Forward className="h-3 w-3" />
                     Forward
                   </button>
@@ -508,40 +505,36 @@ function NavItem({
   color?: string;
 }) {
   const colorMap: Record<string, string> = {
-    purple: "text-purple-400",
+    purple: "text-orange-500",
     yellow: "text-yellow-400",
-    blue: "text-blue-400",
-    emerald: "text-emerald-400",
+    blue: "text-blue-500",
+    emerald: "text-green-500",
     indigo: "text-indigo-400",
     red: "text-red-400",
-    gray: "text-gray-400",
+    gray: "text-slate-400",
   };
 
   const bgColorMap: Record<string, string> = {
-    purple:
-      "bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 border border-purple-500/30",
-    yellow:
-      "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30",
-    blue: "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30",
-    emerald:
-      "bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30",
-    indigo:
-      "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30",
-    red: "bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/30",
-    gray: "bg-white/5 border border-white/10",
+    purple: "bg-orange-500/20 border border-orange-500/30",
+    yellow: "bg-yellow-500/20 border border-yellow-500/30",
+    blue: "bg-blue-500/20 border border-blue-500/30",
+    emerald: "bg-green-500/20 border border-green-500/30",
+    indigo: "bg-indigo-500/20 border border-indigo-500/30",
+    red: "bg-red-500/20 border border-red-500/30",
+    gray: "bg-slate-900/50 border border-slate-800",
   };
 
-  const iconColor = color ? colorMap[color] : "text-gray-400";
+  const iconColor = color ? colorMap[color] : "text-slate-400";
   const activeBg = color
     ? bgColorMap[color]
-    : "bg-white/10 border border-white/20";
+    : "bg-slate-900/50 border border-slate-800";
 
   return (
     <button
       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 transition-all ${
         active
           ? `${activeBg} text-white`
-          : `text-gray-400 hover:text-white hover:${iconColor} hover:bg-white/5`
+          : `text-slate-400 hover:text-white hover:${iconColor} hover:bg-slate-900/50`
       }`}
     >
       <div className="flex items-center gap-2">
@@ -550,7 +543,7 @@ function NavItem({
       </div>
       {count && (
         <span
-          className={`rounded px-2 py-0.5 text-xs ${active ? "bg-white/20" : "bg-white/10"}`}
+          className={`rounded px-2 py-0.5 text-xs ${active ? "bg-slate-900/50" : "bg-slate-900/50"}`}
         >
           {count}
         </span>
@@ -582,8 +575,8 @@ function EmailItem({
     <div
       className={`mb-2 flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all ${
         active
-          ? "border border-purple-500/30 bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 shadow-lg shadow-purple-500/10"
-          : "border border-white/10 bg-white/5 hover:bg-white/10"
+          ? "border border-orange-500/30 bg-orange-500/10 shadow-lg shadow-orange-500/10"
+          : "border border-slate-800 bg-slate-900/50 hover:bg-slate-800"
       }`}
     >
       {logo ? (
@@ -605,16 +598,16 @@ function EmailItem({
             {sender}
           </span>
           {count && (
-            <span className="flex-shrink-0 rounded border border-purple-500/30 bg-purple-500/20 px-1.5 py-0.5 text-xs text-purple-300">
+            <span className="flex-shrink-0 rounded border border-slate-800 bg-slate-900/50 px-1.5 py-0.5 text-xs text-slate-400">
               {count}
             </span>
           )}
-          <span className="ml-auto flex-shrink-0 text-xs text-gray-400">
+          <span className="ml-auto flex-shrink-0 text-xs text-slate-400">
             {time}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="flex-1 truncate text-xs text-gray-400">
+          <span className="flex-1 truncate text-xs text-slate-400">
             {subject}
           </span>
           {badges && badges.length > 0 && (

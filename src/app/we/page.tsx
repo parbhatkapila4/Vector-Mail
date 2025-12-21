@@ -2,8 +2,6 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Navigation } from "@/components/landing/Navigation";
-import { Footer } from "@/components/landing/Footer";
 import {
   ArrowLeft,
   Github,
@@ -128,43 +126,26 @@ export default function WePage() {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-black">
-      <Navigation />
-
-      <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
+      <div className="fixed left-4 top-4 z-40 hidden sm:left-8 sm:top-6 sm:block">
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
             <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="text-xs font-medium sm:text-sm">Back</span>
           </button>
         </Link>
       </div>
 
-      <div className="px-4 pt-28 sm:hidden">
+      <div className="px-4 pt-4 sm:hidden">
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:border-slate-700 hover:bg-slate-800/50">
             <ArrowLeft className="h-3 w-3" />
             <span className="text-xs font-medium">Back</span>
           </button>
         </Link>
       </div>
 
-      <section className="relative overflow-hidden pb-16 pt-8 sm:pb-24 sm:pt-16 md:pt-24 lg:pb-32 lg:pt-40 xl:pt-48">
-        <div
-          className="pointer-events-none absolute right-1/4 top-0 h-[300px] w-[300px] rounded-full opacity-20 blur-3xl lg:h-[600px] lg:w-[600px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 left-1/4 h-[250px] w-[250px] rounded-full opacity-20 blur-3xl lg:h-[500px] lg:w-[500px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
-          }}
-        />
-
+      <section className="relative overflow-hidden bg-[#0a0a0a] pb-16 pt-16 sm:pb-24 sm:pt-20 lg:pb-32 lg:pt-24">
         <div className="relative mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -173,7 +154,7 @@ export default function WePage() {
           >
             <div className="mb-8 flex justify-center">
               <motion.div
-                className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50 sm:h-24 sm:w-24"
+                className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 sm:h-24 sm:w-24"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ duration: 0.3 }}
               >
@@ -181,22 +162,18 @@ export default function WePage() {
               </motion.div>
             </div>
 
-            <h1 className="mb-6 w-full break-words text-4xl font-black leading-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              <span className="block text-white">We Build </span>
-              <span className="mt-2 block bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                Together
-              </span>
+            <h1 className="mb-6 w-full break-words text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
+              <span className="block">We Build </span>
+              <span className="mt-2 block text-white">Together</span>
             </h1>
 
-            <p className="mx-auto mb-6 max-w-3xl text-lg leading-relaxed text-gray-400 sm:text-xl lg:text-2xl">
+            <p className="mx-auto mb-6 max-w-3xl text-lg font-semibold leading-relaxed text-white sm:text-xl lg:text-2xl">
               VectorMail isn't built by a company. It's built by{" "}
-              <span className="font-semibold text-purple-300">
-                a community of developers
-              </span>{" "}
-              who believe email can be better.
+              <span className="font-bold">a community of developers</span> who
+              believe email can be better.
             </p>
 
-            <p className="text-base font-semibold text-purple-300 sm:text-lg">
+            <p className="text-base font-semibold text-white sm:text-lg">
               Your contribution - no matter how small - makes you part of this
               journey.
             </p>
@@ -204,7 +181,7 @@ export default function WePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -213,13 +190,11 @@ export default function WePage() {
             viewport={{ once: true }}
             className="mb-16 text-center"
           >
-            <h2 className="mb-4 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="text-white">Why </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                GitHub?
-              </span>
+            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span>Why </span>
+              <span className="text-white">GitHub?</span>
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
               Because great software is built through great collaboration.
             </p>
           </motion.div>
@@ -234,15 +209,15 @@ export default function WePage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 sm:mx-0">
-                    <item.icon className="h-6 w-6 text-purple-400" />
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 transition-all group-hover:border-slate-700">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/50 sm:mx-0">
+                    <item.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-center text-xl font-bold text-white sm:text-left">
                     {item.title}
                   </h3>
-                  <p className="text-center text-sm leading-relaxed text-gray-400 sm:text-left">
+                  <p className="text-center text-sm font-medium leading-relaxed text-white sm:text-left">
                     {item.description}
                   </p>
                 </div>
@@ -257,12 +232,12 @@ export default function WePage() {
             viewport={{ once: true }}
             className="mx-auto mt-12 max-w-4xl"
           >
-            <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+            <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
               <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
                   <Sparkles className="h-6 w-6 text-white" />
                 </div>
-                <div className="space-y-4 text-sm leading-relaxed text-gray-400 sm:text-base">
+                <div className="space-y-4 text-sm font-medium leading-relaxed text-white sm:text-base">
                   <h3 className="text-xl font-bold text-white sm:text-2xl">
                     GitHub: Where Developer Intelligence Lives
                   </h3>
@@ -270,7 +245,7 @@ export default function WePage() {
                     Every GitHub issue is a problem to solve. Every PR is a
                     solution proposed. Every discussion is developers thinking
                     through trade-offs, architecture decisions, and user needs.
-                    <span className="font-semibold text-purple-300">
+                    <span className="font-bold">
                       {" "}
                       This collective thinking makes VectorMail smarter than any
                       individual could.
@@ -281,7 +256,7 @@ export default function WePage() {
                     founder in San Francisco reviews it at 9 AM, and an engineer
                     in Berlin implements it by evening - that's the power of
                     open source.
-                    <span className="font-semibold text-amber-400">
+                    <span className="font-bold">
                       {" "}
                       Different perspectives, different thinking levels, one
                       shared mission.
@@ -294,7 +269,7 @@ export default function WePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -303,13 +278,11 @@ export default function WePage() {
             viewport={{ once: true }}
             className="mb-16 text-center"
           >
-            <h2 className="mb-4 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="text-white">How </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                You Can Help
-              </span>
+            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span>How </span>
+              <span className="text-white">You Can Help</span>
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
               Every contribution matters. Whether it's your first PR or your
               hundredth.
             </p>
@@ -325,28 +298,28 @@ export default function WePage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 transition-all group-hover:border-purple-500/50 sm:p-8">
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 transition-all group-hover:border-slate-700 sm:p-8">
                   <div className="mb-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-800">
                       <type.icon className="h-7 w-7 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-white sm:text-2xl">
                       {type.title}
                     </h3>
                   </div>
-                  <p className="mb-4 text-center text-sm leading-relaxed text-gray-400 sm:text-left sm:text-base">
+                  <p className="mb-4 text-center text-sm font-medium leading-relaxed text-white sm:text-left sm:text-base">
                     {type.description}
                   </p>
                   <div className="space-y-2">
-                    <div className="text-center text-xs font-semibold uppercase tracking-wider text-purple-300 sm:text-left">
+                    <div className="text-center text-xs font-semibold uppercase tracking-wider text-white sm:text-left">
                       Examples:
                     </div>
                     <div className="mx-auto grid max-w-fit grid-cols-2 gap-2 sm:mx-0 sm:max-w-none">
                       {type.examples.map((example, idx) => (
                         <div key={idx} className="flex items-start gap-2">
-                          <CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-purple-400" />
-                          <span className="text-center text-xs text-gray-500 sm:text-left">
+                          <CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-white" />
+                          <span className="text-center text-xs font-medium text-white sm:text-left">
                             {example}
                           </span>
                         </div>
@@ -360,7 +333,7 @@ export default function WePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -382,18 +355,18 @@ export default function WePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: i * 0.15 }}
                 viewport={{ once: true }}
-                className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6"
+                className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6"
               >
-                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 sm:mx-0">
-                  <story.icon className="h-5 w-5 text-purple-400" />
+                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-slate-800 bg-slate-900/50 sm:mx-0">
+                  <story.icon className="h-5 w-5 text-white" />
                 </div>
                 <h3 className="mb-3 text-center text-lg font-bold text-white sm:text-left">
                   {story.title}
                 </h3>
-                <blockquote className="mb-3 border-l-0 border-purple-500/30 pl-0 text-center text-sm italic leading-relaxed text-gray-400 sm:border-l-2 sm:pl-4 sm:text-left">
+                <blockquote className="mb-3 border-l-0 border-slate-800 pl-0 text-center text-sm font-medium italic leading-relaxed text-white sm:border-l-2 sm:pl-4 sm:text-left">
                   "{story.quote}"
                 </blockquote>
-                <div className="text-center text-xs font-semibold text-purple-300 sm:text-left">
+                <div className="text-center text-xs font-semibold text-white sm:text-left">
                   — {story.author}
                 </div>
               </motion.div>
@@ -402,7 +375,7 @@ export default function WePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -411,22 +384,20 @@ export default function WePage() {
             viewport={{ once: true }}
             className="text-center"
           >
-            <h2 className="mb-8 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+            <h2 className="mb-8 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span className="text-white">
                 "I Also Put Some Effort in Making This"
               </span>
             </h2>
 
-            <div className="mx-auto mb-12 max-w-3xl space-y-6 text-sm leading-relaxed text-gray-400 sm:text-base">
+            <div className="mx-auto mb-12 max-w-3xl space-y-6 text-sm font-medium leading-relaxed text-white sm:text-base">
               <p className="text-lg sm:text-xl">
                 That's the feeling we want every contributor to have.{" "}
-                <span className="font-semibold text-white">
-                  Pride. Ownership. Impact.
-                </span>
+                <span className="font-bold">Pride. Ownership. Impact.</span>
               </p>
               <p>
                 When someone asks "Who built VectorMail?", we want you to say:{" "}
-                <span className="font-semibold text-purple-300">
+                <span className="font-bold">
                   "We did. I'm part of the team."
                 </span>
               </p>
@@ -458,13 +429,15 @@ export default function WePage() {
                   whileInView={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   viewport={{ once: true }}
-                  className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-4 text-center"
+                  className="rounded-xl border border-slate-800 bg-[#0a0a0a] p-4 text-center"
                 >
-                  <stat.icon className="mx-auto mb-2 h-8 w-8 text-purple-400" />
-                  <div className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-2xl font-black text-transparent">
+                  <stat.icon className="mx-auto mb-2 h-8 w-8 text-white" />
+                  <div className="text-2xl font-black text-white">
                     {stat.value}
                   </div>
-                  <div className="mt-1 text-xs text-gray-500">{stat.label}</div>
+                  <div className="mt-1 text-xs font-medium text-white">
+                    {stat.label}
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -476,7 +449,7 @@ export default function WePage() {
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto"
               >
-                <button className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 active:scale-95 sm:w-auto">
+                <button className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 hover:shadow-lg active:scale-95 sm:w-auto">
                   <Github className="h-5 w-5" />
                   <span>Start Contributing</span>
                 </button>
@@ -486,7 +459,7 @@ export default function WePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -498,7 +471,7 @@ export default function WePage() {
             <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
               Get Started in Minutes
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
               Contributing to VectorMail is easier than you think.
             </p>
           </motion.div>
@@ -538,17 +511,19 @@ export default function WePage() {
                 viewport={{ once: true }}
                 className="relative"
               >
-                <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all hover:border-purple-500/50">
-                  <div className="mb-4 bg-gradient-to-r from-purple-600/30 via-purple-400/30 to-amber-400/30 bg-clip-text text-5xl font-black text-transparent">
+                <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all hover:border-slate-700">
+                  <div className="mb-4 text-5xl font-black text-white">
                     {step.step}
                   </div>
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20">
-                    <step.icon className="h-6 w-6 text-purple-400" />
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50">
+                    <step.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-2 text-lg font-bold text-white">
                     {step.title}
                   </h3>
-                  <p className="text-xs text-gray-500">{step.description}</p>
+                  <p className="text-xs font-medium text-white">
+                    {step.description}
+                  </p>
                 </div>
               </motion.div>
             ))}
@@ -556,7 +531,7 @@ export default function WePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
         <div className="mx-auto w-full max-w-4xl px-4 text-center sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -564,47 +539,49 @@ export default function WePage() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <div className="mb-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 shadow-lg shadow-purple-500/50">
+            <div className="mb-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-800">
               <Heart className="h-10 w-10 text-white" />
             </div>
 
-            <h2 className="mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
-              <span className="text-white">Ready to Be Part of </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                Something Bigger?
-              </span>
+            <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
+              <span>Ready to Be Part of </span>
+              <span className="text-white">Something Bigger?</span>
             </h2>
 
-            <p className="mx-auto mb-12 max-w-2xl text-base leading-relaxed text-gray-400 sm:text-lg">
+            <p className="mx-auto mb-12 max-w-2xl text-base font-semibold leading-relaxed text-white sm:text-lg">
               Join hundreds of developers building the future of email. Your
               first contribution could be merged today. Your ideas could shape
               tomorrow's features.
-              <span className="mt-4 block font-semibold text-white">
+              <span className="mt-4 block font-bold">
                 This is your invitation to say: "I helped build this."
               </span>
             </p>
 
-            <div className="mx-auto mb-8 max-w-2xl rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 sm:p-8">
+            <div className="mx-auto mb-8 max-w-2xl rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
               <div className="flex flex-wrap items-center justify-center gap-8">
                 <div className="text-center">
                   <div className="mb-1 text-3xl font-black text-white">
                     Open
                   </div>
-                  <div className="text-sm text-gray-500">Issues</div>
+                  <div className="text-sm font-medium text-white">Issues</div>
                 </div>
-                <div className="h-12 w-px bg-purple-500/30"></div>
+                <div className="h-12 w-px bg-slate-800"></div>
                 <div className="text-center">
                   <div className="mb-1 text-3xl font-black text-white">
                     Active
                   </div>
-                  <div className="text-sm text-gray-500">Development</div>
+                  <div className="text-sm font-medium text-white">
+                    Development
+                  </div>
                 </div>
-                <div className="h-12 w-px bg-purple-500/30"></div>
+                <div className="h-12 w-px bg-slate-800"></div>
                 <div className="text-center">
                   <div className="mb-1 text-3xl font-black text-white">
                     Welcome
                   </div>
-                  <div className="text-sm text-gray-500">Contributors</div>
+                  <div className="text-sm font-medium text-white">
+                    Contributors
+                  </div>
                 </div>
               </div>
             </div>
@@ -615,7 +592,7 @@ export default function WePage() {
               rel="noopener noreferrer"
               className="inline-block w-full sm:w-auto"
             >
-              <button className="group flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-12 py-5 text-xl font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 active:scale-95 sm:w-auto">
+              <button className="group flex w-full items-center justify-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-12 py-5 text-xl font-bold text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 hover:shadow-lg active:scale-95 sm:w-auto">
                 <Github className="h-6 w-6" />
                 <span>View on GitHub</span>
                 <motion.div
@@ -627,14 +604,12 @@ export default function WePage() {
               </button>
             </Link>
 
-            <p className="mt-6 text-sm text-gray-500">
+            <p className="mt-6 text-sm font-medium text-white">
               ⭐ Star the repo • 🔱 Fork it • 💻 Build together
             </p>
           </motion.div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }

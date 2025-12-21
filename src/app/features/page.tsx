@@ -32,8 +32,6 @@ import {
   Webhook,
   Activity,
 } from "lucide-react";
-import { Navigation } from "@/components/landing/Navigation";
-import { Footer } from "@/components/landing/Footer";
 import { useState } from "react";
 
 export default function FeaturesPage() {
@@ -43,13 +41,13 @@ export default function FeaturesPage() {
     {
       value: "+70%",
       label: "Faster Email Processing",
-      color: "from-purple-500 to-purple-600",
+      color: "from-slate-400 to-slate-500",
       icon: Zap,
     },
     {
       value: "-85%",
       label: "Time Spent Searching",
-      color: "from-amber-500 to-amber-600",
+      color: "from-slate-400 to-slate-500",
       icon: Search,
     },
     {
@@ -67,13 +65,13 @@ export default function FeaturesPage() {
     {
       value: "94%",
       label: "Embedding Cache Hit Rate",
-      color: "from-purple-600 to-amber-500",
+      color: "from-slate-500 to-slate-600",
       icon: Database,
     },
     {
       value: "100/min",
       label: "Email Batch Processing",
-      color: "from-purple-400 to-purple-500",
+      color: "from-slate-400 to-slate-500",
       icon: Activity,
     },
   ];
@@ -295,42 +293,27 @@ export default function FeaturesPage() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-black">
-      <Navigation />
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
 
-      <div className="fixed left-4 top-24 z-40 hidden sm:left-8 sm:top-32 sm:block">
+      <div className="fixed left-4 top-4 z-40 hidden sm:left-8 sm:top-6 sm:block">
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
             <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="text-xs font-medium sm:text-sm">Back</span>
           </button>
         </Link>
       </div>
 
-      <div className="px-4 pt-28 sm:hidden">
+      <div className="px-4 pt-4 sm:hidden">
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-slate-700 hover:bg-slate-800/50">
             <ArrowLeft className="h-3 w-3" />
             <span className="text-xs font-medium">Back</span>
           </button>
         </Link>
       </div>
 
-      <section className="relative overflow-hidden bg-black pb-12 pt-8 sm:pb-20 sm:pt-16 md:pt-24 lg:pb-32 lg:pt-40 xl:pt-48">
-        <div
-          className="pointer-events-none absolute right-1/4 top-0 h-[200px] w-[200px] rounded-full opacity-20 blur-3xl sm:h-[300px] sm:w-[300px] lg:h-[600px] lg:w-[600px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 left-1/4 h-[150px] w-[150px] rounded-full opacity-20 blur-3xl sm:h-[250px] sm:w-[250px] lg:h-[500px] lg:w-[500px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)",
-          }}
-        />
+      <section className="relative overflow-hidden bg-[#0a0a0a] pb-12 pt-16 sm:pb-20 sm:pt-20 lg:pb-32 lg:pt-24">
 
         <div className="relative mx-auto w-full max-w-7xl px-4 text-center sm:px-6">
           <motion.div
@@ -341,18 +324,18 @@ export default function FeaturesPage() {
           >
             <h1 className="mb-6 w-full break-words text-3xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
               <span className="block text-white">Email Reinvented with</span>
-              <span className="mt-2 block bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="mt-2 block text-white">
                 Vector AI Technology
               </span>
             </h1>
 
-            <p className="mx-auto mb-6 w-full max-w-3xl break-words text-sm text-gray-400 sm:text-base md:text-lg lg:text-xl">
+            <p className="mx-auto mb-6 w-full max-w-3xl break-words text-sm font-semibold text-white sm:text-base md:text-lg lg:text-xl">
               Traditional email clients use 1995 keyword search. VectorMail uses
               semantic vector embeddings and AI to understand what you actually
               mean.
             </p>
 
-            <div className="flex w-full flex-wrap items-center justify-center gap-2 text-xs text-purple-300 sm:gap-4 sm:text-sm">
+            <div className="flex w-full flex-wrap items-center justify-center gap-2 text-xs text-white sm:gap-4 sm:text-sm">
               <span className="whitespace-nowrap">🚀 Open Source</span>
               <span className="hidden sm:inline">•</span>
               <span className="whitespace-nowrap">⚡ Sub-50ms Search</span>
@@ -365,7 +348,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-b from-black via-purple-950/5 to-black py-12 sm:py-20">
+      <section className="relative overflow-hidden bg-[#0a0a0a] py-12 sm:py-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -377,7 +360,7 @@ export default function FeaturesPage() {
             <h2 className="mb-4 text-4xl font-black text-white sm:text-5xl">
               Measured Performance Impact
             </h2>
-            <p className="mx-auto max-w-3xl text-xl text-gray-400">
+            <p className="mx-auto max-w-3xl text-xl font-semibold text-white">
               Real metrics from production deployment showing quantifiable
               improvements in email workflow efficiency.
             </p>
@@ -393,15 +376,15 @@ export default function FeaturesPage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 text-center transition-all hover:border-purple-500/50">
-                  <stat.icon className="mx-auto mb-4 h-12 w-12 text-purple-400" />
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative rounded-2xl border border-slate-800 bg-[#0a0a0a] p-8 text-center transition-all hover:border-slate-700">
+                  <stat.icon className="mx-auto mb-4 h-12 w-12 text-white" />
                   <div
-                    className={`bg-gradient-to-r text-6xl font-black ${stat.color} mb-3 bg-clip-text text-transparent`}
+                    className="text-6xl font-black text-white mb-3"
                   >
                     {stat.value}
                   </div>
-                  <p className="text-sm font-medium text-gray-400">
+                  <p className="text-sm font-semibold text-white">
                     {stat.label}
                   </p>
                 </div>
@@ -411,7 +394,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative bg-black py-32">
+      <section className="relative bg-[#0a0a0a] py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -422,11 +405,11 @@ export default function FeaturesPage() {
           >
             <h2 className="mb-4 text-5xl font-black sm:text-6xl">
               <span className="text-white">AI-Powered </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 Core Engine
               </span>
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-400">
+            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
               Deep dive into the three pillars that make VectorMail
               fundamentally different.
             </p>
@@ -439,8 +422,8 @@ export default function FeaturesPage() {
                 onClick={() => setActiveTab(feature.id)}
                 className={`rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${
                   activeTab === feature.id
-                    ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white shadow-lg shadow-purple-500/50"
-                    : "border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    ? "bg-slate-800 text-white shadow-lg border border-slate-700"
+                    : "border border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-800/50 hover:text-white"
                 }`}
               >
                 {feature.title}
@@ -459,10 +442,10 @@ export default function FeaturesPage() {
                   className="grid items-center gap-12 lg:grid-cols-2"
                 >
                   <div className="group relative">
-                    <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                    <div className="relative flex items-center justify-center rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-16">
+                    <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                    <div className="relative flex items-center justify-center rounded-2xl border border-slate-800 bg-[#0a0a0a] p-16">
                       <div className="relative">
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 opacity-50 blur-3xl" />
+                        <div className="absolute inset-0 rounded-full opacity-0" />
                         <feature.icon
                           className="relative z-10 h-32 w-32 text-white"
                           strokeWidth={1.5}
@@ -475,17 +458,17 @@ export default function FeaturesPage() {
                     <h3 className="text-3xl font-black text-white">
                       {feature.title}
                     </h3>
-                    <p className="text-xl text-gray-400">
+                    <p className="text-xl font-semibold text-white">
                       {feature.description}
                     </p>
 
                     <ul className="space-y-4">
                       {feature.details.map((detail, i) => (
                         <li key={i} className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400">
+                          <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-700">
                             <CheckCircle className="h-4 w-4 text-white" />
                           </div>
-                          <span className="text-gray-300">{detail}</span>
+                          <span className="font-semibold text-white">{detail}</span>
                         </li>
                       ))}
                     </ul>
@@ -496,7 +479,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative bg-gradient-to-b from-black via-zinc-950 to-black py-32">
+      <section className="relative bg-[#0a0a0a] py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -507,11 +490,11 @@ export default function FeaturesPage() {
           >
             <h2 className="mb-4 w-full break-words px-2 text-3xl font-black sm:text-4xl md:text-5xl lg:text-6xl">
               <span className="text-white">Technical </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 Infrastructure
               </span>
             </h2>
-            <p className="mx-auto w-full max-w-2xl px-2 text-base text-gray-400 sm:text-lg">
+            <p className="mx-auto w-full max-w-2xl px-2 text-base font-semibold text-white sm:text-lg">
               Enterprise-grade architecture with modern tooling. Built to scale
               from 1 to 1 million users.
             </p>
@@ -527,18 +510,18 @@ export default function FeaturesPage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-8 text-center transition-all hover:border-purple-500/50 sm:text-left">
-                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 sm:mx-0">
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-8 text-center transition-all hover:border-slate-700 sm:text-left">
+                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-slate-800 sm:mx-0">
                     <feature.icon className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 text-xl font-bold text-white">
                     {feature.title}
                   </h3>
-                  <ul className="space-y-2 text-sm text-gray-400">
+                  <ul className="space-y-2 text-sm font-medium text-white">
                     {feature.list.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-purple-400" />
+                        <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -578,7 +561,7 @@ export default function FeaturesPage() {
               ].map((tech, i) => (
                 <span
                   key={i}
-                  className="rounded-lg border border-purple-500/20 bg-white/5 px-4 py-2 text-sm font-medium text-purple-300 transition-all hover:border-purple-500/40 hover:bg-white/10"
+                  className="rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-2 text-sm font-medium text-white transition-all hover:border-slate-700 hover:bg-slate-800/50"
                 >
                   {tech}
                 </span>
@@ -588,7 +571,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative bg-black py-32">
+      <section className="relative bg-[#0a0a0a] py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -599,11 +582,11 @@ export default function FeaturesPage() {
           >
             <h2 className="mb-4 text-5xl font-black sm:text-6xl">
               <span className="text-white">Advanced AI </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 Capabilities
               </span>
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-400">
+            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
               Machine learning and natural language processing at the core of
               every feature.
             </p>
@@ -619,15 +602,15 @@ export default function FeaturesPage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all hover:border-purple-500/50 sm:text-left">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 sm:mx-0">
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all hover:border-slate-700 sm:text-left">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800 sm:mx-0">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
                     {feature.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400">
+                  <p className="text-sm leading-relaxed font-medium text-white">
                     {feature.description}
                   </p>
                 </div>
@@ -637,7 +620,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative bg-gradient-to-b from-black via-zinc-950 to-black py-32">
+      <section className="relative bg-[#0a0a0a] py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -648,11 +631,11 @@ export default function FeaturesPage() {
           >
             <h2 className="mb-4 text-5xl font-black sm:text-6xl">
               <span className="text-white">Productivity </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 Multipliers
               </span>
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-400">
+            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
               Features designed to save you hours every week and eliminate email
               overhead.
             </p>
@@ -668,15 +651,15 @@ export default function FeaturesPage() {
                 viewport={{ once: true }}
                 className="group relative"
               >
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 opacity-50 blur-xl transition-opacity duration-500 group-hover:opacity-75" />
-                <div className="relative h-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-zinc-900 to-black p-6 text-center transition-all hover:border-purple-500/50 sm:text-left">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 sm:mx-0">
+                <div className="absolute -inset-1 rounded-2xl opacity-0" />
+                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all hover:border-slate-700 sm:text-left">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800 sm:mx-0">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">
                     {feature.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-gray-400">
+                  <p className="text-sm leading-relaxed font-medium text-white">
                     {feature.description}
                   </p>
                 </div>
@@ -686,7 +669,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative bg-black py-32">
+      <section className="relative bg-[#0a0a0a] py-32">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -697,11 +680,11 @@ export default function FeaturesPage() {
           >
             <h2 className="mb-6 text-5xl font-black sm:text-6xl">
               <span className="text-white">The Difference is </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 Clear
               </span>
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-400">
+            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
               Side-by-side comparison of fundamental approaches to email
               management.
             </p>
@@ -728,7 +711,7 @@ export default function FeaturesPage() {
                     className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-center sm:text-left"
                   >
                     <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
-                    <span className="text-sm text-gray-400">{item.text}</span>
+                    <span className="text-sm font-semibold text-white">{item.text}</span>
                   </div>
                 ))}
               </div>
@@ -742,17 +725,17 @@ export default function FeaturesPage() {
               className="space-y-4"
             >
               <div className="mb-8 flex items-center justify-center gap-3 sm:justify-start">
-                <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 to-amber-500" />
+                <div className="h-3 w-3 rounded-full bg-white" />
                 <h3 className="text-3xl font-bold text-white">VectorMail</h3>
               </div>
               <div className="space-y-3">
                 {comparisonPoints.vectormail.map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/5 via-purple-400/5 to-amber-400/5 p-4 text-center transition-colors hover:border-purple-500/50 sm:text-left"
+                    className="flex items-start gap-3 rounded-lg border border-slate-800 bg-[#0a0a0a] p-4 text-center transition-colors hover:border-slate-700 sm:text-left"
                   >
-                    <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
-                    <span className="text-sm text-gray-300">{item.text}</span>
+                    <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
+                    <span className="text-sm font-semibold text-white">{item.text}</span>
                   </div>
                 ))}
               </div>
@@ -761,7 +744,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="relative bg-black py-32">
+      <section className="relative bg-[#0a0a0a] py-32">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -770,18 +753,18 @@ export default function FeaturesPage() {
             viewport={{ once: true }}
           >
             <div className="mb-8">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 via-purple-500 to-amber-500 shadow-lg shadow-purple-500/50">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 shadow-lg">
                 <Sparkles className="h-10 w-10 text-white" />
               </div>
             </div>
             <h2 className="mb-6 text-5xl font-black sm:text-6xl">
               <span className="text-white">Experience Email</span>
               <br />
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 Reimagined
               </span>
             </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-xl text-gray-400">
+            <p className="mx-auto mb-8 max-w-2xl text-xl font-semibold text-white">
               Stop fighting your inbox. Let AI handle the heavy lifting while
               you focus on what matters.
             </p>
@@ -790,7 +773,7 @@ export default function FeaturesPage() {
                 href="https://github.com/parbhatkapila4/Vector-Mail"
                 target="_blank"
               >
-                <button className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-12 py-5 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50">
+                <button className="inline-flex items-center gap-3 rounded-xl bg-slate-800 border border-slate-700 px-12 py-5 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:bg-slate-700">
                   View on GitHub
                   <GitBranch className="h-5 w-5" />
                 </button>
@@ -800,7 +783,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 }

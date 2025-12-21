@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { Nav } from "./Nav";
-
 import { File, Inbox, Send } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
@@ -87,16 +86,17 @@ const SideBar = ({ isCollapsed }: Props) => {
             variant: currentTab === "inbox" ? "default" : "ghost",
           },
           {
-            title: "Drafts",
-            label: draftsThreads?.toString() || "0",
-            icon: File,
-            variant: currentTab === "drafts" ? "default" : "ghost",
-          },
-          {
             title: "Sent",
             label: sentThreads?.toString() || "0",
             icon: Send,
             variant: currentTab === "sent" ? "default" : "ghost",
+          },
+          {
+            title: "AI Buddy",
+            label: draftsThreads?.toString() || "0",
+            icon: File,
+            variant: currentTab === "drafts" ? "default" : "ghost",
+            comingSoon: true,
           },
         ]}
       />

@@ -205,7 +205,7 @@ const EmailDisplay = ({ email }: Props) => {
             dangerouslySetInnerHTML={{
               __html: sanitizeEmailHtml(displayBody),
             }}
-          />
+        />
           <style
             dangerouslySetInnerHTML={{
               __html: `

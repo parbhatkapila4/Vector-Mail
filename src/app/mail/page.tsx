@@ -24,7 +24,7 @@ function MailPage() {
   };
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-screen w-full bg-[#0a0a0a] text-white">
       <div
         className={cn(
           "z-50",
@@ -35,10 +35,10 @@ function MailPage() {
           variant="ghost"
           size="icon"
           onClick={handleBackToHome}
-          className="h-9 w-9 rounded-lg border border-purple-500/30 bg-white/5 text-white shadow-lg backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
+          className="h-9 w-9 rounded-lg border border-slate-800 bg-slate-900/50 text-white shadow-lg backdrop-blur-sm transition-all hover:border-slate-700 hover:bg-slate-800/50"
           aria-label="Back to Home"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 text-white" />
         </Button>
       </div>
 

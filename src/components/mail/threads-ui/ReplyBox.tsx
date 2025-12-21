@@ -123,15 +123,12 @@ const ReplyBox = () => {
   };
 
   return (
-    <div className="sticky bottom-0 z-50 flex flex-col border-t bg-background shadow-lg">
-      {/* Collapse/Expand Header - Always Visible */}
-      <div className="flex items-center justify-between border-b bg-background px-4 py-2.5">
+    <div className="sticky bottom-0 z-50 flex flex-col border-t border-slate-800 bg-[#0a0a0a] shadow-lg">
+      <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0a0a] px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">
-            Reply
-          </span>
+          <span className="text-sm font-medium text-white">Reply</span>
           {toValues.length > 0 && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-slate-400">
               to {toValues[0]?.value || "..."}
             </span>
           )}
@@ -140,13 +137,13 @@ const ReplyBox = () => {
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 text-white hover:bg-slate-800"
           aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
         >
           {isCollapsed ? (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="h-4 w-4 text-amber-500" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 text-amber-500" />
           )}
         </Button>
       </div>

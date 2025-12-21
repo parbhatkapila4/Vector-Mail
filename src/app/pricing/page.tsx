@@ -3,8 +3,6 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Users, Grid, Boxes } from "lucide-react";
-import { Navigation } from "@/components/landing/Navigation";
-import { Footer } from "@/components/landing/Footer";
 import { useState, useEffect } from "react";
 
 export default function PricingPage() {
@@ -106,43 +104,21 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-black">
-      <Navigation />
-
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
       <div
-        className={`fixed left-4 top-28 z-40 transition-opacity duration-300 sm:left-8 sm:top-32 sm:opacity-100 ${
+        className={`fixed left-4 top-4 z-40 transition-opacity duration-300 sm:left-8 sm:top-6 sm:opacity-100 ${
           isScrolled ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
         <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-white/5 px-3 py-2 text-white transition-all hover:scale-105 hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20 sm:px-4">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
             <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="text-xs font-medium sm:text-sm">Back</span>
           </button>
         </Link>
       </div>
 
-      <section className="relative overflow-hidden pb-32 pt-48">
-        <div className="absolute inset-0 bg-black">
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `linear-gradient(rgba(168, 85, 247, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(168, 85, 247, 0.1) 1px, transparent 1px)`,
-              backgroundSize: "50px 50px",
-            }}
-          />
-
-          <div
-            className="absolute right-0 top-0 h-[800px] w-[800px] opacity-30"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(236, 72, 153, 0.3) 50%, rgba(59, 130, 246, 0.2) 100%)",
-              transform: "rotate(-15deg) translateX(200px) translateY(-200px)",
-              filter: "blur(100px)",
-            }}
-          />
-        </div>
-
+      <section className="relative overflow-hidden bg-[#0a0a0a] pb-32 pt-16 sm:pt-20 lg:pt-24">
         <div className="relative mx-auto max-w-7xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -150,22 +126,8 @@ export default function PricingPage() {
             transition={{ duration: 0.6 }}
             className="mb-16 text-center"
           >
-            <motion.div
-              className="mb-6 inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/20 px-4 py-2"
-              animate={{
-                borderColor: [
-                  "rgba(168, 85, 247, 0.3)",
-                  "rgba(251, 191, 36, 0.3)",
-                  "rgba(168, 85, 247, 0.3)",
-                ],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            >
-              <span className="text-sm font-semibold text-purple-300">
+            <motion.div className="mb-6 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2">
+              <span className="text-sm font-semibold text-white">
                 Pricing Coming Soon
               </span>
             </motion.div>
@@ -174,18 +136,18 @@ export default function PricingPage() {
               Flexible Pricing Plans for Every Need
             </h1>
 
-            <p className="mx-auto mb-12 max-w-3xl text-center text-lg text-gray-400 sm:text-left sm:text-xl">
+            <p className="mx-auto mb-12 max-w-3xl text-center text-lg font-semibold text-white sm:text-left sm:text-xl">
               Choose the plan that best fits your requirements and start
               optimizing your time today!
             </p>
 
-            <div className="inline-flex items-center gap-4 rounded-full border border-purple-500/30 bg-white/5 p-2">
+            <div className="inline-flex items-center gap-4 rounded-full border border-slate-800 bg-slate-900/50 p-2">
               <button
                 onClick={() => setBillingCycle("monthly")}
                 className={`rounded-full px-6 py-2 text-sm font-semibold transition-all ${
                   billingCycle === "monthly"
-                    ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white shadow-lg"
-                    : "text-gray-400 hover:text-white"
+                    ? "border border-slate-700 bg-slate-800 text-white shadow-lg"
+                    : "text-slate-300 hover:text-white"
                 }`}
               >
                 Monthly
@@ -194,8 +156,8 @@ export default function PricingPage() {
                 onClick={() => setBillingCycle("annually")}
                 className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${
                   billingCycle === "annually"
-                    ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white shadow-lg"
-                    : "text-gray-400 hover:text-white"
+                    ? "border border-slate-700 bg-slate-800 text-white shadow-lg"
+                    : "text-slate-300 hover:text-white"
                 }`}
               >
                 Annually
@@ -223,17 +185,19 @@ export default function PricingPage() {
                 style={{ willChange: "transform" }}
               >
                 <div
-                  className={`absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600/20 via-purple-400/20 to-amber-400/20 blur-xl transition-opacity duration-300 ${
-                    plan.isPopular ? "opacity-60" : "opacity-40"
-                  } group-hover:opacity-80`}
+                  className={`absolute -inset-1 rounded-2xl transition-opacity duration-300 ${
+                    plan.isPopular
+                      ? "bg-gradient-to-r from-orange-600/20 via-amber-600/20 to-yellow-500/20 opacity-60 blur-xl group-hover:opacity-80"
+                      : "opacity-0"
+                  }`}
                   style={{ willChange: "opacity" }}
                 />
 
                 <div
-                  className={`relative flex h-full flex-col rounded-2xl border bg-gradient-to-br from-zinc-900 to-black p-8 transition-all duration-300 ${
+                  className={`relative flex h-full flex-col rounded-2xl border bg-[#0a0a0a] p-8 transition-all duration-300 ${
                     plan.isPopular
-                      ? "border-purple-500/50 shadow-2xl shadow-purple-500/20"
-                      : "border-purple-500/30 hover:border-purple-500/50"
+                      ? "border-orange-500/50 shadow-2xl shadow-orange-500/20"
+                      : "border-slate-800 hover:border-slate-700"
                   } group-hover:-translate-y-2`}
                   style={{ willChange: "transform, border-color" }}
                 >
@@ -244,7 +208,7 @@ export default function PricingPage() {
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.8, duration: 0.4 }}
                     >
-                      <div className="rounded-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 px-4 py-1 text-xs font-bold text-white shadow-lg">
+                      <div className="rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 px-4 py-1 text-xs font-bold text-white shadow-lg shadow-orange-500/50">
                         MOST POPULAR
                       </div>
                     </motion.div>
@@ -253,8 +217,8 @@ export default function PricingPage() {
                   <div
                     className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 sm:mx-0 ${
                       plan.isPopular
-                        ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400"
-                        : "bg-white/10"
+                        ? "bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500"
+                        : "bg-slate-900/50"
                     }`}
                   >
                     <plan.icon className="h-7 w-7 text-white" />
@@ -264,7 +228,7 @@ export default function PricingPage() {
                     {plan.name}
                   </h3>
 
-                  <p className="mb-6 text-center text-sm leading-relaxed text-gray-400 sm:text-left">
+                  <p className="mb-6 text-center text-sm font-medium leading-relaxed text-white sm:text-left">
                     {plan.description}
                   </p>
 
@@ -273,7 +237,7 @@ export default function PricingPage() {
                       <span className="text-5xl font-black text-white">
                         {plan.price}
                       </span>
-                      <span className="text-lg text-gray-500">
+                      <span className="text-lg font-medium text-white">
                         {plan.period}
                       </span>
                     </div>
@@ -288,13 +252,15 @@ export default function PricingPage() {
                         <div
                           className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
                             plan.isPopular
-                              ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400"
-                              : "bg-purple-500/30"
+                              ? "border border-orange-500/50 bg-gradient-to-br from-orange-500/30 to-amber-500/30"
+                              : "bg-slate-800"
                           }`}
                         >
-                          <CheckCircle className="h-3 w-3 text-white" />
+                          <CheckCircle
+                            className={`h-3 w-3 ${plan.isPopular ? "text-orange-400" : "text-white"}`}
+                          />
                         </div>
-                        <span className="text-center text-sm text-gray-300 sm:text-left">
+                        <span className="text-center text-sm font-medium text-white sm:text-left">
                           {feature}
                         </span>
                       </li>
@@ -306,8 +272,8 @@ export default function PricingPage() {
                       <button
                         className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
                           plan.isPopular
-                            ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white hover:shadow-lg hover:shadow-purple-500/50"
-                            : "border border-purple-500/30 bg-white/5 text-white hover:border-purple-500/50 hover:bg-white/10"
+                            ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
+                            : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
                         }`}
                         style={{ willChange: "transform" }}
                       >
@@ -319,8 +285,8 @@ export default function PricingPage() {
                       onClick={handleProCheckout}
                       className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
                         plan.isPopular
-                          ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white hover:shadow-lg hover:shadow-purple-500/50"
-                          : "border border-purple-500/30 bg-white/5 text-white hover:border-purple-500/50 hover:bg-white/10"
+                          ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
+                          : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
                       }`}
                       style={{ willChange: "transform" }}
                     >
@@ -331,8 +297,8 @@ export default function PricingPage() {
                       onClick={handleEnterpriseCheckout}
                       className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
                         plan.isPopular
-                          ? "bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white hover:shadow-lg hover:shadow-purple-500/50"
-                          : "border border-purple-500/30 bg-white/5 text-white hover:border-purple-500/50 hover:bg-white/10"
+                          ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
+                          : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
                       }`}
                       style={{ willChange: "transform" }}
                     >
@@ -386,12 +352,12 @@ export default function PricingPage() {
                   viewport={{ once: true }}
                   className="group relative"
                 >
-                  <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-purple-600/10 via-purple-400/10 to-amber-400/10 opacity-0 blur transition-opacity duration-500 group-hover:opacity-100" />
-                  <div className="relative rounded-xl border border-purple-500/20 bg-white/5 p-6 transition-all hover:border-purple-500/40">
+                  <div className="absolute -inset-1 rounded-xl opacity-0" />
+                  <div className="relative rounded-xl border border-slate-800 bg-[#0a0a0a] p-6 transition-all hover:border-slate-700">
                     <h3 className="mb-2 text-center text-lg font-bold text-white sm:text-left">
                       {faq.q}
                     </h3>
-                    <p className="text-center text-sm leading-relaxed text-gray-400 sm:text-left">
+                    <p className="text-center text-sm font-medium leading-relaxed text-white sm:text-left">
                       {faq.a}
                     </p>
                   </div>
@@ -409,24 +375,20 @@ export default function PricingPage() {
           >
             <h2 className="mb-4 text-4xl font-black">
               <span className="text-white">Still have questions? </span>
-              <span className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 bg-clip-text text-transparent">
-                We're here to help
-              </span>
+              <span className="text-white">We're here to help</span>
             </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-gray-400">
+            <p className="mx-auto mb-8 max-w-2xl font-semibold text-white">
               Our team is ready to answer any questions about plans, features,
               or custom requirements.
             </p>
             <Link href="mailto:help@productionsolution.net">
-              <button className="rounded-xl border border-purple-500/30 px-10 py-4 text-lg font-semibold text-white transition-all hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/20">
+              <button className="rounded-xl border border-slate-800 bg-slate-900/50 px-10 py-4 text-lg font-semibold text-white transition-all hover:border-slate-700 hover:bg-slate-800/50 hover:shadow-lg">
                 Contact Us
               </button>
             </Link>
           </motion.div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }

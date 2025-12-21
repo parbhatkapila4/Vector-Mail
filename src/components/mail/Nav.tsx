@@ -19,6 +19,7 @@ interface NavProps {
     label?: string;
     icon: LucideIcon;
     variant: "default" | "ghost";
+    comingSoon?: boolean;
   }[];
 }
 
@@ -57,15 +58,28 @@ export function Nav({ links, isCollapsed }: NavProps) {
                     className={cn(
                       "h-4 w-4",
                       link.variant === "default"
-                        ? "text-black dark:text-black"
-                        : "text-white dark:text-white",
+                        ? "text-orange-500"
+                        : link.title === "Inbox"
+                          ? "text-blue-500"
+                          : link.title === "AI Buddy"
+                            ? "text-amber-500"
+                            : link.title === "Sent"
+                              ? "text-green-500"
+                              : "text-purple-500",
                     )}
                   />
                   <span className="sr-only">{link.title}</span>
                 </span>
               </TooltipTrigger>
               <TooltipContent side="right" className="flex items-center gap-4">
-                {link.title}
+                <div className="flex items-center gap-2">
+                  {link.title}
+                  {link.comingSoon && (
+                    <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                      Coming soon
+                    </span>
+                  )}
+                </div>
                 {link.label && (
                   <span className="ml-auto text-muted-foreground">
                     {link.label}
@@ -83,8 +97,8 @@ export function Nav({ links, isCollapsed }: NavProps) {
                   size: isMobile ? "lg" : "sm",
                 }),
                 link.variant === "default" &&
-                  "border-purple-500/30 text-black dark:bg-gradient-to-r dark:from-purple-600/20 dark:via-purple-400/20 dark:to-amber-400/20 dark:text-black dark:hover:from-purple-600/30 dark:hover:via-purple-400/30 dark:hover:to-amber-400/30",
-                link.variant === "ghost" && "text-white dark:text-white",
+                  "border-orange-500/30 bg-orange-500/20 text-white hover:bg-orange-500/30",
+                link.variant === "ghost" && "text-white hover:bg-slate-800",
                 "cursor-pointer justify-start",
                 isMobile && "h-12 text-base",
               )}
@@ -94,28 +108,26 @@ export function Nav({ links, isCollapsed }: NavProps) {
                   "mr-2 h-4 w-4",
                   isMobile && "h-5 w-5",
                   link.variant === "default"
-                    ? "text-black dark:text-black"
-                    : "text-white dark:text-white",
+                    ? "text-orange-500"
+                    : link.title === "Inbox"
+                      ? "text-blue-500"
+                      : link.title === "AI Buddy"
+                        ? "text-amber-500"
+                        : link.title === "Sent"
+                          ? "text-green-500"
+                          : "text-purple-500",
                 )}
               />
-              <span
-                className={
-                  link.variant === "default"
-                    ? "text-black dark:text-black"
-                    : "text-white dark:text-white"
-                }
-              >
-                {link.title}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-white">{link.title}</span>
+                {link.comingSoon && (
+                  <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                    Coming soon
+                  </span>
+                )}
+              </div>
               {link.label && (
-                <span
-                  className={cn(
-                    "ml-auto font-medium",
-                    link.variant === "default"
-                      ? "text-black dark:text-black"
-                      : "text-white dark:text-white",
-                  )}
-                >
+                <span className="ml-auto font-medium text-white">
                   {link.label}
                 </span>
               )}
