@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -111,7 +111,7 @@ const generateHeading = (messages: ChatMessage[]): string => {
   );
 };
 
-export default function BuddyPage() {
+function BuddyPageContent() {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -762,5 +762,19 @@ export default function BuddyPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function BuddyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-400" />
+        </div>
+      }
+    >
+      <BuddyPageContent />
+    </Suspense>
   );
 }
