@@ -38,7 +38,7 @@ const ReplyBox = () => {
   const [subject, setSubject] = React.useState("");
   const [toValues, setToValues] = React.useState<OptionType[]>([]);
   const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isCollapsed, setIsCollapsed] = React.useState(true);
 
   const sendEmail = api.account.sendEmail.useMutation();
 

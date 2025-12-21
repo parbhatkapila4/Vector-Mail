@@ -28,17 +28,17 @@ function MailPage() {
       <div
         className={cn(
           "z-50",
-          isMobile ? "fixed right-4 top-4" : "absolute right-4 top-4",
+          isMobile ? "fixed right-4 top-10" : "fixed right-4 top-10",
         )}
       >
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={handleBackToHome}
-          className="rounded-lg border border-purple-500/30 bg-white/5 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
+          className="h-9 w-9 rounded-lg border border-purple-500/30 bg-white/5 text-white shadow-lg backdrop-blur-sm transition-all hover:border-purple-500/50 hover:bg-gradient-to-r hover:from-purple-600/20 hover:via-purple-400/20 hover:to-amber-400/20"
+          aria-label="Back to Home"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Home
+          <ArrowLeft className="h-4 w-4" />
         </Button>
       </div>
 

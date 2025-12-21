@@ -145,7 +145,81 @@ async function performKeywordSearch(
     return [];
   }
 
-  const queryLower = query.toLowerCase();
+  const queryLower = query.toLowerCase().trim();
+
+  const orConditions = searchTerms.flatMap((term) => [
+    {
+      from: {
+        name: {
+          contains: term,
+          mode: "insensitive" as const,
+        },
+      },
+    },
+    {
+      from: {
+        address: {
+          contains: term,
+          mode: "insensitive" as const,
+        },
+      },
+    },
+    {
+      subject: {
+        contains: term,
+        mode: "insensitive" as const,
+      },
+    },
+    {
+      bodySnippet: {
+        contains: term,
+        mode: "insensitive" as const,
+      },
+    },
+    {
+      body: {
+        contains: term,
+        mode: "insensitive" as const,
+      },
+    },
+  ]);
+
+  orConditions.push(
+    {
+      from: {
+        name: {
+          contains: queryLower,
+          mode: "insensitive" as const,
+        },
+      },
+    },
+    {
+      from: {
+        address: {
+          contains: queryLower,
+          mode: "insensitive" as const,
+        },
+      },
+    },
+    {
+      subject: {
+        contains: queryLower,
+        mode: "insensitive" as const,
+      },
+    },
+    {
+      bodySnippet: {
+        contains: queryLower,
+        mode: "insensitive" as const,
+      },
+    },
+    {
+      body: {
+        contains: queryLower,
+        mode: "insensitive" as const,
+      },
+    },
+  );
 
   const emails = await db.email.findMany({
     where: {
@@ -155,52 +229,13 @@ async function performKeywordSearch(
       sentAt: {
         gte: thirtyDaysAgo,
       },
-      OR: [
-        {
-          from: {
-            name: {
-              contains: queryLower,
-              mode: "insensitive",
-            },
-          },
-        },
-
-        {
-          from: {
-            address: {
-              contains: queryLower,
-              mode: "insensitive",
-            },
-          },
-        },
-
-        {
-          subject: {
-            contains: queryLower,
-            mode: "insensitive",
-          },
-        },
-
-        {
-          bodySnippet: {
-            contains: queryLower,
-            mode: "insensitive",
-          },
-        },
-
-        {
-          body: {
-            contains: queryLower,
-            mode: "insensitive",
-          },
-        },
-      ],
+      OR: orConditions,
     },
     include: {
       from: true,
       thread: true,
     },
-    take: limit * 3,
+    take: limit * 5,
   });
 
   const rankedResults = emails.map((email) => {
@@ -212,39 +247,59 @@ async function performKeywordSearch(
     const body = (email.body || "").toLowerCase();
 
     if (fromName.includes(queryLower)) {
-      relevanceScore += 10.0;
+      relevanceScore += 15.0;
     } else if (fromAddress.includes(queryLower)) {
-      relevanceScore += 9.0;
-    } else if (searchTerms[0] && fromName.includes(searchTerms[0])) {
-      relevanceScore += 8.0;
-    } else if (searchTerms[0] && fromAddress.includes(searchTerms[0])) {
-      relevanceScore += 7.0;
+      relevanceScore += 14.0;
     }
 
     if (subject.includes(queryLower)) {
-      relevanceScore += 5.0;
-    } else if (searchTerms[0] && subject.includes(searchTerms[0])) {
-      relevanceScore += 3.0;
+      relevanceScore += 12.0;
     }
 
     if (snippet.includes(queryLower)) {
-      relevanceScore += 2.0;
-    } else if (searchTerms[0] && snippet.includes(searchTerms[0])) {
-      relevanceScore += 1.0;
+      relevanceScore += 8.0;
     }
 
     if (body.includes(queryLower)) {
-      relevanceScore += 1.5;
-    } else if (searchTerms[0] && body.includes(searchTerms[0])) {
-      relevanceScore += 0.5;
+      relevanceScore += 6.0;
+    }
+
+    let matchingWords = 0;
+    for (const term of searchTerms) {
+      if (fromName.includes(term)) {
+        relevanceScore += 10.0;
+        matchingWords++;
+      } else if (fromAddress.includes(term)) {
+        relevanceScore += 9.0;
+        matchingWords++;
+      }
+
+      if (subject.includes(term)) {
+        relevanceScore += 7.0;
+        matchingWords++;
+      }
+
+      if (snippet.includes(term)) {
+        relevanceScore += 4.0;
+        matchingWords++;
+      }
+
+      if (body.includes(term)) {
+        relevanceScore += 2.0;
+        matchingWords++;
+      }
+    }
+
+    if (matchingWords >= searchTerms.length) {
+      relevanceScore += 5.0;
     }
 
     const daysSinceSent =
       (Date.now() - new Date(email.sentAt).getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceSent < 7) {
-      relevanceScore += 1.0;
+      relevanceScore += 2.0;
     } else if (daysSinceSent < 30) {
-      relevanceScore += 0.5;
+      relevanceScore += 1.0;
     }
 
     return {

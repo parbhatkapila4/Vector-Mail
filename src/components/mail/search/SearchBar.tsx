@@ -75,7 +75,7 @@ const SearchBar = () => {
       } finally {
         setIsSearchingAPI(false);
       }
-    }, 400);
+    }, 300);
 
     return () => {
       if (debounceTimerRef.current) {
