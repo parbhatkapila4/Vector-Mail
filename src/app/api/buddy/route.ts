@@ -171,13 +171,29 @@ ABSOLUTELY CRITICAL RULES - NO SYMBOLS:
 
 Summary: ${userMessage}`;
     } else {
-      systemPrompt = `You are a helpful, friendly, and knowledgeable AI assistant named AI Buddy. You can help with a wide variety of tasks including:
-1. Answering questions on any topic
-2. Providing explanations and tutorials
-3. Writing and editing content
-4. Solving problems and brainstorming
-5. Coding assistance and debugging
-6. General conversation and companionship
+      systemPrompt = `You are AI Buddy, a helpful, friendly, and knowledgeable AI assistant. You can help with a wide variety of tasks and questions.
+
+YOUR CAPABILITIES:
+1. Casual Chat: Engage in friendly, natural conversations
+2. Email Generation: Help compose, draft, and write professional emails
+3. Suggestions & Advice: Provide recommendations, tips, and suggestions on various topics
+4. General Questions: Answer questions about meetings, schedules, calendars, work, life, technology, science, history, and any other topic
+5. Problem Solving: Help solve problems, brainstorm ideas, and think through challenges
+6. Explanations: Explain concepts, how things work, and provide tutorials
+7. Coding Help: Assist with programming, debugging, and technical questions
+8. Content Writing: Help write, edit, and improve written content
+
+CRITICAL INSTRUCTIONS FOR ACCURATE RESPONSES:
+1. ALWAYS answer the specific question asked - provide helpful, relevant information
+2. Read the user's question carefully and understand exactly what they're asking
+3. Provide direct, clear answers that directly address the question
+4. For questions about meetings, schedules, or calendars: Provide helpful information about how to manage meetings, best practices for scheduling, or general advice (even if you don't have access to their specific calendar)
+5. For email-related questions: Offer to help generate emails or provide email writing advice
+6. For general knowledge questions: Answer accurately based on your knowledge
+7. If the question is unclear, ask for clarification rather than guessing
+8. Maintain conversation context from previous messages when relevant
+9. Be helpful, friendly, and conversational - engage naturally with the user
+10. DO NOT refuse to answer questions - always try to be helpful, even if you need to explain limitations
 
 IMPORTANT FORMATTING RULES - NO SYMBOLS ALLOWED:
 - FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (•), NO special characters
@@ -186,7 +202,14 @@ IMPORTANT FORMATTING RULES - NO SYMBOLS ALLOWED:
 - Use plain text formatting only - NO markdown symbols at all
 - Keep formatting clean and professional with plain text only
 
-Be conversational, clear, and helpful. If you don't know something, admit it honestly. Always aim to be accurate and helpful. Respond naturally like a human would.`;
+SPECIFIC QUESTION HANDLING:
+- Questions about meetings/schedules: Provide helpful information about meeting management, scheduling best practices, or suggest checking their email/calendar. Be helpful and informative.
+- Questions about emails: Offer to help generate, draft, or improve emails
+- General knowledge questions: Answer accurately and thoroughly
+- Casual conversation: Engage naturally and be friendly
+- Requests for suggestions: Provide thoughtful, practical suggestions
+
+Remember: Your goal is to be helpful and answer questions. Always try to provide value, even if you need to explain limitations or suggest alternatives. Be accurate, helpful, and stay on topic.`;
 
       userPrompt = userMessage;
     }
@@ -198,23 +221,56 @@ Be conversational, clear, and helpful. If you don't know something, admit it hon
             { role: "system" as const, content: systemPrompt },
             { role: "user" as const, content: userPrompt },
           ]
-        : [
-            { role: "system" as const, content: systemPrompt },
-            ...messages
+        : (() => {
+            const conversationMessages = messages
               .filter((msg) => msg.role !== "system")
               .map((msg) => ({
                 role: msg.role as "user" | "assistant",
                 content: msg.content,
-              })),
-          ];
+              }));
 
-      completion = await openai.chat.completions.create({
-        model: "google/gemini-2.5-flash",
-        messages: completionMessages,
-        max_tokens: isEmail ? 2000 : 1500,
-        temperature: 0.7,
-        ...(isEmail && { response_format: { type: "json_object" } }),
-      });
+            return [
+              { role: "system" as const, content: systemPrompt },
+              ...conversationMessages,
+            ];
+          })();
+
+      let model = "anthropic/claude-3.5-sonnet";
+
+      try {
+        completion = await openai.chat.completions.create({
+          model: model,
+          messages: completionMessages,
+          max_tokens: isEmail ? 2000 : 2000,
+          temperature: isEmail ? 0.7 : 0.3,
+          ...(isEmail && { response_format: { type: "json_object" } }),
+        });
+      } catch (primaryError) {
+        console.warn("Primary model failed, trying GPT-4o-mini:", primaryError);
+        try {
+          model = "openai/gpt-4o-mini";
+          completion = await openai.chat.completions.create({
+            model: model,
+            messages: completionMessages,
+            max_tokens: isEmail ? 2000 : 2000,
+            temperature: isEmail ? 0.7 : 0.3,
+            ...(isEmail && { response_format: { type: "json_object" } }),
+          });
+        } catch (secondaryError) {
+          console.warn(
+            "Secondary model failed, trying Gemini:",
+            secondaryError,
+          );
+          model = "google/gemini-2.5-flash";
+          completion = await openai.chat.completions.create({
+            model: model,
+            messages: completionMessages,
+            max_tokens: isEmail ? 2000 : 2000,
+            temperature: isEmail ? 0.7 : 0.3,
+            ...(isEmail && { response_format: { type: "json_object" } }),
+          });
+        }
+      }
     } catch (apiError) {
       console.error("OpenRouter API error:", apiError);
       const errorMessage =

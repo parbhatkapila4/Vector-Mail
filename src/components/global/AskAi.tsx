@@ -372,7 +372,7 @@ export default function EmailSearchAssistant({
                     </div>
                     <div className="text-xs text-gray-400">
                       Total: {debugData.totalEmails} | Processed:{" "}
-                      {debugData.emails.filter((e) => e.hasEmbedding).length}
+                      {debugData.processedEmails ?? debugData.emails.filter((e) => e.hasEmbedding).length}
                     </div>
                     <div className="truncate text-xs text-gray-400">
                       Latest: {debugData.emails[0]?.subject || "None"}

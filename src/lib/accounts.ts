@@ -119,6 +119,7 @@ export class Account {
 
   private async startSync() {
     console.log("[AURINKO AUTH] Using accountToken for account:", this.id);
+
     const response = await axios.post<syncResponse>(
       `https://api.aurinko.io/v1/email/sync`,
       {},
@@ -248,7 +249,6 @@ export class Account {
   }
 
   async syncEmails(forceFullSync = false) {
-    void forceFullSync;
     const account = await db.account.findUnique({
       where: {
         token: this.token,
@@ -256,12 +256,64 @@ export class Account {
     });
     if (!account) throw new Error("Invalid token");
 
-    console.log(`Starting email sync for account ${account.id}`);
+    console.log(
+      `Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync})`,
+    );
+
+    if (forceFullSync) {
+      console.log(
+        `[syncEmails] Force full sync requested - fetching ALL emails directly from messages API`,
+      );
+      try {
+        const allEmails = await this.fetchAllEmailsDirectly();
+        console.log(
+          `[syncEmails] Fetched ${allEmails.length} emails directly, syncing to database...`,
+        );
+
+        await syncEmailsToDatabase(allEmails, account.id);
+        console.log(
+          `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
+        );
+
+        let storedDeltaToken: string = "";
+        try {
+          const syncResponse = await this.startSync();
+          if (syncResponse.ready && syncResponse.syncUpdatedToken) {
+            storedDeltaToken = syncResponse.syncUpdatedToken;
+          }
+        } catch (syncError) {
+          console.warn(
+            "[syncEmails] Could not get new delta token, continuing without it:",
+            syncError,
+          );
+        }
+
+        await db.account.update({
+          where: { id: account.id },
+          data: { nextDeltaToken: storedDeltaToken },
+        });
+
+        console.log(
+          `[syncEmails] Force full sync completed for account ${account.id}`,
+        );
+        return;
+      } catch (directFetchError) {
+        console.error(
+          "[syncEmails] Direct fetch failed, falling back to sync API:",
+          directFetchError,
+        );
+      }
+    }
+
+    const updatedAccount = await db.account.findUnique({
+      where: { token: this.token },
+    });
+    if (!updatedAccount) throw new Error("Invalid token");
 
     let allEmails: EmailMessage[] = [];
     let storedDeltaToken: string;
 
-    if (!account.nextDeltaToken) {
+    if (!updatedAccount.nextDeltaToken) {
       console.log(
         "[syncEmails] Performing full initial sync (first connection)...",
       );
@@ -273,27 +325,42 @@ export class Account {
         `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
       );
     } else {
-      console.log(`Using delta token: ${account.nextDeltaToken}`);
-      let response = await this.getUpdatedEmails(account.nextDeltaToken);
-      allEmails = response.records;
-      storedDeltaToken = account.nextDeltaToken;
-
-      console.log(`Delta sync response: ${allEmails.length} emails found`);
-
-      if (response.nextDeltaToken) {
-        storedDeltaToken = response.nextDeltaToken;
-        console.log(`Updated delta token: ${storedDeltaToken}`);
-      }
-
-      while (response.nextPageToken) {
-        console.log(`Fetching next page with token: ${response.nextPageToken}`);
-        response = await this.getUpdatedEmails("", response.nextPageToken);
-        allEmails = allEmails.concat(response.records);
+      const deltaToken = updatedAccount.nextDeltaToken;
+      if (!deltaToken) {
         console.log(
-          `Page response: ${response.records.length} emails, total: ${allEmails.length}`,
+          "[syncEmails] No delta token found, performing initial sync...",
         );
+        const initialSyncResult = await this.performInitialSync();
+        allEmails = initialSyncResult?.emails ?? [];
+        storedDeltaToken = initialSyncResult?.deltaToken ?? "";
+        console.log(
+          `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
+        );
+      } else {
+        console.log(`Using delta token: ${deltaToken.substring(0, 20)}...`);
+        let response = await this.getUpdatedEmails(deltaToken);
+        allEmails = response.records || [];
+        storedDeltaToken = deltaToken;
+
+        console.log(`Delta sync response: ${allEmails.length} emails found`);
+
         if (response.nextDeltaToken) {
           storedDeltaToken = response.nextDeltaToken;
+          console.log(`Updated delta token: ${storedDeltaToken}`);
+        }
+
+        while (response.nextPageToken) {
+          console.log(
+            `Fetching next page with token: ${response.nextPageToken}`,
+          );
+          response = await this.getUpdatedEmails("", response.nextPageToken);
+          allEmails = allEmails.concat(response.records);
+          console.log(
+            `Page response: ${response.records.length} emails, total: ${allEmails.length}`,
+          );
+          if (response.nextDeltaToken) {
+            storedDeltaToken = response.nextDeltaToken;
+          }
         }
       }
     }
@@ -507,6 +574,92 @@ export class Account {
       };
     } catch (error) {
       console.error("[fetchInboxEmails] Failed:", error);
+      throw error;
+    }
+  }
+
+  async fetchAllEmailsDirectly(): Promise<EmailMessage[]> {
+    try {
+      console.log(
+        "[fetchAllEmailsDirectly] Starting to fetch all emails from last 30 days...",
+      );
+      const allEmails: EmailMessage[] = [];
+      let pageToken: string | undefined = undefined;
+      let pageCount = 0;
+      const maxPages = 100;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const year = thirtyDaysAgo.getFullYear();
+      const month = String(thirtyDaysAgo.getMonth() + 1).padStart(2, "0");
+      const day = String(thirtyDaysAgo.getDate()).padStart(2, "0");
+      const dateQuery = `after:${year}/${month}/${day}`;
+
+      do {
+        pageCount++;
+        console.log(`[fetchAllEmailsDirectly] Fetching page ${pageCount}...`);
+
+        const params: Record<string, string | number> = {
+          q: `in:all ${dateQuery}`,
+          maxResults: 500,
+          bodyType: "text",
+        };
+
+        if (pageToken) {
+          params.pageToken = pageToken;
+        }
+
+        const listResponse = await axios.get<{
+          messages?: Array<{ id: string }>;
+          nextPageToken?: string;
+        }>("https://api.aurinko.io/v1/email/messages", {
+          headers: this.aurinkoHeaders,
+          params,
+        });
+
+        const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
+        console.log(
+          `[fetchAllEmailsDirectly] Page ${pageCount}: Found ${messageIds.length} message IDs`,
+        );
+
+        if (messageIds.length === 0) {
+          break;
+        }
+
+        const batchSize = 50;
+        for (let i = 0; i < messageIds.length; i += batchSize) {
+          const batch = messageIds.slice(i, i + batchSize);
+          const batchEmails = await Promise.all(
+            batch.map((id) => this.getEmailById(id)),
+          );
+
+          const validEmails = batchEmails.filter(
+            (e): e is EmailMessage => e !== null,
+          );
+          allEmails.push(...validEmails);
+
+          console.log(
+            `[fetchAllEmailsDirectly] Processed batch ${Math.floor(i / batchSize) + 1}, total emails: ${allEmails.length}`,
+          );
+        }
+
+        pageToken = listResponse.data.nextPageToken;
+
+        if (pageCount >= maxPages) {
+          console.warn(
+            `[fetchAllEmailsDirectly] Reached max pages (${maxPages}), stopping`,
+          );
+          break;
+        }
+      } while (pageToken);
+
+      console.log(
+        `[fetchAllEmailsDirectly] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages`,
+      );
+
+      return allEmails;
+    } catch (error) {
+      console.error("[fetchAllEmailsDirectly] Failed:", error);
       throw error;
     }
   }

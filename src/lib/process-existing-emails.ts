@@ -10,30 +10,40 @@ export async function processExistingEmails(
   try {
     console.log("Starting to process existing emails with AI analysis...");
 
-    let whereClause: Prisma.EmailWhereInput = {
-      OR: [{ summary: null }],
-    };
-
-    if (accountId) {
-      whereClause = {
-        AND: [
-          whereClause,
-          {
-            thread: {
-              accountId: accountId,
-            },
-          },
-        ],
-      };
-    }
-
     let processed = 0;
     let totalProcessed = 0;
     let hasMore = true;
 
     while (hasMore) {
+      const emailIds = accountId
+        ? ((await db.$queryRaw<Array<{ id: string }>>`
+            SELECT e.id
+            FROM "Email" e
+            JOIN "Thread" t ON e."threadId" = t.id
+            WHERE t."accountId" = ${accountId}
+              AND (e."summary" IS NULL OR e."embedding" IS NULL)
+            ORDER BY e."sentAt" DESC
+            LIMIT ${batchSize}
+          `) as Array<{ id: string }>)
+        : ((await db.$queryRaw<Array<{ id: string }>>`
+            SELECT e.id
+            FROM "Email" e
+            WHERE e."summary" IS NULL OR e."embedding" IS NULL
+            ORDER BY e."sentAt" DESC
+            LIMIT ${batchSize}
+          `) as Array<{ id: string }>);
+
+      if (emailIds.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      const emailIdList = emailIds.map((e) => e.id);
+
       const emails = await db.email.findMany({
-        where: whereClause,
+        where: {
+          id: { in: emailIdList },
+        },
         include: {
           thread: true,
           from: true,
@@ -43,7 +53,6 @@ export async function processExistingEmails(
           replyTo: true,
           attachments: true,
         },
-        take: batchSize,
         orderBy: {
           sentAt: "desc",
         },

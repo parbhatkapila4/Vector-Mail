@@ -41,7 +41,7 @@ const vectorSimilarityThreshold = 0.3;
 function isFindOrSummarizeQuery(query: string): boolean {
   const lowerQuery = query.toLowerCase().trim();
 
-  if (lowerQuery.length < 3) {
+  if (lowerQuery.length < 2) {
     return true;
   }
 
@@ -61,7 +61,10 @@ function isFindOrSummarizeQuery(query: string): boolean {
     return true;
   }
 
-  const findPatterns = [
+  const naturalFindPatterns = [
+    /^from\s+[\w\s.@-]+\??$/i,
+    /\b(emails?|mail|messages?)\s+from\s+/i,
+    /^[\w\s.@-]+\??$/i,
     /\b(find|search|show|get|look|fetch|retrieve|display|list)\b/i,
     /\b(mail|email|message|inbox)\s+(from|about|with|regarding|concerning)\b/i,
     /\b(any|all|some|my)\s+(mail|email|message|emails)\b/i,
@@ -78,7 +81,9 @@ function isFindOrSummarizeQuery(query: string): boolean {
     /\b(the|this|that|one|first|second|third|fourth|fifth)\s+(on|from|dated?|about|email|mail)\b/i,
   ];
 
-  const isFindQuery = findPatterns.some((pattern) => pattern.test(lowerQuery));
+  const isFindQuery = naturalFindPatterns.some((pattern) =>
+    pattern.test(lowerQuery),
+  );
 
   const isSummarizeQuery = summarizePatterns.some((pattern) =>
     pattern.test(lowerQuery),
@@ -89,6 +94,21 @@ function isFindOrSummarizeQuery(query: string): boolean {
   const hasActionWords = /\b(from|about|with|regarding|concerning|for)\b/i.test(
     lowerQuery,
   );
+
+  if (/\bfrom\s+[\w\s.@-]+/i.test(lowerQuery)) {
+    return true;
+  }
+
+  if (
+    /^[\w\s.@-]+\??$/i.test(lowerQuery) &&
+    lowerQuery.length > 2 &&
+    lowerQuery.length < 50
+  ) {
+    const words = lowerQuery.replace(/[?]/g, "").trim().split(/\s+/);
+    if (words.length <= 3) {
+      return true;
+    }
+  }
 
   if (hasEmailWords && hasActionWords) {
     return true;
@@ -151,29 +171,52 @@ export async function POST(req: Request) {
     const storedEmails = getStoredEmails(userId, accountId);
     const hasStoredResults = storedEmails !== null && storedEmails.length > 0;
 
-    const intentResult = detectIntent(userQuery, hasStoredResults);
+    const isNewSearchQuery =
+      /^(find|search|show|get|look|fetch|retrieve|display|list|any|all)\s+/i.test(
+        userQuery,
+      ) ||
+      /^from\s+[\w\s.@-]+\??$/i.test(userQuery) ||
+      (/^[\w\s.@-]+\??$/i.test(userQuery) &&
+        userQuery.length > 2 &&
+        userQuery.length < 50) ||
+      /\b(orders?|flights?|meetings?|payments?|receipts?|bookings?|invoices?|confirmations?)\b/i.test(
+        userQuery,
+      ) ||
+      /\b(emails?|mail|messages?)\s+from\s+/i.test(userQuery);
+
+    let shouldUseStoredResults = hasStoredResults;
+    if (isNewSearchQuery && hasStoredResults) {
+      console.log(`[Chat] Detected new search query, clearing stored results`);
+      const { clearSession } = await import("@/lib/chat-session");
+      clearSession(userId, accountId);
+      shouldUseStoredResults = false;
+    }
+
+    const intentResult = detectIntent(userQuery, shouldUseStoredResults);
     const { intent, extractedData } = intentResult;
 
     console.log(
-      `[Chat] Intent: ${intent}, Confidence: ${intentResult.confidence}, Extracted:`,
+      `[Chat] Intent: ${intent}, Confidence: ${intentResult.confidence}, IsNewSearch: ${isNewSearchQuery}, ShouldUseStored: ${shouldUseStoredResults}, Extracted:`,
       extractedData,
     );
 
     const hasDateReference = /(\d{1,2}[-\/]\d{1,2})/.test(userQuery);
     const hasConversationalRef =
       /(the|this|that|one)\s+(on|from|dated?|about)/i.test(userQuery);
+
     const isFollowUpQuery =
-      hasStoredResults &&
+      !isNewSearchQuery &&
+      shouldUseStoredResults &&
       (intent === "SUMMARIZE" ||
         intent === "SELECT" ||
-        hasDateReference ||
-        hasConversationalRef ||
-        userQuery.toLowerCase().includes("about") ||
+        (hasDateReference && !isNewSearchQuery) ||
+        (hasConversationalRef && !isNewSearchQuery) ||
+        (userQuery.toLowerCase().includes("about") && !isNewSearchQuery) ||
         userQuery.toLowerCase().includes("what was") ||
         userQuery.toLowerCase().includes("what is"));
 
-    if (isFollowUpQuery && hasStoredResults) {
-      const matches = selectEmails(storedEmails!, extractedData || {});
+    if (isFollowUpQuery && shouldUseStoredResults && storedEmails) {
+      const matches = selectEmails(storedEmails, extractedData || {});
 
       if (matches.length === 0) {
         if (env.OPENROUTER_API_KEY && storedEmails && storedEmails.length > 0) {
@@ -321,9 +364,138 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
       to: EmailAddress[];
     }> = [];
 
-    const senderPattern = /(?:from|by|sent\s+by)\s+([a-zA-Z0-9._-]+)/i;
-    const senderMatch = userQuery.match(senderPattern);
-    const senderTerm = senderMatch?.[1]?.toLowerCase() || "";
+    let senderTerm = "";
+    const senderPatterns = [
+      /(?:from|by|sent\s+by)\s+([a-zA-Z0-9._@\s-]+)/i,
+      /^([a-zA-Z0-9._@\s-]+)\??$/i,
+    ];
+
+    for (const pattern of senderPatterns) {
+      const match = userQuery.match(pattern);
+      if (match && match[1]) {
+        senderTerm = match[1].trim().toLowerCase().replace(/[?]/g, "");
+        if (
+          senderTerm.length > 1 &&
+          senderTerm.length < 50 &&
+          !senderTerm.includes(" ")
+        ) {
+          break;
+        } else if (senderTerm.length > 1 && senderTerm.length < 100) {
+          const words = senderTerm.split(/\s+/);
+          if (words.length <= 3) {
+            break;
+          }
+        }
+        senderTerm = "";
+      }
+    }
+
+    let understoodQuery = userQuery;
+    let queryIntent = "";
+    if (env.OPENROUTER_API_KEY) {
+      try {
+        const openai = new OpenAI({
+          baseURL: "https://openrouter.ai/api/v1",
+          apiKey: env.OPENROUTER_API_KEY,
+          defaultHeaders: {
+            "HTTP-Referer": "https://vectormail-ai.vercel.app",
+            "X-Title": "VectorMail AI",
+          },
+        });
+
+        const understandingPrompt = `The user asked: "${userQuery}"
+
+Your task: Understand what the user is REALLY looking for and generate:
+1. A clear search query optimized for finding relevant emails
+2. A description of what types of emails are relevant
+
+Examples:
+- "Find my flight bookings" → Search: "flight booking airline ticket reservation travel" | Relevant: emails about flights, airlines, travel bookings, tickets, reservations, airports
+- "Show receipts and payments" → Search: "receipt payment invoice purchase order transaction" | Relevant: emails about payments, receipts, invoices, purchases, transactions, billing
+- "What meetings do I have" → Search: "meeting appointment calendar invite schedule" | Relevant: emails about meetings, appointments, calendar invites, scheduling
+- "from Joe?" or "from Joe" → Search: "Joe" | Relevant: emails from sender named Joe or email address containing Joe
+- "Joe?" or "Luma?" → Search: "Joe" or "Luma" | Relevant: emails from sender with that name
+
+IMPORTANT: If the query is asking about emails from a specific person (like "from Joe?", "Joe?", "emails from John"), the searchQuery should be the person's name, and relevantTypes should indicate "emails from that sender".
+
+Return ONLY a JSON object in this exact format:
+{
+  "searchQuery": "optimized search terms here",
+  "relevantTypes": "description of what emails are relevant",
+  "intent": "brief intent description"
+}`;
+
+        let understandingResponse;
+        try {
+          understandingResponse = await openai.chat.completions.create({
+            model: "anthropic/claude-3.5-sonnet",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a query understanding assistant. Analyze user queries and generate optimized search terms and relevance criteria. Return ONLY valid JSON.",
+              },
+              { role: "user", content: understandingPrompt },
+            ],
+            max_tokens: 200,
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+          });
+        } catch (claudeError) {
+          console.warn("Claude failed, trying GPT-4o-mini:", claudeError);
+          understandingResponse = await openai.chat.completions.create({
+            model: "openai/gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a query understanding assistant. Analyze user queries and generate optimized search terms and relevance criteria. Return ONLY valid JSON.",
+              },
+              { role: "user", content: understandingPrompt },
+            ],
+            max_tokens: 200,
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+          });
+        }
+
+        const understandingContent =
+          understandingResponse.choices[0]?.message?.content?.trim();
+        if (understandingContent) {
+          try {
+            const parsed = JSON.parse(understandingContent);
+            understoodQuery = parsed.searchQuery || userQuery;
+            queryIntent = parsed.relevantTypes || "";
+
+            if (
+              senderTerm &&
+              !understoodQuery.toLowerCase().includes(senderTerm.toLowerCase())
+            ) {
+              understoodQuery = senderTerm;
+              queryIntent = `emails from sender: ${senderTerm}`;
+            }
+
+            console.log(
+              `[Query Understanding] Original: "${userQuery}" → Understood: "${understoodQuery}" | Intent: "${queryIntent}" | Sender: "${senderTerm}"`,
+            );
+          } catch (parseError) {
+            console.warn("Failed to parse query understanding:", parseError);
+            if (senderTerm) {
+              understoodQuery = senderTerm;
+              queryIntent = `emails from sender: ${senderTerm}`;
+            }
+          }
+        } else if (senderTerm) {
+          understoodQuery = senderTerm;
+          queryIntent = `emails from sender: ${senderTerm}`;
+        }
+      } catch (understandingError) {
+        console.warn(
+          "Query understanding failed, using original query:",
+          understandingError,
+        );
+      }
+    }
 
     try {
       let vectorSearchResults: Array<{
@@ -339,8 +511,13 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
       }> = [];
 
       try {
+        let searchQuery = understoodQuery || userQuery;
+        if (senderTerm && !understoodQuery) {
+          searchQuery = senderTerm;
+        }
+
         const vectorResults = await searchEmailsByVector(
-          userQuery,
+          searchQuery,
           accountId,
           20,
         );
@@ -401,17 +578,22 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           });
         }
 
-        const cleanQuery = userQuery
+        const queryToUse = understoodQuery || userQuery;
+        const cleanQuery = queryToUse
           .toLowerCase()
           .replace(
-            /from|by|sent|is there|any kind of|mail that|has|something like|and|something|that|this type of|things in/gi,
+            senderTerm
+              ? /^from\s+/gi
+              : /from|by|sent|is there|any kind of|mail that|has|something like|and|something|that|this type of|things in/gi,
             "",
           )
           .trim();
 
         const searchTerms = cleanQuery
           .split(/\s+/)
-          .filter((term) => term.length > 2);
+          .filter(
+            (term) => term.length > 2 && term !== senderTerm.toLowerCase(),
+          );
 
         if (searchTerms.length > 0) {
           orConditions.push(
@@ -490,33 +672,35 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           .join("\n");
 
         const filterPrompt = `The user asked: "${userQuery}"
+${queryIntent ? `\nWhat the user is looking for: ${queryIntent}` : ""}
 
 Here are emails that were found by the search system:
 ${emailList}
 
 Your task: Return ONLY the numbers (comma-separated) of emails that are ACTUALLY and DIRECTLY relevant to the user's query. 
 
-CRITICAL RULES:
-- If the user asked about "flight bookings", ONLY include emails about flights, bookings, travel, airlines, airports, tickets, reservations, etc.
-- If the user asked about "orders", ONLY include emails about purchases, orders, deliveries, shipments, etc.
-- If the user asked about "meetings", ONLY include emails about meetings, appointments, calendar invites, etc.
-- Be VERY strict - exclude ANY email that is not directly related to what the user asked for
-- If an email is about something completely different (e.g., job applications when user asked about flights), DO NOT include it
+CRITICAL RULES - BE EXTREMELY STRICT:
+- If the user asked about "flight bookings" or "flights", ONLY include emails about: flights, airlines, travel bookings, tickets, reservations, airports, departures, arrivals, boarding passes. EXCLUDE: job applications, meetings, payments, or any other unrelated topics.
+- If the user asked about "orders" or "purchases", ONLY include emails about: orders, purchases, deliveries, shipments, products, shopping. EXCLUDE: anything else.
+- If the user asked about "meetings" or "appointments", ONLY include emails about: meetings, appointments, calendar invites, scheduling, calls. EXCLUDE: anything else.
+- If the user asked about "payments" or "receipts", ONLY include emails about: payments, receipts, invoices, transactions, billing, purchases. EXCLUDE: anything else.
+- Be EXTREMELY strict - if an email is about something completely different (e.g., job applications when user asked about flights), DO NOT include it, even if it was in the search results
+- Only include emails where the subject, summary, or content clearly relates to what the user asked for
 
 Return format: Just numbers separated by commas, like: 1,3,5,7
 If NONE are relevant, return: 0`;
 
         const filterResponse = await openai.chat.completions.create({
-          model: "google/gemini-2.0-flash-exp:free",
+          model: "anthropic/claude-3.5-sonnet",
           messages: [
             {
               role: "system",
               content:
-                "You are a strict email filter. Your job is to ONLY return emails that are directly relevant to the user's query. Be very strict - if an email is not clearly related, exclude it.",
+                "You are an extremely strict email filter. Your ONLY job is to return email numbers that are DIRECTLY and CLEARLY relevant to the user's query. If an email is about something different (e.g., job applications when user asked about flights), exclude it. Be very strict - it's better to return fewer emails than to include irrelevant ones. Return ONLY comma-separated numbers or '0' if none are relevant.",
             },
             { role: "user", content: filterPrompt },
           ],
-          max_tokens: 50,
+          max_tokens: 100,
           temperature: 0.1,
         });
 
@@ -642,11 +826,20 @@ Preview: ${email.content.substring(0, 300)}...
   )
   .join("\n")}
 
-CRITICAL: Only mention emails that are ACTUALLY relevant to what the user asked for. If the user asked about "flights", only mention emails about flights, travel, bookings, airlines, etc. Do NOT mention emails that are unrelated to the query, even if they appear in the list.
+CRITICAL RELEVANCE FILTERING - ABSOLUTELY MANDATORY:
+${queryIntent ? `The user is looking for: ${queryIntent}\n` : ""}
+- ONLY mention emails that are DIRECTLY and CLEARLY relevant to what the user asked for
+- If the user asked about "flight bookings" or "flights", ONLY mention emails about: flights, airlines, travel bookings, tickets, reservations, airports, departures, arrivals, boarding passes
+- If the user asked about "orders" or "purchases", ONLY mention emails about: orders, purchases, deliveries, shipments, products, shopping
+- If the user asked about "meetings" or "appointments", ONLY mention emails about: meetings, appointments, calendar invites, scheduling, calls
+- If the user asked about "payments" or "receipts", ONLY mention emails about: payments, receipts, invoices, transactions, billing, purchases
+- DO NOT mention emails that are about completely different topics (e.g., job applications when user asked about flights)
+- If an email's subject or content is not clearly related to the user's query, DO NOT mention it
+- Be EXTREMELY strict - it's better to say "No mails found" than to mention irrelevant emails
 
 Answer the user's request based on these emails. Be conversational, helpful, and do exactly what they ask. Reference specific emails by number or subject when relevant. If the user asks about "the one on [date]" or similar, identify which email they mean and provide details about it.
 
-IMPORTANT: If none of the emails in the list are actually relevant to the user's query, respond with: "No mails found regarding your query. I'm Sorry!"
+IMPORTANT: If none of the emails in the list are actually relevant to the user's query, respond with: "No mails found regarding your query. I'm Sorry!" DO NOT list emails that are not relevant.
 
 If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in a friendly, brief way and remind them you can help find and summarize emails.`;
 

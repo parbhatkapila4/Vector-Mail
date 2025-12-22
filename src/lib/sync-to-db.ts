@@ -39,12 +39,12 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
     if (email.sysLabels.includes("draft")) {
       emailLabelType = "draft";
-    } else if (email.sysLabels.includes("sent")) {
-      emailLabelType = "sent";
     } else if (
-      email.sysLabels.includes("inbox") ||
-      email.sysLabels.includes("important")
+      email.sysLabels.includes("sent") &&
+      !email.sysLabels.includes("inbox")
     ) {
+      emailLabelType = "sent";
+    } else {
       emailLabelType = "inbox";
     }
 
@@ -103,8 +103,6 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         accountId,
         lastMessageDate: new Date(email.sentAt),
         done: false,
-        // FIX: Update status flags on UPDATE too, not just CREATE
-        // This ensures threads show up in the correct tab when new emails are added
         draftStatus: emailLabelType === "draft",
         inboxStatus: emailLabelType === "inbox",
         sentStatus: emailLabelType === "sent",
@@ -221,20 +219,31 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       orderBy: { receivedAt: "asc" },
     });
 
-    let threadFolderType = "sent";
+    let threadFolderType = "inbox";
 
     for (const threadEmail of threadEmails) {
       if (
-        threadEmail.emailLabel === "inbox" ||
-        threadEmail.sysLabels?.includes("inbox")
-      ) {
-        threadFolderType = "inbox";
-        break;
-      } else if (
         threadEmail.emailLabel === "draft" ||
         threadEmail.sysLabels?.includes("draft")
       ) {
         threadFolderType = "draft";
+        break;
+      } else if (
+        threadEmail.emailLabel === "inbox" ||
+        threadEmail.sysLabels?.includes("inbox") ||
+        threadEmail.sysLabels?.includes("spam") ||
+        threadEmail.sysLabels?.includes("junk") ||
+        threadEmail.sysClassifications?.includes("promotions") ||
+        threadEmail.sysClassifications?.includes("social") ||
+        threadEmail.sysClassifications?.includes("updates") ||
+        threadEmail.sysClassifications?.includes("forums")
+      ) {
+        threadFolderType = "inbox";
+      } else if (
+        threadEmail.emailLabel === "sent" &&
+        !threadEmail.sysLabels?.includes("inbox")
+      ) {
+        threadFolderType = "sent";
       }
     }
 
