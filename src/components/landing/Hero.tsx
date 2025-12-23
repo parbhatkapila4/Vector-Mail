@@ -1,332 +1,426 @@
 "use client";
 
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { EmailClientMockup } from "./EmailClientMockup";
-import {
-  ArrowRight,
-  Play,
-  Zap,
-  TrendingUp,
-  Mail,
-  Brain,
-  Search,
-} from "lucide-react";
-import { useState, useRef } from "react";
+import { ArrowRight, Check } from "lucide-react";
 
 export function Hero() {
   const { isSignedIn } = useUser();
-  const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springConfig = { damping: 25, stiffness: 200 };
-  const x = useSpring(
-    useTransform(mouseX, (latest) => latest / 20),
-    springConfig,
-  );
-  const y = useSpring(
-    useTransform(mouseY, (latest) => latest / 20),
-    springConfig,
-  );
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      mouseX.set(e.clientX - rect.left - rect.width / 2);
-      mouseY.set(e.clientY - rect.top - rect.height / 2);
-    }
-  };
 
   return (
-    <section
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className="relative min-h-screen overflow-hidden bg-[#0a0a0a]"
-    >
-      <div className="absolute inset-0 bg-[#0a0a0a]" />
-
-      <motion.div
-        className="absolute left-1/4 top-1/4 h-[800px] w-[800px] rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(251, 146, 60, 0.15) 0%, transparent 70%)",
-          filter: "blur(100px)",
-          x,
-          y,
-        }}
-      />
-      <motion.div
-        className="absolute bottom-1/4 right-1/4 h-[900px] w-[900px] rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, transparent 70%)",
-          filter: "blur(120px)",
-          x: useTransform(x, (latest) => -latest * 0.5),
-          y: useTransform(y, (latest) => -latest * 0.5),
-        }}
-      />
-      <motion.div
-        className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(234, 179, 8, 0.1) 0%, transparent 70%)",
-          filter: "blur(90px)",
-          x: useTransform(x, (latest) => latest * 0.3),
-          y: useTransform(y, (latest) => latest * 0.3),
-        }}
-      />
-
-      {[
-        { Icon: Mail, delay: 0, x: "10%", y: "20%" },
-        { Icon: Brain, delay: 0.5, x: "85%", y: "30%" },
-        { Icon: Search, delay: 1, x: "15%", y: "70%" },
-        { Icon: Zap, delay: 1.5, x: "80%", y: "75%" },
-      ].map(({ Icon, delay, x: xPos, y: yPos }) => (
-        <motion.div
-          key={Icon.name}
-          className="absolute"
-          style={{ left: xPos, top: yPos }}
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: [0, 0.3, 0], scale: [0, 1, 0] }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            delay,
-            ease: "easeInOut",
-          }}
-        >
-          <div className="rounded-full border border-slate-800 bg-slate-900/50 p-3 backdrop-blur-sm">
-            <Icon className="h-5 w-5 text-orange-400" />
-          </div>
-        </motion.div>
-      ))}
-
-      <div className="relative z-10 mx-auto max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:pb-20 lg:pt-32">
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-8"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              >
-                <Mail className="h-4 w-4 text-orange-400" />
-              </motion.div>
-              <span className="text-sm font-medium text-slate-300">
-                AI-Powered Email Revolution
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-5xl font-black leading-tight tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl"
-            >
-              <span className="block">Your inbox is</span>
-              <span className="block">
-                <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text text-transparent">
-                  drowning you
-                </span>
-              </span>
-              <span className="mt-4 block text-4xl text-slate-400 sm:text-5xl md:text-6xl lg:text-7xl">
-                We're throwing you a lifeline
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="text-lg text-slate-300 sm:text-xl"
-            >
-              VectorMail uses cutting-edge AI to transform your chaotic inbox
-              into a productivity powerhouse.{" "}
-              <span className="font-semibold text-white">
-                Save 10+ hours per week
-              </span>{" "}
-              and never miss what matters.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.7 }}
-              className="grid grid-cols-3 gap-4"
-            >
-              {[
-                { icon: Zap, value: "10x", label: "Faster" },
-                { icon: TrendingUp, value: "40%", label: "Time Saved" },
-                { icon: Brain, value: "<50ms", label: "AI Search" },
-              ].map((stat, i) => {
-                const Icon = stat.icon;
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.8 + i * 0.1 }}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    className="rounded-xl border border-slate-800 bg-slate-900/50 p-4"
-                  >
-                    <Icon className="mb-2 h-6 w-6 text-orange-400" />
-                    <div className="text-2xl font-bold text-white">
-                      {stat.value}
-                    </div>
-                    <div className="text-xs text-slate-400">{stat.label}</div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1 }}
-              className="flex flex-col gap-4 sm:flex-row"
-            >
-              <Link
-                href={isSignedIn ? "/mail" : "/sign-up"}
-                className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 px-8 py-4 text-lg font-semibold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  Start Free Trial
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </span>
-              </Link>
-              <button
-                onClick={() => setIsVideoOpen(true)}
-                className="flex items-center gap-2 rounded-xl border-2 border-slate-800 bg-slate-900/50 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition-all hover:border-slate-700 hover:bg-slate-800/50"
-              >
-                <Play className="h-5 w-5 fill-white" />
-                <span>Watch Demo</span>
-              </button>
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="relative"
-          >
-            <div className="relative">
-              <div className="absolute -inset-8 rounded-3xl bg-orange-500/10 blur-3xl" />
-
-              <motion.div
-                whileHover={{ scale: 1.02, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="relative rounded-3xl border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-2xl"
-                style={{
-                  x: useTransform(x, (latest) => latest * 0.1),
-                  y: useTransform(y, (latest) => latest * 0.1),
-                }}
-              >
-                <div className="overflow-hidden rounded-2xl">
-                  <EmailClientMockup />
-                </div>
-              </motion.div>
-
-              {[
-                {
-                  text: "AI Summary",
-                  top: "-10%",
-                  left: "-5%",
-                  delay: 0,
-                  color: "from-orange-500 to-amber-500",
-                },
-                {
-                  text: "10x Faster",
-                  top: "50%",
-                  right: "-10%",
-                  delay: 0.3,
-                  color: "from-amber-500 to-yellow-500",
-                },
-                {
-                  text: "Smart Search",
-                  bottom: "-5%",
-                  left: "10%",
-                  delay: 0.6,
-                  color: "from-yellow-500 to-orange-500",
-                },
-              ].map((card, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 1.2 + card.delay, type: "spring" }}
-                  whileHover={{ scale: 1.1 }}
-                  className={`absolute rounded-xl border border-slate-800 bg-gradient-to-br ${card.color} bg-opacity-10 px-4 py-2 backdrop-blur-xl`}
-                  style={{
-                    top: card.top,
-                    left: card.left,
-                    right: card.right,
-                    bottom: card.bottom,
-                  }}
-                >
-                  <span className="text-sm font-semibold text-white">
-                    {card.text}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+    <section className="relative min-h-screen bg-[#000000]">
+      <div className="absolute inset-0">
+        <div className="absolute left-1/4 top-0 h-[600px] w-[600px] rounded-full bg-amber-500/10 blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-violet-500/10 blur-[120px]" />
       </div>
 
-      {isVideoOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
-          onClick={() => setIsVideoOpen(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative aspect-video w-full max-w-5xl overflow-hidden rounded-3xl border-2 border-slate-800 bg-black shadow-2xl"
-          >
-            <button
-              onClick={() => setIsVideoOpen(false)}
-              className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-2 text-white transition-colors hover:bg-black/80"
-            >
+      <div className="relative mx-auto max-w-[1400px] px-8 pb-24 pt-32">
+        <div className="mb-8 flex justify-center">
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+            <span className="text-[13px] font-medium text-amber-200/90">
+              Introducing VectorMail 2.0
+            </span>
+          </div>
+        </div>
+
+        <div className="mb-10 text-center">
+          <h1 className="text-[4rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white sm:text-[5.5rem] md:text-[7rem]">
+            Email that works
+            <br />
+            <span className="relative">
+              <span className="bg-gradient-to-r from-amber-300 via-orange-400 to-amber-400 bg-clip-text text-transparent">
+                for you
+              </span>
               <svg
-                className="h-6 w-6"
+                className="absolute -bottom-1 left-0 w-full"
+                viewBox="0 0 200 8"
                 fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                preserveAspectRatio="none"
               >
                 <path
+                  d="M1 5.5C30 2 60 2 100 4C140 6 170 5 199 3"
+                  stroke="url(#underline-gradient)"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
                 />
+                <defs>
+                  <linearGradient
+                    id="underline-gradient"
+                    x1="0"
+                    y1="0"
+                    x2="200"
+                    y2="0"
+                  >
+                    <stop offset="0%" stopColor="#fcd34d" />
+                    <stop offset="100%" stopColor="#f97316" />
+                  </linearGradient>
+                </defs>
               </svg>
-            </button>
-            <video
-              className="h-full w-full object-cover"
-              src="/Vector-Mail-1762579701087.mp4"
-              controls
-              autoPlay
-            />
-          </motion.div>
-        </motion.div>
-      )}
+            </span>
+          </h1>
+
+          <p className="mx-auto mt-8 max-w-[600px] text-[1.25rem] leading-[1.6] text-[#8B8B8D]">
+            AI-powered email that understands context, not just keywords. Find
+            anything instantly. Reply in seconds.
+          </p>
+
+          <div className="mt-10 flex justify-center">
+            <Link
+              href={isSignedIn ? "/mail" : "/sign-up"}
+              className="group flex items-center gap-3 rounded-full bg-white px-8 py-4 text-[16px] font-semibold text-[#0A0A0B] transition-all hover:bg-white/90"
+            >
+              Get Started Free
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+
+          <div className="mt-8 flex items-center justify-center gap-6 text-[14px] text-[#5C5C5E]">
+            {["Free forever", "No credit card", "2 min setup"].map(
+              (text, i) => (
+                <span key={i} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-amber-500/60" />
+                  {text}
+                </span>
+              ),
+            )}
+          </div>
+        </div>
+
+        <div className="relative mt-20">
+          <div className="absolute -inset-4 rounded-[40px] bg-gradient-to-b from-amber-500/20 via-transparent to-violet-500/10 opacity-40 blur-3xl" />
+
+          <div className="relative rounded-[32px] border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-transparent p-[1px] backdrop-blur-xl">
+            <div className="overflow-hidden rounded-[31px] bg-[#0C0C0D]">
+              <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0A0A0A] px-6 py-4">
+                <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-[#FF5F57]" />
+                    <div className="h-3 w-3 rounded-full bg-[#FEBC2E]" />
+                    <div className="h-3 w-3 rounded-full bg-[#28C840]" />
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.04] px-4 py-1.5">
+                    <svg
+                      className="h-3.5 w-3.5 text-zinc-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    <span className="text-[13px] font-medium text-zinc-400">
+                      app.vectormail.ai
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-7 w-7 overflow-hidden rounded-lg ring-1 ring-white/10">
+                    <video
+                      src="/Vectormail-logo.mp4"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="h-full w-full scale-150 object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex">
+                <div className="hidden w-[240px] border-r border-white/[0.06] bg-[#0A0A0A] p-4 lg:block">
+                  <div className="mb-3 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-orange-500/5 px-3 py-2.5">
+                    <svg
+                      className="h-4 w-4 text-amber-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    <span className="text-[13px] font-medium text-amber-300/90">
+                      AI Search
+                    </span>
+                  </div>
+
+                  {[
+                    {
+                      icon: "M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4",
+                      label: "Inbox",
+                      count: "12",
+                      active: true,
+                    },
+                    {
+                      icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z",
+                      label: "Priority",
+                      count: "3",
+                    },
+                    {
+                      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+                      label: "Snoozed",
+                      count: "",
+                    },
+                    {
+                      icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+                      label: "Sent",
+                      count: "",
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className={`mb-1 flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${item.active ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <svg
+                          className={`h-4 w-4 ${item.active ? "text-white" : "text-zinc-500"}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d={item.icon}
+                          />
+                        </svg>
+                        <span
+                          className={`text-[13px] ${item.active ? "font-medium text-white" : "text-zinc-400"}`}
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+                      {item.count && (
+                        <span
+                          className={`text-[11px] font-medium ${item.active ? "text-white" : "text-zinc-500"}`}
+                        >
+                          {item.count}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="min-h-[480px] flex-1">
+                  <div className="border-b border-white/[0.06] p-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
+                      <div className="relative flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/[0.08] to-orange-500/[0.04] px-5 py-4">
+                        <svg
+                          className="h-5 w-5 text-amber-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                        <span className="flex-1 text-[15px] text-white">
+                          &ldquo;Show me all emails from Sarah about the Q3
+                          budget&rdquo;
+                        </span>
+                        <div className="flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1">
+                          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                          <span className="font-mono text-[12px] font-medium text-amber-300">
+                            47ms
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="text-[12px] font-medium uppercase tracking-wider text-zinc-500">
+                        3 results found
+                      </span>
+                      <span className="text-[12px] text-zinc-600">
+                        Sorted by relevance
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="group relative">
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                        <div className="relative flex items-center gap-4 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/[0.06] to-transparent p-4 transition-colors hover:border-amber-500/30">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-[14px] font-semibold text-white">
+                            SC
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-0.5 flex items-center gap-2">
+                              <span className="text-[14px] font-semibold text-white">
+                                Q3 Budget Contract - Final Version
+                              </span>
+                              <span className="rounded-full border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                                Best Match
+                              </span>
+                            </div>
+                            <p className="text-[13px] text-zinc-400">
+                              Sarah Chen · &ldquo;Attached is the final contract
+                              with all revisions...&rdquo;
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0 text-right">
+                            <div className="text-[28px] font-bold leading-none text-amber-400">
+                              98%
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-zinc-500">
+                              match
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 rounded-2xl border border-white/[0.06] p-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.02]">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 text-[14px] font-semibold text-white">
+                          SC
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="mb-0.5 block text-[14px] font-medium text-zinc-200">
+                            Re: Budget revision notes
+                          </span>
+                          <p className="text-[13px] text-zinc-500">
+                            Sarah Chen · &ldquo;Here are my notes on the Q3
+                            budget changes...&rdquo;
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <div className="text-[28px] font-bold leading-none text-zinc-500">
+                            84%
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-zinc-600">
+                            match
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 rounded-2xl border border-white/[0.06] p-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.02]">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-[14px] font-semibold text-white">
+                          SC
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="mb-0.5 block text-[14px] font-medium text-zinc-200">
+                            Q3 Planning Discussion
+                          </span>
+                          <p className="text-[13px] text-zinc-500">
+                            Sarah Chen · &ldquo;Let&apos;s schedule a call to
+                            discuss the budget...&rdquo;
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <div className="text-[28px] font-bold leading-none text-zinc-600">
+                            71%
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-zinc-600">
+                            match
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden w-[280px] border-l border-white/[0.06] bg-[#0A0A0A] p-5 xl:block">
+                  <div className="mb-5 flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+                      <svg
+                        className="h-3.5 w-3.5 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
+                      </svg>
+                    </div>
+                    <span className="text-[13px] font-semibold text-white">
+                      AI Summary
+                    </span>
+                  </div>
+
+                  <div className="mb-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
+                    <p className="text-[13px] leading-relaxed text-zinc-300">
+                      Sarah sent the{" "}
+                      <span className="font-medium text-amber-400">
+                        final Q3 budget contract
+                      </span>{" "}
+                      on Oct 15. Key points:
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {[
+                        "Budget increased by 20%",
+                        "Deadline: November 15th",
+                        "Requires your approval",
+                      ].map((point, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-400" />
+                          <span className="text-[12px] text-zinc-400">
+                            {point}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="mb-3 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                      Quick Actions
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {["Reply", "Forward", "Archive"].map((action, i) => (
+                        <button
+                          key={i}
+                          className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-zinc-400 transition-all hover:border-white/[0.15] hover:text-white"
+                        >
+                          {action}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="mb-3 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                      Smart Reply
+                    </span>
+                    <div className="space-y-2">
+                      {[
+                        "Looks good, approved!",
+                        "Let me review and get back",
+                        "Can we discuss this?",
+                      ].map((reply, i) => (
+                        <button
+                          key={i}
+                          className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-left text-[12px] text-zinc-400 transition-all hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-white"
+                        >
+                          {reply}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

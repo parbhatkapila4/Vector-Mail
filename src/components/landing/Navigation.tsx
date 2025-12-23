@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Menu, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X, ArrowRight } from "lucide-react";
 
 export function Navigation() {
   const { isSignedIn, user } = useUser();
@@ -13,180 +12,163 @@ export function Navigation() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      setScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
+    <nav
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "border-b border-slate-800 bg-[#0a0a0a]/95 backdrop-blur-xl"
+          ? "border-b border-white/5 bg-[#030303]/80 backdrop-blur-2xl"
           : "bg-transparent"
       }`}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between">
-          <Link href="/" className="group flex items-center gap-3">
-            <motion.div
-              className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg shadow-lg"
-              whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 0.3 }}
-            >
+      <div className="mx-auto max-w-[1400px] px-8">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="ml-[72px] flex items-center gap-2.5">
+            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
               <video
                 src="/Vectormail-logo.mp4"
                 autoPlay
                 loop
                 muted
                 playsInline
-                className="h-full w-full scale-[1.35] object-cover"
+                className="h-full w-full scale-[1.4] object-cover"
               />
-            </motion.div>
-            <span className="text-xl font-black text-white">VectorMail</span>
+            </div>
+            <span className="text-[15px] font-semibold tracking-tight text-white">
+              VectorMail
+            </span>
           </Link>
 
-          <div className="hidden items-center gap-8 md:flex">
-            <Link
-              href="/features"
-              className="text-sm font-medium text-slate-400 transition-colors hover:text-white"
-            >
-              Features
-            </Link>
-            <Link
-              href="/pricing"
-              className="text-sm font-medium text-slate-400 transition-colors hover:text-white"
-            >
-              Pricing
-            </Link>
-            {isSignedIn ? (
-              <Link
-                href="/mail"
-                className="text-sm font-medium text-slate-400 transition-colors hover:text-white"
-              >
-                Inbox
-              </Link>
-            ) : (
-              <Link
-                href="/about"
-                className="text-sm font-medium text-slate-400 transition-colors hover:text-white"
-              >
-                About
-              </Link>
-            )}
-            {isSignedIn ? (
-              <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-2">
-                <UserButton />
-                <span className="text-sm font-medium text-white">
-                  {user?.fullName || user?.firstName || "User"}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
+          <div className="hidden items-center gap-[304px] md:flex">
+            <div className="flex items-center gap-1">
+              {[
+                { label: "Features", href: "/features" },
+                { label: "Pricing", href: "/pricing" },
+                { label: "About", href: "/about" },
+              ].map((item) => (
                 <Link
-                  href="/sign-in"
-                  className="text-sm font-medium text-slate-400 transition-colors hover:text-white"
+                  key={item.label}
+                  href={item.href}
+                  className="px-4 py-2 text-[13px] font-medium text-zinc-400 transition-colors hover:text-white"
                 >
-                  Sign In
+                  {item.label}
                 </Link>
-                <Link
-                  href="/sign-up"
-                  className="rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 px-6 py-2 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50"
-                >
-                  Get Started
-                </Link>
-              </div>
-            )}
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isSignedIn ? (
+                <>
+                  <Link
+                    href="/mail"
+                    className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-all hover:bg-zinc-200"
+                  >
+                    Open Inbox
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                    <UserButton afterSignOutUrl="/" />
+                    <span className="text-[13px] font-medium text-zinc-300">
+                      {user?.firstName || "User"}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/sign-in"
+                    className="px-4 py-2 text-[13px] font-medium text-zinc-400 transition-colors hover:text-white"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-all hover:bg-zinc-200"
+                  >
+                    Get started
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="rounded-lg p-2 text-white transition-colors hover:bg-slate-800 md:hidden"
+            className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white md:hidden"
           >
             {mobileMenuOpen ? (
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             ) : (
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" />
             )}
           </button>
         </div>
       </div>
 
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="border-t border-slate-800 bg-[#0a0a0a]/95 backdrop-blur-xl md:hidden"
-          >
-            <div className="space-y-1 px-4 pb-6 pt-4">
+      {mobileMenuOpen && (
+        <div className="border-t border-white/5 bg-[#030303]/95 backdrop-blur-2xl md:hidden">
+          <div className="space-y-1 px-6 py-4">
+            {[
+              { label: "Features", href: "/features" },
+              { label: "Pricing", href: "/pricing" },
+              { label: "About", href: "/about" },
+            ].map((item) => (
               <Link
-                href="/features"
+                key={item.label}
+                href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                className="block rounded-lg px-4 py-3 text-[15px] font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
               >
-                Features
+                {item.label}
               </Link>
-              <Link
-                href="/pricing"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-              >
-                Pricing
-              </Link>
+            ))}
+            <div className="mt-4 border-t border-white/5 pt-4">
               {isSignedIn ? (
-                <Link
-                  href="/mail"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-                >
-                  Inbox
-                </Link>
-              ) : (
-                <Link
-                  href="/about"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-                >
-                  About
-                </Link>
-              )}
-              <div className="border-t border-slate-800 pt-4">
-                {isSignedIn ? (
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href="/mail"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-[15px] font-semibold text-black"
+                  >
+                    Open Inbox
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                   <div className="flex items-center gap-3 px-4 py-2">
-                    <UserButton />
-                    <span className="text-base font-medium text-white">
+                    <UserButton afterSignOutUrl="/" />
+                    <span className="text-[15px] font-medium text-white">
                       {user?.fullName || user?.firstName || "User"}
                     </span>
                   </div>
-                ) : (
-                  <div className="space-y-2 px-4">
-                    <Link
-                      href="/sign-in"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-4 py-3 text-center text-base font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-                    >
-                      Sign In
-                    </Link>
-                    <Link
-                      href="/sign-up"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 px-4 py-3 text-center text-base font-semibold text-white transition-all hover:shadow-lg hover:shadow-orange-500/50"
-                    >
-                      Get Started
-                    </Link>
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block rounded-lg px-4 py-3 text-center text-[15px] font-medium text-zinc-300 transition-colors hover:bg-white/5"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-[15px] font-semibold text-black"
+                  >
+                    Get started
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.nav>
+          </div>
+        </div>
+      )}
+    </nav>
   );
 }

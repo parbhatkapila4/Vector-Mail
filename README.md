@@ -19,7 +19,7 @@
 
 <br />
 
-<img src="public/Vector-Mail-hero.png" alt="VectorMail Dashboard" width="100%" style="border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);" />
+<img src="public/Vector-mail-hero.png" alt="VectorMail Dashboard" width="100%" style="border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);" />
 
 </div>
 

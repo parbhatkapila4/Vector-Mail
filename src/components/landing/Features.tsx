@@ -1,112 +1,218 @@
 "use client";
 
-import { motion } from "framer-motion";
-import {
-  Zap,
-  Search,
-  Brain,
-  Shield,
-  Clock,
-  Mail,
-} from "lucide-react";
-
-const features = [
-  {
-    icon: Brain,
-    title: "AI Email Assistant",
-    description:
-      "Chat with your inbox using natural language. Get instant summaries, find information, and respond faster than ever.",
-    gradient: "from-orange-500 to-amber-500",
-  },
-  {
-    icon: Search,
-    title: "Semantic Search",
-    description:
-      "Find emails by meaning, not just keywords. Ask questions in natural language and get instant results.",
-    gradient: "from-amber-500 to-yellow-500",
-  },
-  {
-    icon: Zap,
-    title: "Lightning Fast Replies",
-    description:
-      "Reply to emails in seconds with AI-powered suggestions and smart templates that learn your style.",
-    gradient: "from-yellow-500 to-orange-500",
-  },
-  {
-    icon: Shield,
-    title: "Privacy First",
-    description:
-      "Your data stays yours. Open source, self-hostable, and built with privacy as a core principle.",
-    gradient: "from-orange-500 to-amber-500",
-  },
-  {
-    icon: Clock,
-    title: "Time Saver",
-    description:
-      "Save 10+ hours per week. Let AI handle routine tasks so you can focus on what truly matters.",
-    gradient: "from-amber-500 to-yellow-500",
-  },
-  {
-    icon: Mail,
-    title: "Smart Organization",
-    description:
-      "Automatically categorize, prioritize, and organize your inbox. Never miss an important email again.",
-    gradient: "from-yellow-500 to-orange-500",
-  },
-];
+import { useState, useRef } from "react";
+import Link from "next/link";
+import { Play, Pause, Maximize2, Volume2, VolumeX } from "lucide-react";
 
 export function Features() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const progress =
+        (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setProgress(progress);
+    }
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (videoRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const percentage = clickX / width;
+      videoRef.current.currentTime = percentage * videoRef.current.duration;
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (videoRef.current) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      }
+    }
+  };
+
   return (
-    <section className="relative bg-[#0a0a0a] py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-20 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2">
-            <Mail className="h-4 w-4 text-orange-400" />
-            <span className="text-sm font-medium text-slate-300">Features</span>
-                        </div>
-          <h2 className="mb-6 text-5xl font-black leading-tight text-white sm:text-6xl md:text-7xl">
-            Everything you need to{" "}
-            <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text text-transparent">
-              master your inbox
-                            </span>
+    <section className="relative overflow-hidden bg-[#000000] py-24">
+      <div className="absolute inset-0">
+        <div className="absolute right-1/4 top-1/4 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[150px]" />
+        <div className="absolute bottom-1/4 left-1/4 h-[400px] w-[400px] rounded-full bg-violet-500/10 blur-[120px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-6xl px-6">
+        <div className="mb-16 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/50 px-4 py-1.5">
+            <Play className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            <span className="text-sm text-zinc-400">See it in action</span>
+          </div>
+
+          <h2 className="mb-6 text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
+            Watch how it works
           </h2>
-          <p className="mx-auto max-w-2xl text-xl text-slate-400">
-            Powerful AI-driven features designed to transform how you work with
-            email
+
+          <p className="mx-auto max-w-xl text-lg text-zinc-400">
+            2 minutes to understand why VectorMail is different. See AI-powered
+            search, smart summaries, and instant replies.
           </p>
+        </div>
+
+        <div className="relative mx-auto max-w-4xl">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-500/20 opacity-50 blur-xl" />
+
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+            <div className="relative aspect-video bg-black">
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                src="/Vector-Mail-1762579701087.mp4"
+                muted={isMuted}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={() => setIsPlaying(false)}
+                playsInline
+              />
+
+              {!isPlaying && (
+                <div
+                  className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40"
+                  onClick={togglePlay}
+                >
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20">
+                    <Play className="ml-1 h-8 w-8 fill-white text-white" />
                   </div>
+                </div>
+              )}
+            </div>
 
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-                        <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="group"
+            <div className="relative border-t border-zinc-800 bg-zinc-900/95 px-4 py-3">
+              <div
+                className="absolute left-0 right-0 top-0 h-1 -translate-y-full cursor-pointer bg-zinc-800"
+                onClick={handleProgressClick}
               >
-                <div className="h-full rounded-2xl border border-slate-800 bg-slate-900/30 p-8 transition-all duration-300 hover:border-slate-700 hover:bg-slate-900/50">
-                  <div
-                    className={`mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient}`}
+                <div
+                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={togglePlay}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 transition-colors hover:bg-zinc-700"
                   >
-                    <Icon className="h-6 w-6 text-white" />
+                    {isPlaying ? (
+                      <Pause className="h-4 w-4 text-white" />
+                    ) : (
+                      <Play className="ml-0.5 h-4 w-4 fill-white text-white" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={toggleMute}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-zinc-800"
+                  >
+                    {isMuted ? (
+                      <VolumeX className="h-4 w-4 text-zinc-400" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 text-zinc-400" />
+                    )}
+                  </button>
+
+                  <span className="font-mono text-xs text-zinc-500">
+                    {videoRef.current
+                      ? formatTime(videoRef.current.currentTime)
+                      : "0:00"}{" "}
+                    /{" "}
+                    {videoRef.current
+                      ? formatTime(videoRef.current.duration || 0)
+                      : "0:00"}
+                  </span>
                 </div>
 
-                  <h3 className="mb-3 text-xl font-bold text-white">
-                    {feature.title}
-              </h3>
-                  <p className="text-sm leading-relaxed text-slate-400">
-                    {feature.description}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-500">VectorMail Demo</span>
+                  <button
+                    onClick={handleFullscreen}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-zinc-800"
+                  >
+                    <Maximize2 className="h-4 w-4 text-zinc-400" />
+                  </button>
                 </div>
-            </motion.div>
-            );
-          })}
+              </div>
+            </div>
           </div>
         </div>
-      </section>
+
+        <div className="mx-auto mt-16 grid max-w-3xl grid-cols-2 gap-6 md:grid-cols-4">
+          {[
+            { time: "0:15", label: "AI Search Demo" },
+            { time: "0:45", label: "Smart Summaries" },
+            { time: "1:20", label: "Quick Reply" },
+            { time: "1:50", label: "Full Walkthrough" },
+          ].map((chapter, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                if (videoRef.current) {
+                  const [mins, secs] = chapter.time.split(":").map(Number);
+                  videoRef.current.currentTime = (mins ?? 0) * 60 + (secs ?? 0);
+                  if (!isPlaying) {
+                    videoRef.current.play();
+                    setIsPlaying(true);
+                  }
+                }
+              }}
+              className="group rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-800/50"
+            >
+              <div className="mb-1 font-mono text-sm text-amber-400">
+                {chapter.time}
+              </div>
+              <div className="text-sm text-zinc-400 transition-colors group-hover:text-zinc-300">
+                {chapter.label}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-16 text-center">
+          <p className="mb-4 text-zinc-500">Ready to try it yourself?</p>
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-zinc-200"
+          >
+            Get Started Free
+          </Link>
+        </div>
+      </div>
+    </section>
   );
+}
+
+function formatTime(seconds: number): string {
+  if (isNaN(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
