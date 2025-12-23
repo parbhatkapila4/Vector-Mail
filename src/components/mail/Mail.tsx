@@ -315,7 +315,9 @@ export function Mail({}: MailLayoutProps) {
                   <ArrowLeft className="h-4 w-4 text-zinc-400" />
                 </button>
               </div>
-              <EmailSearchAssistant isCollapsed={false} />
+              <div className="flex-1 overflow-hidden">
+                <EmailSearchAssistant isCollapsed={false} />
+              </div>
             </div>
           </div>
         </div>
