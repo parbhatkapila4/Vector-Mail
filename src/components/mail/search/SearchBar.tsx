@@ -26,11 +26,11 @@ export interface SearchResult {
 }
 
 const SearchBar = () => {
-  const { isFetching, accountId } = useThreads();
+  const { accountId } = useThreads();
   const [searchValue, setSearchValue] = useAtom(searchValueAtom);
   const [, setIsSearching] = useAtom(isSearchingAtom);
   const [, setSearchResults] = useAtom(searchResultsAtom);
-  const [isSearchingAPI, setIsSearchingAPI] = useAtom(isSearchingAPIAtom);
+  const [, setIsSearchingAPI] = useAtom(isSearchingAPIAtom);
   const ref = React.useRef<HTMLInputElement>(null);
   const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -40,9 +40,7 @@ const SearchBar = () => {
   }, [searchValue, setIsSearching]);
 
   React.useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
     if (!searchValue.trim()) {
       setSearchResults([]);
@@ -62,11 +60,7 @@ const SearchBar = () => {
         const response = await fetch(
           `/api/email/search?q=${encodeURIComponent(searchValue.trim())}&accountId=${accountId}`,
         );
-
-        if (!response.ok) {
-          throw new Error(`Search failed: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Search failed: ${response.status}`);
         const data = await response.json();
         setSearchResults(data.results || []);
       } catch (error) {
@@ -78,9 +72,7 @@ const SearchBar = () => {
     }, 300);
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, [searchValue, accountId, setSearchResults, setIsSearchingAPI]);
 
@@ -113,28 +105,26 @@ const SearchBar = () => {
   }, [setSearchValue, setIsSearching, setSearchResults]);
 
   return (
-    <div className="border-b border-slate-800 bg-[#0a0a0a] p-4">
+    <div className="px-4 py-3">
       <motion.div className="relative" layoutId="search-bar">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-blue-500" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
         <Input
           ref={ref}
-          placeholder="Search emails..."
-          className="border-slate-800 bg-slate-900/50 pl-8 text-white placeholder:text-slate-500 focus:border-slate-700 focus:ring-slate-700"
+          placeholder="Search conversations..."
+          className="h-9 rounded-xl border-0 bg-white/[0.04] pl-9 pr-8 text-sm text-white transition-all placeholder:text-zinc-600 focus:bg-white/[0.06] focus:ring-1 focus:ring-amber-500/20"
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           onFocus={() => setIsSearching(true)}
           onBlur={handleBlur}
         />
-        <div className="absolute right-2 top-2.5 flex items-center gap-2">
-          {searchValue && (
-            <button
-              className="rounded-sm hover:bg-slate-800"
-              onClick={handleClear}
-            >
-              <X className="size-4 text-slate-400" />
-            </button>
-          )}
-        </div>
+        {searchValue && (
+          <button
+            className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md hover:bg-white/[0.06]"
+            onClick={handleClear}
+          >
+            <X className="h-3.5 w-3.5 text-zinc-500" />
+          </button>
+        )}
       </motion.div>
     </div>
   );

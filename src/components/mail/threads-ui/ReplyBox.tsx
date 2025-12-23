@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import EmailEditor from "../editor/EmailEditor";
 import { useLocalStorage } from "usehooks-ts";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Reply } from "lucide-react";
 
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
@@ -60,18 +60,22 @@ const ReplyBox = () => {
 
   if (!currentThread && threadId) {
     return (
-      <div className="flex h-[300px] items-center justify-center">
-        <div className="text-muted-foreground">Loading reply box...</div>
+      <div className="flex h-[200px] items-center justify-center border-t border-white/[0.06] bg-[#0A0A0A]">
+        <div className="text-sm text-zinc-500">Loading reply box...</div>
       </div>
     );
   }
 
   if (!currentThread || !lastEmail) {
     return (
-      <div className="flex h-[300px] items-center justify-center">
-        <div className="text-center text-muted-foreground">
-          <div className="mb-2">No reply details available</div>
-          <div className="text-sm">Select a thread to reply to</div>
+      <div className="flex h-[200px] items-center justify-center border-t border-white/[0.06] bg-[#0A0A0A]">
+        <div className="text-center">
+          <div className="mb-2 text-sm text-zinc-500">
+            No reply details available
+          </div>
+          <div className="text-xs text-zinc-600">
+            Select a thread to reply to
+          </div>
         </div>
       </div>
     );
@@ -112,7 +116,7 @@ const ReplyBox = () => {
       },
       {
         onSuccess: () => {
-          toast.success("Email sent");
+          toast.success("Email sent successfully!");
         },
         onError: (error) => {
           console.log(error);
@@ -123,21 +127,26 @@ const ReplyBox = () => {
   };
 
   return (
-    <div className="sticky bottom-0 z-50 flex flex-col border-t border-slate-800 bg-[#0a0a0a] shadow-lg">
-      <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0a0a] px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white">Reply</span>
-          {toValues.length > 0 && (
-            <span className="text-sm text-slate-400">
-              to {toValues[0]?.value || "..."}
-            </span>
-          )}
+    <div className="sticky bottom-0 z-50 flex flex-col border-t border-white/[0.06] bg-[#0A0A0A] shadow-2xl shadow-black/50">
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+            <Reply className="h-4 w-4 text-amber-500" />
+          </div>
+          <div>
+            <span className="text-sm font-medium text-white">Reply</span>
+            {toValues.length > 0 && (
+              <span className="ml-2 text-xs text-zinc-500">
+                to {toValues[0]?.value || "..."}
+              </span>
+            )}
+          </div>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="h-8 w-8 p-0 text-white hover:bg-slate-800"
+          className="h-8 w-8 rounded-lg p-0 text-white hover:bg-white/[0.06]"
           aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
         >
           {isCollapsed ? (
@@ -149,7 +158,7 @@ const ReplyBox = () => {
       </div>
 
       {!isCollapsed && (
-        <div className="max-h-[60vh] overflow-hidden">
+        <div className="max-h-[60vh] overflow-hidden border-t border-white/[0.06]">
           <EmailEditor
             toValues={toValues || []}
             ccValues={ccValues}

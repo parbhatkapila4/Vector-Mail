@@ -6,9 +6,6 @@ import { UserButton } from "@clerk/nextjs";
 import ComposeEmailGmail from "@/components/mail/ComposeEmailGmail";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 const Mail = dynamic(
   () => import("@/components/mail/Mail").then((mod) => ({ default: mod.Mail })),
@@ -17,34 +14,13 @@ const Mail = dynamic(
 
 function MailPage() {
   const isMobile = useIsMobile();
-  const router = useRouter();
-
-  const handleBackToHome = () => {
-    router.push("/");
-  };
 
   return (
-    <div className="relative h-screen w-full bg-[#0a0a0a] text-white">
-      <div
-        className={cn(
-          "z-50",
-          isMobile ? "fixed right-4 top-10" : "fixed right-4 top-10",
-        )}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleBackToHome}
-          className="h-9 w-9 rounded-lg border border-slate-800 bg-slate-900/50 text-white shadow-lg backdrop-blur-sm transition-all hover:border-slate-700 hover:bg-slate-800/50"
-          aria-label="Back to Home"
-        >
-          <ArrowLeft className="h-4 w-4 text-white" />
-        </Button>
-      </div>
-
+    <div className="relative h-screen w-full bg-[#0A0A0A] text-white">
       {isMobile && (
-        <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-lg border bg-background/80 p-2 shadow-lg backdrop-blur-sm">
+        <div className="fixed bottom-4 left-4 z-50 flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0A0A0A]/90 p-3 shadow-xl backdrop-blur-xl">
           <UserButton />
+          <div className="h-6 w-px bg-white/[0.06]" />
           <ComposeEmailGmail />
         </div>
       )}

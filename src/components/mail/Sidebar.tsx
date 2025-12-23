@@ -4,6 +4,7 @@ import { Nav } from "./Nav";
 import { Bot, Inbox, Send } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
+
 type Props = { isCollapsed: boolean };
 
 const SideBar = ({ isCollapsed }: Props) => {
@@ -62,30 +63,28 @@ const SideBar = ({ isCollapsed }: Props) => {
   );
 
   return (
-    <>
-      <Nav
-        isCollapsed={isCollapsed}
-        links={[
-          {
-            title: "Inbox",
-            label: inboxThreads?.toString() || "0",
-            icon: Inbox,
-            variant: currentTab === "inbox" ? "default" : "ghost",
-          },
-          {
-            title: "Sent",
-            label: sentThreads?.toString() || "0",
-            icon: Send,
-            variant: currentTab === "sent" ? "default" : "ghost",
-          },
-          {
-            title: "AI Buddy",
-            icon: Bot,
-            variant: "ghost",
-          },
-        ]}
-      />
-    </>
+    <Nav
+      isCollapsed={isCollapsed}
+      links={[
+        {
+          title: "Inbox",
+          label: inboxThreads?.toString() || "0",
+          icon: Inbox,
+          variant: currentTab === "inbox" ? "default" : "ghost",
+        },
+        {
+          title: "Sent",
+          label: sentThreads?.toString() || "0",
+          icon: Send,
+          variant: currentTab === "sent" ? "default" : "ghost",
+        },
+        {
+          title: "AI Buddy",
+          icon: Bot,
+          variant: "ghost",
+        },
+      ]}
+    />
   );
 };
 

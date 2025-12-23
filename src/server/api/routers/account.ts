@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db, withDbRetry } from "@/server/db";
 import { emailAddressSchema } from "@/types";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 
 interface AccountAccess {
   id: string;
@@ -145,7 +146,7 @@ export const accountRouter = createTRPCRouter({
     .input(
       z.object({
         accountId: z.string(),
-        tab: z.enum(["inbox", "drafts", "sent"]),
+        tab: z.string(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -201,6 +202,49 @@ export const accountRouter = createTRPCRouter({
             sentStatus: false,
           },
         });
+      } else if (input.tab === "trash") {
+        return await ctx.db.thread.count({
+          where: {
+            accountId: account.id,
+            inboxStatus: false,
+            emails: {
+              some: {
+                sysLabels: {
+                  hasSome: ["trash"],
+                },
+              },
+            },
+          },
+        });
+      } else if (input.tab === "starred") {
+        return await ctx.db.thread.count({
+          where: {
+            accountId: account.id,
+            emails: {
+              some: {
+                sysLabels: {
+                  hasSome: ["flagged"],
+                },
+              },
+            },
+          },
+        });
+      } else if (input.tab === "archive") {
+        return await ctx.db.thread.count({
+          where: {
+            accountId: account.id,
+            inboxStatus: false,
+            sentStatus: false,
+            draftStatus: false,
+            emails: {
+              none: {
+                sysLabels: {
+                  hasSome: ["trash"],
+                },
+              },
+            },
+          },
+        });
       } else {
         return await ctx.db.thread.count({
           where: {
@@ -211,6 +255,74 @@ export const accountRouter = createTRPCRouter({
           },
         });
       }
+    }),
+
+  deleteThread: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      
+      const thread = await ctx.db.thread.findFirst({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        include: {
+          emails: true,
+        },
+      });
+
+      if (!thread) {
+        throw new Error("Thread not found");
+      }
+
+      
+      await ctx.db.$transaction(async (tx) => {
+        const emails = await tx.email.findMany({
+          where: { threadId: input.threadId },
+        });
+
+        console.log(`[deleteThread] Found ${emails.length} emails in thread ${input.threadId}`);
+
+        for (const email of emails) {
+          const labels = (email.sysLabels as string[]) || [];
+          const updatedLabels = labels.filter((label) => label !== "inbox");
+          if (!updatedLabels.includes("trash")) {
+            updatedLabels.push("trash");
+          }
+
+          console.log(`[deleteThread] Updating email ${email.id}:`, {
+            oldLabels: labels,
+            newLabels: updatedLabels,
+          });
+
+          await tx.email.update({
+            where: { id: email.id },
+            data: { sysLabels: updatedLabels },
+          });
+        }
+
+        
+        await tx.thread.update({
+          where: { id: input.threadId },
+          data: {
+            inboxStatus: false,
+          },
+        });
+      });
+
+      console.log(`[deleteThread] Thread ${input.threadId} marked as deleted`);
+
+      return { success: true, message: "Thread moved to trash" };
     }),
 
   syncEmails: protectedProcedure
@@ -390,24 +502,61 @@ export const accountRouter = createTRPCRouter({
         100,
       );
 
-      const tabFilters =
-        input.tab === "inbox"
-          ? { inboxStatus: true }
-          : input.tab === "drafts"
-            ? { draftStatus: true, inboxStatus: false, sentStatus: false }
-            : { sentStatus: true, inboxStatus: false, draftStatus: false };
+      const whereClause: Prisma.ThreadWhereInput = {
+        accountId: account.id,
+      };
+
+      if (input.tab === "inbox") {
+        whereClause.inboxStatus = true;
+      } else if (input.tab === "drafts") {
+        whereClause.draftStatus = true;
+        whereClause.inboxStatus = false;
+        whereClause.sentStatus = false;
+      } else if (input.tab === "trash") {
+       
+        whereClause.inboxStatus = false;
+        whereClause.emails = {
+          some: {
+            sysLabels: {
+              hasSome: ["trash"],
+            },
+          },
+        };
+      } else if (input.tab === "starred") {
+     
+        whereClause.emails = {
+          some: {
+            sysLabels: {
+              hasSome: ["flagged"],
+            },
+          },
+        };
+      } else if (input.tab === "archive") {
+        
+        whereClause.inboxStatus = false;
+        whereClause.sentStatus = false;
+        whereClause.draftStatus = false;
+        whereClause.emails = {
+          none: {
+            sysLabels: {
+              hasSome: ["trash"],
+            },
+          },
+        };
+      } else {
+        whereClause.sentStatus = true;
+        whereClause.inboxStatus = false;
+        whereClause.draftStatus = false;
+      }
 
       console.log(
         `[getThreads] Query filters:`,
-        JSON.stringify({ accountId: account.id, ...tabFilters }, null, 2),
+        JSON.stringify({ accountId: account.id, tab: input.tab, whereClause }, null, 2),
       );
 
       const threads = await ctx.db.thread.findMany({
         take: limit + 1,
-        where: {
-          accountId: account.id,
-          ...tabFilters,
-        },
+        where: whereClause,
         cursor: cursor ? { id: cursor } : undefined,
         orderBy: {
           lastMessageDate: "desc",
@@ -483,10 +632,7 @@ export const accountRouter = createTRPCRouter({
           const retryThreads = await withDbRetry(() =>
             ctx.db.thread.findMany({
               take: limit + 1,
-              where: {
-                accountId: account.id,
-                ...tabFilters,
-              },
+              where: whereClause,
               cursor: cursor ? { id: cursor } : undefined,
               orderBy: {
                 lastMessageDate: "desc",

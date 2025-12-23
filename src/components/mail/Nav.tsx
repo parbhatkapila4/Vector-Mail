@@ -2,7 +2,6 @@
 
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -28,25 +27,39 @@ export function Nav({ links, isCollapsed }: NavProps) {
   const isMobile = useIsMobile();
   const router = useRouter();
 
+  const getIconColor = (link: NavProps["links"][0]) => {
+    if (link.variant === "default") return "text-amber-500";
+    switch (link.title) {
+      case "Inbox":
+        return "text-blue-400";
+      case "Sent":
+        return "text-emerald-400";
+      case "AI Buddy":
+        return "text-violet-400";
+      default:
+        return "text-zinc-400";
+    }
+  };
+
   return (
     <div
       data-collapsed={isCollapsed}
       className={cn(
-        "group flex flex-col gap-4 py-2 data-[collapsed=true]:py-2",
-        isMobile && "gap-2",
+        "group flex flex-col gap-1 py-2 data-[collapsed=true]:py-2",
+        isMobile && "gap-1",
       )}
     >
       <nav
         className={cn(
-          "grid gap-1 px-2 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2",
-          isMobile && "gap-2 px-4",
+          "grid gap-1 px-3 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2",
+          isMobile && "gap-1 px-4",
         )}
       >
         {links.map((link, index) =>
           isCollapsed ? (
             <Tooltip key={index} delayDuration={0}>
               <TooltipTrigger asChild>
-                <span
+                <button
                   onClick={() => {
                     if (link.title === "AI Buddy") {
                       router.push("/buddy?fresh=true");
@@ -55,47 +68,35 @@ export function Nav({ links, isCollapsed }: NavProps) {
                     }
                   }}
                   className={cn(
-                    buttonVariants({ variant: link.variant, size: "icon" }),
-                    "h-9 w-9 cursor-pointer",
-                    link.variant === "default" &&
-                      "dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-white",
+                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all",
+                    link.variant === "default"
+                      ? "bg-amber-500/10 ring-1 ring-amber-500/20"
+                      : "hover:bg-white/[0.04]",
                   )}
                 >
-                  <link.icon
-                    className={cn(
-                      "h-4 w-4",
-                      link.variant === "default"
-                        ? "text-orange-500"
-                        : link.title === "Inbox"
-                          ? "text-blue-500"
-                          : link.title === "AI Buddy"
-                            ? "text-amber-500"
-                            : link.title === "Sent"
-                              ? "text-green-500"
-                              : "text-purple-500",
-                    )}
-                  />
+                  <link.icon className={cn("h-5 w-5", getIconColor(link))} />
                   <span className="sr-only">{link.title}</span>
-                </span>
+                </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  {link.title}
-                  {link.comingSoon && (
-                    <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                      Coming soon
-                    </span>
-                  )}
-                </div>
+              <TooltipContent
+                side="right"
+                className="flex items-center gap-3 border-white/[0.08] bg-[#1A1A1A] px-3 py-2 text-white"
+              >
+                <span className="text-sm font-medium">{link.title}</span>
+                {link.comingSoon && (
+                  <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                    Soon
+                  </span>
+                )}
                 {link.label && (
-                  <span className="ml-auto text-muted-foreground">
+                  <span className="ml-auto text-xs text-zinc-400">
                     {link.label}
                   </span>
                 )}
               </TooltipContent>
             </Tooltip>
           ) : (
-            <span
+            <button
               key={index}
               onClick={() => {
                 if (link.title === "AI Buddy") {
@@ -105,46 +106,50 @@ export function Nav({ links, isCollapsed }: NavProps) {
                 }
               }}
               className={cn(
-                buttonVariants({
-                  variant: link.variant,
-                  size: isMobile ? "lg" : "sm",
-                }),
-                link.variant === "default" &&
-                  "border-orange-500/30 bg-orange-500/20 text-white hover:bg-orange-500/30",
-                link.variant === "ghost" && "text-white hover:bg-slate-800",
-                "cursor-pointer justify-start",
-                isMobile && "h-12 text-base",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all",
+                link.variant === "default"
+                  ? "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  : "hover:bg-white/[0.04]",
+                isMobile && "py-3",
               )}
             >
               <link.icon
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  isMobile && "h-5 w-5",
-                  link.variant === "default"
-                    ? "text-orange-500"
-                    : link.title === "Inbox"
-                      ? "text-blue-500"
-                      : link.title === "AI Buddy"
-                        ? "text-amber-500"
-                        : link.title === "Sent"
-                          ? "text-green-500"
-                          : "text-purple-500",
-                )}
+                className={cn("h-5 w-5 shrink-0", getIconColor(link))}
               />
-              <div className="flex items-center gap-2">
-                <span className="text-white">{link.title}</span>
-                {link.comingSoon && (
-                  <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                    Coming soon
+
+              <div className="flex min-w-0 flex-1 items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      link.variant === "default"
+                        ? "text-white"
+                        : "text-zinc-300",
+                    )}
+                  >
+                    {link.title}
+                  </span>
+                  {link.comingSoon && (
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                      Soon
+                    </span>
+                  )}
+                </div>
+
+                {link.label && (
+                  <span
+                    className={cn(
+                      "text-xs font-medium tabular-nums",
+                      link.variant === "default"
+                        ? "text-amber-400"
+                        : "text-zinc-500",
+                    )}
+                  >
+                    {link.label}
                   </span>
                 )}
               </div>
-              {link.label && (
-                <span className="ml-auto font-medium text-white">
-                  {link.label}
-                </span>
-              )}
-            </span>
+            </button>
           ),
         )}
       </nav>
