@@ -128,19 +128,67 @@ function isFindOrSummarizeQuery(query: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    const { messages, accountId }: ChatRequest = await req.json();
     const { userId } = await auth();
 
     if (!userId) {
-      return new Response("Unauthorized", { status: 401 });
+      console.error("[Chat API] Unauthorized: No userId found");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Please sign in.", code: "UNAUTHORIZED" }),
+        { 
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
-    if (!accountId) {
-      return new Response("Account ID is required", { status: 400 });
+
+    let body: ChatRequest;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      console.error("[Chat API] Failed to parse request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid request body", code: "INVALID_REQUEST" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { messages, accountId } = body;
+
+    if (!accountId || accountId.trim() === "") {
+      console.error("[Chat API] Account ID is required");
+      return new Response(
+        JSON.stringify({ error: "Account ID is required. Please select an email account.", code: "MISSING_ACCOUNT_ID" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error("[Chat API] Invalid messages array");
+      return new Response(
+        JSON.stringify({ error: "Messages array is required and must not be empty", code: "INVALID_MESSAGES" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage?.content) {
-      return new Response("No message content provided", { status: 400 });
+      console.error("[Chat API] No message content provided");
+      return new Response(
+        JSON.stringify({ error: "No message content provided", code: "MISSING_CONTENT" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     const userQuery = lastMessage.content;
@@ -165,7 +213,37 @@ export async function POST(req: Request) {
     });
 
     if (!account) {
-      return new Response("Account not found", { status: 404 });
+      console.error(`[Chat API] Account not found. userId: ${userId}, accountId: ${accountId}`);
+      
+      const accountExists = await db.account.findFirst({
+        where: { id: accountId },
+        select: { userId: true },
+      });
+      
+      if (accountExists) {
+        console.error(`[Chat API] Account exists but belongs to different user: ${accountExists.userId}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Account not found or access denied. Please reconnect your email account.",
+            code: "ACCOUNT_ACCESS_DENIED"
+          }),
+          { 
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Account not found. Please connect your email account first.",
+          code: "ACCOUNT_NOT_FOUND"
+        }),
+        { 
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     const storedEmails = getStoredEmails(userId, accountId);
@@ -937,15 +1015,19 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       });
     }
   } catch (error) {
-    console.error("Chat error:", error);
+    console.error("[Chat API] Unhandled error:", error);
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
+    // Don't expose internal error details in production
+    const isDevelopment = process.env.NODE_ENV === "development";
+
     return new Response(
       JSON.stringify({
-        error: "Failed to process chat request",
-        details: errorMessage,
+        error: "Failed to process chat request. Please try again.",
+        details: isDevelopment ? errorMessage : undefined,
+        code: "INTERNAL_ERROR",
       }),
       {
         status: 500,

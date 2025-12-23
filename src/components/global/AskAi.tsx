@@ -116,9 +116,36 @@ export default function EmailSearchAssistant({
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("API error:", errorText);
-          throw new Error(`Failed: ${response.status}`);
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch {
+            const errorText = await response.text();
+            errorData = {
+              error:
+                errorText || `Request failed with status ${response.status}`,
+              code: "UNKNOWN_ERROR",
+            };
+          }
+
+          console.error("API error:", errorData);
+
+          if (
+            errorData.code === "ACCOUNT_NOT_FOUND" ||
+            errorData.code === "ACCOUNT_ACCESS_DENIED"
+          ) {
+            localStorage.removeItem("accountId");
+            throw new Error(
+              "Email account not found. Please reconnect your account in settings.",
+            );
+          } else if (errorData.code === "UNAUTHORIZED") {
+            throw new Error("Please sign in to use this feature.");
+          } else if (errorData.code === "MISSING_ACCOUNT_ID") {
+            localStorage.removeItem("accountId");
+            throw new Error("Please select an email account first.");
+          }
+
+          throw new Error(errorData.error || `Failed: ${response.status}`);
         }
 
         const reader = response.body?.getReader();

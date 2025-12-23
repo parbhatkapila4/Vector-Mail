@@ -51,33 +51,6 @@ export const accountRouter = createTRPCRouter({
       },
     });
 
-    for (const account of accounts) {
-      if (!account.nextDeltaToken) {
-        console.log(
-          "[Aurinko] Initial inbox sync started for account:",
-          account.id,
-        );
-        setTimeout(() => {
-          new Account(account.id, account.token)
-            .syncEmails(true)
-
-            .then(() => {
-              console.log(
-                "[Aurinko] Initial inbox sync completed for account:",
-                account.id,
-              );
-            })
-            .catch((err) => {
-              console.error(
-                "[Aurinko] Initial inbox sync failed for account:",
-                account.id,
-                err,
-              );
-            });
-        }, 0);
-      }
-    }
-
     return accounts.map(({ token, nextDeltaToken, ...rest }) => {
       void token;
       void nextDeltaToken;
@@ -270,7 +243,6 @@ export const accountRouter = createTRPCRouter({
         ctx.auth.userId,
       );
 
-      
       const thread = await ctx.db.thread.findFirst({
         where: {
           id: input.threadId,
@@ -285,13 +257,14 @@ export const accountRouter = createTRPCRouter({
         throw new Error("Thread not found");
       }
 
-      
       await ctx.db.$transaction(async (tx) => {
         const emails = await tx.email.findMany({
           where: { threadId: input.threadId },
         });
 
-        console.log(`[deleteThread] Found ${emails.length} emails in thread ${input.threadId}`);
+        console.log(
+          `[deleteThread] Found ${emails.length} emails in thread ${input.threadId}`,
+        );
 
         for (const email of emails) {
           const labels = (email.sysLabels as string[]) || [];
@@ -311,7 +284,6 @@ export const accountRouter = createTRPCRouter({
           });
         }
 
-        
         await tx.thread.update({
           where: { id: input.threadId },
           data: {
@@ -513,7 +485,6 @@ export const accountRouter = createTRPCRouter({
         whereClause.inboxStatus = false;
         whereClause.sentStatus = false;
       } else if (input.tab === "trash") {
-       
         whereClause.inboxStatus = false;
         whereClause.emails = {
           some: {
@@ -523,7 +494,6 @@ export const accountRouter = createTRPCRouter({
           },
         };
       } else if (input.tab === "starred") {
-     
         whereClause.emails = {
           some: {
             sysLabels: {
@@ -532,7 +502,6 @@ export const accountRouter = createTRPCRouter({
           },
         };
       } else if (input.tab === "archive") {
-        
         whereClause.inboxStatus = false;
         whereClause.sentStatus = false;
         whereClause.draftStatus = false;
@@ -551,7 +520,11 @@ export const accountRouter = createTRPCRouter({
 
       console.log(
         `[getThreads] Query filters:`,
-        JSON.stringify({ accountId: account.id, tab: input.tab, whereClause }, null, 2),
+        JSON.stringify(
+          { accountId: account.id, tab: input.tab, whereClause },
+          null,
+          2,
+        ),
       );
 
       const threads = await ctx.db.thread.findMany({
