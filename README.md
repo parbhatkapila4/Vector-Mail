@@ -19,7 +19,7 @@
 
 <br />
 
-<img src="public/Vector Mail.png" alt="VectorMail Dashboard" width="100%" style="border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);" />
+<img src="public/Vector-Mail-hero.png" alt="VectorMail Dashboard" width="100%" style="border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);" />
 
 </div>
 
@@ -250,7 +250,7 @@ npm run db:generate
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — your AI email client is ready! 🎉
+Open [http://localhost:3000](http://localhost:3000) - your AI email client is ready!
 
 <br />
 
@@ -297,15 +297,15 @@ This spins up:
 
 ## 🗺️ Roadmap
 
-- [x] **Semantic Search** — Vector-based email search
-- [x] **AI Summaries** — Automatic email summarization
-- [x] **AI Compose** — Context-aware email writing
-- [x] **Multi-Account** — Support for multiple email accounts
-- [ ] **Mobile App** — iOS & Android native apps
-- [ ] **Calendar Integration** — Smart scheduling from emails
-- [ ] **Team Workspaces** — Shared inboxes & collaboration
-- [ ] **Plugins/Extensions** — CRM, Slack, Notion integrations
-- [ ] **On-Premise** — Self-hosted enterprise deployment
+- [x] **Semantic Search** - Vector-based email search
+- [x] **AI Summaries** - Automatic email summarization
+- [x] **AI Compose** - Context-aware email writing
+- [x] **Multi-Account** - Support for multiple email accounts
+- [ ] **Mobile App** - iOS & Android native apps
+- [ ] **Calendar Integration** - Smart scheduling from emails
+- [ ] **Team Workspaces** - Shared inboxes & collaboration
+- [ ] **Plugins/Extensions** - CRM, Slack, Notion integrations
+- [ ] **On-Premise** - Self-hosted enterprise deployment
 
 <br />
 
@@ -371,10 +371,10 @@ VectorMail is open-source software licensed under the [MIT License](LICENSE).
 
 Built with incredible open-source technologies:
 
-- [T3 Stack](https://create.t3.gg/) — The best way to start a full-stack TypeScript app
-- [shadcn/ui](https://ui.shadcn.com/) — Beautiful, accessible components
-- [Aurinko](https://www.aurinko.io/) — Unified email API
-- [OpenAI](https://openai.com/) & [Google Gemini](https://deepmind.google/technologies/gemini/) — AI capabilities
+- [T3 Stack](https://create.t3.gg/) - The best way to start a full-stack TypeScript app
+- [shadcn/ui](https://ui.shadcn.com/) - Beautiful, accessible components
+- [Aurinko](https://www.aurinko.io/) - Unified email API
+- [OpenAI](https://openai.com/) & [Google Gemini](https://deepmind.google/technologies/gemini/) - AI capabilities
 
 <br />
 
@@ -384,7 +384,7 @@ Built with incredible open-source technologies:
 
 <br />
 
-**VectorMail** — *Email, Reimagined with AI*
+**VectorMail** - *Email, Reimagined with AI*
 
 <br />
 
@@ -396,7 +396,7 @@ Built by [Parbhat Kapila](https://github.com/parbhatkapila4)
 
 <br />
 
-⭐ **Star us on GitHub** — it motivates us to keep building!
+⭐ **Star us on GitHub** - it motivates us to keep building!
 
 <br />
 

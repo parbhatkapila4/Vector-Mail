@@ -884,7 +884,16 @@ export const accountRouter = createTRPCRouter({
         throw new Error("Email not found");
       }
 
-      if (existingEmail.body && existingEmail.body.length > 100) {
+      const isPlainText =
+        existingEmail.body &&
+        existingEmail.body.length > 100 &&
+        !/<[^>]+>/g.test(existingEmail.body);
+
+      if (
+        existingEmail.body &&
+        existingEmail.body.length > 100 &&
+        !isPlainText
+      ) {
         return {
           body: existingEmail.body,
           cached: true,

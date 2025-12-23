@@ -260,6 +260,45 @@ export class Account {
       `Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync})`,
     );
 
+    if (forceFullSync && account.nextDeltaToken) {
+      console.log(
+        `[syncEmails] Force sync: First fetching latest emails via delta sync...`,
+      );
+      try {
+        const latestResponse = await this.getUpdatedEmails(
+          account.nextDeltaToken,
+          undefined,
+          true,
+        );
+        const latestEmails = latestResponse.records || [];
+        if (latestEmails.length > 0) {
+          console.log(
+            `[syncEmails] Found ${latestEmails.length} latest emails, syncing first...`,
+          );
+          await syncEmailsToDatabase(latestEmails, account.id);
+
+          if (latestResponse.nextDeltaToken) {
+            await db.account.update({
+              where: { id: account.id },
+              data: { nextDeltaToken: latestResponse.nextDeltaToken },
+            });
+          }
+          console.log(
+            `[syncEmails] Latest emails synced, now doing full sync...`,
+          );
+        } else {
+          console.log(
+            `[syncEmails] No latest emails found, proceeding with full sync...`,
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "[syncEmails] Latest email sync failed, continuing with full sync:",
+          error,
+        );
+      }
+    }
+
     const shouldMaintain30DayWindow =
       forceFullSync || (await this.shouldRefresh30DayWindow(account.id));
 

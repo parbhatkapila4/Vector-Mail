@@ -26,7 +26,9 @@ const EmailDisplay = ({ email }: Props) => {
   );
   const [isLoadingBody, setIsLoadingBody] = React.useState(false);
 
-  const needsFullBody = !emailBody || emailBody.length < 100;
+  const isPlainTextStored = emailBody && !/<[^>]+>/g.test(emailBody);
+  const needsFullBody =
+    !emailBody || emailBody.length < 100 || isPlainTextStored;
 
   const {
     data: fullBodyData,
@@ -38,21 +40,27 @@ const EmailDisplay = ({ email }: Props) => {
       emailId: email.id,
     },
     {
-      enabled:
-        !!accountId &&
+      enabled: Boolean(
+        accountId &&
         accountId.length > 0 &&
-        !!email.id &&
+        email.id &&
         email.id.length > 0 &&
         needsFullBody,
+      ),
       refetchOnWindowFocus: false,
       refetchOnMount: false,
     },
   );
 
   React.useEffect(() => {
-    if (fullBodyData?.body && !emailBody) {
-      setEmailBody(fullBodyData.body);
-      setIsLoadingBody(false);
+    if (fullBodyData?.body) {
+      const newBodyIsHtml = /<[^>]+>/g.test(fullBodyData.body);
+      const currentIsPlainText = emailBody && !/<[^>]+>/g.test(emailBody);
+
+      if (!emailBody || currentIsPlainText || newBodyIsHtml) {
+        setEmailBody(fullBodyData.body);
+        setIsLoadingBody(false);
+      }
     }
   }, [fullBodyData, emailBody]);
 
@@ -81,39 +89,6 @@ const EmailDisplay = ({ email }: Props) => {
         ".email-body-wrapper",
       );
       if (emailContainer) {
-        const textElements = emailContainer.querySelectorAll(
-          "p, div, span, li, td, th, h1, h2, h3, h4, h5, h6",
-        );
-        textElements.forEach((element) => {
-          if (!(element instanceof HTMLElement)) return;
-          const currentStyle = element.getAttribute("style") || "";
-          if (
-            !currentStyle.includes("color") ||
-            currentStyle.match(
-              /color:\s*(#[fF]{3,6}|rgb\([^)]*255[^)]*\)|rgba\([^)]*255[^)]*\))/,
-            )
-          ) {
-            const computedColor = window.getComputedStyle(element).color;
-            const rgb = computedColor.match(/\d+/g);
-            if (rgb && rgb.length >= 3) {
-              const r = rgb[0];
-              const g = rgb[1];
-              const b = rgb[2];
-              if (r && g && b) {
-                const brightness =
-                  (parseInt(r, 10) + parseInt(g, 10) + parseInt(b, 10)) / 3;
-                if (brightness > 200 || !currentStyle.includes("color")) {
-                  element.style.color = "#000000";
-                }
-              } else if (!currentStyle.includes("color")) {
-                element.style.color = "#000000";
-              }
-            } else if (!currentStyle.includes("color")) {
-              element.style.color = "#000000";
-            }
-          }
-        });
-
         const links = emailContainer.querySelectorAll("a");
         links.forEach((link) => {
           if (!link.getAttribute("target")) {
@@ -121,13 +96,6 @@ const EmailDisplay = ({ email }: Props) => {
           }
           if (!link.getAttribute("rel")) {
             link.setAttribute("rel", "noopener noreferrer");
-          }
-          const currentStyle = link.getAttribute("style") || "";
-          if (!currentStyle.includes("color")) {
-            link.style.color = "#1a73e8";
-            if (!currentStyle.includes("text-decoration")) {
-              link.style.textDecoration = "underline";
-            }
           }
         });
 
@@ -143,13 +111,31 @@ const EmailDisplay = ({ email }: Props) => {
               img.style.height = "auto";
             }
           }
+
+          if (img.hasAttribute("src")) {
+            const src = img.getAttribute("src");
+            if (src?.startsWith("//")) {
+              img.setAttribute("src", `https:${src}`);
+            }
+          }
         });
       }
     }
   }, [emailBody]);
 
   const isMe = account?.emailAddress === email.from.address;
-  const displayBody = emailBody || email.bodySnippet || "";
+  const rawBody = emailBody || email.bodySnippet || "";
+
+  const isPlainText = rawBody && !/<[^>]+>/g.test(rawBody);
+  const displayBody = isPlainText
+    ? rawBody
+        .replace(/\n/g, "<br>")
+        .replace(
+          /(https?:\/\/[^\s]+)/g,
+          '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+        )
+    : rawBody;
+
   const showLoading = isLoadingBody && !emailBody;
 
   return (
@@ -200,61 +186,68 @@ const EmailDisplay = ({ email }: Props) => {
               padding: "16px",
               wordWrap: "break-word",
               overflowWrap: "break-word",
-              color: "#000000",
             }}
             dangerouslySetInnerHTML={{
               __html: sanitizeEmailHtml(displayBody),
             }}
-        />
+          />
           <style
             dangerouslySetInnerHTML={{
               __html: `
-                /* Isolated email container - preserve original Gmail-like rendering */
+                /* Gmail-like email rendering - preserve original email styles */
                 .email-body-wrapper {
-                  /* Reset any inherited styles that might interfere */
                   box-sizing: border-box;
-                  /* Default dark black text color for all text */
                   color: #000000;
                 }
-                /* Ensure all text elements inherit dark color by default */
-                .email-body-wrapper,
-                .email-body-wrapper p,
-                .email-body-wrapper div,
-                .email-body-wrapper span,
-                .email-body-wrapper li,
-                .email-body-wrapper td,
-                .email-body-wrapper th,
-                .email-body-wrapper h1,
-                .email-body-wrapper h2,
-                .email-body-wrapper h3,
-                .email-body-wrapper h4,
-                .email-body-wrapper h5,
-                .email-body-wrapper h6 {
+                
+                /* Ensure readable default text color but preserve email's explicit styles */
+                .email-body-wrapper > * {
+                  color: inherit;
+                }
+                
+                /* Only force dark text if element doesn't have explicit color styling */
+                .email-body-wrapper p:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper div:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper span:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper li:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper td:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper th:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper h1:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper h2:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper h3:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper h4:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper h5:not([style*="color"]):not([class*="color"]),
+                .email-body-wrapper h6:not([style*="color"]):not([class*="color"]) {
                   color: #000000;
                 }
-                /* Only apply responsive image styles if email doesn't specify */
+                
+                /* Make images responsive but preserve original styling */
                 .email-body-wrapper img:not([width]):not([style*="width"]):not([style*="max-width"]) {
                   max-width: 100% !important;
                   height: auto !important;
+                  display: block;
                 }
-                /* Ensure links are clickable and visible */
+                
+                /* Ensure links are clickable */
                 .email-body-wrapper a {
                   cursor: pointer;
                 }
-                /* Links without explicit color should be blue */
-                .email-body-wrapper a:not([style*="color"]) {
-                  color: #1a73e8;
+                
+                /* Preserve original link colors if specified, otherwise use blue */
+                .email-body-wrapper a:not([style*="color"]):not([class*="color"]) {
+                  color: #1a73e8 !important;
                   text-decoration: underline;
                 }
+                
                 /* Preserve email's original table formatting */
                 .email-body-wrapper table {
-                  border-collapse: separate;
-                  border-spacing: 0;
+                  border-collapse: collapse;
                   width: 100%;
                 }
-                /* Preserve email's paragraph spacing */
-                .email-body-wrapper p {
-                  /* Let email's styles control margin/padding */
+                
+                /* Preserve email spacing and layout */
+                .email-body-wrapper * {
+                  box-sizing: border-box;
                 }
               `,
             }}

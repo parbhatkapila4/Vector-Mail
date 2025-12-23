@@ -142,7 +142,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   );
 
   const renderLoadingState = () => (
-    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
+    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex h-full min-h-[400px] flex-col items-center justify-center p-8">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500" />
@@ -155,7 +155,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   );
 
   const renderConnectionPrompt = () => (
-    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll">
+    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex h-full min-h-[400px] flex-col items-center justify-center p-8">
         <div className="max-w-md text-center">
           <div className="mb-6">
@@ -331,7 +331,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   }
 
   return (
-    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll bg-[#0a0a0a]">
+    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll bg-[#0a0a0a] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0a0a] p-4">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold text-white">
