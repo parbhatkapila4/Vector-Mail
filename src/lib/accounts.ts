@@ -260,14 +260,17 @@ export class Account {
       `Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync})`,
     );
 
-    if (forceFullSync) {
+    const shouldMaintain30DayWindow =
+      forceFullSync || (await this.shouldRefresh30DayWindow(account.id));
+
+    if (shouldMaintain30DayWindow) {
       console.log(
-        `[syncEmails] Force full sync requested - fetching ALL emails directly from messages API`,
+        `[syncEmails] Maintaining 30-day window - fetching ALL emails from last 30 days directly from messages API`,
       );
       try {
         const allEmails = await this.fetchAllEmailsDirectly();
         console.log(
-          `[syncEmails] Fetched ${allEmails.length} emails directly, syncing to database...`,
+          `[syncEmails] Fetched ${allEmails.length} emails from last 30 days, syncing to database...`,
         );
 
         await syncEmailsToDatabase(allEmails, account.id);
@@ -290,11 +293,14 @@ export class Account {
 
         await db.account.update({
           where: { id: account.id },
-          data: { nextDeltaToken: storedDeltaToken },
+          data: {
+            nextDeltaToken: storedDeltaToken,
+            lastInboxSyncAt: new Date(),
+          },
         });
 
         console.log(
-          `[syncEmails] Force full sync completed for account ${account.id}`,
+          `[syncEmails] 30-day window sync completed for account ${account.id}`,
         );
         return;
       } catch (directFetchError) {
@@ -324,6 +330,10 @@ export class Account {
       console.log(
         `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
       );
+      await db.account.update({
+        where: { id: account.id },
+        data: { lastInboxSyncAt: new Date() },
+      });
     } else {
       const deltaToken = updatedAccount.nextDeltaToken;
       if (!deltaToken) {
@@ -336,6 +346,10 @@ export class Account {
         console.log(
           `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
         );
+        await db.account.update({
+          where: { id: account.id },
+          data: { lastInboxSyncAt: new Date() },
+        });
       } else {
         console.log(`Using delta token: ${deltaToken.substring(0, 20)}...`);
         let response = await this.getUpdatedEmails(deltaToken);
@@ -397,6 +411,73 @@ export class Account {
     console.log(`[syncEmails] Email sync completed for account ${account.id}`);
   }
 
+  private async shouldRefresh30DayWindow(accountId: string): Promise<boolean> {
+    try {
+      const oldestEmail = await db.email.findFirst({
+        where: {
+          thread: {
+            accountId: accountId,
+          },
+        },
+        orderBy: {
+          sentAt: "asc",
+        },
+        select: {
+          sentAt: true,
+        },
+      });
+
+      if (!oldestEmail) {
+        console.log(
+          "[shouldRefresh30DayWindow] No emails found, need full sync",
+        );
+        return true;
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      if (oldestEmail.sentAt < thirtyDaysAgo) {
+        console.log(
+          `[shouldRefresh30DayWindow] Oldest email (${oldestEmail.sentAt.toISOString()}) is older than 30 days, need full sync`,
+        );
+        return true;
+      }
+
+      const account = await db.account.findUnique({
+        where: { id: accountId },
+        select: {
+          lastInboxSyncAt: true,
+        },
+      });
+
+      if (!account || !account.lastInboxSyncAt) {
+        console.log(
+          `[shouldRefresh30DayWindow] No lastInboxSyncAt timestamp, need full sync`,
+        );
+        return true;
+      }
+
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+      if (account.lastInboxSyncAt < oneDayAgo) {
+        console.log(
+          `[shouldRefresh30DayWindow] Last full sync (${account.lastInboxSyncAt.toISOString()}) was more than 24 hours ago, refreshing 30-day window`,
+        );
+        return true;
+      }
+
+      console.log(
+        "[shouldRefresh30DayWindow] 30-day window is maintained, using delta sync",
+      );
+      return false;
+    } catch (error) {
+      console.error("[shouldRefresh30DayWindow] Error checking window:", error);
+      return true;
+    }
+  }
+
   async syncLatestEmails(): Promise<{ success: boolean; count: number }> {
     const account = await db.account.findUnique({
       where: {
@@ -405,6 +486,20 @@ export class Account {
     });
     if (!account) {
       throw new Error("Invalid token");
+    }
+
+    const shouldRefresh = await this.shouldRefresh30DayWindow(account.id);
+    if (shouldRefresh) {
+      console.log(
+        `[Latest Sync] 30-day window needs refresh, doing full sync instead`,
+      );
+      try {
+        await this.syncEmails(true);
+        return { success: true, count: 0 };
+      } catch (error) {
+        console.error(`[Latest Sync] Full sync failed:`, error);
+        return { success: false, count: 0 };
+      }
     }
 
     if (!account.nextDeltaToken) {

@@ -1,8 +1,4 @@
-import React, {
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useRef, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow, format } from "date-fns";
 import { RefreshCw, Info } from "lucide-react";
@@ -62,12 +58,36 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
 
+  const syncEmailsMutation = api.account.syncEmails.useMutation({
+    onSuccess: () => {
+      console.log("[ThreadList] Full sync completed, refetching threads");
+      void refetch();
+    },
+    onError: (error) => {
+      console.error("[ThreadList] Sync failed:", error);
+
+      void refetch();
+    },
+  });
+
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   const handleRefresh = useCallback(() => {
-    console.log("[ThreadList] Manual refresh triggered - refetching threads");
-    void refetch();
-  }, [refetch]);
+    if (accountId) {
+      console.log(
+        "[ThreadList] Manual refresh triggered - starting full sync for all emails from last 30 days",
+      );
+      syncEmailsMutation.mutate({
+        accountId,
+        forceFullSync: true,
+      });
+    } else {
+      console.log(
+        "[ThreadList] Manual refresh triggered - refetching threads (no accountId)",
+      );
+      void refetch();
+    }
+  }, [refetch, accountId, syncEmailsMutation]);
 
   const handleAccountConnection = useCallback(async () => {
     try {
@@ -93,7 +113,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     [isFetchingNextPage, hasNextPage, fetchNextPage],
   );
 
-  const threadsToRender = useMemo(() => {   
+  const threadsToRender = useMemo(() => {
     return threads ?? [];
   }, [threads]);
 
@@ -185,8 +205,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
         className={cn(
-          "relative flex flex-col items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/30 p-3 text-left text-sm transition-all hover:bg-slate-800/50 hover:border-slate-700",
-          threadId === thread.id && "bg-orange-500/20 border-orange-500/30",
+          "relative flex flex-col items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/30 p-3 text-left text-sm transition-all hover:border-slate-700 hover:bg-slate-800/50",
+          threadId === thread.id && "border-orange-500/30 bg-orange-500/20",
         )}
         onClick={() => {
           setThreadId(thread.id);
@@ -214,7 +234,9 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               })}
             </div>
           </div>
-          <div className="line-clamp-2 text-xs font-medium text-white">{subject}</div>
+          <div className="line-clamp-2 text-xs font-medium text-white">
+            {subject}
+          </div>
           {bodySnippet && (
             <div className="line-clamp-2 text-xs text-slate-400">
               {bodySnippet}
@@ -264,25 +286,23 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
     if (isFetching && threadsToRender.length === 0) {
       return (
-      <div className="flex flex-col items-center justify-center p-8 bg-[#0a0a0a]">
-        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
-        <p className="mt-2 text-slate-400">
-          Loading emails...
-        </p>
-      </div>
+        <div className="flex flex-col items-center justify-center bg-[#0a0a0a] p-8">
+          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
+          <p className="mt-2 text-slate-400">Loading emails...</p>
+        </div>
       );
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       return (
-      <div className="flex flex-col items-center justify-center p-8 bg-[#0a0a0a]">
-        <p className="text-slate-400">No emails found.</p>
-      </div>
+        <div className="flex flex-col items-center justify-center bg-[#0a0a0a] p-8">
+          <p className="text-slate-400">No emails found.</p>
+        </div>
       );
     }
 
     return (
-      <div className="flex flex-col gap-2 p-4 pt-0 bg-[#0a0a0a]">
+      <div className="flex flex-col gap-2 bg-[#0a0a0a] p-4 pt-0">
         {Object.entries(groupedThreads).map(([date, threads]) => (
           <React.Fragment key={date}>
             <div className="mt-4 text-xs font-medium text-slate-500 first:mt-0">
@@ -311,22 +331,21 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   }
 
   return (
-      <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll bg-[#0a0a0a]">
+    <div className="max-h-[calc(100vh-120px)] max-w-full overflow-y-scroll bg-[#0a0a0a]">
       <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0a0a] p-4">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold text-white">
             {isSearching && searchValue ? "Search Results" : "Inbox"}
           </h2>
-          {isFetching && (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
-          )}
         </div>
 
         {!isSearching && (
           <div className="flex flex-1 items-center justify-center">
             <div className="flex items-center gap-2 rounded-md border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs text-orange-300">
               <Info className="h-3.5 w-3.5 shrink-0 text-orange-400" />
-              <span className="text-white">Click the refresh button to see mails</span>
+              <span className="text-white">
+                Click the refresh button to see mails
+              </span>
             </div>
           </div>
         )}
@@ -335,13 +354,15 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           variant="outline"
           size="sm"
           onClick={handleRefresh}
-          disabled={isFetching}
+          disabled={isFetching || syncEmailsMutation.isPending}
           className="flex items-center gap-2 border-slate-800 bg-slate-900/50 text-white hover:bg-slate-800"
         >
           <RefreshCw
-            className={`h-4 w-4 text-orange-500 ${isFetching ? "animate-spin" : ""}`}
+            className={`h-4 w-4 text-orange-500 ${isFetching || syncEmailsMutation.isPending ? "animate-spin" : ""}`}
           />
-          {isFetching ? "Refreshing..." : "Refresh"}
+          {isFetching || syncEmailsMutation.isPending
+            ? "Syncing..."
+            : "Refresh"}
         </Button>
       </div>
 

@@ -28,6 +28,7 @@ export interface EmailMessage {
   subject: string;
   sysLabels: Array<
     | "junk"
+    | "spam"
     | "trash"
     | "sent"
     | "inbox"

@@ -41,7 +41,13 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       emailLabelType = "draft";
     } else if (
       email.sysLabels.includes("sent") &&
-      !email.sysLabels.includes("inbox")
+      !email.sysLabels.includes("inbox") &&
+      !(email.sysLabels as string[]).includes("spam") &&
+      !email.sysLabels.includes("junk") &&
+      !email.sysClassifications?.includes("promotions") &&
+      !email.sysClassifications?.includes("social") &&
+      !email.sysClassifications?.includes("updates") &&
+      !email.sysClassifications?.includes("forums")
     ) {
       emailLabelType = "sent";
     } else {
@@ -241,9 +247,17 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         threadFolderType = "inbox";
       } else if (
         threadEmail.emailLabel === "sent" &&
-        !threadEmail.sysLabels?.includes("inbox")
+        !threadEmail.sysLabels?.includes("inbox") &&
+        !threadEmail.sysLabels?.includes("spam") &&
+        !threadEmail.sysLabels?.includes("junk") &&
+        !threadEmail.sysClassifications?.includes("promotions") &&
+        !threadEmail.sysClassifications?.includes("social") &&
+        !threadEmail.sysClassifications?.includes("updates") &&
+        !threadEmail.sysClassifications?.includes("forums")
       ) {
         threadFolderType = "sent";
+      } else {
+        threadFolderType = "inbox";
       }
     }
 

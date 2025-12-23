@@ -363,52 +363,21 @@ export const accountRouter = createTRPCRouter({
       );
       const emailAccount = new Account(account.id, account.token);
 
-      const accountWithToken = await ctx.db.account.findUnique({
-        where: { id: account.id },
-        select: { nextDeltaToken: true },
-      });
-
       const { cursor } = input;
 
       const syncPromise = !cursor
         ? (async () => {
             try {
-              if (!accountWithToken?.nextDeltaToken) {
-                console.log(
-                  `[getThreads] Account ${account.id} has no delta token, running FULL sync in background to get ALL emails...`,
+              console.log(
+                `[getThreads] Initial load detected - running FULL sync to get ALL emails from last 30 days (including spam, promotions, etc.)...`,
+              );
+              void emailAccount.syncEmails(true).catch((error) => {
+                console.error(
+                  "[getThreads] Background full sync failed:",
+                  error,
                 );
-                void emailAccount.syncEmails(true).catch((error) => {
-                  console.error(
-                    "[getThreads] Background full sync failed:",
-                    error,
-                  );
-                });
-                return { success: true, count: 0 };
-              } else {
-                const threadCount = await ctx.db.thread.count({
-                  where: { accountId: account.id, inboxStatus: true },
-                });
-
-                if (threadCount < 20) {
-                  console.log(
-                    `[getThreads] Only ${threadCount} threads found, triggering FULL sync to get all emails...`,
-                  );
-                  void emailAccount.syncEmails(true).catch((error) => {
-                    console.error(
-                      "[getThreads] Background full sync failed:",
-                      error,
-                    );
-                  });
-                } else {
-                  void emailAccount.syncLatestEmails().catch((error) => {
-                    console.error(
-                      "[getThreads] Background latest email sync failed:",
-                      error,
-                    );
-                  });
-                }
-                return { success: true, count: 0 };
-              }
+              });
+              return { success: true, count: 0 };
             } catch (error) {
               console.error("[getThreads] Sync error:", error);
               return { success: false, count: 0 };
