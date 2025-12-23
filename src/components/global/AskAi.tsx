@@ -46,11 +46,15 @@ export default function EmailSearchAssistant({
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
+
+  const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
+  const validAccountId =
+    accountId && accounts?.some((acc) => acc.id === accountId)
+      ? accountId
+      : firstAccountId;
+
   const hasValidAccount =
-    !accountsLoading &&
-    !!accountId &&
-    accountId.length > 0 &&
-    accounts?.some((acc) => acc.id === accountId);
+    !accountsLoading && !!validAccountId && validAccountId.length > 0;
 
   const processEmailsMutation = api.account.processEmailsForAI.useMutation({
     onSuccess: () => {
@@ -63,7 +67,7 @@ export default function EmailSearchAssistant({
   });
 
   const { data: debugData } = api.account.debugEmails.useQuery(
-    { accountId: hasValidAccount ? accountId : "" },
+    { accountId: hasValidAccount ? validAccountId : "" },
     {
       enabled: hasValidAccount,
       refetchOnWindowFocus: false,
@@ -93,6 +97,13 @@ export default function EmailSearchAssistant({
 
   const sendMessage = useCallback(
     async (messageText: string) => {
+      if (!validAccountId) {
+        toast.error(
+          "Please wait for account to load or reconnect your account.",
+        );
+        return;
+      }
+
       const newMessage: ChatMessage = {
         id: Date.now().toString(),
         role: "user",
@@ -103,6 +114,9 @@ export default function EmailSearchAssistant({
       setMessages((prev) => [...prev, newMessage]);
       setIsLoading(true);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
@@ -111,9 +125,12 @@ export default function EmailSearchAssistant({
           },
           body: JSON.stringify({
             messages: [...messages, newMessage],
-            accountId,
+            accountId: validAccountId,
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           let errorData;
@@ -189,15 +206,33 @@ export default function EmailSearchAssistant({
         }
       } catch (error) {
         console.error("Send message error:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        toast.error(`Failed to send message: ${errorMessage}`);
+
+        let userFriendlyMessage =
+          "I encountered an error while searching your emails. Please make sure your email account is properly synced and try again.";
+
+        if (error instanceof Error) {
+          if (error.name === "AbortError") {
+            userFriendlyMessage =
+              "The request timed out. Please try again with a simpler query.";
+            toast.error("Request timed out. Please try again.");
+          } else if (
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("NetworkError")
+          ) {
+            userFriendlyMessage =
+              "Network error. Please check your internet connection and try again.";
+            toast.error("Network error. Please check your connection.");
+          } else {
+            toast.error(`Failed to send message: ${error.message}`);
+          }
+        } else {
+          toast.error("An unexpected error occurred. Please try again.");
+        }
 
         const errorAssistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content:
-            "I encountered an error while searching your emails. Please make sure your email account is properly synced and try again.",
+          content: userFriendlyMessage,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, errorAssistantMessage]);
@@ -205,18 +240,18 @@ export default function EmailSearchAssistant({
         setIsLoading(false);
       }
     },
-    [messages, accountId],
+    [messages, validAccountId],
   );
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (input.trim()) {
+      if (input.trim() && hasValidAccount) {
         sendMessage(input);
         setInput("");
       }
     },
-    [input, sendMessage],
+    [input, sendMessage, hasValidAccount],
   );
 
   const handleInputChange = useCallback(
@@ -231,10 +266,10 @@ export default function EmailSearchAssistant({
   }, []);
 
   const handleProcessEmails = useCallback(() => {
-    if (accountId) {
-      processEmailsMutation.mutate({ accountId });
+    if (validAccountId) {
+      processEmailsMutation.mutate({ accountId: validAccountId });
     }
-  }, [accountId, processEmailsMutation]);
+  }, [validAccountId, processEmailsMutation]);
 
   useEffect(() => {
     scrollToBottom();
@@ -242,7 +277,25 @@ export default function EmailSearchAssistant({
 
   if (isCollapsed) return null;
 
-  if (!accountId) {
+  if (accountsLoading) {
+    return (
+      <div className="flex h-full flex-col p-3">
+        <motion.div
+          className="flex h-full flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-[#0A0A0A] p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+            <span className="text-sm text-zinc-400">Loading...</span>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!accounts || accounts.length === 0) {
     return (
       <div className="flex h-full flex-col p-3">
         <motion.div
@@ -384,7 +437,7 @@ export default function EmailSearchAssistant({
 
                 <button
                   onClick={handleProcessEmails}
-                  disabled={processEmailsMutation.isPending || !accountId}
+                  disabled={processEmailsMutation.isPending || !validAccountId}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Bot className="h-4 w-4" />
@@ -421,15 +474,19 @@ export default function EmailSearchAssistant({
                 type="text"
                 onChange={handleInputChange}
                 value={input}
-                className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/20"
-                placeholder="Ask about your emails..."
-                disabled={isLoading}
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/20 disabled:opacity-50"
+                placeholder={
+                  hasValidAccount
+                    ? "Ask about your emails..."
+                    : "Loading account..."
+                }
+                disabled={isLoading || !hasValidAccount}
               />
             </div>
             <button
               type="submit"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 transition-all hover:shadow-lg hover:shadow-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isLoading || !input.trim()}
+              disabled={isLoading || !input.trim() || !hasValidAccount}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin text-white" />

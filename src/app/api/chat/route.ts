@@ -11,6 +11,7 @@ import type { EmailAddress, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function removeAllSymbols(text: string): string {
   text = text.replace(/\*+/g, "");

@@ -42,20 +42,28 @@ export default function ComposeEmailGmail() {
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
+  
+  
+  const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
+  const validAccountId =
+    accountId && accounts?.some((acc) => acc.id === accountId)
+      ? accountId
+      : firstAccountId;
+
+  const hasValidAccount =
+    !accountsLoading &&
+    !!validAccountId &&
+    validAccountId.length > 0;
+
   const { data: account } = api.account.getMyAccount.useQuery(
-    { accountId: accountId || "" },
+    { accountId: validAccountId || "" },
     {
-      enabled: !!accountId && accountId.length > 0,
+      enabled: !!validAccountId && validAccountId.length > 0 && !accountsLoading,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       retry: false,
     },
   );
-  const hasValidAccount =
-    !accountsLoading &&
-    !!accountId &&
-    accountId.length > 0 &&
-    accounts?.some((acc) => acc.id === accountId);
 
   const handleAIGenerate = useCallback(async () => {
     if (isGenerating || isSending) {
@@ -248,7 +256,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       return;
     }
 
-    if (!accountId) {
+    if (!validAccountId) {
       toast.error("Please select an account");
       return;
     }
@@ -264,7 +272,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          accountId,
+          accountId: validAccountId,
           to: to.split(",").map((email) => email.trim()),
           subject: subject.trim(),
           body: bodyContent.trim(),
@@ -298,16 +306,15 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
     }
   };
 
-  if (!hasValidAccount) {
-    return null;
-  }
+  const isButtonDisabled = accountsLoading || !hasValidAccount;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white transition-all hover:shadow-lg hover:shadow-orange-500/50"
+          disabled={isButtonDisabled}
+          className="border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white transition-all hover:shadow-lg hover:shadow-orange-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Pencil className="mr-2 size-4 text-white" />
           Compose
