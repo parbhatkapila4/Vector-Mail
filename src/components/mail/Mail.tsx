@@ -264,7 +264,6 @@ export function Mail({}: MailLayoutProps) {
               selectedThread ? "w-[340px]" : "w-[420px]",
             )}
           >
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-white/[0.04] px-5 py-4">
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-semibold capitalize text-white">

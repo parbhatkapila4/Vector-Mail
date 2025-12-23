@@ -8,12 +8,7 @@ export function CTA() {
   const { isSignedIn } = useUser();
 
   return (
-    <section className="relative overflow-hidden bg-[#000000] py-32">
-      <div className="absolute inset-0">
-        <div className="absolute right-1/4 top-0 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[150px]" />
-        <div className="absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full bg-violet-500/10 blur-[120px]" />
-      </div>
-
+    <section className="relative py-32">
       <div className="relative mx-auto max-w-5xl px-6">
         <div className="relative">
           <div className="absolute -inset-1 rounded-[3rem] bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 opacity-20 blur-2xl" />

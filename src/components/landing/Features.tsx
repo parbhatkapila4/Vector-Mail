@@ -55,12 +55,7 @@ export function Features() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-[#000000] py-24">
-      <div className="absolute inset-0">
-        <div className="absolute right-1/4 top-1/4 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[150px]" />
-        <div className="absolute bottom-1/4 left-1/4 h-[400px] w-[400px] rounded-full bg-violet-500/10 blur-[120px]" />
-      </div>
-
+    <section className="relative py-24">
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="mb-16 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/50 px-4 py-1.5">

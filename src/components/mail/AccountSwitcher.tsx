@@ -57,7 +57,7 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
     <Select defaultValue={accountId} onValueChange={setAccountId}>
       <SelectTrigger
         className={cn(
-          "border-0 bg-transparent p-0 text-white hover:bg-transparent focus:ring-0",
+          "border-0 bg-transparent p-0 text-white hover:bg-transparent focus:ring-0 [&>svg]:hidden",
           isCollapsed
             ? "h-10 w-10 justify-center"
             : "h-auto justify-start gap-0",

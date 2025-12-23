@@ -1,34 +1,44 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Twitter, Github, Linkedin, Mail } from "lucide-react";
+import { toast } from "sonner";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const [email, setEmail] = useState("");
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    toast.success("We'll mail you whenever new features come in, Thanks!");
+
+    setEmail("");
+  };
 
   const links = {
     product: [
       { label: "Features", href: "/features" },
       { label: "Pricing", href: "/pricing" },
-      { label: "AI Assistant", href: "/buddy" },
-      { label: "Changelog", href: "#" },
-    ],
-    company: [
-      { label: "About", href: "/about" },
-      { label: "Blog", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Press Kit", href: "#" },
     ],
     resources: [
-      { label: "Documentation", href: "#" },
-      { label: "API Reference", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "About", href: "/about" },
       { label: "Support", href: "mailto:parbhat@parbhat.dev" },
     ],
     legal: [
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "#" },
     ],
   };
 
@@ -47,13 +57,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="relative overflow-hidden bg-[#000000]">
-      <div className="absolute inset-0">
-        <div className="absolute left-1/4 top-0 h-[400px] w-[400px] rounded-full bg-amber-500/10 blur-[150px]" />
-        <div className="absolute bottom-0 right-1/4 h-[300px] w-[300px] rounded-full bg-violet-500/10 blur-[120px]" />
-      </div>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
+    <footer className="relative">
       <div className="relative mx-auto max-w-6xl px-6 pb-12 pt-20">
         <div className="grid gap-12 lg:grid-cols-6">
           <div className="lg:col-span-2">
@@ -81,16 +85,21 @@ export function Footer() {
               <p className="mb-3 text-sm font-medium text-white">
                 Stay updated
               </p>
-              <div className="flex gap-2">
+              <form onSubmit={handleSubscribe} className="flex gap-2">
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
                 />
-                <button className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition-colors hover:bg-zinc-200">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
+                >
                   Subscribe
                 </button>
-              </div>
+              </form>
             </div>
 
             <div className="mt-8 flex items-center gap-3">
@@ -115,24 +124,6 @@ export function Footer() {
             </h3>
             <ul className="space-y-3">
               {links.product.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-zinc-400 transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-wider text-zinc-500">
-              Company
-            </h3>
-            <ul className="space-y-3">
-              {links.company.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}

@@ -2,18 +2,14 @@
 
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { BackgroundBeamsWithCollision } from "@/components/ui/background-beams-with-collision";
 
 export function Hero() {
   const { isSignedIn } = useUser();
 
   return (
-    <section className="relative min-h-screen bg-[#000000]">
-      <div className="absolute inset-0">
-        <div className="absolute left-1/4 top-0 h-[600px] w-[600px] rounded-full bg-amber-500/10 blur-[150px]" />
-        <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-violet-500/10 blur-[120px]" />
-      </div>
-
+    <section className="relative min-h-screen">
       <div className="relative mx-auto max-w-[1400px] px-8 pb-24 pt-32">
         <div className="mb-8 flex justify-center">
           <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2">
@@ -24,8 +20,13 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="mb-10 text-center">
-          <h1 className="text-[4rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white sm:text-[5.5rem] md:text-[7rem]">
+        <div className="relative mb-10 text-center">
+          <div className="pointer-events-none absolute inset-0 -mx-8 overflow-hidden">
+            <BackgroundBeamsWithCollision className="h-full w-full bg-transparent !from-transparent !to-transparent">
+              <div></div>
+            </BackgroundBeamsWithCollision>
+          </div>
+          <h1 className="relative z-20 text-[4rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white sm:text-[5.5rem] md:text-[7rem]">
             Email that works
             <br />
             <span className="relative">
@@ -60,12 +61,12 @@ export function Hero() {
             </span>
           </h1>
 
-          <p className="mx-auto mt-8 max-w-[600px] text-[1.25rem] leading-[1.6] text-[#8B8B8D]">
+          <p className="relative z-20 mx-auto mt-8 max-w-[600px] text-[1.25rem] leading-[1.6] text-[#8B8B8D]">
             AI-powered email that understands context, not just keywords. Find
             anything instantly. Reply in seconds.
           </p>
 
-          <div className="mt-10 flex justify-center">
+          <div className="relative z-20 mt-10 flex justify-center">
             <Link
               href={isSignedIn ? "/mail" : "/sign-up"}
               className="group flex items-center gap-3 rounded-full bg-white px-8 py-4 text-[16px] font-semibold text-[#0A0A0B] transition-all hover:bg-white/90"
@@ -73,17 +74,6 @@ export function Hero() {
               Get Started Free
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
             </Link>
-          </div>
-
-          <div className="mt-8 flex items-center justify-center gap-6 text-[14px] text-[#5C5C5E]">
-            {["Free forever", "No credit card", "2 min setup"].map(
-              (text, i) => (
-                <span key={i} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-amber-500/60" />
-                  {text}
-                </span>
-              ),
-            )}
           </div>
         </div>
 

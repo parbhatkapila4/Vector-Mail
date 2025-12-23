@@ -2,12 +2,29 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Plus, Loader2, Copy, Check, Mail, Inbox, X } from "lucide-react";
+import {
+  Bot,
+  Plus,
+  Loader2,
+  Copy,
+  Check,
+  Mail,
+  ArrowLeft,
+  X,
+  Sparkles,
+  MessageSquare,
+  FileText,
+  Users,
+  Calendar,
+  Send,
+  Clock,
+} from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 interface ChatMessage {
   id: string;
@@ -29,79 +46,71 @@ interface SavedChat {
   preview: string;
 }
 
-const suggestedQueries = [
+const templates = [
   {
-    label: "Meeting Follow-up",
+    id: "followup",
+    title: "Follow-up",
+    subtitle: "Post-meeting recap",
     query:
       "Write a professional follow-up email after a business meeting summarizing key points and next steps",
-    icon: "📋",
+    icon: Calendar,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
   },
   {
-    label: "Project Proposal",
+    id: "proposal",
+    title: "Proposal",
+    subtitle: "Project outline",
     query:
       "Draft a professional project proposal email to a potential client outlining scope, timeline, and deliverables",
-    icon: "💼",
+    icon: FileText,
+    color: "text-violet-400",
+    bg: "bg-violet-500/10",
   },
   {
-    label: "Status Update",
+    id: "update",
+    title: "Status Update",
+    subtitle: "Progress report",
     query:
       "Create a professional status update email to stakeholders about project progress and milestones",
-    icon: "📊",
+    icon: Users,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
   },
   {
-    label: "Client Onboarding",
+    id: "intro",
+    title: "Introduction",
+    subtitle: "New connection",
     query:
-      "Write a professional client onboarding email welcoming new clients and outlining next steps",
-    icon: "🚀",
+      "Write a professional introduction email to establish a new business relationship",
+    icon: MessageSquare,
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
   },
-] as const;
+];
 
 const generateHeading = (messages: ChatMessage[]): string => {
   if (messages.length === 0) return "New Chat";
-
   const firstUserMessage = messages.find((m) => m.role === "user");
   if (!firstUserMessage) return "New Chat";
-
   const content = firstUserMessage.content.toLowerCase();
+  if (content.includes("follow")) return "Follow-up Email";
+  if (content.includes("proposal")) return "Project Proposal";
+  if (content.includes("update") || content.includes("status"))
+    return "Status Update";
+  if (content.includes("intro")) return "Introduction";
+  if (content.includes("thank")) return "Thank You Note";
+  const words = firstUserMessage.content.split(" ").slice(0, 4);
+  return words.join(" ") + "...";
+};
 
-  if (
-    content.includes("email") ||
-    content.includes("compose") ||
-    content.includes("draft")
-  ) {
-    if (content.includes("follow") || content.includes("follow-up"))
-      return "Follow-up Email";
-    if (content.includes("thank")) return "Thank You Email";
-    if (content.includes("meeting") || content.includes("schedule"))
-      return "Meeting Request";
-    if (content.includes("introduce") || content.includes("introduction"))
-      return "Introduction Email";
-    if (content.includes("job") || content.includes("interview"))
-      return "Job Application Email";
-    return "Email Draft";
-  }
-
-  if (
-    content.includes("what") ||
-    content.includes("how") ||
-    content.includes("why")
-  ) {
-    return "Question";
-  }
-
-  if (
-    content.includes("code") ||
-    content.includes("programming") ||
-    content.includes("function")
-  ) {
-    return "Coding Help";
-  }
-
-  const words = firstUserMessage.content.split(" ").slice(0, 5);
-  return (
-    words.join(" ") +
-    (words.length < firstUserMessage.content.split(" ").length ? "..." : "")
-  );
+const formatTime = (timestamp: number) => {
+  const now = Date.now();
+  const diff = now - timestamp;
+  if (diff < 60000) return "Just now";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return new Date(timestamp).toLocaleDateString();
 };
 
 function BuddyPageContent() {
@@ -119,13 +128,12 @@ function BuddyPageContent() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
-  const previousMessagesRef = useRef<ChatMessage[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in");
-    }
+    if (isLoaded && !isSignedIn) router.push("/sign-in");
   }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
@@ -134,8 +142,7 @@ function BuddyPageContent() {
       if (fresh === "true") {
         setMessages([]);
         setInput("");
-        previousMessagesRef.current = [];
-
+        setActiveChat(null);
         router.replace("/buddy", { scroll: false });
       }
     }
@@ -151,14 +158,10 @@ function BuddyPageContent() {
   }, []);
 
   const copyToClipboard = useCallback(async (text: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(id);
-      toast.success("Copied to clipboard!");
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
+    await navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
   const sendMessage = useCallback(
@@ -169,7 +172,6 @@ function BuddyPageContent() {
         content: messageText,
         timestamp: Date.now(),
       };
-
       const updatedMessages = [...messages, newMessage];
       setMessages(updatedMessages);
       setIsLoading(true);
@@ -177,9 +179,7 @@ function BuddyPageContent() {
       try {
         const response = await fetch("/api/buddy", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: updatedMessages.map((msg) => ({
               role: msg.role,
@@ -188,70 +188,29 @@ function BuddyPageContent() {
           }),
         });
 
-        if (!response.ok) {
-          let errorMessage = `Failed: ${response.status}`;
-          const contentType = response.headers.get("content-type");
-          if (contentType?.includes("application/json")) {
-            try {
-              const errorData = await response.json();
-              errorMessage =
-                errorData.error || errorData.details || errorMessage;
-            } catch {}
-          } else {
-            try {
-              const errorText = await response.text();
-              errorMessage = errorText || errorMessage;
-            } catch {}
-          }
-          console.error("API error:", errorMessage);
-          throw new Error(errorMessage);
-        }
+        if (!response.ok) throw new Error(`Request failed`);
 
-        const responseData = await response.json();
-
-        if (responseData.type === "conversation") {
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: responseData.message || "",
-            timestamp: Date.now(),
-          };
-          setMessages([...updatedMessages, assistantMessage]);
-        } else if (responseData.subject) {
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: "Here's your email draft:",
-            timestamp: Date.now(),
-            emailData: responseData,
-          };
-          setMessages([...updatedMessages, assistantMessage]);
-        } else {
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content:
-              typeof responseData === "string"
-                ? responseData
-                : JSON.stringify(responseData),
-            timestamp: Date.now(),
-          };
-          setMessages([...updatedMessages, assistantMessage]);
-        }
-      } catch (error) {
-        console.error("Send message error:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        toast.error(`Failed to generate email: ${errorMessage}`);
-
-        const errorAssistantMessage: ChatMessage = {
+        const data = await response.json();
+        const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content:
-            "I encountered an error while generating your email. Please try again or check your connection.",
+            data.type === "conversation" ? data.message : "Here's your draft:",
           timestamp: Date.now(),
+          emailData: data.subject ? data : undefined,
         };
-        setMessages([...updatedMessages, errorAssistantMessage]);
+        setMessages([...updatedMessages, assistantMessage]);
+      } catch {
+        toast.error("Failed to generate response");
+        setMessages([
+          ...updatedMessages,
+          {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "Something went wrong. Please try again.",
+            timestamp: Date.now(),
+          },
+        ]);
       } finally {
         setIsLoading(false);
       }
@@ -265,64 +224,48 @@ function BuddyPageContent() {
       if (input.trim() && !isLoading) {
         sendMessage(input);
         setInput("");
+        if (textareaRef.current) textareaRef.current.style.height = "auto";
       }
     },
     [input, sendMessage, isLoading],
   );
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setInput(e.target.value);
-    },
-    [],
-  );
-
-  const handleQuerySuggestion = useCallback(
-    (query: string) => {
-      sendMessage(query);
-    },
-    [sendMessage],
-  );
-
   const handleNewChat = useCallback(() => {
     if (messages.length > 0) {
-      const heading = generateHeading(messages);
-      const preview =
-        messages.find((m) => m.role === "user")?.content.substring(0, 50) || "";
-
-      const newSavedChat: SavedChat = {
+      const newChat: SavedChat = {
         id: Date.now().toString(),
-        heading,
+        heading: generateHeading(messages),
         messages: [...messages],
         timestamp: Date.now(),
-        preview: preview + (preview.length < 50 ? "" : "..."),
+        preview:
+          messages.find((m) => m.role === "user")?.content.substring(0, 60) ||
+          "",
       };
-
-      const updatedChats = [newSavedChat, ...savedChats].slice(0, 10);
-      setSavedChats(updatedChats);
+      setSavedChats([newChat, ...savedChats].slice(0, 20));
     }
-
     setMessages([]);
     setInput("");
-    previousMessagesRef.current = [];
+    setActiveChat(null);
   }, [messages, savedChats, setSavedChats, setMessages]);
 
-  const loadSavedChat = useCallback(
+  const loadChat = useCallback(
     (chat: SavedChat) => {
       setMessages(chat.messages);
-      setInput("");
-      previousMessagesRef.current = chat.messages;
+      setActiveChat(chat.id);
     },
     [setMessages],
   );
 
-  const deleteSavedChat = useCallback(
-    (chatId: string, e: React.MouseEvent) => {
+  const deleteChat = useCallback(
+    (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
-      setSavedChats(savedChats.filter((chat) => chat.id !== chatId));
-      toast.success("Chat deleted");
+      setSavedChats(savedChats.filter((c) => c.id !== id));
+      if (activeChat === id) {
+        setMessages([]);
+        setActiveChat(null);
+      }
     },
-    [savedChats, setSavedChats],
+    [savedChats, setSavedChats, activeChat, setMessages],
   );
 
   useEffect(() => {
@@ -331,300 +274,293 @@ function BuddyPageContent() {
 
   if (!isLoaded) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="flex h-screen items-center justify-center bg-[#0C0C0D]">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+          <span className="text-sm text-zinc-500">Loading...</span>
+        </div>
       </div>
     );
   }
 
-  if (!isSignedIn) {
-    return null;
-  }
+  if (!isSignedIn) return null;
 
   return (
-    <div className="flex h-screen bg-black">
-      {/* Sidebar */}
-      <div className="hidden w-64 border-r border-gray-900 bg-black/50 md:flex md:flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-900 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500">
-            <Bot className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold text-white">AI Buddy</h1>
-            <p className="text-xs text-gray-500">Email generator</p>
-          </div>
+    <div className="flex h-screen bg-[#0C0C0D]">
+      <aside className="hidden w-[260px] flex-col border-r border-zinc-800/60 lg:flex">
+        <div className="flex h-14 items-center gap-3 border-b border-zinc-800/60 px-4">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-amber-400 to-orange-500">
+              <video
+                src="/Vectormail-logo.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="h-full w-full scale-[1.8] object-cover"
+              />
+            </div>
+            <span className="text-sm font-semibold text-zinc-100">
+              VectorMail
+            </span>
+          </Link>
+          <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+            AI
+          </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="p-2">
           <button
             onClick={handleNewChat}
-            className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/50 px-3 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/50 hover:text-white"
+            className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2.5 text-sm text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
           >
-            <Plus className="h-4 w-4" />
-            New Chat
+            <div className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              <span>New chat</span>
+            </div>
+            <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
+              ⌘N
+            </kbd>
           </button>
+        </div>
 
-          {savedChats.length > 0 && (
-            <div className="space-y-1">
-              <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Recent
-              </p>
+        <div className="flex-1 overflow-y-auto px-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {savedChats.length > 0 ? (
+            <div className="space-y-0.5 py-2">
+              <div className="mb-2 flex items-center justify-between px-2">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+                  Recent
+                </span>
+                <Clock className="h-3 w-3 text-zinc-700" />
+              </div>
               {savedChats.map((chat) => (
                 <div
                   key={chat.id}
-                  className="group relative cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-900/50 hover:text-white"
-                  onClick={() => loadSavedChat(chat)}
+                  onClick={() => loadChat(chat)}
+                  className={cn(
+                    "group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition-colors",
+                    activeChat === chat.id
+                      ? "bg-zinc-800/70 text-zinc-100"
+                      : "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200",
+                  )}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1 truncate">
-                      {chat.heading}
-                    </div>
-                    <button
-                      onClick={(e) => deleteSavedChat(chat.id, e)}
-                      className="ml-2 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      <X className="h-3.5 w-3.5 text-gray-500 hover:text-red-400" />
-                    </button>
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px]">{chat.heading}</p>
+                    <p className="truncate text-[11px] text-zinc-600">
+                      {formatTime(chat.timestamp)}
+                    </p>
                   </div>
+                  <button
+                    onClick={(e) => deleteChat(chat.id, e)}
+                    className="opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <X className="h-3.5 w-3.5 text-zinc-600 hover:text-zinc-400" />
+                  </button>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 rounded-xl bg-zinc-800/50 p-3">
+                <MessageSquare className="h-5 w-5 text-zinc-600" />
+              </div>
+              <p className="text-[13px] text-zinc-500">No conversations yet</p>
+              <p className="text-[12px] text-zinc-600">
+                Start a new chat above
+              </p>
             </div>
           )}
         </div>
 
-        <div className="border-t border-gray-900 p-3">
+        <div className="border-t border-zinc-800/60 px-4 pb-4 pt-[22px]">
           <button
             onClick={() => router.push("/mail")}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-900/50 hover:text-white"
+            className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-300"
           >
-            <Inbox className="h-4 w-4" />
-            Go to Inbox
+            <ArrowLeft className="h-4 w-4" />
+            Back to Inbox
           </button>
+          <div className="flex items-center gap-2 px-2">
+            <UserButton afterSignOutUrl="/" />
+            <span className="text-[13px] text-zinc-600">Account</span>
+          </div>
         </div>
-      </div>
+      </aside>
 
-      <div className="flex flex-1 flex-col bg-black">
+      <main className="flex flex-1 flex-col">
+        <header className="flex h-12 items-center justify-between border-b border-zinc-800/60 px-4 lg:hidden">
+          <Link
+            href="/"
+            className="flex h-6 w-6 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-amber-400 to-orange-500"
+          >
+            <video
+              src="/Vectormail-logo.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-full w-full scale-[1.8] object-cover"
+            />
+          </Link>
+          <div className="flex gap-1">
+            <button
+              onClick={handleNewChat}
+              className="rounded-md p-2 text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => router.push("/mail")}
+              className="rounded-md p-2 text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
+            >
+              <Mail className="h-5 w-5" />
+            </button>
+          </div>
+        </header>
+
         <div
-          className="flex-1 overflow-y-auto bg-black"
           ref={messageContainerRef}
+          className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {messages.length > 0 ? (
-            <div className="mx-auto max-w-4xl px-6 py-12">
-              <div className="space-y-6">
-                <AnimatePresence mode="popLayout">
-                  {messages.map((message, index) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.3, delay: index * 0.03 }}
-                      className={cn("flex gap-5", {
-                        "flex-row-reverse": message.role === "user",
-                      })}
-                    >
-                      <div className="flex shrink-0">
-                        {message.role === "assistant" ? (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/20">
-                            <Bot className="h-5 w-5 text-white" />
-                          </div>
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-700 bg-gray-800">
-                            <div className="h-4 w-4 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400" />
-                          </div>
-                        )}
+            <div className="mx-auto max-w-2xl px-4 py-6">
+              <AnimatePresence mode="popLayout">
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="mb-6"
+                  >
+                    {message.role === "user" ? (
+                      <div className="flex justify-end">
+                        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-amber-500 px-4 py-2.5">
+                          <p className="text-[14px] leading-relaxed text-black">
+                            {message.content}
+                          </p>
+                        </div>
                       </div>
-
-                      <div
-                        className={cn("min-w-0 flex-1", {
-                          "flex justify-end": message.role === "user",
-                        })}
-                      >
-                        {message.role === "user" ? (
-                          <div className="max-w-[80%] rounded-2xl rounded-tr-md border border-gray-800 bg-gradient-to-br from-gray-900 to-gray-800 px-5 py-3.5 shadow-lg">
-                            <p className="text-sm leading-relaxed text-gray-100">
-                              {message.content}
-                            </p>
-                          </div>
-                        ) : message.emailData ? (
-                          <div className="max-w-[85%] space-y-4">
-                            <div className="rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900/90 to-black/50 p-6 shadow-xl backdrop-blur-sm">
-                              <div className="mb-5 flex items-center gap-2.5">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
-                                  <Mail className="h-4 w-4 text-orange-400" />
+                    ) : (
+                      <div className="flex gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800">
+                          <Bot className="h-4 w-4 text-zinc-400" />
+                        </div>
+                        <div className="min-w-0 flex-1 pt-1">
+                          {message.emailData ? (
+                            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
+                              <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10">
+                                    <Mail className="h-3 w-3 text-amber-400" />
+                                  </div>
+                                  <span className="text-[12px] font-medium text-zinc-400">
+                                    Email Draft
+                                  </span>
                                 </div>
-                                <span className="text-sm font-semibold text-orange-400">
-                                  {message.content}
-                                </span>
+                                <button
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      `Subject: ${message.emailData!.subject}\n\n${message.emailData!.body}`,
+                                      message.id,
+                                    )
+                                  }
+                                  className="flex items-center gap-1.5 rounded-md bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+                                >
+                                  {copiedId === message.id ? (
+                                    <>
+                                      <Check className="h-3 w-3 text-emerald-400" />
+                                      <span className="text-emerald-400">
+                                        Copied
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3 w-3" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
                               </div>
 
-                              <div className="mb-5 rounded-xl border border-gray-800 bg-black/60 p-5 backdrop-blur-sm">
-                                <div className="mb-4 flex items-start justify-between gap-4">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                      Subject
-                                    </div>
-                                    <div className="text-base font-bold leading-snug text-white">
-                                      {message.emailData.subject}
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() =>
-                                      copyToClipboard(
-                                        `${message.emailData!.subject}\n\n${message.emailData!.body}`,
-                                        `${message.id}-main`,
-                                      )
-                                    }
-                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-900/50 text-gray-400 transition-all hover:border-orange-500/50 hover:bg-orange-500/10 hover:text-orange-400"
-                                  >
-                                    {copiedId === `${message.id}-main` ? (
-                                      <Check className="h-4 w-4 text-green-400" />
-                                    ) : (
-                                      <Copy className="h-4 w-4" />
-                                    )}
-                                  </button>
-                                </div>
-                                <div className="border-t border-gray-800 pt-4">
-                                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                    Body
-                                  </div>
-                                  <div className="space-y-2 text-sm leading-relaxed text-gray-300">
-                                    {message.emailData.body
-                                      .split("\n")
-                                      .map((line, idx) => {
-                                        const parts =
-                                          line.split(/(\*\*.*?\*\*)/g);
-                                        return (
-                                          <p
-                                            key={idx}
-                                            className="leading-relaxed"
-                                          >
-                                            {parts.map((part, partIdx) => {
-                                              if (
-                                                part.startsWith("**") &&
-                                                part.endsWith("**")
-                                              ) {
-                                                const boldText = part.slice(
-                                                  2,
-                                                  -2,
-                                                );
-                                                return (
-                                                  <strong
-                                                    key={partIdx}
-                                                    className="font-semibold text-white"
-                                                  >
-                                                    {boldText}
-                                                  </strong>
-                                                );
-                                              }
-                                              return (
-                                                <span key={partIdx}>
-                                                  {part}
-                                                </span>
-                                              );
-                                            })}
-                                          </p>
-                                        );
-                                      })}
-                                  </div>
+                              <div className="border-b border-zinc-800/60 px-4 py-3">
+                                <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                                  Subject
+                                </label>
+                                <p className="text-[14px] font-medium text-zinc-100">
+                                  {message.emailData.subject}
+                                </p>
+                              </div>
+
+                              <div className="px-4 py-4">
+                                <label className="mb-2 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                                  Body
+                                </label>
+                                <div className="space-y-2.5 text-[13px] leading-[1.7] text-zinc-300">
+                                  {message.emailData.body
+                                    .split("\n")
+                                    .map((line, i) => {
+                                      const parts =
+                                        line.split(/(\*\*.*?\*\*)/g);
+                                      return (
+                                        <p key={i}>
+                                          {parts.map((part, j) =>
+                                            part.startsWith("**") &&
+                                            part.endsWith("**") ? (
+                                              <strong
+                                                key={j}
+                                                className="font-semibold text-zinc-100"
+                                              >
+                                                {part.slice(2, -2)}
+                                              </strong>
+                                            ) : (
+                                              <span key={j}>{part}</span>
+                                            ),
+                                          )}
+                                        </p>
+                                      );
+                                    })}
                                 </div>
                               </div>
 
                               {message.emailData.suggestions &&
                                 message.emailData.suggestions.length > 0 && (
-                                  <div className="border-t border-gray-800 pt-5">
-                                    <div className="mb-4 flex items-center gap-2">
-                                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-800 to-transparent" />
-                                      <span className="text-xs font-semibold uppercase tracking-wider text-orange-400">
-                                        Alternatives
-                                      </span>
-                                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-800 to-transparent" />
-                                    </div>
-                                    <div className="space-y-3">
+                                  <div className="border-t border-zinc-800/60 bg-zinc-900/50 px-4 py-3">
+                                    <label className="mb-2 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                                      Alternatives
+                                    </label>
+                                    <div className="space-y-2">
                                       {message.emailData.suggestions.map(
-                                        (suggestion, idx) => (
+                                        (s, idx) => (
                                           <div
                                             key={idx}
-                                            className="rounded-xl border border-gray-800 bg-black/40 p-4 backdrop-blur-sm transition-all hover:border-gray-700"
+                                            className="group flex items-start justify-between rounded-lg bg-zinc-800/50 p-3 transition-colors hover:bg-zinc-800"
                                           >
-                                            <div className="mb-3 flex items-start justify-between gap-3">
-                                              <div className="min-w-0 flex-1">
-                                                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                                  Subject
-                                                </div>
-                                                <div className="text-sm font-semibold text-white">
-                                                  {suggestion.subject}
-                                                </div>
-                                              </div>
-                                              <button
-                                                onClick={() =>
-                                                  copyToClipboard(
-                                                    `${suggestion.subject}\n\n${suggestion.body}`,
-                                                    `${message.id}-suggestion-${idx}`,
-                                                  )
-                                                }
-                                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-900/50 text-gray-500 transition-all hover:border-orange-500/50 hover:bg-orange-500/10 hover:text-orange-400"
-                                              >
-                                                {copiedId ===
-                                                `${message.id}-suggestion-${idx}` ? (
-                                                  <Check className="h-3.5 w-3.5 text-green-400" />
-                                                ) : (
-                                                  <Copy className="h-3.5 w-3.5" />
-                                                )}
-                                              </button>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-[13px] font-medium text-zinc-200">
+                                                {s.subject}
+                                              </p>
+                                              <p className="mt-0.5 line-clamp-1 text-[12px] text-zinc-500">
+                                                {s.body}
+                                              </p>
                                             </div>
-                                            <div className="border-t border-gray-800 pt-3">
-                                              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                                Body
-                                              </div>
-                                              <div className="space-y-1.5 whitespace-pre-wrap text-xs leading-relaxed text-gray-400">
-                                                {suggestion.body
-                                                  .split("\n")
-                                                  .map((line, idx) => {
-                                                    const parts =
-                                                      line.split(
-                                                        /(\*\*.*?\*\*)/g,
-                                                      );
-                                                    return (
-                                                      <p key={idx}>
-                                                        {parts.map(
-                                                          (part, partIdx) => {
-                                                            if (
-                                                              part.startsWith(
-                                                                "**",
-                                                              ) &&
-                                                              part.endsWith(
-                                                                "**",
-                                                              )
-                                                            ) {
-                                                              const boldText =
-                                                                part.slice(
-                                                                  2,
-                                                                  -2,
-                                                                );
-                                                              return (
-                                                                <strong
-                                                                  key={partIdx}
-                                                                  className="font-semibold text-white"
-                                                                >
-                                                                  {boldText}
-                                                                </strong>
-                                                              );
-                                                            }
-                                                            return (
-                                                              <span
-                                                                key={partIdx}
-                                                              >
-                                                                {part}
-                                                              </span>
-                                                            );
-                                                          },
-                                                        )}
-                                                      </p>
-                                                    );
-                                                  })}
-                                              </div>
-                                            </div>
+                                            <button
+                                              onClick={() =>
+                                                copyToClipboard(
+                                                  `Subject: ${s.subject}\n\n${s.body}`,
+                                                  `${message.id}-${idx}`,
+                                                )
+                                              }
+                                              className="ml-2 shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-zinc-700 group-hover:opacity-100"
+                                            >
+                                              {copiedId ===
+                                              `${message.id}-${idx}` ? (
+                                                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                              ) : (
+                                                <Copy className="h-3.5 w-3.5 text-zinc-500" />
+                                              )}
+                                            </button>
                                           </div>
                                         ),
                                       )}
@@ -632,143 +568,172 @@ function BuddyPageContent() {
                                   </div>
                                 )}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="max-w-[85%] rounded-2xl rounded-tl-md border border-gray-800 bg-gradient-to-br from-gray-900/90 to-black/50 px-5 py-4 shadow-lg">
-                            <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-200">
+                          ) : (
+                            <p className="text-[14px] leading-relaxed text-zinc-300">
                               {message.content}
-                            </div>
-                          </div>
-                        )}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex gap-5"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/20">
-                      <Bot className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex items-center gap-2 rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900/90 to-black/50 px-5 py-3.5 shadow-lg">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-orange-400 [animation-delay:-0.3s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-orange-400 [animation-delay:-0.15s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-orange-400" />
-                    </div>
+                    )}
                   </motion.div>
-                )}
-              </div>
+                ))}
+              </AnimatePresence>
+
+              {isLoading && (
+                <div className="flex gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800">
+                    <Bot className="h-4 w-4 text-zinc-400" />
+                  </div>
+                  <div className="flex items-center gap-1 pt-2">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500 [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500 [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500" />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center px-6">
-              <div className="mx-auto w-full max-w-2xl space-y-8 text-center">
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.4 }}
-                  className="flex justify-center"
-                >
-                  <div className="relative">
-                    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl shadow-2xl shadow-orange-500/30">
-                      <video
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="h-[140%] w-[140%] scale-110 object-cover"
-                      >
-                        <source src="/Vectormail-logo.mp4" type="video/mp4" />
-                      </video>
-                    </div>
-                    <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-green-400 shadow-lg">
-                      <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+            <div className="flex h-full flex-col items-center justify-center px-4">
+              <div className="w-full max-w-lg">
+                <div className="mb-10 text-center">
+                  <div className="mb-5 inline-flex items-center justify-center">
+                    <div className="relative">
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/25">
+                        <video
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="h-full w-full scale-[1.7] object-cover"
+                        >
+                          <source src="/Vectormail-logo.mp4" type="video/mp4" />
+                        </video>
+                      </div>
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#0C0C0D]">
+                        <Sparkles className="h-2.5 w-2.5 text-white" />
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold text-white">
-                    How can I help you today?
-                  </h2>
-                  <p className="text-sm text-gray-400">
-                    I can answer questions, help with tasks, or generate
-                    professional email drafts.
+                  <h1 className="mb-1.5 text-xl font-semibold tracking-tight text-white">
+                    Email Assistant
+                  </h1>
+                  <p className="text-sm text-zinc-500">
+                    Draft professional emails in seconds with AI
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
-                  {suggestedQueries.map(({ label, query, icon }, idx) => (
-                    <motion.button
-                      key={label}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      onClick={() => handleQuerySuggestion(query)}
-                      className="group flex items-center justify-center gap-3 rounded-xl border border-gray-800 bg-gray-900/50 px-5 py-3.5 text-sm font-medium text-gray-300 transition-all hover:border-orange-500/50 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-amber-500/10 hover:text-white hover:shadow-lg hover:shadow-orange-500/10"
-                    >
-                      <span className="text-xl">{icon}</span>
-                      <span>{label}</span>
-                    </motion.button>
-                  ))}
+                <div className="mb-6">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+                      Quick Start
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {templates.map(
+                      ({
+                        id,
+                        title,
+                        subtitle,
+                        query,
+                        icon: Icon,
+                        color,
+                        bg,
+                      }) => (
+                        <button
+                          key={id}
+                          onClick={() => sendMessage(query)}
+                          className="group flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3 text-left transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
+                        >
+                          <div
+                            className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                              bg,
+                            )}
+                          >
+                            <Icon className={cn("h-4 w-4", color)} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-medium text-zinc-200 group-hover:text-white">
+                              {title}
+                            </p>
+                            <p className="text-[11px] text-zinc-600">
+                              {subtitle}
+                            </p>
+                          </div>
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+                    Tips for best results
+                  </p>
+                  <ul className="space-y-1.5 text-[12px] text-zinc-500">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-600" />
+                      Be specific about the context and tone you want
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-600" />
+                      Include key points you want to convey
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-600" />
+                      Mention the relationship (colleague, client, etc.)
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="border-t border-gray-900 bg-black/95 px-6 py-5 backdrop-blur-xl">
-          <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
-                <textarea
-                  onChange={handleInputChange}
-                  value={input}
-                  rows={1}
-                  className="max-h-32 w-full resize-none rounded-xl border border-gray-800 bg-gray-900/50 px-4 py-3.5 pr-12 text-sm text-white transition-all [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-gray-500 focus:border-orange-500/50 focus:outline-none focus:ring-2 focus:ring-orange-500/20 [&::-webkit-scrollbar]:hidden"
-                  placeholder="Ask me anything or describe an email you want to write..."
-                  disabled={isLoading}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                  style={{
-                    height: "auto",
-                    minHeight: "48px",
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = "auto";
-                    target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
-                  }}
-                />
-                <div className="absolute bottom-3.5 right-3 text-xs text-gray-600">
-                  Enter to send
-                </div>
-              </div>
-              <motion.button
+        <div className="border-t border-zinc-800/60 bg-[#0C0C0D] p-4">
+          <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
+            <div className="relative flex items-end gap-2 rounded-xl border border-zinc-800 bg-zinc-900/70 p-1.5 transition-colors focus-within:border-zinc-700">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                onInput={(e) => {
+                  const t = e.target as HTMLTextAreaElement;
+                  t.style.height = "auto";
+                  t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
+                }}
+                placeholder="Describe the email you want to write..."
+                disabled={isLoading}
+                rows={1}
+                className="flex-1 resize-none bg-transparent px-3 py-2 text-[14px] text-zinc-100 [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-zinc-600 focus:outline-none disabled:opacity-50 [&::-webkit-scrollbar]:hidden"
+                style={{ minHeight: "40px" }}
+              />
+              <button
                 type="submit"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex h-12 shrink-0 items-center justify-center self-start rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 px-6 text-sm font-medium text-white shadow-lg shadow-orange-500/20 transition-all hover:shadow-xl hover:shadow-orange-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isLoading || !input.trim()}
-                style={{ marginTop: "0px" }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-black transition-all hover:bg-amber-400 disabled:opacity-30"
               >
                 {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <span className="text-white">Send</span>
+                  <Send className="h-4 w-4" />
                 )}
-              </motion.button>
+              </button>
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-4 text-[11px] text-zinc-600">
+              <span>↵ Send</span>
+              <span>⇧↵ New line</span>
             </div>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -777,8 +742,11 @@ export default function BuddyPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center bg-black">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <div className="flex h-screen items-center justify-center bg-[#0C0C0D]">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+            <span className="text-sm text-zinc-500">Loading...</span>
+          </div>
         </div>
       }
     >

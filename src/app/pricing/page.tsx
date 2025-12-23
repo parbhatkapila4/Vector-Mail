@@ -126,12 +126,6 @@ export default function PricingPage() {
             transition={{ duration: 0.6 }}
             className="mb-16 text-center"
           >
-            <motion.div className="mb-6 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2">
-              <span className="text-sm font-semibold text-white">
-                Pricing Coming Soon
-              </span>
-            </motion.div>
-
             <h1 className="mb-6 text-5xl font-black text-white sm:text-6xl md:text-7xl">
               Flexible Pricing Plans for Every Need
             </h1>
@@ -381,7 +375,7 @@ export default function PricingPage() {
               Our team is ready to answer any questions about plans, features,
               or custom requirements.
             </p>
-            <Link href="mailto:help@productionsolution.net">
+            <Link href="mailto:parbhat@parbhat.dev">
               <button className="rounded-xl border border-slate-800 bg-slate-900/50 px-10 py-4 text-lg font-semibold text-white transition-all hover:border-slate-700 hover:bg-slate-800/50 hover:shadow-lg">
                 Contact Us
               </button>
