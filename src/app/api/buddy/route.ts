@@ -235,7 +235,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
             ];
           })();
 
-      let model = "anthropic/claude-3.5-sonnet";
+      let model = "anthropic/claude-3-haiku";
 
       try {
         completion = await openai.chat.completions.create({
@@ -246,7 +246,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
           ...(isEmail && { response_format: { type: "json_object" } }),
         });
       } catch (primaryError) {
-        console.warn("Primary model failed, trying GPT-4o-mini:", primaryError);
+        console.warn("Primary model (Claude Haiku) failed, trying GPT-4o-mini:", primaryError);
         try {
           model = "openai/gpt-4o-mini";
           completion = await openai.chat.completions.create({

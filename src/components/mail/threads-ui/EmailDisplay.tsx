@@ -15,6 +15,8 @@ type Props = {
 const EmailDisplay = ({ email }: Props) => {
   const { account, accountId } = useThreads();
   const letterRef = React.useRef<HTMLDivElement>(null);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
   const getInitialBody = (): string | null => {
     if ("body" in email && email.body) {
       return email.body;
@@ -25,6 +27,7 @@ const EmailDisplay = ({ email }: Props) => {
     getInitialBody(),
   );
   const [isLoadingBody, setIsLoadingBody] = React.useState(false);
+  const [loadError, setLoadError] = React.useState(false);
 
   const isPlainTextStored = emailBody && !/<[^>]+>/g.test(emailBody);
   const needsFullBody =
@@ -34,6 +37,7 @@ const EmailDisplay = ({ email }: Props) => {
     data: fullBodyData,
     isLoading: isLoadingQuery,
     isError,
+    isFetching,
   } = api.account.getEmailBody.useQuery(
     {
       accountId: accountId ?? "",
@@ -49,8 +53,67 @@ const EmailDisplay = ({ email }: Props) => {
       ),
       refetchOnWindowFocus: false,
       refetchOnMount: false,
+      retry: 2,
+      retryDelay: 1000,
     },
   );
+
+  
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  
+  React.useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    const queryEnabled = Boolean(
+      accountId &&
+      accountId.length > 0 &&
+      email.id &&
+      email.id.length > 0 &&
+      needsFullBody,
+    );
+
+    if (isLoadingQuery && queryEnabled) {
+      setIsLoadingBody(true);
+      setLoadError(false);
+      
+      timeoutRef.current = setTimeout(() => {
+        console.warn("Email body loading timeout for email:", email.id);
+        setIsLoadingBody(false);
+        setLoadError(true);
+      }, 10000);
+    } else if (!isLoadingQuery && !isFetching) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      if (isError) {
+        setIsLoadingBody(false);
+        setLoadError(true);
+      } else if (fullBodyData !== undefined) {
+        setIsLoadingBody(false);
+        setLoadError(false);
+      }
+    }
+
+    if (!queryEnabled) {
+      setIsLoadingBody(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  }, [isLoadingQuery, isFetching, isError, fullBodyData, needsFullBody, accountId, email.id]);
 
   React.useEffect(() => {
     if (fullBodyData?.body) {
@@ -60,21 +123,13 @@ const EmailDisplay = ({ email }: Props) => {
       if (!emailBody || currentIsPlainText || newBodyIsHtml) {
         setEmailBody(fullBodyData.body);
         setIsLoadingBody(false);
+        setLoadError(false);
       }
+    } else if (fullBodyData !== undefined && !fullBodyData?.body) {
+      setIsLoadingBody(false);
+      setLoadError(false);
     }
   }, [fullBodyData, emailBody]);
-
-  React.useEffect(() => {
-    if (isLoadingQuery && needsFullBody) {
-      setIsLoadingBody(true);
-    }
-  }, [isLoadingQuery, needsFullBody]);
-
-  React.useEffect(() => {
-    if (isError) {
-      setIsLoadingBody(false);
-    }
-  }, [isError]);
 
   React.useEffect(() => {
     if (letterRef.current) {
@@ -124,7 +179,9 @@ const EmailDisplay = ({ email }: Props) => {
   }, [emailBody]);
 
   const isMe = account?.emailAddress === email.from.address;
-  const rawBody = emailBody || email.bodySnippet || "";
+  
+  const rawBody = emailBody || email.bodySnippet || email.body || "";
+  const hasContent = rawBody && rawBody.trim().length > 0;
 
   const isPlainText = rawBody && !/<[^>]+>/g.test(rawBody);
   const displayBody = isPlainText
@@ -136,7 +193,9 @@ const EmailDisplay = ({ email }: Props) => {
         )
     : rawBody;
 
-  const showLoading = isLoadingBody && !emailBody;
+  const showLoading = isLoadingBody && !hasContent;
+  
+  const showError = (loadError || isError) && !hasContent && !isLoadingBody;
 
   return (
     <div
@@ -171,11 +230,34 @@ const EmailDisplay = ({ email }: Props) => {
       <div className="h-4"></div>
       {showLoading ? (
         <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
-          <div className="text-sm text-muted-foreground">
-            Loading email content...
+          <div className="flex flex-col items-center gap-2">
+            <div className="text-sm text-muted-foreground">
+              Loading email content...
+            </div>
+            <div className="h-1 w-32 overflow-hidden rounded-full bg-gray-200">
+              <div className="h-full w-full animate-pulse bg-gray-400"></div>
+            </div>
           </div>
         </div>
-      ) : (
+      ) : showError ? (
+        <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
+          <div className="text-center">
+            <div className="mb-2 text-sm font-medium text-gray-700">
+              Unable to load full email content
+            </div>
+            {email.bodySnippet && (
+              <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4 text-left">
+                <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
+                  Preview
+                </div>
+                <div className="text-sm text-gray-700">
+                  {email.bodySnippet}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : hasContent ? (
         <div
           className="min-h-[500px] overflow-y-auto rounded-md bg-white"
           ref={letterRef}
@@ -252,6 +334,12 @@ const EmailDisplay = ({ email }: Props) => {
               `,
             }}
           />
+        </div>
+      ) : (
+        <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
+          <div className="text-sm text-muted-foreground">
+            No email content available
+          </div>
         </div>
       )}
     </div>

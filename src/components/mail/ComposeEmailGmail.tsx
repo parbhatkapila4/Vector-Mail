@@ -16,7 +16,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Pencil, Send, Link, Smile, FileSignature } from "lucide-react";
+import {
+  Pencil,
+  Send,
+  Link,
+  Smile,
+  FileSignature,
+  Paperclip,
+  X,
+  Folder,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
@@ -37,13 +46,18 @@ export default function ComposeEmailGmail() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [isUserTyping, setIsUserTyping] = useState(false);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const bodyEditableRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isExternalUpdate = useRef(false);
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
-  
-  
+
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
   const validAccountId =
     accountId && accounts?.some((acc) => acc.id === accountId)
@@ -51,19 +65,74 @@ export default function ComposeEmailGmail() {
       : firstAccountId;
 
   const hasValidAccount =
-    !accountsLoading &&
-    !!validAccountId &&
-    validAccountId.length > 0;
+    !accountsLoading && !!validAccountId && validAccountId.length > 0;
 
   const { data: account } = api.account.getMyAccount.useQuery(
     { accountId: validAccountId || "" },
     {
-      enabled: !!validAccountId && validAccountId.length > 0 && !accountsLoading,
+      enabled:
+        !!validAccountId && validAccountId.length > 0 && !accountsLoading,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       retry: false,
     },
   );
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const maxSize = 25 * 1024 * 1024;
+    const oversizedFiles = files.filter((file) => file.size > maxSize);
+
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        `Some files are too large (max 25MB): ${oversizedFiles.map((f) => f.name).join(", ")}`,
+      );
+      return;
+    }
+
+    setAttachments((prev) => [...prev, ...files]);
+    toast.success(`${files.length} file(s) attached`);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const maxSize = 25 * 1024 * 1024;
+    const oversizedFiles = files.filter((file) => file.size > maxSize);
+
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        `Some files are too large (max 25MB): ${oversizedFiles.map((f) => f.name).join(", ")}`,
+      );
+      return;
+    }
+
+    setAttachments((prev) => [...prev, ...files]);
+    toast.success(`Folder attached with ${files.length} file(s)`);
+
+    if (folderInputRef.current) {
+      folderInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
 
   const handleAIGenerate = useCallback(async () => {
     if (isGenerating || isSending) {
@@ -158,6 +227,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         setBody(htmlContent);
 
         if (bodyEditableRef.current) {
+          isExternalUpdate.current = true;
           bodyEditableRef.current.innerHTML = htmlContent;
         }
         setHasGenerated(true);
@@ -222,17 +292,104 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
     };
   }, [open, handleAIGenerate]);
 
-  useEffect(() => {
-    if (bodyEditableRef.current) {
-      const currentHtml = bodyEditableRef.current.innerHTML;
-      const normalizedCurrent = currentHtml.replace(/\s+/g, " ").trim();
-      const normalizedBody = (body || "").replace(/\s+/g, " ").trim();
+  const saveSelection = (): { start: number; end: number } | null => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !bodyEditableRef.current)
+      return null;
 
-      if (normalizedCurrent !== normalizedBody) {
-        bodyEditableRef.current.innerHTML = body || "";
+    const range = selection.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(bodyEditableRef.current);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+
+    return {
+      start: preCaretRange.toString().length,
+      end: preCaretRange.toString().length,
+    };
+  };
+
+  const restoreSelection = (
+    savedPos: { start: number; end: number } | null,
+  ) => {
+    if (!savedPos || !bodyEditableRef.current) return;
+
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    let charCount = 0;
+    const walker = document.createTreeWalker(
+      bodyEditableRef.current,
+      NodeFilter.SHOW_TEXT,
+      null,
+    );
+
+    let node: Node | null;
+    let startNode: Node | null = null;
+    let startOffset = 0;
+    let endNode: Node | null = null;
+    let endOffset = 0;
+
+    while ((node = walker.nextNode())) {
+      const textLength = node.textContent?.length || 0;
+      const nextCharCount = charCount + textLength;
+
+      if (
+        !startNode &&
+        savedPos.start >= charCount &&
+        savedPos.start <= nextCharCount
+      ) {
+        startNode = node;
+        startOffset = savedPos.start - charCount;
+      }
+
+      if (savedPos.end >= charCount && savedPos.end <= nextCharCount) {
+        endNode = node;
+        endOffset = savedPos.end - charCount;
+        break;
+      }
+
+      charCount = nextCharCount;
+    }
+
+    if (startNode && endNode) {
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  };
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (bodyEditableRef.current && !isUserTyping) {
+      const currentHtml = bodyEditableRef.current.innerHTML;
+
+      if (
+        isExternalUpdate.current ||
+        currentHtml === "" ||
+        currentHtml === "<br>"
+      ) {
+        const normalizedCurrent = currentHtml.replace(/\s+/g, " ").trim();
+        const normalizedBody = (body || "").replace(/\s+/g, " ").trim();
+
+        if (normalizedCurrent !== normalizedBody) {
+          const savedPos = saveSelection();
+          bodyEditableRef.current.innerHTML = body || "";
+          requestAnimationFrame(() => {
+            restoreSelection(savedPos);
+          });
+        }
+        isExternalUpdate.current = false;
       }
     }
-  }, [body]);
+  }, [body, isUserTyping]);
 
   const handleSend = async () => {
     if (!to.trim()) {
@@ -266,27 +423,64 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
     try {
       const bodyContent = bodyEditableRef.current?.innerHTML || body;
 
-      const response = await fetch("/api/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountId: validAccountId,
-          to: to.split(",").map((email) => email.trim()),
-          subject: subject.trim(),
-          body: bodyContent.trim(),
-        }),
-      });
+      let response: Response;
 
-      const data = await response.json();
+      if (attachments.length > 0) {
+        const formData = new FormData();
+        formData.append("accountId", validAccountId);
+        formData.append(
+          "to",
+          JSON.stringify(to.split(",").map((email) => email.trim())),
+        );
+        formData.append("subject", subject.trim());
+        formData.append("body", bodyContent.trim());
 
-      if (!response.ok) {
-        toast.error(data.message || data.error || "Failed to send email");
+        attachments.forEach((file) => {
+          formData.append("attachments", file);
+        });
+
+        response = await fetch("/api/email/send", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        response = await fetch("/api/email/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accountId: validAccountId,
+            to: to.split(",").map((email) => email.trim()),
+            subject: subject.trim(),
+            body: bodyContent.trim(),
+          }),
+        });
+      }
+
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        toast.error("Failed to parse server response. Please try again.");
         return;
       }
 
-      toast.success("Email sent successfully");
+      if (!response.ok) {
+        toast.error(data.message || data.error || "Failed to send email");
+        if (data.hint) {
+          toast.info(data.hint, { duration: 5000 });
+        }
+        return;
+      }
+
+      if (data.warning) {
+        toast.warning(data.warning, { duration: 6000 });
+      } else {
+        toast.success("Email sent successfully");
+      }
 
       setTo("");
       setSubject("");
@@ -295,6 +489,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       setHasGenerated(false);
       setLinkUrl("");
       setLinkText("");
+      setAttachments([]);
       setOpen(false);
     } catch (error) {
       console.error("Error sending email:", error);
@@ -314,13 +509,13 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         <Button
           variant="outline"
           disabled={isButtonDisabled}
-          className="border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white transition-all hover:shadow-lg hover:shadow-orange-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white transition-all hover:shadow-lg hover:shadow-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Pencil className="mr-2 size-4 text-white" />
           Compose
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-slate-800 bg-[#0a0a0a] text-white">
+      <DialogContent className="max-h-[90vh] w-[95vw] max-w-7xl overflow-y-auto border-slate-800 bg-[#0a0a0a] text-white [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <DialogHeader>
           <DialogTitle className="text-white">Compose Email</DialogTitle>
         </DialogHeader>
@@ -364,8 +559,21 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 contentEditable={!isSending && !isGenerating}
                 suppressContentEditableWarning
                 onInput={(e) => {
+                  setIsUserTyping(true);
                   const html = e.currentTarget.innerHTML;
                   setBody(html);
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
+                  typingTimeoutRef.current = setTimeout(() => {
+                    setIsUserTyping(false);
+                  }, 500);
+                }}
+                onBlur={() => {
+                  setIsUserTyping(false);
+                }}
+                onFocus={() => {
+                  setIsUserTyping(true);
                 }}
                 onPaste={(e) => {
                   e.preventDefault();
@@ -402,8 +610,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                     }
                   }
                 }}
-                dangerouslySetInnerHTML={{ __html: body || "" }}
-                className="min-h-[200px] w-full resize-none overflow-y-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
+                className="min-h-[200px] w-full resize-none overflow-y-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-scrollbar]:hidden [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
                 style={{
                   whiteSpace: "pre-wrap",
                   wordWrap: "break-word",
@@ -438,7 +645,83 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             )}
           </div>
 
-          <div className="flex items-center gap-2 border-t pt-3">
+          {attachments.length > 0 && (
+            <div className="mt-2 space-y-2 border-t pt-3">
+              <div className="text-xs font-medium text-muted-foreground">
+                Attached Files ({attachments.length})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm"
+                  >
+                    <Paperclip className="size-4 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{file.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-destructive/10"
+                      onClick={() => handleRemoveAttachment(index)}
+                      disabled={isSending}
+                    >
+                      <X className="size-3 text-muted-foreground hover:text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+
+            <input
+              ref={folderInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleFolderSelect}
+              // @ts-expect-error - webkitdirectory is a valid HTML attribute for folder selection
+              webkitdirectory=""
+            />
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSending || isGenerating}
+              className="flex items-center gap-1.5"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="size-4 text-green-500" />
+              <span className="text-xs">Attach Files</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSending || isGenerating}
+              className="flex items-center gap-1.5"
+              onClick={() => folderInputRef.current?.click()}
+            >
+              <Folder className="size-4 text-blue-500" />
+              <span className="text-xs">Attach Folder</span>
+            </Button>
+
             <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -446,10 +729,10 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   variant="outline"
                   size="sm"
                   disabled={isSending || isGenerating}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1.5"
                 >
                   <Link className="size-4 text-blue-500" />
-                  Insert Link
+                  <span className="text-xs">Insert Link</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="border-slate-800 bg-[#0a0a0a] text-white">
@@ -601,10 +884,10 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   variant="outline"
                   size="sm"
                   disabled={isSending || isGenerating}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1.5"
                 >
                   <Smile className="size-4 text-yellow-500" />
-                  Emoji
+                  <span className="text-xs">Emoji</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80" align="start">
@@ -782,10 +1065,10 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   bodyEditableRef.current?.focus();
                 }, 0);
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1.5"
             >
               <FileSignature className="size-4" />
-              Insert Signature
+              <span className="text-xs">Insert Signature</span>
             </Button>
           </div>
 

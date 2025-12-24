@@ -23,6 +23,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
         style: {
           zIndex: 9999,
           marginRight: "0px",
+          color: "#000000",
+          background: "#ffffff",
+        },
+        className: "toast-black-text",
+        classNames: {
+          toast: "toast-black-text",
+          title: "toast-black-text",
+          description: "toast-black-text",
+          actionButton: "toast-black-text",
+          cancelButton: "toast-black-text",
         },
       }}
       {...props}

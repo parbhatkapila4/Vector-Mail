@@ -980,60 +980,96 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const account = await authoriseAccountAccess(
-        input.accountId,
-        ctx.auth.userId,
-      );
-      const emailAccount = new Account(account.id, account.token);
+      try {
+        const account = await authoriseAccountAccess(
+          input.accountId,
+          ctx.auth.userId,
+        );
+        const emailAccount = new Account(account.id, account.token);
 
-      const existingEmail = await ctx.db.email.findUnique({
-        where: { id: input.emailId },
-        select: {
-          id: true,
-          body: true,
-          thread: {
-            select: {
-              accountId: true,
+        const existingEmail = await ctx.db.email.findUnique({
+          where: { id: input.emailId },
+          select: {
+            id: true,
+            body: true,
+            bodySnippet: true,
+            thread: {
+              select: {
+                accountId: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      if (!existingEmail || existingEmail.thread.accountId !== account.id) {
-        throw new Error("Email not found");
-      }
+        if (!existingEmail || existingEmail.thread.accountId !== account.id) {
+          console.warn(`Email not found: ${input.emailId}`);
+          return {
+            body: existingEmail?.bodySnippet || null,
+            cached: false,
+          };
+        }
 
-      const isPlainText =
-        existingEmail.body &&
-        existingEmail.body.length > 100 &&
-        !/<[^>]+>/g.test(existingEmail.body);
+        const isPlainText =
+          existingEmail.body &&
+          existingEmail.body.length > 100 &&
+          !/<[^>]+>/g.test(existingEmail.body);
 
-      if (
-        existingEmail.body &&
-        existingEmail.body.length > 100 &&
-        !isPlainText
-      ) {
+        if (
+          existingEmail.body &&
+          existingEmail.body.length > 100 &&
+          !isPlainText
+        ) {
+          return {
+            body: existingEmail.body,
+            cached: true,
+          };
+        }
+
+        try {
+          const fullEmail = await emailAccount.getEmailById(input.emailId);
+
+          if (fullEmail?.body && fullEmail.body.trim().length > 0) {
+            ctx.db.email
+              .update({
+                where: { id: input.emailId },
+                data: {
+                  body: fullEmail.body,
+                },
+              })
+              .catch((updateError) => {
+                console.error(
+                  `Failed to update email body in DB: ${input.emailId}`,
+                  updateError,
+                );
+              });
+
+            return {
+              body: fullEmail.body,
+              cached: false,
+            };
+          } else {
+            console.warn(`Email body is empty for: ${input.emailId}`);
+            return {
+              body: existingEmail.body || existingEmail.bodySnippet || null,
+              cached: true,
+            };
+          }
+        } catch (fetchError) {
+          console.error(
+            `Failed to fetch email body from API: ${input.emailId}`,
+            fetchError,
+          );
+          return {
+            body: existingEmail.body || existingEmail.bodySnippet || null,
+            cached: true,
+          };
+        }
+      } catch (error) {
+        console.error(`Error in getEmailBody for ${input.emailId}:`, error);
         return {
-          body: existingEmail.body,
-          cached: true,
+          body: null,
+          cached: false,
         };
       }
-
-      const fullEmail = await emailAccount.getEmailById(input.emailId);
-      if (!fullEmail || !fullEmail.body) {
-        throw new Error("Failed to fetch email body");
-      }
-
-      await ctx.db.email.update({
-        where: { id: input.emailId },
-        data: {
-          body: fullEmail.body,
-        },
-      });
-
-      return {
-        body: fullEmail.body,
-        cached: false,
-      };
     }),
 });

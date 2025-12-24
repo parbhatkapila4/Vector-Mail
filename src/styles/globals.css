@@ -142,4 +142,22 @@
       linear-gradient(to bottom, #80808012 1px, transparent 1px);
     background-size: 24px 24px;
   }
+
+  
+  [data-sonner-toast],
+  [data-sonner-toast] *,
+  .toast-black-text,
+  .toast-black-text * {
+    color: #000000 !important;
+  }
+
+  [data-sonner-toast] [data-title],
+  [data-sonner-toast] [data-description] {
+    color: #000000 !important;
+  }
+
+  
+  [data-sonner-toast] svg {
+    color: #000000 !important;
+  }
 }
