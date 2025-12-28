@@ -264,8 +264,217 @@ function removeAllSymbols(text: string): string {
   return text;
 }
 
+function enforceEmailFormatting(text: string): string {
+  if (!text || typeof text !== "string") return text;
+
+  text = text.replace(/([.!?])\s*\n([A-Z][a-z])/g, "$1\n\n$2");
+  text = text.replace(/([a-z0-9])\s*\n([A-Z][a-z])/g, "$1\n\n$2");
+
+  let paragraphs = text
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p);
+
+  if (paragraphs.length === 1) {
+    const singlePara = paragraphs[0] || "";
+    const sentenceCount = (singlePara.match(/[.!?]+/g) || []).length;
+
+    if (sentenceCount > 2) {
+      paragraphs = [];
+
+      const greetingMatch = singlePara.match(
+        /^((?:Dear|Hi|Hello)\s+[^,]+,\s*|[A-Z][a-z]+,\s*)/i,
+      );
+      let processedText = singlePara;
+      if (greetingMatch) {
+        paragraphs.push(greetingMatch[0].trim());
+        processedText = singlePara.substring(greetingMatch[0].length).trim();
+      }
+
+      let closing = "";
+      const closingPatterns = [
+        /(Best regards|Sincerely|Thank you|Regards|Kind regards),?\s*[A-Z][a-z\s]*$/i,
+        /(Best regards|Sincerely|Thank you|Regards|Kind regards),/i,
+      ];
+
+      for (const pattern of closingPatterns) {
+        const closingMatch = processedText.match(pattern);
+        if (closingMatch) {
+          closing = closingMatch[0].trim();
+          processedText = processedText
+            .substring(0, processedText.length - closingMatch[0].length)
+            .trim();
+          break;
+        }
+      }
+
+      const sentences: string[] = processedText.match(/[^.!?]+[.!?]+/g) || [];
+
+      if (sentences.length === 0) {
+        const manualSplit = processedText.split(/([.!?]+\s+)/);
+        for (let i = 0; i < manualSplit.length; i += 2) {
+          const sentence = (manualSplit[i] || "") + (manualSplit[i + 1] || "");
+          if (sentence.trim()) sentences.push(sentence.trim());
+        }
+      }
+
+      let currentPara = "";
+      for (const sentence of sentences) {
+        const trimmed = sentence.trim();
+        if (!trimmed || trimmed.length < 5) continue;
+
+        const currentSentenceCount = (currentPara.match(/[.!?]+/g) || [])
+          .length;
+        if (
+          currentSentenceCount >= 2 ||
+          currentPara.length + trimmed.length > 250
+        ) {
+          if (currentPara.trim()) {
+            paragraphs.push(currentPara.trim());
+          }
+          currentPara = trimmed;
+        } else {
+          currentPara += (currentPara ? " " : "") + trimmed;
+        }
+      }
+      if (currentPara.trim()) {
+        paragraphs.push(currentPara.trim());
+      }
+
+      if (closing) paragraphs.push(closing);
+    }
+  }
+
+  const finalParagraphs: string[] = [];
+
+  for (const para of paragraphs) {
+    if (!para) continue;
+
+    const isGreeting = /^(Dear|Hi|Hello)\s/i.test(para);
+    const isClosing =
+      /^(Best regards|Sincerely|Thank you|Regards|Kind regards),/i.test(para);
+    const isList = /^(\d+\.|[a-z]\.)\s/.test(para);
+
+    if (isGreeting || isClosing || isList) {
+      finalParagraphs.push(para);
+      continue;
+    }
+
+    const sentenceCount = (para.match(/[.!?]+/g) || []).length;
+    if (sentenceCount >= 2 || para.length > 250) {
+      const sentences = para.match(/[^.!?]+[.!?]+/g) || [];
+
+      if (sentences.length > 1) {
+        let currentPara = "";
+        for (const sentence of sentences) {
+          const trimmed = sentence.trim();
+          if (!trimmed) continue;
+
+          const currentSentenceCount = (currentPara.match(/[.!?]+/g) || [])
+            .length;
+          if (
+            currentSentenceCount >= 2 ||
+            currentPara.length + trimmed.length > 250
+          ) {
+            if (currentPara.trim()) {
+              finalParagraphs.push(currentPara.trim());
+            }
+            currentPara = trimmed;
+          } else {
+            currentPara += (currentPara ? " " : "") + trimmed;
+          }
+        }
+        if (currentPara.trim()) {
+          finalParagraphs.push(currentPara.trim());
+        }
+      } else {
+        finalParagraphs.push(para);
+      }
+    } else {
+      finalParagraphs.push(para);
+    }
+  }
+
+  let result = finalParagraphs.join("\n\n");
+  result = result.replace(/\n{3,}/g, "\n\n").trim();
+
+  return result;
+}
+
 function normalizeEmailFormatting(text: string): string {
   if (!text || typeof text !== "string") return text;
+
+  const newlineCount = (text.match(/\n/g) || []).length;
+  const hasVeryFewNewlines = newlineCount < 3;
+  const hasMultipleSentences = (text.match(/[.!?]+/g) || []).length > 2;
+
+  if (hasVeryFewNewlines && hasMultipleSentences) {
+    let processedText = text.trim();
+    const paragraphs: string[] = [];
+
+    const greetingMatch = processedText.match(
+      /^((?:Dear|Hi|Hello)\s+[^,]+,\s*|[A-Z][a-z]+,\s*)/i,
+    );
+    if (greetingMatch) {
+      paragraphs.push(greetingMatch[0].trim());
+      processedText = processedText.substring(greetingMatch[0].length).trim();
+    }
+
+    let closing = "";
+    const closingPatterns = [
+      /(Best regards|Sincerely|Thank you|Regards|Kind regards),\s*[^\n]*$/i,
+      /(Best regards|Sincerely|Thank you|Regards|Kind regards),?\s*[A-Z][a-z]+\s*$/i,
+    ];
+
+    for (const pattern of closingPatterns) {
+      const closingMatch = processedText.match(pattern);
+      if (closingMatch) {
+        closing = closingMatch[0].trim();
+        processedText = processedText
+          .substring(0, processedText.length - closingMatch[0].length)
+          .trim();
+        break;
+      }
+    }
+
+    const sentenceRegex = /[^.!?]+[.!?]+(?=\s|$)/g;
+    const sentences: string[] = processedText.match(sentenceRegex) || [];
+
+    if (sentences.length === 0) {
+      const simpleSplit = processedText.split(/([.!?]+\s+)/);
+      for (let i = 0; i < simpleSplit.length; i += 2) {
+        const sentence = (simpleSplit[i] || "") + (simpleSplit[i + 1] || "");
+        if (sentence.trim()) sentences.push(sentence.trim());
+      }
+    }
+
+    let currentPara = "";
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      if (!trimmed || trimmed.length < 5) continue;
+
+      const currentSentenceCount = (currentPara.match(/[.!?]+/g) || []).length;
+
+      if (
+        currentSentenceCount >= 2 ||
+        (currentPara.length + trimmed.length > 250 && currentPara.length > 0)
+      ) {
+        if (currentPara.trim()) {
+          paragraphs.push(currentPara.trim());
+        }
+        currentPara = trimmed;
+      } else {
+        currentPara += (currentPara ? " " : "") + trimmed;
+      }
+    }
+    if (currentPara.trim()) {
+      paragraphs.push(currentPara.trim());
+    }
+
+    if (closing) paragraphs.push(closing.trim());
+
+    text = paragraphs.join("\n\n");
+  }
 
   text = text.replace(/[ \t]+$/gm, "");
 
@@ -307,143 +516,71 @@ function normalizeEmailFormatting(text: string): string {
 
   text = text.trim();
 
-  const paragraphs: string[] = [];
-  const lines = text.split("\n");
-  let currentParagraph = "";
-  let inList = false;
+  const initialParagraphs = text.split("\n\n").filter((p) => p.trim());
+  const reconstructedParagraphs: string[] = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]?.trim() || "";
-    const nextLine = lines[i + 1]?.trim() || "";
+  for (const para of initialParagraphs) {
+    const trimmed = para.trim();
+    if (!trimmed) continue;
 
-    if (!line) {
-      if (currentParagraph.trim()) {
-        paragraphs.push(currentParagraph.trim());
-        currentParagraph = "";
-        inList = false;
-      }
-      continue;
-    }
-
-    const isListStart = /^(\d+\.|[a-z]\.)\s/.test(line);
-    const isGreeting = /^(Dear|Hi|Hello)\s/.test(line);
+    const isGreeting = /^(Dear|Hi|Hello)\s/i.test(trimmed);
     const isClosing =
-      /^(Best regards|Sincerely|Thank you|Regards|Kind regards),/i.test(line);
-    const nextStartsCapital = /^[A-Z]/.test(nextLine);
-    const nextIsList = /^(\d+\.|[a-z]\.)\s/.test(nextLine);
-    const lineEndsSentence = /[.!?]$/.test(line);
+      /^(Best regards|Sincerely|Thank you|Regards|Kind regards),/i.test(
+        trimmed,
+      );
+    const isList = /^(\d+\.|[a-z]\.)\s/.test(trimmed);
 
-    if (isGreeting) {
-      if (currentParagraph.trim()) {
-        paragraphs.push(currentParagraph.trim());
-        currentParagraph = "";
-      }
-      paragraphs.push(line);
-      currentParagraph = "";
-      inList = false;
+    if (isGreeting || isClosing) {
+      reconstructedParagraphs.push(trimmed);
       continue;
     }
 
-    if (isClosing) {
-      if (currentParagraph.trim()) {
-        paragraphs.push(currentParagraph.trim());
-        currentParagraph = "";
-      }
-      paragraphs.push(line);
-      currentParagraph = "";
-      inList = false;
+    if (isList) {
+      reconstructedParagraphs.push(trimmed);
       continue;
     }
 
-    if (isListStart) {
-      if (!inList && currentParagraph.trim()) {
-        paragraphs.push(currentParagraph.trim());
-        currentParagraph = "";
-      }
-      inList = true;
-      if (currentParagraph) {
-        currentParagraph += "\n" + line;
-      } else {
-        currentParagraph = line;
-      }
+    if (trimmed.length > 400) {
+      const sentences = trimmed.match(
+        /[^.!?]+[.!?]+(?:\s+[A-Z][^.!?]*[.!?]+)*/g,
+      );
+      if (sentences && sentences.length > 1) {
+        let currentPara = "";
+        for (const sentence of sentences) {
+          const trimmedSentence = sentence.trim();
+          if (!trimmedSentence) continue;
 
-      if (!nextIsList && !nextLine) {
-        paragraphs.push(currentParagraph.trim());
-        currentParagraph = "";
-        inList = false;
-      }
-      continue;
-    }
-
-    if (inList) {
-      if (currentParagraph.trim()) {
-        paragraphs.push(currentParagraph.trim());
-        currentParagraph = "";
-      }
-      inList = false;
-    }
-
-    if (
-      lineEndsSentence &&
-      nextStartsCapital &&
-      !nextIsList &&
-      currentParagraph.trim()
-    ) {
-      currentParagraph += " " + line;
-      paragraphs.push(currentParagraph.trim());
-      currentParagraph = "";
-    } else {
-      if (currentParagraph) {
-        currentParagraph += " " + line;
-      } else {
-        currentParagraph = line;
-      }
-    }
-  }
-
-  if (currentParagraph.trim()) {
-    paragraphs.push(currentParagraph.trim());
-  }
-
-  let result = paragraphs.join("\n\n");
-
-  const finalParagraphs: string[] = [];
-  const splitParagraphs = result.split("\n\n");
-
-  for (const para of splitParagraphs) {
-    if (para.length > 200) {
-      const sentences = para.split(/([.!?])\s+([A-Z])/);
-      if (sentences.length > 3) {
-        let currentSentence = "";
-        for (let i = 0; i < sentences.length; i++) {
-          if (i % 3 === 0 && sentences[i]) {
-            currentSentence += sentences[i];
-          } else if (i % 3 === 1 && sentences[i]) {
-            currentSentence += sentences[i];
-          } else if (i % 3 === 2 && sentences[i]) {
-            currentSentence += sentences[i];
-            if (currentSentence.trim().length > 50) {
-              finalParagraphs.push(currentSentence.trim());
-              currentSentence = "";
+          if (currentPara.length + trimmedSentence.length > 300) {
+            if (currentPara.trim()) {
+              reconstructedParagraphs.push(currentPara.trim());
             }
+            currentPara = trimmedSentence;
+          } else {
+            currentPara += (currentPara ? " " : "") + trimmedSentence;
           }
         }
-        if (currentSentence.trim()) {
-          finalParagraphs.push(currentSentence.trim());
+        if (currentPara.trim()) {
+          reconstructedParagraphs.push(currentPara.trim());
         }
       } else {
-        finalParagraphs.push(para);
+        reconstructedParagraphs.push(trimmed);
       }
     } else {
-      finalParagraphs.push(para);
+      reconstructedParagraphs.push(trimmed);
     }
   }
 
-  result = finalParagraphs.join("\n\n");
+  let result = reconstructedParagraphs.join("\n\n");
 
   result = result.replace(/\n{3,}/g, "\n\n").trim();
 
-  return result;
+  const finalValidation = result
+    .split("\n\n")
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
+    .join("\n\n");
+
+  return finalValidation;
 }
 
 export async function POST(req: Request) {
@@ -677,14 +814,16 @@ The JSON structure must be:
 
 🚨🚨🚨 CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE EXACTLY - NO EXCEPTIONS 🚨🚨🚨
 
-PARAGRAPH SPACING (MOST IMPORTANT - THIS IS MANDATORY):
-- EVERY paragraph MUST be separated by EXACTLY \\n\\n (double newline)
-- NEVER use single \\n between paragraphs - ALWAYS use \\n\\n
+PARAGRAPH SPACING (MOST IMPORTANT - THIS IS MANDATORY - VIOLATION WILL BREAK THE EMAIL):
+- EVERY paragraph MUST be separated by EXACTLY \\n\\n (double newline) - NO EXCEPTIONS
+- NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS IS CRITICAL
 - NEVER combine multiple paragraphs into one - EACH paragraph must be on separate lines with \\n\\n between them
-- After greeting: ALWAYS use \\n\\n before first paragraph
-- Before closing: ALWAYS use \\n\\n after last paragraph
-- Between EVERY paragraph: ALWAYS use \\n\\n
+- After greeting: ALWAYS use \\n\\n before first paragraph - MANDATORY
+- Before closing: ALWAYS use \\n\\n after last paragraph - MANDATORY
+- Between EVERY paragraph: ALWAYS use \\n\\n - THIS IS NOT OPTIONAL
 - If you write multiple sentences that form separate thoughts, they MUST be in separate paragraphs with \\n\\n between them
+- If a sentence ends with . ! or ? and the next sentence starts with a capital letter, you MUST use \\n\\n between them
+- DO NOT use single \\n anywhere between paragraphs - ONLY use \\n\\n
 
 LIST FORMATTING:
 - ALWAYS add \\n\\n before lists
@@ -733,17 +872,19 @@ GUIDELINES:
         userPrompt = `The user wants a ${wantsLongerEmail ? "longer, more detailed, and more comprehensive" : userMessage.toLowerCase().includes("better") ? "better" : "different"} version of a previously generated email. Generate a new, improved email with better formatting, structure, and content. ${wantsLongerEmail ? "Make it significantly longer with more detailed explanations, additional context, and comprehensive coverage of all topics." : ""} Return ONLY valid JSON in the exact format specified.
 
 ${previousEmailContext ? `\n${previousEmailContext}\n` : ""}
-⚠️ CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY (ESPECIALLY FOR LONGER EMAILS):
-1. ALWAYS use \\n\\n (double newline) between paragraphs - this is MANDATORY
-2. ALWAYS use \\n (single newline) for line breaks within content
+⚠️⚠️⚠️ CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY - NO EXCEPTIONS (ESPECIALLY FOR LONGER EMAILS) ⚠️⚠️⚠️:
+1. ALWAYS use \\n\\n (double newline) between paragraphs - this is MANDATORY - NEVER use single \\n
+2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS WILL BREAK THE EMAIL
 3. ALWAYS add \\n\\n before lists and \\n\\n after lists for proper spacing
 4. ALWAYS put each list item on its own line
 5. ALWAYS use proper spacing: blank line before sections, blank line after sections
 6. NEVER use symbols - only numbers (1., 2., 3.) or letters (a., b., c.) for lists
-7. NEVER combine paragraphs - each paragraph must be separated by \\n\\n
-8. FOR LONGER EMAILS: Break content into clear sections with proper headings and spacing
-9. FOR LONGER EMAILS: Each section should be separated by \\n\\n before the section heading and \\n\\n after the section content
-10. FOR LONGER EMAILS: Maintain consistent structure - greeting, introduction, main sections, conclusion, closing
+7. NEVER combine paragraphs - each paragraph must be separated by \\n\\n - THIS IS CRITICAL
+8. If a sentence ends with . ! or ? and next starts with capital letter, use \\n\\n between them
+9. FOR LONGER EMAILS: Break content into clear sections with proper headings and spacing
+10. FOR LONGER EMAILS: Each section should be separated by \\n\\n before the section heading and \\n\\n after the section content
+11. FOR LONGER EMAILS: Maintain consistent structure - greeting, introduction, main sections, conclusion, closing
+12. DO NOT use single \\n anywhere between paragraphs - ONLY use \\n\\n
 
 FORMAT EXAMPLE FOR LONGER EMAILS (copy this structure exactly):
 Dear [Name],\\n\\n[Opening paragraph]\\n\\n[Section Heading 1]\\n\\n[Detailed paragraph about section 1]\\n\\n[Sub-points or details]\\n\\n1. First main point\\na. Detailed explanation\\nb. Additional context\\n2. Second main point\\na. Detailed explanation\\n\\n[Section Heading 2]\\n\\n[Detailed paragraph about section 2]\\n\\n[More content]\\n\\n[Section Heading 3]\\n\\n[Detailed paragraph]\\n\\n[Conclusion paragraph]\\n\\nBest regards,\\n[Name]
@@ -752,15 +893,17 @@ User request: ${userMessage}`;
       } else {
         userPrompt = `Generate an email based on this summary. Return ONLY valid JSON in the exact format specified.
 
-🚨 CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY:
-1. ALWAYS use \\n\\n (double newline) between EVERY paragraph - this is MANDATORY
-2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n
+🚨🚨🚨 CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY - NO EXCEPTIONS 🚨🚨🚨:
+1. ALWAYS use \\n\\n (double newline) between EVERY paragraph - this is MANDATORY - NEVER use single \\n
+2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS WILL BREAK THE EMAIL IF YOU DON'T
 3. ALWAYS add \\n\\n before lists and \\n\\n after lists
 4. Each list item on its own line
 5. NO symbols - use only numbers (1., 2., 3.) or letters (a., b., c.) for lists
 6. Use plain text formatting only
-7. After greeting, use \\n\\n before first paragraph
-8. Before closing, use \\n\\n after last paragraph
+7. After greeting, use \\n\\n before first paragraph - MANDATORY
+8. Before closing, use \\n\\n after last paragraph - MANDATORY
+9. If a sentence ends with . ! or ? and next starts with capital letter, use \\n\\n between them
+10. DO NOT combine paragraphs - each paragraph MUST be separated by \\n\\n
 
 FORMAT EXAMPLE:
 Dear [Name],\\n\\n[First paragraph]\\n\\n[Second paragraph]\\n\\n1. First item\\n2. Second item\\n\\n[Third paragraph]\\n\\nBest regards,\\n[Name]
@@ -1022,119 +1165,319 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
       }
 
       emailData.body = removeAllSymbols(emailData.body);
-      emailData.body = normalizeEmailFormatting(emailData.body);
 
-      const body = emailData.body;
+      const originalBody = emailData.body.trim();
+      const sentenceCount = (originalBody.match(/[.!?]+/g) || []).length;
+      const hasMultipleSentences = sentenceCount > 1;
+      const isLongText = originalBody.length > 150;
 
-      const paragraphs = body.split(/\n\n+/).filter((p: string) => p.trim());
+      if (hasMultipleSentences || isLongText) {
+        const paragraphs: string[] = [];
+        let processedText = originalBody;
 
-      const finalParagraphs: string[] = [];
+        const greetingPatterns = [
+          /^((?:Dear|Hi|Hello)\s+[^,]+,\s*)/i,
+          /^([A-Z][a-z]+,\s*)/,
+        ];
 
-      for (const para of paragraphs) {
-        const trimmed = para.trim();
-        if (!trimmed) continue;
+        let greetingFound = false;
+        for (const pattern of greetingPatterns) {
+          const greetingMatch = processedText.match(pattern);
+          if (greetingMatch) {
+            paragraphs.push(greetingMatch[0].trim());
+            processedText = processedText
+              .substring(greetingMatch[0].length)
+              .trim();
+            greetingFound = true;
+            break;
+          }
+        }
 
-        if (trimmed.length > 300) {
-          const sentences = trimmed.split(/([.!?])\s+([A-Z][a-z])/);
+        let closing = "";
+        const closingPatterns = [
+          /(Best regards|Sincerely|Thank you|Regards|Kind regards),?\s*[A-Z][a-z\s]*$/i,
+          /(Best regards|Sincerely|Thank you|Regards|Kind regards),/i,
+        ];
 
-          if (sentences.length > 3) {
-            let currentSentence = sentences[0] || "";
-            for (let i = 1; i < sentences.length; i += 3) {
-              if (sentences[i]) currentSentence += sentences[i];
-              if (sentences[i + 1]) currentSentence += " " + sentences[i + 1];
-              if (sentences[i + 2]) currentSentence += sentences[i + 2];
+        for (const pattern of closingPatterns) {
+          const closingMatch = processedText.match(pattern);
+          if (closingMatch) {
+            closing = closingMatch[0].trim();
+            processedText = processedText
+              .substring(0, processedText.length - closingMatch[0].length)
+              .trim();
+            break;
+          }
+        }
 
+        let sentences: string[] = [];
+
+        sentences = processedText.match(/[^.!?]+[.!?]+(?:\s+|$)/g) || [];
+
+        if (sentences.length === 0) {
+          sentences = processedText.match(/[^.!?]+[.!?]+/g) || [];
+        }
+
+        if (sentences.length === 0) {
+          const manualSplit = processedText.split(/([.!?]+\s+)/);
+          for (let i = 0; i < manualSplit.length; i += 2) {
+            const sentence =
+              (manualSplit[i] || "") + (manualSplit[i + 1] || "");
+            if (sentence.trim() && sentence.trim().length > 5) {
+              sentences.push(sentence.trim());
+            }
+          }
+        }
+
+        if (sentences.length === 0 && sentenceCount > 0) {
+          const parts = processedText.split(/([.!?]+)/);
+          let currentSentence = "";
+          for (let i = 0; i < parts.length; i++) {
+            currentSentence += parts[i] || "";
+            if (parts[i]?.match(/[.!?]+/)) {
+              if (currentSentence.trim()) {
+                sentences.push(currentSentence.trim());
+              }
+              currentSentence = "";
+            }
+          }
+          if (currentSentence.trim()) {
+            sentences.push(currentSentence.trim());
+          }
+        }
+
+        if (sentences.length === 0) {
+          sentences = [processedText];
+        }
+
+        let currentPara = "";
+        for (const sentence of sentences) {
+          const trimmed = sentence.trim();
+          if (!trimmed || trimmed.length < 3) continue;
+
+          const currentSentenceCount = (currentPara.match(/[.!?]+/g) || [])
+            .length;
+          const wouldExceedLength = currentPara.length + trimmed.length > 250;
+
+          if (
+            currentSentenceCount >= 2 ||
+            (wouldExceedLength && currentPara.length > 0) ||
+            currentPara.length > 200
+          ) {
+            if (currentPara.trim()) {
+              paragraphs.push(currentPara.trim());
+            }
+            currentPara = trimmed;
+          } else {
+            currentPara += (currentPara ? " " : "") + trimmed;
+          }
+        }
+
+        if (currentPara.trim()) {
+          paragraphs.push(currentPara.trim());
+        }
+
+        if (closing) {
+          paragraphs.push(closing);
+        }
+
+        if (paragraphs.length === 2 && greetingFound && closing) {
+          const mainContent = processedText.trim();
+          if (mainContent) {
+            paragraphs.splice(1, 0, mainContent);
+          }
+        }
+
+        emailData.body = paragraphs.join("\n\n");
+      } else {
+        emailData.body = normalizeEmailFormatting(emailData.body);
+        emailData.body = enforceEmailFormatting(emailData.body);
+      }
+
+      emailData.body = emailData.body.replace(
+        /([.!?])\s*\n([A-Z][a-z])/g,
+        "$1\n\n$2",
+      );
+      emailData.body = emailData.body.replace(
+        /([a-z0-9])\s*\n([A-Z][a-z])/g,
+        "$1\n\n$2",
+      );
+      emailData.body = emailData.body.replace(
+        /([a-z])\s*\n([A-Z])/g,
+        "$1\n\n$2",
+      );
+
+      const finalParagraphs = emailData.body
+        .split(/\n\n+/)
+        .filter((p: string) => p.trim());
+      if (finalParagraphs.length === 1) {
+        const singlePara = finalParagraphs[0] || "";
+        const paraSentenceCount = (singlePara.match(/[.!?]+/g) || []).length;
+        if (paraSentenceCount > 1) {
+          const sentences = singlePara.match(/[^.!?]+[.!?]+/g) || [];
+          if (sentences.length > 1) {
+            const newParagraphs: string[] = [];
+            let currentPara = "";
+            for (const sentence of sentences) {
+              const trimmed = sentence.trim();
+              if (!trimmed) continue;
+              const currentSentenceCount = (currentPara.match(/[.!?]+/g) || [])
+                .length;
               if (
-                currentSentence.trim().length > 50 &&
-                /[.!?]\s*$/.test(currentSentence.trim())
+                currentSentenceCount >= 2 ||
+                currentPara.length + trimmed.length > 250
               ) {
-                finalParagraphs.push(currentSentence.trim());
-                currentSentence = "";
+                if (currentPara.trim()) newParagraphs.push(currentPara.trim());
+                currentPara = trimmed;
+              } else {
+                currentPara += (currentPara ? " " : "") + trimmed;
               }
             }
-            if (currentSentence.trim()) {
-              finalParagraphs.push(currentSentence.trim());
-            }
-          } else {
-            finalParagraphs.push(trimmed);
+            if (currentPara.trim()) newParagraphs.push(currentPara.trim());
+            emailData.body = newParagraphs.join("\n\n");
           }
-        } else {
-          finalParagraphs.push(trimmed);
         }
       }
 
-      const result: string[] = [];
-      for (let i = 0; i < finalParagraphs.length; i++) {
-        const para = finalParagraphs[i] || "";
-        const nextPara = finalParagraphs[i + 1] || "";
-        const isGreeting = /^(Dear|Hi|Hello)\s/i.test(para);
-        const isClosing =
-          /^(Best regards|Sincerely|Thank you|Regards|Kind regards),/i.test(
-            para,
-          );
-
-        result.push(para);
-
-        if (isGreeting && nextPara && !/^(Dear|Hi|Hello)\s/i.test(nextPara)) {
-        }
-        if (isClosing && i > 0) {
-        }
-      }
-
-      emailData.body = result
-        .join("\n\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
+      emailData.body = emailData.body.replace(/\n{3,}/g, "\n\n").trim();
 
       if (emailData.suggestions && Array.isArray(emailData.suggestions)) {
         emailData.suggestions = emailData.suggestions.map(
           (suggestion: { subject: string; body: string }) => {
             let body = removeAllSymbols(suggestion.body);
-            body = normalizeEmailFormatting(body);
 
-            const suggestionBody = body;
-            const suggestionParagraphs = suggestionBody
-              .split(/\n\n+/)
-              .filter((p: string) => p.trim());
+            const originalBody = body.trim();
+            const sentenceCount = (originalBody.match(/[.!?]+/g) || []).length;
+            const hasMultipleSentences = sentenceCount > 1;
+            const isLongText = originalBody.length > 150;
 
-            const finalSuggestionParagraphs: string[] = [];
-            for (const para of suggestionParagraphs) {
-              const trimmed = para.trim();
-              if (!trimmed) continue;
+            if (hasMultipleSentences || isLongText) {
+              const paragraphs: string[] = [];
+              let processedText = originalBody;
 
-              if (trimmed.length > 300) {
-                const sentences = trimmed.split(/([.!?])\s+([A-Z][a-z])/);
-                if (sentences.length > 3) {
-                  let currentSentence = sentences[0] || "";
-                  for (let i = 1; i < sentences.length; i += 3) {
-                    if (sentences[i]) currentSentence += sentences[i];
-                    if (sentences[i + 1])
-                      currentSentence += " " + sentences[i + 1];
-                    if (sentences[i + 2]) currentSentence += sentences[i + 2];
+              const greetingPatterns = [
+                /^((?:Dear|Hi|Hello)\s+[^,]+,\s*)/i,
+                /^([A-Z][a-z]+,\s*)/,
+              ];
 
-                    if (
-                      currentSentence.trim().length > 50 &&
-                      /[.!?]\s*$/.test(currentSentence.trim())
-                    ) {
-                      finalSuggestionParagraphs.push(currentSentence.trim());
-                      currentSentence = "";
-                    }
-                  }
-                  if (currentSentence.trim()) {
-                    finalSuggestionParagraphs.push(currentSentence.trim());
-                  }
-                } else {
-                  finalSuggestionParagraphs.push(trimmed);
+              let greetingFound = false;
+              for (const pattern of greetingPatterns) {
+                const greetingMatch = processedText.match(pattern);
+                if (greetingMatch) {
+                  paragraphs.push(greetingMatch[0].trim());
+                  processedText = processedText
+                    .substring(greetingMatch[0].length)
+                    .trim();
+                  greetingFound = true;
+                  break;
                 }
-              } else {
-                finalSuggestionParagraphs.push(trimmed);
               }
+
+              let closing = "";
+              const closingPatterns = [
+                /(Best regards|Sincerely|Thank you|Regards|Kind regards),?\s*[A-Z][a-z\s]*$/i,
+                /(Best regards|Sincerely|Thank you|Regards|Kind regards),/i,
+              ];
+
+              for (const pattern of closingPatterns) {
+                const closingMatch = processedText.match(pattern);
+                if (closingMatch) {
+                  closing = closingMatch[0].trim();
+                  processedText = processedText
+                    .substring(0, processedText.length - closingMatch[0].length)
+                    .trim();
+                  break;
+                }
+              }
+
+              let sentences: string[] = [];
+
+              sentences = processedText.match(/[^.!?]+[.!?]+(?:\s+|$)/g) || [];
+
+              if (sentences.length === 0) {
+                sentences = processedText.match(/[^.!?]+[.!?]+/g) || [];
+              }
+
+              if (sentences.length === 0) {
+                const manualSplit = processedText.split(/([.!?]+\s+)/);
+                for (let i = 0; i < manualSplit.length; i += 2) {
+                  const sentence =
+                    (manualSplit[i] || "") + (manualSplit[i + 1] || "");
+                  if (sentence.trim() && sentence.trim().length > 5) {
+                    sentences.push(sentence.trim());
+                  }
+                }
+              }
+
+              if (sentences.length === 0 && sentenceCount > 0) {
+                const parts = processedText.split(/([.!?]+)/);
+                let currentSentence = "";
+                for (let i = 0; i < parts.length; i++) {
+                  currentSentence += parts[i] || "";
+                  if (parts[i]?.match(/[.!?]+/)) {
+                    if (currentSentence.trim()) {
+                      sentences.push(currentSentence.trim());
+                    }
+                    currentSentence = "";
+                  }
+                }
+                if (currentSentence.trim()) {
+                  sentences.push(currentSentence.trim());
+                }
+              }
+
+              if (sentences.length === 0) {
+                sentences = [processedText];
+              }
+
+              let currentPara = "";
+              for (const sentence of sentences) {
+                const trimmed = sentence.trim();
+                if (!trimmed || trimmed.length < 3) continue;
+
+                const currentSentenceCount = (
+                  currentPara.match(/[.!?]+/g) || []
+                ).length;
+                const wouldExceedLength =
+                  currentPara.length + trimmed.length > 250;
+
+                if (
+                  currentSentenceCount >= 2 ||
+                  (wouldExceedLength && currentPara.length > 0) ||
+                  currentPara.length > 200
+                ) {
+                  if (currentPara.trim()) {
+                    paragraphs.push(currentPara.trim());
+                  }
+                  currentPara = trimmed;
+                } else {
+                  currentPara += (currentPara ? " " : "") + trimmed;
+                }
+              }
+
+              if (currentPara.trim()) {
+                paragraphs.push(currentPara.trim());
+              }
+
+              if (closing) {
+                paragraphs.push(closing);
+              }
+
+              if (paragraphs.length === 2 && greetingFound && closing) {
+                const mainContent = processedText.trim();
+                if (mainContent) {
+                  paragraphs.splice(1, 0, mainContent);
+                }
+              }
+
+              body = paragraphs.join("\n\n");
+            } else {
+              body = normalizeEmailFormatting(body);
+              body = enforceEmailFormatting(body);
             }
 
-            body = finalSuggestionParagraphs
-              .join("\n\n")
-              .replace(/\n{3,}/g, "\n\n")
-              .trim();
+            body = body.replace(/([.!?])\s*\n([A-Z][a-z])/g, "$1\n\n$2");
+            body = body.replace(/([a-z0-9])\s*\n([A-Z][a-z])/g, "$1\n\n$2");
 
             return {
               subject: suggestion.subject,

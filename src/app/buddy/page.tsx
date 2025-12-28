@@ -525,25 +525,36 @@ function BuddyPageContent() {
                                 </label>
                                 <div className="space-y-2.5 text-[13px] leading-[1.7] text-zinc-300">
                                   {message.emailData.body
-                                    .split("\n")
-                                    .map((line, i) => {
-                                      const parts =
-                                        line.split(/(\*\*.*?\*\*)/g);
+                                    .split(/\n\n+/)
+                                    .filter((para) => para.trim())
+                                    .map((paragraph, i) => {
+                                      const lines = paragraph.split("\n");
                                       return (
-                                        <p key={i}>
-                                          {parts.map((part, j) =>
-                                            part.startsWith("**") &&
-                                            part.endsWith("**") ? (
-                                              <strong
-                                                key={j}
-                                                className="font-semibold text-zinc-100"
-                                              >
-                                                {part.slice(2, -2)}
-                                              </strong>
-                                            ) : (
-                                              <span key={j}>{part}</span>
-                                            ),
-                                          )}
+                                        <p key={i} className="mb-2.5 last:mb-0">
+                                          {lines.map((line, lineIdx) => {
+                                            const parts =
+                                              line.split(/(\*\*.*?\*\*)/g);
+                                            return (
+                                              <span key={lineIdx}>
+                                                {parts.map((part, j) =>
+                                                  part.startsWith("**") &&
+                                                  part.endsWith("**") ? (
+                                                    <strong
+                                                      key={j}
+                                                      className="font-semibold text-zinc-100"
+                                                    >
+                                                      {part.slice(2, -2)}
+                                                    </strong>
+                                                  ) : (
+                                                    <span key={j}>{part}</span>
+                                                  ),
+                                                )}
+                                                {lineIdx < lines.length - 1 && (
+                                                  <br />
+                                                )}
+                                              </span>
+                                            );
+                                          })}
                                         </p>
                                       );
                                     })}
