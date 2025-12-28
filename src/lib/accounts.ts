@@ -736,16 +736,27 @@ export class Account {
       const allEmails: EmailMessage[] = [];
       let pageToken: string | undefined = undefined;
       let pageCount = 0;
-      const maxPages = 100;
+      const maxPages = 500;
+      let consecutiveEmptyPages = 0;
+      const maxConsecutiveEmpty = 3;
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
       const year = thirtyDaysAgo.getFullYear();
       const month = String(thirtyDaysAgo.getMonth() + 1).padStart(2, "0");
       const day = String(thirtyDaysAgo.getDate()).padStart(2, "0");
       const dateQuery = `after:${year}/${month}/${day}`;
+      const dateQueryAlt = `after:${year}-${month}-${day}`;
 
-      do {
+      console.log(
+        `[fetchAllEmailsDirectly] Date query: ${dateQuery} (after ${year}-${month}-${day})`,
+      );
+      console.log(
+        `[fetchAllEmailsDirectly] 30 days ago timestamp: ${thirtyDaysAgo.toISOString()}`,
+      );
+
+      while (pageCount < maxPages) {
         pageCount++;
         console.log(`[fetchAllEmailsDirectly] Fetching page ${pageCount}...`);
 
@@ -759,49 +770,143 @@ export class Account {
           params.pageToken = pageToken;
         }
 
-        const listResponse = await axios.get<{
-          messages?: Array<{ id: string }>;
-          nextPageToken?: string;
-        }>("https://api.aurinko.io/v1/email/messages", {
-          headers: this.aurinkoHeaders,
-          params,
-        });
+        try {
+          const listResponse = await axios.get<{
+            messages?: Array<{ id: string }>;
+            nextPageToken?: string;
+          }>("https://api.aurinko.io/v1/email/messages", {
+            headers: this.aurinkoHeaders,
+            params,
+          });
 
-        const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
-        console.log(
-          `[fetchAllEmailsDirectly] Page ${pageCount}: Found ${messageIds.length} message IDs`,
-        );
-
-        if (messageIds.length === 0) {
-          break;
-        }
-
-        const batchSize = 50;
-        for (let i = 0; i < messageIds.length; i += batchSize) {
-          const batch = messageIds.slice(i, i + batchSize);
-          const batchEmails = await Promise.all(
-            batch.map((id) => this.getEmailById(id)),
-          );
-
-          const validEmails = batchEmails.filter(
-            (e): e is EmailMessage => e !== null,
-          );
-          allEmails.push(...validEmails);
-
+          const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
           console.log(
-            `[fetchAllEmailsDirectly] Processed batch ${Math.floor(i / batchSize) + 1}, total emails: ${allEmails.length}`,
+            `[fetchAllEmailsDirectly] Page ${pageCount}: Found ${messageIds.length} message IDs, nextPageToken: ${listResponse.data.nextPageToken ? "yes" : "no"}`,
           );
-        }
 
-        pageToken = listResponse.data.nextPageToken;
+          if (pageCount === 1 && messageIds.length < 50 && !pageToken) {
+            console.log(
+              `[fetchAllEmailsDirectly] First page returned few results (${messageIds.length}), trying without in:all restriction...`,
+            );
 
-        if (pageCount >= maxPages) {
+            params.q = dateQuery;
+            const retryResponse = await axios.get<{
+              messages?: Array<{ id: string }>;
+              nextPageToken?: string;
+            }>("https://api.aurinko.io/v1/email/messages", {
+              headers: this.aurinkoHeaders,
+              params,
+            });
+            const retryMessageIds =
+              retryResponse.data.messages?.map((m) => m.id) ?? [];
+            console.log(
+              `[fetchAllEmailsDirectly] Retry without in:all: Found ${retryMessageIds.length} message IDs`,
+            );
+            if (retryMessageIds.length > messageIds.length) {
+              pageToken = retryResponse.data.nextPageToken;
+
+              const batchSize = 50;
+              for (let i = 0; i < retryMessageIds.length; i += batchSize) {
+                const batch = retryMessageIds.slice(i, i + batchSize);
+                const batchEmails = await Promise.all(
+                  batch.map((id) => this.getEmailById(id)),
+                );
+                const validEmails = batchEmails.filter(
+                  (e): e is EmailMessage => e !== null,
+                );
+                allEmails.push(...validEmails);
+              }
+              continue;
+            }
+
+            params.q = `in:all ${dateQuery}`;
+          }
+
+          if (messageIds.length === 0) {
+            consecutiveEmptyPages++;
+            console.log(
+              `[fetchAllEmailsDirectly] Empty page ${pageCount} (consecutive: ${consecutiveEmptyPages})`,
+            );
+
+            if (listResponse.data.nextPageToken) {
+              pageToken = listResponse.data.nextPageToken;
+              continue;
+            }
+
+            if (consecutiveEmptyPages >= maxConsecutiveEmpty) {
+              console.log(
+                `[fetchAllEmailsDirectly] Stopping after ${consecutiveEmptyPages} consecutive empty pages`,
+              );
+              break;
+            }
+
+            if (allEmails.length > 0 && !listResponse.data.nextPageToken) {
+              console.log(
+                `[fetchAllEmailsDirectly] No more pages available, stopping`,
+              );
+              break;
+            }
+
+            pageToken = listResponse.data.nextPageToken;
+            continue;
+          }
+
+          consecutiveEmptyPages = 0;
+
+          const batchSize = 50;
+          for (let i = 0; i < messageIds.length; i += batchSize) {
+            const batch = messageIds.slice(i, i + batchSize);
+            const batchEmails = await Promise.all(
+              batch.map((id) => this.getEmailById(id)),
+            );
+
+            const validEmails = batchEmails.filter(
+              (e): e is EmailMessage => e !== null,
+            );
+            allEmails.push(...validEmails);
+
+            console.log(
+              `[fetchAllEmailsDirectly] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(messageIds.length / batchSize)}, batch size: ${validEmails.length}, total emails: ${allEmails.length}`,
+            );
+          }
+
+          pageToken = listResponse.data.nextPageToken;
+
+          if (!pageToken) {
+            console.log(
+              `[fetchAllEmailsDirectly] No nextPageToken, finished fetching`,
+            );
+            break;
+          }
+        } catch (pageError) {
+          console.error(
+            `[fetchAllEmailsDirectly] Error on page ${pageCount}:`,
+            pageError,
+          );
+
+          if (axios.isAxiosError(pageError)) {
+            const status = pageError.response?.status;
+            if (status === 429 || (status && status >= 500 && status < 600)) {
+              console.log(
+                `[fetchAllEmailsDirectly] Rate limit or server error, waiting 2 seconds before retry...`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              continue;
+            }
+          }
+
           console.warn(
-            `[fetchAllEmailsDirectly] Reached max pages (${maxPages}), stopping`,
+            `[fetchAllEmailsDirectly] Breaking due to error on page ${pageCount}`,
           );
           break;
         }
-      } while (pageToken);
+      }
+
+      if (pageCount >= maxPages) {
+        console.warn(
+          `[fetchAllEmailsDirectly] Reached max pages limit (${maxPages}), stopping. Total fetched: ${allEmails.length}`,
+        );
+      }
 
       console.log(
         `[fetchAllEmailsDirectly] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages`,
