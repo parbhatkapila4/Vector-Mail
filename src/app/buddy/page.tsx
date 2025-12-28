@@ -184,13 +184,35 @@ function BuddyPageContent() {
             messages: updatedMessages.map((msg) => ({
               role: msg.role,
               content: msg.content,
+              emailData: msg.emailData,
             })),
           }),
         });
 
-        if (!response.ok) throw new Error(`Request failed`);
-
         const data = await response.json();
+
+        if (!response.ok) {
+          const errorMessage =
+            data.message ||
+            data.error ||
+            "Something went wrong. Please try again.";
+          toast.error(errorMessage);
+          setMessages([
+            ...updatedMessages,
+            {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: errorMessage,
+              timestamp: Date.now(),
+            },
+          ]);
+          return;
+        }
+
+        if (data.emailSent) {
+          toast.success(`Email sent successfully to ${data.recipient}!`);
+        }
+
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -200,8 +222,12 @@ function BuddyPageContent() {
           emailData: data.subject ? data : undefined,
         };
         setMessages([...updatedMessages, assistantMessage]);
-      } catch {
-        toast.error("Failed to generate response");
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to generate response";
+        toast.error(errorMessage);
         setMessages([
           ...updatedMessages,
           {

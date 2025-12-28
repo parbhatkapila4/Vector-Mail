@@ -187,20 +187,23 @@ export class Account {
     replyTo?: EmailAddress;
   }) {
     try {
+      const payload: Record<string, unknown> = {
+        from,
+        subject,
+        body,
+        to,
+      };
+
+      if (inReplyTo) payload.inReplyTo = inReplyTo;
+      if (references) payload.references = references;
+      if (threadId) payload.threadId = threadId;
+      if (cc && cc.length > 0) payload.cc = cc;
+      if (bcc && bcc.length > 0) payload.bcc = bcc;
+      if (replyTo) payload.replyTo = [replyTo];
+
       const response = await axios.post(
         `https://api.aurinko.io/v1/email/messages`,
-        {
-          from,
-          subject,
-          body,
-          inReplyTo,
-          references,
-          threadId,
-          to,
-          cc,
-          bcc,
-          replyTo: [replyTo],
-        },
+        payload,
         {
           params: {
             returnIds: true,
@@ -217,10 +220,26 @@ export class Account {
           "Error sending email:",
           JSON.stringify(error.response?.data, null, 2),
         );
+
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message;
+        const errorDetails = error.response?.data;
+        const enhancedError = new Error(
+          `Email send failed: ${errorMessage}${errorDetails ? ` (${JSON.stringify(errorDetails)})` : ""}`,
+        );
+        (
+          enhancedError as unknown as { status?: number; response?: unknown }
+        ).status = error.response?.status;
+        (
+          enhancedError as unknown as { status?: number; response?: unknown }
+        ).response = error.response?.data;
+        throw enhancedError;
       } else {
         console.error("Error sending email:", error);
+        throw error;
       }
-      throw error;
     }
   }
 
