@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   creator: "VectorMail AI",
   publisher: "VectorMail AI",
   verification: {
-    google: "lJSM0C6Sy3gX_3zHT0xQsPtK1ERqwFL96YiZvRvj-kI",
+    google: "nmkq5i-5uWS3ush6WO4uP6t6DitTVQSvNDaFFGoI3f0",
   },
 };
 
