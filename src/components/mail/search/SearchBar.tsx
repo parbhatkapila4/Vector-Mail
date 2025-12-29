@@ -1,5 +1,4 @@
 "use client";
-import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import React from "react";
@@ -105,27 +104,25 @@ const SearchBar = () => {
   }, [setSearchValue, setIsSearching, setSearchResults]);
 
   return (
-    <div className="px-4 py-3">
-      <motion.div className="relative" layoutId="search-bar">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
-        <Input
-          ref={ref}
-          placeholder="Search conversations..."
-          className="h-9 rounded-xl border-0 bg-white/[0.04] pl-9 pr-8 text-sm text-white transition-all placeholder:text-zinc-600 focus:bg-white/[0.06] focus:ring-1 focus:ring-amber-500/20"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          onFocus={() => setIsSearching(true)}
-          onBlur={handleBlur}
-        />
-        {searchValue && (
-          <button
-            className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md hover:bg-white/[0.06]"
-            onClick={handleClear}
-          >
-            <X className="h-3.5 w-3.5 text-zinc-500" />
-          </button>
-        )}
-      </motion.div>
+    <div className="relative">
+      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-600" />
+      <Input
+        ref={ref}
+        placeholder="Search conversations..."
+        className="h-10 rounded-xl border-neutral-200/60 bg-neutral-50/50 pl-10 pr-9 text-[13px] font-medium text-neutral-900 backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-orange-500/50 focus:bg-white focus-visible:ring-2 focus-visible:ring-orange-500/20 dark:border-neutral-800/60 dark:bg-neutral-950/50 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:border-orange-400/50 dark:focus:bg-neutral-900 dark:focus-visible:ring-orange-400/20"
+        value={searchValue}
+        onChange={(e) => setSearchValue(e.target.value)}
+        onFocus={() => setIsSearching(true)}
+        onBlur={handleBlur}
+      />
+      {searchValue && (
+        <button
+          className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          onClick={handleClear}
+        >
+          <X className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-600" />
+        </button>
+      )}
     </div>
   );
 };

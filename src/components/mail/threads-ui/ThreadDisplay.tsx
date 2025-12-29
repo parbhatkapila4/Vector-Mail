@@ -40,18 +40,16 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
 
   if (!thread) {
     return (
-      <div className="flex h-full flex-col items-center justify-center bg-[#0A0A0A] p-8">
-        <div className="relative mb-8">
-          {/* Decorative rings */}
-          <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-br from-amber-500/10 to-orange-500/5 blur-2xl" />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 ring-1 ring-white/[0.06]">
-            <Mail className="h-10 w-10 text-zinc-600" />
+      <div className="flex h-full flex-col items-center justify-center bg-[#fafafa] p-10 dark:bg-[#0a0a0a]">
+        <div className="relative mb-7">
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-[#e0e0e0] bg-[#ffffff] shadow-sm dark:border-[#1f1f1f] dark:bg-[#111111]">
+            <Mail className="h-10 w-10 text-[#d0d0d0] dark:text-[#4a4a4a]" />
           </div>
         </div>
-        <h3 className="mb-2 text-lg font-medium text-zinc-400">
+        <h3 className="mb-2 text-lg font-semibold tracking-tight text-[#1a1a1a] dark:text-[#ffffff]">
           Select an email
         </h3>
-        <p className="max-w-xs text-center text-sm text-zinc-600">
+        <p className="max-w-sm text-center text-[14px] leading-relaxed text-[#666666] dark:text-[#999999]">
           Choose a conversation from the list to view its contents
         </p>
       </div>
@@ -88,27 +86,28 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
         originalFrom={originalFrom}
         originalDate={originalDate}
       />
-      <div className="flex h-full flex-col bg-[#0A0A0A]">
-        <div className="border-b border-white/[0.04] bg-[#0A0A0A]">
+      <div className="flex h-full flex-col bg-[#ffffff] dark:bg-[#111111]">
+        {/* Email Header */}
+        <div className="border-b border-[#e0e0e0] bg-[#ffffff] dark:border-[#1f1f1f] dark:bg-[#111111]">
           <div className="flex items-center justify-end px-6 py-3">
             <button
               onClick={() => setForwardDialogOpen(true)}
-              className="flex h-8 items-center gap-2 rounded-lg bg-white/[0.04] px-3 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.06] hover:text-white"
+              className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
             >
               <Forward className="h-3.5 w-3.5" />
               Forward
             </button>
           </div>
 
-          <div className="px-6 pb-4">
-            <h1 className="mb-4 text-xl font-semibold text-white">
+          <div className="px-6 pb-6">
+            <h1 className="mb-6 text-[22px] font-semibold leading-tight tracking-tight text-[#1a1a1a] dark:text-[#ffffff]">
               {firstEmail?.subject || "(No subject)"}
             </h1>
 
             <div className="flex items-center gap-4">
-              <Avatar className="h-11 w-11 ring-2 ring-white/[0.06]">
+              <Avatar className="h-11 w-11 border border-[#e0e0e0] dark:border-[#1f1f1f]">
                 <AvatarImage alt={senderName} />
-                <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-sm font-semibold text-white">
+                <AvatarFallback className="bg-gradient-to-br from-[#ff6b35] to-[#f7931e] text-[14px] font-semibold text-white">
                   {senderName
                     .split(" ")
                     .map((n: string) => n[0])
@@ -118,18 +117,20 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
               </Avatar>
 
               <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-white">{senderName}</span>
-                  <span className="text-sm text-zinc-500">
+                <div className="mb-1.5 flex items-center gap-2.5">
+                  <span className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#ffffff]">
+                    {senderName}
+                  </span>
+                  <span className="text-[13px] text-[#666666] dark:text-[#999999]">
                     &lt;{senderEmail}&gt;
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
-                  <span>to me</span>
+                <div className="flex items-center gap-2 text-[13px] text-[#666666] dark:text-[#999999]">
+                  <span className="font-medium">to me</span>
                   {firstEmail?.sentAt && (
                     <>
                       <span>•</span>
-                      <span>
+                      <span className="font-medium">
                         {format(
                           new Date(firstEmail.sentAt),
                           "MMM d, yyyy 'at' h:mm a",
@@ -143,30 +144,31 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="p-6">
+        <div className="flex-1 overflow-y-auto scroll-smooth">
+          <div className="px-6 py-8">
             {thread.emails.length > 1 && (
-              <div className="mb-4 flex items-center gap-2">
-                <div className="h-px flex-1 bg-white/[0.04]" />
-                <span className="text-xs font-medium text-zinc-600">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="h-px flex-1 bg-[#e0e0e0] dark:bg-[#1f1f1f]" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#999999] dark:text-[#666666]">
                   {thread.emails.length} messages in thread
                 </span>
-                <div className="h-px flex-1 bg-white/[0.04]" />
+                <div className="h-px flex-1 bg-[#e0e0e0] dark:bg-[#1f1f1f]" />
               </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-10">
               {thread.emails.map((email: Email, index: number) => (
                 <div
                   key={email.id}
                   className={cn(
-                    index > 0 && "border-t border-white/[0.04] pt-6",
+                    index > 0 &&
+                      "border-t border-[#e0e0e0] pt-10 dark:border-[#1f1f1f]",
                   )}
                 >
                   {index > 0 && (
-                    <div className="mb-4 flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-zinc-800 text-xs font-medium text-zinc-400">
+                    <div className="mb-6 flex items-center gap-4">
+                      <Avatar className="h-9 w-9 border border-[#e0e0e0] dark:border-[#1f1f1f]">
+                        <AvatarFallback className="bg-[#f5f5f5] text-[13px] font-semibold text-[#666666] dark:bg-[#1a1a1a] dark:text-[#999999]">
                           {(email.from?.name ?? "U")
                             .split(" ")
                             .map((n: string) => n[0])
@@ -175,11 +177,11 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <span className="text-sm font-medium text-zinc-300">
+                        <span className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#ffffff]">
                           {email.from?.name ?? "Unknown"}
                         </span>
                         {email.sentAt && (
-                          <span className="ml-2 text-xs text-zinc-600">
+                          <span className="ml-3 text-[12px] font-medium text-[#666666] dark:text-[#999999]">
                             {format(
                               new Date(email.sentAt),
                               "MMM d 'at' h:mm a",

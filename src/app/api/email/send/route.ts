@@ -4,6 +4,9 @@ import { db } from "@/server/db";
 import { env } from "@/env";
 import axios from "axios";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const enableEmailSend =
     env.ENABLE_EMAIL_SEND ?? process.env.ENABLE_EMAIL_SEND === "true";
@@ -49,8 +52,25 @@ export async function POST(req: NextRequest) {
 
   try {
     if (isFormData) {
-      const formData = await req.formData();
-      
+      let formData: FormData;
+      try {
+        formData = await req.formData();
+      } catch (formDataError) {
+        console.error("[EMAIL_SEND] Error parsing FormData:", formDataError);
+        return NextResponse.json(
+          {
+            error: "Invalid request",
+            message:
+              "Failed to parse form data. The file may be too large or the request is malformed.",
+            details:
+              formDataError instanceof Error
+                ? formDataError.message
+                : "Unknown error",
+          },
+          { status: 400 },
+        );
+      }
+
       accountId = formData.get("accountId") as string;
       const toStr = formData.get("to") as string;
       try {
@@ -60,7 +80,7 @@ export async function POST(req: NextRequest) {
       }
       subject = formData.get("subject") as string;
       emailBody = formData.get("body") as string;
-      
+
       const ccStr = formData.get("cc") as string | null;
       if (ccStr) {
         try {
@@ -69,7 +89,7 @@ export async function POST(req: NextRequest) {
           cc = ccStr.split(",").map((e) => e.trim());
         }
       }
-      
+
       const bccStr = formData.get("bcc") as string | null;
       if (bccStr) {
         try {
@@ -80,9 +100,34 @@ export async function POST(req: NextRequest) {
       }
 
       const attachmentFiles = formData.getAll("attachments");
-      attachments = attachmentFiles.filter(
-        (file): file is File => file instanceof File && file.size > 0
-      );
+      const maxSize = 25 * 1024 * 1024; // 25MB
+      const oversizedFiles: string[] = [];
+
+      attachments = attachmentFiles.filter((file): file is File => {
+        if (!(file instanceof File)) return false;
+
+        if (file.size > maxSize) {
+          const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+          console.error(
+            `[EMAIL_SEND] File ${file.name} exceeds maximum size: ${file.size} bytes (${sizeMB} MB, max: 25 MB)`,
+          );
+          oversizedFiles.push(`${file.name} (${sizeMB} MB)`);
+          return false;
+        }
+
+        return file.size > 0;
+      });
+
+      if (oversizedFiles.length > 0) {
+        return NextResponse.json(
+          {
+            error: "File size exceeds limit",
+            message: `The following files exceed the 25MB limit: ${oversizedFiles.join(", ")}`,
+            details: "Maximum file size is 25MB per file",
+          },
+          { status: 400 },
+        );
+      }
     } else {
       const body = await req.json();
 
@@ -355,7 +400,7 @@ export async function POST(req: NextRequest) {
     };
 
     let response;
-    
+
     if (attachments.length > 0) {
       let attachmentData;
       try {
@@ -364,28 +409,43 @@ export async function POST(req: NextRequest) {
             try {
               const maxSize = 25 * 1024 * 1024;
               if (file.size > maxSize) {
-                throw new Error(`File ${file.name} exceeds maximum size of 25MB`);
+                throw new Error(
+                  `File ${file.name} exceeds maximum size of 25MB`,
+                );
               }
 
               const arrayBuffer = await file.arrayBuffer();
-              const base64 = Buffer.from(arrayBuffer).toString("base64");
+              const buffer = Buffer.from(arrayBuffer);
+              const base64 = buffer.toString("base64");
+
               return {
                 name: file.name,
                 content: base64,
                 contentType: file.type || "application/octet-stream",
               };
             } catch (fileError) {
-              console.error(`[EMAIL_SEND] Error processing file ${file.name}:`, fileError);
-              throw new Error(`Failed to process attachment: ${file.name} - ${fileError instanceof Error ? fileError.message : "Unknown error"}`);
+              console.error(
+                `[EMAIL_SEND] Error processing file ${file.name}:`,
+                fileError,
+              );
+              throw new Error(
+                `Failed to process attachment: ${file.name} - ${fileError instanceof Error ? fileError.message : "Unknown error"}`,
+              );
             }
           }),
         );
       } catch (attachmentError) {
-        console.error("[EMAIL_SEND] Error processing attachments:", attachmentError);
+        console.error(
+          "[EMAIL_SEND] Error processing attachments:",
+          attachmentError,
+        );
         return NextResponse.json(
           {
             error: "Attachment processing failed",
-            message: attachmentError instanceof Error ? attachmentError.message : "Failed to process one or more attachments",
+            message:
+              attachmentError instanceof Error
+                ? attachmentError.message
+                : "Failed to process one or more attachments",
             details: "Please check file sizes and try again",
           },
           { status: 400 },
@@ -426,10 +486,18 @@ export async function POST(req: NextRequest) {
 
       aurinkoHeaders["Content-Type"] = "application/json";
 
-      console.log("[EMAIL_SEND] Sending email with attachments via Aurinko API");
+      console.log(
+        "[EMAIL_SEND] Sending email with attachments via Aurinko API",
+      );
       console.log("[EMAIL_SEND] Attachments:", attachmentData.length);
-      console.log("[EMAIL_SEND] Attachment names:", attachmentData.map(a => a.name));
-      console.log("[EMAIL_SEND] First attachment sample (first 100 chars of base64):", attachmentData[0]?.content?.substring(0, 100));
+      console.log(
+        "[EMAIL_SEND] Attachment names:",
+        attachmentData.map((a) => a.name),
+      );
+      console.log(
+        "[EMAIL_SEND] First attachment sample (first 100 chars of base64):",
+        attachmentData[0]?.content?.substring(0, 100),
+      );
 
       try {
         response = await axios.post(
@@ -446,10 +514,13 @@ export async function POST(req: NextRequest) {
         if (axios.isAxiosError(aurinkoError)) {
           const errorStatus = aurinkoError.response?.status;
           const errorData = aurinkoError.response?.data;
-          
+
           console.error("[EMAIL_SEND] Aurinko API Error Details:");
           console.error("[EMAIL_SEND] Status:", errorStatus);
-          console.error("[EMAIL_SEND] Response Data:", JSON.stringify(errorData, null, 2));
+          console.error(
+            "[EMAIL_SEND] Response Data:",
+            JSON.stringify(errorData, null, 2),
+          );
           console.error("[EMAIL_SEND] Request Payload (sample):", {
             from: emailPayload.from,
             to: emailPayload.to,
@@ -458,10 +529,17 @@ export async function POST(req: NextRequest) {
             firstAttachmentName: emailPayload.attachments?.[0]?.name,
           });
 
-          if (errorStatus === 400 && emailPayload.attachments && emailPayload.attachments.length > 0) {
-            console.warn("[EMAIL_SEND] Attempting to send email without attachments as fallback...");
+          if (
+            errorStatus === 400 &&
+            emailPayload.attachments &&
+            emailPayload.attachments.length > 0
+          ) {
+            console.warn(
+              "[EMAIL_SEND] Attempting to send email without attachments as fallback...",
+            );
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { attachments: _, ...emailPayloadWithoutAttachments } = emailPayload;
+            const { attachments: _, ...emailPayloadWithoutAttachments } =
+              emailPayload;
 
             try {
               response = await axios.post(
@@ -474,13 +552,15 @@ export async function POST(req: NextRequest) {
                   headers: aurinkoHeaders,
                 },
               );
-              
+
               return NextResponse.json(
                 {
                   success: true,
-                  message: "Email sent successfully (attachments were removed - Aurinko API doesn't support attachments in this format)",
+                  message:
+                    "Email sent successfully (attachments were removed - Aurinko API doesn't support attachments in this format)",
                   messageId: response.data.id,
-                  warning: "Attachments were not included. The Aurinko API may not support attachments in the current format.",
+                  warning:
+                    "Attachments were not included. The Aurinko API may not support attachments in the current format.",
                 },
                 { status: 200 },
               );
@@ -555,7 +635,10 @@ export async function POST(req: NextRequest) {
         const errorData = error.response?.data;
 
         console.error("[EMAIL_SEND] Axios error - Status:", status);
-        console.error("[EMAIL_SEND] Axios error - Data:", JSON.stringify(errorData, null, 2));
+        console.error(
+          "[EMAIL_SEND] Axios error - Data:",
+          JSON.stringify(errorData, null, 2),
+        );
 
         if (status === 401) {
           return NextResponse.json(
@@ -581,8 +664,15 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const errorMessage = errorData?.message || errorData?.error || error.message || "Unknown error";
-        const errorDetails = typeof errorData === 'object' ? JSON.stringify(errorData, null, 2) : errorData;
+        const errorMessage =
+          errorData?.message ||
+          errorData?.error ||
+          error.message ||
+          "Unknown error";
+        const errorDetails =
+          typeof errorData === "object"
+            ? JSON.stringify(errorData, null, 2)
+            : errorData;
 
         return NextResponse.json(
           {
@@ -590,7 +680,10 @@ export async function POST(req: NextRequest) {
             message: `Failed to send email via Aurinko API: ${errorMessage}`,
             details: errorDetails || error.message,
             status: status || 500,
-            hint: attachments.length > 0 ? "Attachments might not be supported in this format. Try sending without attachments." : undefined,
+            hint:
+              attachments.length > 0
+                ? "Attachments might not be supported in this format. Try sending without attachments."
+                : undefined,
           },
           { status: status || 500 },
         );
@@ -616,7 +709,10 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     } catch (jsonError) {
-      console.error("[EMAIL_SEND] Critical error creating error response:", jsonError);
+      console.error(
+        "[EMAIL_SEND] Critical error creating error response:",
+        jsonError,
+      );
       return new Response(
         JSON.stringify({
           error: "Internal server error",

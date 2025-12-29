@@ -435,27 +435,70 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         formData.append("subject", subject.trim());
         formData.append("body", bodyContent.trim());
 
-        attachments.forEach((file) => {
+        const maxSize = 25 * 1024 * 1024;
+        const validAttachments = attachments.filter((file) => {
+          if (file.size > maxSize) {
+            toast.error(
+              `File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum size is 25MB.`,
+            );
+            return false;
+          }
+          return true;
+        });
+
+        if (validAttachments.length === 0 && attachments.length > 0) {
+          setIsSending(false);
+          return;
+        }
+
+        validAttachments.forEach((file) => {
           formData.append("attachments", file);
         });
 
-        response = await fetch("/api/email/send", {
-          method: "POST",
-          body: formData,
+        console.log(
+          `[COMPOSE] Sending email with ${validAttachments.length} attachment(s)`,
+        );
+        validAttachments.forEach((file) => {
+          console.log(
+            `[COMPOSE] - ${file.name}: ${file.size} bytes (${(file.size / 1024 / 1024).toFixed(2)} MB), type: ${file.type || "unknown"}`,
+          );
         });
+
+        try {
+          response = await fetch("/api/email/send", {
+            method: "POST",
+            body: formData,
+          });
+        } catch (fetchError) {
+          console.error("[COMPOSE] Fetch error:", fetchError);
+          toast.error(
+            "Failed to send email. Network error - please check your connection and try again.",
+          );
+          setIsSending(false);
+          return;
+        }
       } else {
-        response = await fetch("/api/email/send", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            accountId: validAccountId,
-            to: to.split(",").map((email) => email.trim()),
-            subject: subject.trim(),
-            body: bodyContent.trim(),
-          }),
-        });
+        try {
+          response = await fetch("/api/email/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              accountId: validAccountId,
+              to: to.split(",").map((email) => email.trim()),
+              subject: subject.trim(),
+              body: bodyContent.trim(),
+            }),
+          });
+        } catch (fetchError) {
+          console.error("[COMPOSE] Fetch error:", fetchError);
+          toast.error(
+            "Failed to send email. Network error - please check your connection and try again.",
+          );
+          setIsSending(false);
+          return;
+        }
       }
 
       let data;
@@ -463,16 +506,23 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         const text = await response.text();
         data = text ? JSON.parse(text) : {};
       } catch (parseError) {
-        console.error("Error parsing response:", parseError);
+        console.error("[COMPOSE] Error parsing response:", parseError);
+        console.error("[COMPOSE] Response status:", response.status);
         toast.error("Failed to parse server response. Please try again.");
+        setIsSending(false);
         return;
       }
 
       if (!response.ok) {
+        console.error("[COMPOSE] Email send failed:", data);
         toast.error(data.message || data.error || "Failed to send email");
+        if (data.details) {
+          console.error("[COMPOSE] Error details:", data.details);
+        }
         if (data.hint) {
           toast.info(data.hint, { duration: 5000 });
         }
+        setIsSending(false);
         return;
       }
 

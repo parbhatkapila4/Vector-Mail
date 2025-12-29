@@ -1,7 +1,6 @@
 import React, { useRef, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
 import { formatDistanceToNow, format } from "date-fns";
-import { RefreshCw, Mail, Star, Paperclip } from "lucide-react";
+import { RefreshCw, Mail, Star } from "lucide-react";
 import { useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -127,10 +126,12 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (accountsLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#030303]">
+      <div className="flex h-full items-center justify-center bg-white/60 backdrop-blur-xl dark:bg-black/60">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-amber-500/20 border-t-amber-500" />
-          <p className="mt-4 text-sm text-zinc-600">Loading...</p>
+          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
+          <p className="mt-4 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
+            Loading...
+          </p>
         </div>
       </div>
     );
@@ -138,22 +139,22 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (!accountId || (accounts !== undefined && accounts.length === 0)) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#030303] p-8">
-        <div className="max-w-xs text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 ring-1 ring-amber-500/20">
-            <Mail className="h-8 w-8 text-amber-400" />
+      <div className="flex h-full items-center justify-center bg-white/60 p-10 backdrop-blur-xl dark:bg-black/60">
+        <div className="max-w-sm text-center">
+          <div className="mx-auto mb-7 flex h-20 w-20 items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
+            <Mail className="h-10 w-10 text-neutral-300 dark:text-neutral-700" />
           </div>
-          <h2 className="mb-2 text-lg font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold tracking-tight text-neutral-900 dark:text-white">
             {CONNECTION_ERROR_MESSAGES.NO_ACCOUNT}
           </h2>
-          <p className="mb-6 text-sm text-zinc-500">
+          <p className="mb-8 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">
             {CONNECTION_ERROR_MESSAGES.CONNECT_DESCRIPTION}
           </p>
           <button
             onClick={handleAccountConnection}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-semibold text-black transition-all hover:shadow-lg hover:shadow-amber-500/20"
+            className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-orange-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-orange-500/40"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -194,74 +195,73 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
         className={cn(
-          "group relative flex w-full gap-3 px-4 py-3 text-left transition-all",
-          isSelected ? "bg-amber-500/[0.08]" : "hover:bg-white/[0.02]",
-          !isSelected && "border-b border-white/[0.03]",
+          "relative flex w-full gap-4 border-b border-neutral-100 px-5 py-3.5 text-left transition-all duration-150 dark:border-neutral-900",
+          isSelected
+            ? "bg-gradient-to-r from-orange-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-orange-500 dark:from-orange-950/30 dark:to-amber-950/30 dark:before:bg-orange-400"
+            : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
+          isUnread && !isSelected && "bg-white/40 dark:bg-black/40",
         )}
         onClick={() => {
           setThreadId(thread.id);
           onThreadSelect?.(thread.id);
         }}
       >
-        {isSelected && (
-          <div className="absolute left-0 top-0 h-full w-[3px] bg-amber-500" />
-        )}
-
         <div
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-semibold transition-all duration-150",
             isSelected
-              ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white"
+              ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30"
               : isUnread
-                ? "bg-white/[0.08] text-white"
-                : "bg-white/[0.04] text-zinc-500",
+                ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
           )}
         >
           {fromName.charAt(0).toUpperCase()}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "truncate text-sm",
-                isUnread
-                  ? "font-semibold text-white"
-                  : "font-medium text-zinc-300",
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-2">
+                <span
+                  className={cn(
+                    "truncate text-[14px] font-semibold",
+                    isUnread || isSelected
+                      ? "text-neutral-900 dark:text-white"
+                      : "text-neutral-700 dark:text-neutral-300",
+                  )}
+                >
+                  {fromName}
+                </span>
+                {isUnread && !isSelected && (
+                  <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500 dark:bg-orange-400" />
+                )}
+              </div>
+              <div
+                className={cn(
+                  "mb-1 truncate text-[14px]",
+                  isUnread || isSelected
+                    ? "font-medium text-neutral-900 dark:text-white"
+                    : "font-normal text-neutral-600 dark:text-neutral-400",
+                )}
+              >
+                {subject}
+              </div>
+              {bodySnippet && (
+                <div className="line-clamp-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-500">
+                  {bodySnippet}
+                </div>
               )}
-            >
-              {fromName}
-            </span>
-            <span className="shrink-0 text-[11px] text-zinc-600">
-              {formatDistanceToNow(date, { addSuffix: false })}
-            </span>
-          </div>
-
-          <div
-            className={cn(
-              "truncate text-[13px]",
-              isUnread ? "font-medium text-zinc-200" : "text-zinc-400",
-            )}
-          >
-            {subject}
-          </div>
-
-          {bodySnippet && (
-            <div className="line-clamp-1 text-xs text-zinc-600">
-              {bodySnippet}
             </div>
-          )}
-
-          {(isImportant || isUnread) && (
-            <div className="flex items-center gap-2 pt-0.5">
-              {isUnread && (
-                <span className="flex h-[6px] w-[6px] rounded-full bg-amber-500" />
-              )}
+            <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
               {isImportant && (
-                <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                <Star className="h-3.5 w-3.5 fill-orange-500 text-orange-500 dark:fill-orange-400 dark:text-orange-400" />
               )}
+              <span className="whitespace-nowrap text-[11px] font-medium text-neutral-500 dark:text-neutral-500">
+                {formatDistanceToNow(date, { addSuffix: false })}
+              </span>
             </div>
-          )}
+          </div>
         </div>
       </button>
     );
@@ -271,16 +271,18 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     if (isFetching && threadsToRender.length === 0) {
       return (
         <div className="flex h-64 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500/20 border-t-amber-500" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
         </div>
       );
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       return (
-        <div className="flex h-64 flex-col items-center justify-center text-center">
-          <Mail className="mb-3 h-8 w-8 text-zinc-700" />
-          <p className="text-sm text-zinc-600">No emails found</p>
+        <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
+          <Mail className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+          <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
+            No emails found
+          </p>
         </div>
       );
     }
@@ -289,8 +291,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       <div className="flex flex-col">
         {Object.entries(groupedThreads).map(([date, threads]) => (
           <React.Fragment key={date}>
-            <div className="sticky top-0 z-10 bg-[#030303]/95 px-4 py-2 backdrop-blur-xl">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
+            <div className="sticky top-0 z-10 border-b border-neutral-100 bg-white/80 px-5 py-2.5 backdrop-blur-sm dark:border-neutral-900 dark:bg-black/80">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 {format(new Date(date), "MMM d, yyyy")}
               </span>
             </div>
@@ -300,8 +302,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           </React.Fragment>
         ))}
         {isFetchingNextPage && (
-          <div className="flex justify-center py-6">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-500/20 border-t-amber-500" />
+          <div className="flex justify-center py-8">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
           </div>
         )}
       </div>
@@ -309,9 +311,9 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#030303]">
-      <div className="flex items-center justify-between border-b border-white/[0.04] px-4 py-2">
-        <span className="text-xs font-medium text-zinc-500">
+    <div className="flex h-full flex-col overflow-hidden bg-white/60 backdrop-blur-xl dark:bg-black/60">
+      <div className="flex items-center justify-between border-b border-neutral-200/50 px-5 py-2.5 dark:border-neutral-800/30">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
           {isSearching && searchValue
             ? "Search Results"
             : `${threadsToRender.length} conversations`}
@@ -321,7 +323,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           size="sm"
           onClick={handleRefresh}
           disabled={isFetching || syncEmailsMutation.isPending}
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-zinc-500 hover:bg-white/[0.04] hover:text-white"
+          className="h-7 gap-2 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
         >
           <RefreshCw
             className={cn(
@@ -333,7 +335,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex-1 overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {isSearching && searchValue ? (
           <SearchResults onResultSelect={handleSearchResultSelect} />
         ) : (
