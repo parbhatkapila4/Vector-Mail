@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   authors: [{ name: "VectorMail AI" }],
   creator: "VectorMail AI",
   publisher: "VectorMail AI",
+  verification: {
+    google: "lJSM0C6Sy3gX_3zHT0xQsPtK1ERqwFL96YiZvRvj-kI",
+  },
 };
 
 export const viewport = {
