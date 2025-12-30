@@ -304,7 +304,7 @@ export async function POST(req: Request) {
               baseURL: "https://openrouter.ai/api/v1",
               apiKey: env.OPENROUTER_API_KEY,
               defaultHeaders: {
-                "HTTP-Referer": "https://vectormail-ai.vercel.app",
+                "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
                 "X-Title": "VectorMail AI",
               },
             });
@@ -477,7 +477,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           baseURL: "https://openrouter.ai/api/v1",
           apiKey: env.OPENROUTER_API_KEY,
           defaultHeaders: {
-            "HTTP-Referer": "https://vectormail-ai.vercel.app",
+            "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
             "X-Title": "VectorMail AI",
           },
         });
@@ -737,7 +737,7 @@ Return ONLY a JSON object in this exact format:
           baseURL: "https://openrouter.ai/api/v1",
           apiKey: env.OPENROUTER_API_KEY,
           defaultHeaders: {
-            "HTTP-Referer": "https://vectormail-ai.vercel.app",
+            "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
             "X-Title": "VectorMail AI",
           },
         });
@@ -947,7 +947,7 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
         baseURL: "https://openrouter.ai/api/v1",
         apiKey: env.OPENROUTER_API_KEY,
         defaultHeaders: {
-          "HTTP-Referer": "https://vectormail-ai.vercel.app",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
           "X-Title": "VectorMail AI",
         },
       });

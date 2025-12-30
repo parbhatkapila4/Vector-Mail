@@ -22,28 +22,42 @@ const config = {
     const csp = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval'
-        https://clerk.parbhat.dev
         https://*.clerk.com
         https://*.clerk.services
         https://*.clerk.accounts.dev
+        https://clerk.vectormail.space
+        https://*.vectormail.space
+        https://hcaptcha.com
+        https://*.hcaptcha.com
+        https://*.hcaptcha.net
+        https://challenges.cloudflare.com;
+      script-src-elem 'self' 'unsafe-inline'
+        https://*.clerk.com
+        https://*.clerk.services
+        https://*.clerk.accounts.dev
+        https://clerk.vectormail.space
+        https://*.vectormail.space
         https://hcaptcha.com
         https://*.hcaptcha.com
         https://*.hcaptcha.net
         https://challenges.cloudflare.com;
       connect-src 'self'
-        https://clerk.parbhat.dev
         https://*.clerk.com
         https://*.clerk.services
         https://*.clerk.accounts.dev
+        https://clerk.vectormail.space
+        https://*.vectormail.space
         https://hcaptcha.com
         https://*.hcaptcha.com
         https://*.hcaptcha.net
         https://challenges.cloudflare.com;
       frame-src
-        https://clerk.parbhat.dev
         https://*.clerk.com
         https://*.clerk.services
         https://*.clerk.accounts.dev
+        https://clerk.vectormail.space
+        https://*.vectormail.space
+        https://accounts.vectormail.space
         https://hcaptcha.com
         https://*.hcaptcha.com
         https://*.hcaptcha.net

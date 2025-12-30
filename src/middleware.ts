@@ -27,21 +27,20 @@ export default clerkMiddleware(async (auth, req) => {
     "max-age=31536000; includeSubDomains",
   );
 
-  if (process.env.NODE_ENV === "production") {
-    response.headers.set(
-      "Content-Security-Policy",
-      [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
-        "script-src-elem 'self' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: https:",
-        "font-src 'self' data:",
-        "connect-src 'self' *.clerk.accounts.dev *.clerk.com *.aurinko.io *.openai.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
-        "frame-src 'self' *.clerk.accounts.dev *.clerk.com clerk.parhbat.dev *.parhbat.dev clerk.parbhat.dev *.parbhat.dev",
-      ].join("; "),
-    );
-  }
+  
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space",
+      "script-src-elem 'self' 'unsafe-inline' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space *.aurinko.io *.openai.com",
+      "frame-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space https://accounts.vectormail.space",
+    ].join("; "),
+  );
 
   return response;
 });

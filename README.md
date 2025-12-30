@@ -8,14 +8,14 @@
 
 **Stop drowning in emails. Start being productive.**
 
-[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-vectormail.parbhat.dev-blueviolet?style=for-the-badge)](https://vectormail.parbhat.dev)
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-vectormail.space-blueviolet?style=for-the-badge)](https://vectormail.space)
 [![GitHub Stars](https://img.shields.io/github/stars/parbhatkapila4/Vector-Mail?style=for-the-badge&logo=github&color=yellow)](https://github.com/parbhatkapila4/Vector-Mail)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 
 <br />
 
-[**Try VectorMail Free**](https://vectormail.parbhat.dev) &nbsp;&nbsp;|&nbsp;&nbsp; [**Watch Demo**](https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Vector-Mail-1762579701087.mp4) &nbsp;&nbsp;|&nbsp;&nbsp; [**Documentation**](#quick-start)
+[**Try VectorMail Free**](https://vectormail.space) &nbsp;&nbsp;|&nbsp;&nbsp; [**Watch Demo**](https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Vector-Mail-1762579701087.mp4) &nbsp;&nbsp;|&nbsp;&nbsp; [**Documentation**](#quick-start)
 
 <br />
 
@@ -40,12 +40,14 @@ Traditional email clients were built for the 1990s. VectorMail is built for how 
 <td width="50%">
 
 ### Semantic Search That Actually Works
+
 Search by **meaning**, not just keywords. Ask "emails about the budget meeting last month" and actually find them. Powered by vector embeddings and pgvector.
 
 </td>
 <td width="50%">
 
 ### AI That Understands Context
+
 Every email gets an intelligent summary, automatic categorization, and smart tagging. Know what's important at a glance without reading everything.
 
 </td>
@@ -54,12 +56,14 @@ Every email gets an intelligent summary, automatic categorization, and smart tag
 <td width="50%">
 
 ### Write Emails in Seconds
+
 Describe what you want to say, and our AI composes it with the right tone, context from previous conversations, and your writing style.
 
 </td>
 <td width="50%">
 
 ### Chat With Your Inbox
+
 "Show me all receipts from last quarter" or "Find the email where John mentioned the deadline." Natural language meets your inbox.
 
 </td>
@@ -74,12 +78,12 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong>🧠 AI-Powered Intelligence</strong></summary>
 <br />
 
-| Feature | Description |
-|---------|-------------|
-| **Smart Summaries** | Every email automatically summarized with key points, action items, and context |
+| Feature                 | Description                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| **Smart Summaries**     | Every email automatically summarized with key points, action items, and context |
 | **Intelligent Tagging** | AI categorizes emails as urgent, informational, promotional, or action-required |
-| **Vector Embeddings** | 768-dimensional embeddings for each email enable true semantic understanding |
-| **Priority Detection** | Automatically surfaces what matters and deprioritizes noise |
+| **Vector Embeddings**   | 768-dimensional embeddings for each email enable true semantic understanding    |
+| **Priority Detection**  | Automatically surfaces what matters and deprioritizes noise                     |
 
 </details>
 
@@ -87,12 +91,12 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong>🔍 Next-Gen Search</strong></summary>
 <br />
 
-| Feature | Description |
-|---------|-------------|
-| **Semantic Search** | Find emails by meaning, not exact words |
-| **Natural Language** | Search like you'd ask a colleague |
+| Feature               | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| **Semantic Search**   | Find emails by meaning, not exact words               |
+| **Natural Language**  | Search like you'd ask a colleague                     |
 | **Relevance Scoring** | Results ranked by actual importance, not just recency |
-| **Instant Results** | Sub-100ms search across thousands of emails |
+| **Instant Results**   | Sub-100ms search across thousands of emails           |
 
 </details>
 
@@ -100,12 +104,12 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong> AI Composition</strong></summary>
 <br />
 
-| Feature | Description |
-|---------|-------------|
+| Feature                   | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
 | **Context-Aware Writing** | AI reads the thread and writes appropriate responses |
-| **Tone Adjustment** | Professional, casual, or custom—match any situation |
-| **One-Click Replies** | Generate complete, thoughtful responses instantly |
-| **Smart Suggestions** | Real-time writing assistance as you type |
+| **Tone Adjustment**       | Professional, casual, or custom—match any situation  |
+| **One-Click Replies**     | Generate complete, thoughtful responses instantly    |
+| **Smart Suggestions**     | Real-time writing assistance as you type             |
 
 </details>
 
@@ -113,11 +117,11 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong>Productivity Dashboard</strong></summary>
 <br />
 
-| Feature | Description |
-|---------|-------------|
-| **Email Analytics** | Track response times, volume patterns, and productivity |
-| **Communication Insights** | Understand who you email most and when |
-| **Action Item Tracking** | Never miss a follow-up or commitment |
+| Feature                    | Description                                             |
+| -------------------------- | ------------------------------------------------------- |
+| **Email Analytics**        | Track response times, volume patterns, and productivity |
+| **Communication Insights** | Understand who you email most and when                  |
+| **Action Item Tracking**   | Never miss a follow-up or commitment                    |
 
 </details>
 
@@ -125,12 +129,12 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong>Enterprise-Ready Security</strong></summary>
 <br />
 
-| Feature | Description |
-|---------|-------------|
-| **Clerk Authentication** | Enterprise-grade auth with MFA, SSO support |
-| **Data Encryption** | End-to-end encryption for all stored data |
-| **Privacy First** | Your data stays yours—we don't train on your emails |
-| **SOC 2 Ready** | Built with compliance requirements in mind |
+| Feature                  | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| **Clerk Authentication** | Enterprise-grade auth with MFA, SSO support         |
+| **Data Encryption**      | End-to-end encryption for all stored data           |
+| **Privacy First**        | Your data stays yours—we don't train on your emails |
+| **SOC 2 Ready**          | Built with compliance requirements in mind          |
 
 </details>
 
@@ -184,15 +188,15 @@ VectorMail is built on a modern, scalable architecture designed for performance 
 
 ## 🛠️ Tech Stack
 
-| Category | Technologies |
-|----------|-------------|
+| Category     | Technologies                                                            |
+| ------------ | ----------------------------------------------------------------------- |
 | **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS, Framer Motion, Radix UI |
-| **Backend** | tRPC, Prisma ORM, PostgreSQL 16+, pgvector |
-| **AI/ML** | Google Gemini 2.5 Flash, OpenAI GPT-4, Custom Embeddings (768-dim) |
-| **Auth** | Clerk (OAuth, MFA, Session Management) |
-| **Email** | Aurinko API (Google, Microsoft 365) |
-| **Testing** | Jest, React Testing Library, Playwright |
-| **DevOps** | Docker, GitHub Actions |
+| **Backend**  | tRPC, Prisma ORM, PostgreSQL 16+, pgvector                              |
+| **AI/ML**    | Google Gemini 2.5 Flash, OpenAI GPT-4, Custom Embeddings (768-dim)      |
+| **Auth**     | Clerk (OAuth, MFA, Session Management)                                  |
+| **Email**    | Aurinko API (Google, Microsoft 365)                                     |
+| **Testing**  | Jest, React Testing Library, Playwright                                 |
+| **DevOps**   | Docker, GitHub Actions                                                  |
 
 <br />
 
@@ -200,7 +204,7 @@ VectorMail is built on a modern, scalable architecture designed for performance 
 
 ### Prerequisites
 
-- **Node.js** 20+ 
+- **Node.js** 20+
 - **PostgreSQL** 16+ with pgvector extension
 - **Package Manager** npm, yarn, or bun
 
@@ -261,6 +265,7 @@ docker-compose up -d
 ```
 
 This spins up:
+
 - PostgreSQL with pgvector
 - VectorMail application
 - Auto-configured networking
@@ -269,29 +274,29 @@ This spins up:
 
 ## Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with Turbopack |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Run TypeScript type checking |
-| `npm run test` | Run unit tests (watch mode) |
-| `npm run test:ci` | Run tests with coverage |
-| `npm run test:e2e` | Run Playwright E2E tests |
-| `npm run db:studio` | Open Prisma Studio |
+| Command             | Description                             |
+| ------------------- | --------------------------------------- |
+| `npm run dev`       | Start development server with Turbopack |
+| `npm run build`     | Build for production                    |
+| `npm run start`     | Start production server                 |
+| `npm run lint`      | Run ESLint                              |
+| `npm run typecheck` | Run TypeScript type checking            |
+| `npm run test`      | Run unit tests (watch mode)             |
+| `npm run test:ci`   | Run tests with coverage                 |
+| `npm run test:e2e`  | Run Playwright E2E tests                |
+| `npm run db:studio` | Open Prisma Studio                      |
 
 <br />
 
 ## Pricing
 
-| Plan | Price | Features |
-|------|-------|----------|
-| **Basic** | Free | 5 AI summaries/day, basic search, single account |
-| **Pro** | $9.99/mo | Unlimited AI, advanced search, 5 accounts, priority support |
-| **Enterprise** | $60/mo | Everything + custom AI training, SSO, dedicated support |
+| Plan           | Price    | Features                                                    |
+| -------------- | -------- | ----------------------------------------------------------- |
+| **Basic**      | Free     | 5 AI summaries/day, basic search, single account            |
+| **Pro**        | $9.99/mo | Unlimited AI, advanced search, 5 accounts, priority support |
+| **Enterprise** | $60/mo   | Everything + custom AI training, SSO, dedicated support     |
 
-[View Full Pricing →](https://vectormail.parbhat.dev/pricing)
+[View Full Pricing →](https://vectormail.space/pricing)
 
 <br />
 
@@ -384,7 +389,7 @@ Built with incredible open-source technologies:
 
 <br />
 
-**VectorMail** - *Email, Reimagined with AI*
+**VectorMail** - _Email, Reimagined with AI_
 
 <br />
 
@@ -392,7 +397,7 @@ Built by [Parbhat Kapila](https://github.com/parbhatkapila4)
 
 <br />
 
-[Website](https://vectormail.parbhat.dev/) · [GitHub](https://github.com/parbhatkapila4/Vector-Mail) · [Twitter](https://x.com/Parbhat03)
+[Website](https://vectormail.space/) · [GitHub](https://github.com/parbhatkapila4/Vector-Mail) · [Twitter](https://x.com/Parbhat03)
 
 <br />
 

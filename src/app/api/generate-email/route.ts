@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: process.env.OPENROUTER_API_KEY,
       defaultHeaders: {
-        "HTTP-Referer": "https://vectormail-ai.vercel.app",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
         "X-Title": "VectorMail AI",
       },
     });
