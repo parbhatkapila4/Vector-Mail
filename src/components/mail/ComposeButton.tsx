@@ -35,9 +35,9 @@ const ComposeButton = () => {
     accounts?.some((acc) => acc.id === accountId);
 
   const { data: account } = api.account.getMyAccount.useQuery(
-    { accountId: hasValidAccount ? accountId : "" },
+    { accountId: hasValidAccount && accountId ? accountId : "placeholder" },
     {
-      enabled: hasValidAccount,
+      enabled: hasValidAccount && !!accountId && accountId.length > 0,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       retry: false,

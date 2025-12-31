@@ -50,21 +50,21 @@ export function Mail({}: MailLayoutProps) {
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
 
   const { data: myAccount } = api.account.getMyAccount.useQuery(
-    { accountId: firstAccountId },
-    { enabled: !!firstAccountId },
+    { accountId: firstAccountId || "placeholder" },
+    { enabled: !!firstAccountId && firstAccountId.length > 0 },
   );
 
   const accountId = myAccount?.id ?? "";
   const isEnabled = !!accountId;
 
   const { data: inboxCount } = api.account.getNumThreads.useQuery(
-    { accountId, tab: "inbox" },
-    { enabled: isEnabled },
+    { accountId: accountId || "placeholder", tab: "inbox" },
+    { enabled: isEnabled && !!accountId && accountId.length > 0 },
   );
 
   const { data: sentCount } = api.account.getNumThreads.useQuery(
-    { accountId, tab: "sent" },
-    { enabled: isEnabled },
+    { accountId: accountId || "placeholder", tab: "sent" },
+    { enabled: isEnabled && !!accountId && accountId.length > 0 },
   );
 
   const handleThreadSelect = useCallback((threadId: string) => {

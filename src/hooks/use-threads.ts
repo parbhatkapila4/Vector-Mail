@@ -8,21 +8,22 @@ export const threadIdAtom = atom<string | null>(null);
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 function useThreads() {
-  const { data: accounts, isLoading: accountsLoading } = api.account.getAccounts.useQuery();
+  const { data: accounts, isLoading: accountsLoading } =
+    api.account.getAccounts.useQuery();
   const [tab] = useLocalStorage("vector-mail", "inbox");
   const [storedAccountId] = useLocalStorage("accountId", "");
 
-  // Use stored accountId if valid, otherwise use first account (matching Sidebar logic)
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
-  const accountId = storedAccountId && accounts?.some((acc) => acc.id === storedAccountId)
-    ? storedAccountId
-    : firstAccountId;
+  const accountId =
+    storedAccountId && accounts?.some((acc) => acc.id === storedAccountId)
+      ? storedAccountId
+      : firstAccountId;
 
   const { data: myAccount, isLoading: myAccountLoading } =
     api.account.getMyAccount.useQuery(
-      { accountId },
+      { accountId: accountId || "placeholder" },
       {
-        enabled: !!accountId && !accountsLoading,
+        enabled: !!accountId && accountId.length > 0 && !accountsLoading,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         retry: false,
@@ -53,17 +54,20 @@ function useThreads() {
     refetch,
   } = api.account.getThreads.useInfiniteQuery(
     {
-      accountId: hasValidAccount ? accountId : "",
+      accountId: hasValidAccount && accountId ? accountId : "placeholder", // Use placeholder when disabled, query won't run due to enabled flag
       tab: currentTab,
       important,
       unread,
       limit: currentTab === "inbox" ? 50 : 15,
     },
     {
-      enabled: hasValidAccount && !!currentTab,
+      enabled:
+        hasValidAccount && !!currentTab && !!accountId && accountId.length > 0,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchOnWindowFocus: false,
-      refetchOnMount: true, // Enable refetch on mount to ensure threads load
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
       retry: false,
     },
   );

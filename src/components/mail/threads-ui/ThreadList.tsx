@@ -56,13 +56,23 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
 
+  const utils = api.useUtils();
   const syncEmailsMutation = api.account.syncEmails.useMutation({
     onSuccess: () => {
-      console.log("[ThreadList] Full sync completed, refetching threads");
+      console.log(
+        "[ThreadList] Full sync completed, invalidating cache and refetching threads",
+      );
+
+      void utils.account.getThreads.invalidate();
+      void utils.account.getNumThreads.invalidate();
+
       void refetch();
     },
     onError: (error) => {
       console.error("[ThreadList] Sync failed:", error);
+
+      void utils.account.getThreads.invalidate();
+      void utils.account.getNumThreads.invalidate();
       void refetch();
     },
   });
@@ -71,6 +81,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const handleRefresh = useCallback(() => {
     if (accountId) {
+      console.log("[ThreadList] Sync button clicked - forcing full sync");
       syncEmailsMutation.mutate({ accountId, forceFullSync: true });
     } else {
       void refetch();
@@ -126,7 +137,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (accountsLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-white/60 backdrop-blur-xl dark:bg-black/60">
+      <div className="flex h-full items-center justify-center bg-white dark:bg-black">
         <div className="text-center">
           <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
           <p className="mt-4 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
@@ -139,7 +150,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (!accountId || (accounts !== undefined && accounts.length === 0)) {
     return (
-      <div className="flex h-full items-center justify-center bg-white/60 p-10 backdrop-blur-xl dark:bg-black/60">
+      <div className="flex h-full items-center justify-center bg-white p-10 dark:bg-black">
         <div className="max-w-sm text-center">
           <div className="mx-auto mb-7 flex h-20 w-20 items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
             <Mail className="h-10 w-10 text-neutral-300 dark:text-neutral-700" />
@@ -198,8 +209,9 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           "relative flex w-full gap-4 border-b border-neutral-100 px-5 py-3.5 text-left transition-all duration-150 dark:border-neutral-900",
           isSelected
             ? "bg-gradient-to-r from-orange-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-orange-500 dark:from-orange-950/30 dark:to-amber-950/30 dark:before:bg-orange-400"
-            : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
-          isUnread && !isSelected && "bg-white/40 dark:bg-black/40",
+            : isUnread && !isSelected
+              ? "bg-white hover:bg-neutral-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+              : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
         )}
         onClick={() => {
           setThreadId(thread.id);
@@ -291,7 +303,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       <div className="flex flex-col">
         {Object.entries(groupedThreads).map(([date, threads]) => (
           <React.Fragment key={date}>
-            <div className="sticky top-0 z-10 border-b border-neutral-100 bg-white/80 px-5 py-2.5 backdrop-blur-sm dark:border-neutral-900 dark:bg-black/80">
+            <div className="sticky top-0 z-10 border-b border-neutral-100 bg-white px-5 py-2.5 dark:border-neutral-900 dark:bg-black">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 {format(new Date(date), "MMM d, yyyy")}
               </span>
@@ -311,7 +323,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white/60 backdrop-blur-xl dark:bg-black/60">
+    <div className="flex h-full flex-col overflow-hidden bg-white dark:bg-black">
       <div className="flex items-center justify-between border-b border-neutral-200/50 px-5 py-2.5 dark:border-neutral-800/30">
         <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
           {isSearching && searchValue

@@ -68,7 +68,7 @@ export default function ComposeEmailGmail() {
     !accountsLoading && !!validAccountId && validAccountId.length > 0;
 
   const { data: account } = api.account.getMyAccount.useQuery(
-    { accountId: validAccountId || "" },
+    { accountId: validAccountId || "placeholder" },
     {
       enabled:
         !!validAccountId && validAccountId.length > 0 && !accountsLoading,

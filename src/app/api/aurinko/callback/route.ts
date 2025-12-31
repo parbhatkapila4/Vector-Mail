@@ -2,7 +2,6 @@ import { exchangeAurinkoCodeForToken, getAccountInfo } from "@/lib/aurinko";
 import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { Account } from "@/lib/accounts";
 import { syncEmailsToDatabase } from "@/lib/sync-to-db";
 import axios from "axios";
@@ -179,20 +178,8 @@ export async function GET(req: NextRequest) {
     console.error("[CALLBACK] ✗ Initial sync failed:", error);
   }
 
-  waitUntil(
-    (async () => {
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const account = new Account(accountIdStr, token.accountToken);
-        await account.syncEmails(true);
-        console.log("[CALLBACK] ✓ Background sync completed");
-      } catch (error) {
-        console.error("[CALLBACK] ✗ Background sync failed:", error);
-      }
-    })(),
-  );
-
+  // Initial sync is complete - no auto-refetch needed
+  // User can manually sync new emails using the sync button
   console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");
   return NextResponse.redirect(new URL("/mail", process.env.NEXT_PUBLIC_URL));
 }

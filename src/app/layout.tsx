@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import "@/lib/suppress-console-errors"; // Suppress UNAUTHORIZED tRPC console errors
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
@@ -46,8 +47,8 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${geist.variable}`}>
-        <body>
+      <html lang="en" className={geist.variable} suppressHydrationWarning>
+        <body suppressHydrationWarning>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"

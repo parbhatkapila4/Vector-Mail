@@ -59,8 +59,11 @@ export const accountRouter = createTRPCRouter({
   }),
 
   getMyAccount: protectedProcedure
-    .input(z.object({ accountId: z.string() }))
+    .input(z.object({ accountId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      if (!input.accountId || input.accountId.trim().length === 0) {
+        throw new Error("Account ID is required");
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -118,11 +121,14 @@ export const accountRouter = createTRPCRouter({
   getNumThreads: protectedProcedure
     .input(
       z.object({
-        accountId: z.string(),
+        accountId: z.string().min(1),
         tab: z.string(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (!input.accountId || input.accountId.trim().length === 0) {
+        return 0;
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -300,11 +306,14 @@ export const accountRouter = createTRPCRouter({
   syncEmails: protectedProcedure
     .input(
       z.object({
-        accountId: z.string(),
+        accountId: z.string().min(1),
         forceFullSync: z.boolean().optional().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (!input.accountId || input.accountId.trim().length === 0) {
+        throw new Error("Account ID is required");
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -312,14 +321,33 @@ export const accountRouter = createTRPCRouter({
       const emailAccount = new Account(account.id, account.token);
 
       try {
-        await emailAccount.syncEmails(input.forceFullSync);
+        const shouldForceFullSync = input.forceFullSync ?? true;
+        console.log(
+          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}`,
+        );
+        await emailAccount.syncEmails(shouldForceFullSync);
+
+        const threadCount = await ctx.db.thread.count({
+          where: {
+            accountId: account.id,
+            inboxStatus: true,
+          },
+        });
+
+        console.log(
+          `[syncEmails mutation] Sync completed. Found ${threadCount} inbox threads.`,
+        );
+
         return {
           success: true,
           message: "Emails synced successfully",
+          threadCount,
         };
       } catch (error) {
-        console.error("Email sync failed:", error);
-        throw new Error(`Failed to sync emails: ${error}`);
+        console.error("[syncEmails mutation] Email sync failed:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to sync emails: ${errorMessage}`);
       }
     }),
 
@@ -432,7 +460,7 @@ export const accountRouter = createTRPCRouter({
   getThreads: protectedProcedure
     .input(
       z.object({
-        accountId: z.string(),
+        accountId: z.string().min(1),
         tab: z.string(),
         important: z.boolean(),
         unread: z.boolean(),
@@ -441,33 +469,22 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (!input.accountId || input.accountId.trim().length === 0) {
+        return {
+          threads: [],
+          nextCursor: undefined,
+          syncStatus: { success: false, count: 0 },
+          source: "database" as const,
+        };
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
       );
-      const emailAccount = new Account(account.id, account.token);
 
       const { cursor } = input;
 
-      const syncPromise = !cursor
-        ? (async () => {
-            try {
-              console.log(
-                `[getThreads] Initial load detected - running FULL sync to get ALL emails from last 30 days (including spam, promotions, etc.)...`,
-              );
-              void emailAccount.syncEmails(true).catch((error) => {
-                console.error(
-                  "[getThreads] Background full sync failed:",
-                  error,
-                );
-              });
-              return { success: true, count: 0 };
-            } catch (error) {
-              console.error("[getThreads] Sync error:", error);
-              return { success: false, count: 0 };
-            }
-          })()
-        : Promise.resolve({ success: false, count: 0 });
+      const syncResult = { success: false, count: 0 };
 
       const limit = Math.min(
         input.tab === "inbox" ? (input.limit ?? 50) : (input.limit ?? 15),
@@ -560,11 +577,6 @@ export const accountRouter = createTRPCRouter({
         const lastThread = threads.pop();
         nextCursor = lastThread?.id;
       }
-
-      const syncResult = await syncPromise.catch(() => ({
-        success: false,
-        count: 0,
-      }));
 
       let totalThreadCount = 0;
       if (threads.length === 0 && input.tab === "inbox" && !cursor) {

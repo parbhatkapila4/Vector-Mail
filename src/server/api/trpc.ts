@@ -17,6 +17,14 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
+    // Suppress console errors for UNAUTHORIZED errors (expected when user is not logged in)
+    if (error.code === "UNAUTHORIZED") {
+      // Don't log to console - this is expected behavior
+    } else {
+      // Log other errors for debugging
+      console.error(`[TRPC Error] ${error.code}:`, error.message);
+    }
+    
     return {
       ...shape,
       data: {

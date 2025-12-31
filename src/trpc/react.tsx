@@ -33,10 +33,10 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const [trpcClient] = useState(() =>
     api.createClient({
       links: [
+        // Disable loggerLink to prevent console spam from UNAUTHORIZED errors
+        // Errors are still handled by React Query's onError handler
         loggerLink({
-          enabled: (op) =>
-            process.env.NODE_ENV === "development" ||
-            (op.direction === "down" && op.result instanceof Error),
+          enabled: () => false, // Completely disable loggerLink
         }),
         httpBatchStreamLink({
           transformer: SuperJSON,

@@ -16,9 +16,10 @@ const SideBar = ({ isCollapsed }: Props) => {
 
   const { data: myAccount, isLoading: myAccountLoading } =
     api.account.getMyAccount.useQuery(
-      { accountId: firstAccountId },
+      { accountId: firstAccountId || "placeholder" },
       {
-        enabled: !!firstAccountId && !accountsLoading,
+        enabled:
+          !!firstAccountId && firstAccountId.length > 0 && !accountsLoading,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         retry: false,
@@ -38,11 +39,11 @@ const SideBar = ({ isCollapsed }: Props) => {
 
   const { data: inboxThreads } = api.account.getNumThreads.useQuery(
     {
-      accountId: isEnabled ? accountId : "",
+      accountId: accountId || "placeholder",
       tab: "inbox",
     },
     {
-      enabled: isEnabled,
+      enabled: isEnabled && !!accountId && accountId.length > 0,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       retry: false,
@@ -51,11 +52,11 @@ const SideBar = ({ isCollapsed }: Props) => {
 
   const { data: sentThreads } = api.account.getNumThreads.useQuery(
     {
-      accountId: isEnabled ? accountId : "",
+      accountId: accountId || "placeholder",
       tab: "sent",
     },
     {
-      enabled: isEnabled,
+      enabled: isEnabled && !!accountId && accountId.length > 0,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       retry: false,

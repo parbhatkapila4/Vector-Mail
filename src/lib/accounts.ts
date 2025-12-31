@@ -121,6 +121,14 @@ export class Account {
       params.bodyType = "text";
     }
 
+    console.log(`[getUpdatedEmails] Calling sync/updated with:`, {
+      hasDeltaToken: !!deltaToken,
+      hasPageToken: !!pageToken,
+      deltaTokenPreview: deltaToken
+        ? deltaToken.substring(0, 20) + "..."
+        : null,
+    });
+
     const response = await axios.get<syncUpdateResponse>(
       `https://api.aurinko.io/v1/email/sync/updated`,
       {
@@ -128,6 +136,13 @@ export class Account {
         params,
       },
     );
+
+    console.log(`[getUpdatedEmails] Response:`, {
+      recordCount: response.data.records?.length ?? 0,
+      hasNextPage: !!response.data.nextPageToken,
+      hasNextDelta: !!response.data.nextDeltaToken,
+    });
+
     return response.data;
   }
 
@@ -272,92 +287,164 @@ export class Account {
       `[syncEmails] Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync})`,
     );
 
-    if (forceFullSync && account.nextDeltaToken) {
-      console.log(
-        `[syncEmails] Force sync: First fetching latest emails via delta sync...`,
-      );
-      try {
-        const latestResponse = await this.getUpdatedEmails(
-          account.nextDeltaToken,
-          undefined,
-          true,
-        );
-        const latestEmails = latestResponse.records || [];
-        if (latestEmails.length > 0) {
-          console.log(
-            `[syncEmails] Found ${latestEmails.length} latest emails, syncing first...`,
-          );
-          await syncEmailsToDatabase(latestEmails, account.id);
-
-          if (latestResponse.nextDeltaToken) {
-            await db.account.update({
-              where: { id: account.id },
-              data: { nextDeltaToken: latestResponse.nextDeltaToken },
-            });
-          }
-          console.log(
-            `[syncEmails] Latest emails synced, now doing full sync...`,
-          );
-        } else {
-          console.log(
-            `[syncEmails] No latest emails found, proceeding with full sync...`,
-          );
-        }
-      } catch (error) {
-        console.warn(
-          "[syncEmails] Latest email sync failed, continuing with full sync:",
-          error,
-        );
-      }
-    }
+    const inboxThreadCount = await db.thread.count({
+      where: {
+        accountId: account.id,
+        inboxStatus: true,
+      },
+    });
 
     const shouldMaintain30DayWindow =
-      forceFullSync || (await this.shouldRefresh30DayWindow(account.id));
+      forceFullSync ||
+      inboxThreadCount === 0 ||
+      (await this.shouldRefresh30DayWindow(account.id));
+
+    if (inboxThreadCount === 0 && !forceFullSync) {
+      console.log(
+        `[syncEmails] Inbox is empty (${inboxThreadCount} threads), forcing full sync regardless of forceFullSync flag`,
+      );
+    }
 
     if (shouldMaintain30DayWindow) {
       console.log(
-        `[syncEmails] Maintaining 30-day window - fetching ALL emails from last 30 days directly from messages API`,
+        `[syncEmails] Maintaining 30-day window - using sync API (primary method)`,
       );
+
       try {
-        const allEmails = await this.fetchAllEmailsDirectly();
-        console.log(
-          `[syncEmails] Fetched ${allEmails.length} emails from last 30 days, syncing to database...`,
-        );
+        console.log(`[syncEmails] Starting sync API...`);
+        const syncResponse = await this.startSync();
+        console.log(`[syncEmails] Sync API response:`, {
+          ready: syncResponse.ready,
+          hasToken: !!syncResponse.syncUpdatedToken,
+          syncUpdatedToken: syncResponse.syncUpdatedToken
+            ? syncResponse.syncUpdatedToken.substring(0, 30) + "..."
+            : null,
+        });
 
-        await syncEmailsToDatabase(allEmails, account.id);
-        console.log(
-          `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
-        );
+        if (!syncResponse.ready) {
+          throw new Error("Sync API not ready - waiting might be required");
+        }
 
-        let storedDeltaToken: string = "";
-        try {
-          const syncResponse = await this.startSync();
-          if (syncResponse.ready && syncResponse.syncUpdatedToken) {
-            storedDeltaToken = syncResponse.syncUpdatedToken;
+        if (!syncResponse.syncUpdatedToken) {
+          throw new Error("Sync API did not return syncUpdatedToken");
+        }
+
+        console.log(
+          `[syncEmails] Sync API ready, fetching emails with token...`,
+        );
+        const syncEmails: EmailMessage[] = [];
+        let syncPageToken: string | undefined = undefined;
+        let currentDeltaToken = syncResponse.syncUpdatedToken;
+        let syncPageCount = 0;
+        const maxSyncPages = 200;
+        let hasNextDeltaToken = false;
+        let consecutiveEmptyPages = 0;
+        const maxConsecutiveEmpty = 3;
+
+        do {
+          syncPageCount++;
+          console.log(
+            `[syncEmails] Fetching sync API page ${syncPageCount}...`,
+          );
+
+          const syncUpdateResponse = await this.getUpdatedEmails(
+            syncPageToken ? undefined : currentDeltaToken,
+            syncPageToken,
+          );
+
+          console.log(`[syncEmails] Sync API page ${syncPageCount} response:`, {
+            recordCount: syncUpdateResponse.records?.length ?? 0,
+            hasNextPage: !!syncUpdateResponse.nextPageToken,
+            hasNextDelta: !!syncUpdateResponse.nextDeltaToken,
+          });
+
+          if (
+            syncUpdateResponse.records &&
+            syncUpdateResponse.records.length > 0
+          ) {
+            syncEmails.push(...syncUpdateResponse.records);
+            consecutiveEmptyPages = 0;
+            console.log(
+              `[syncEmails] ✓ Sync API page ${syncPageCount}: ${syncUpdateResponse.records.length} emails, total: ${syncEmails.length}`,
+            );
+          } else {
+            consecutiveEmptyPages++;
+            console.warn(
+              `[syncEmails] ⚠ Sync API page ${syncPageCount} returned 0 emails (consecutive: ${consecutiveEmptyPages})`,
+            );
           }
-        } catch (syncError) {
-          console.warn(
-            "[syncEmails] Could not get new delta token, continuing without it:",
-            syncError,
+
+          if (syncUpdateResponse.nextDeltaToken) {
+            currentDeltaToken = syncUpdateResponse.nextDeltaToken;
+            hasNextDeltaToken = true;
+            console.log(
+              `[syncEmails] Received nextDeltaToken - sync window complete`,
+            );
+          }
+
+          syncPageToken = syncUpdateResponse.nextPageToken;
+
+          if (hasNextDeltaToken && !syncPageToken) {
+            console.log(
+              `[syncEmails] Sync complete: has nextDeltaToken and no pageToken`,
+            );
+            break;
+          }
+
+          if (consecutiveEmptyPages >= maxConsecutiveEmpty) {
+            console.warn(
+              `[syncEmails] Stopping after ${consecutiveEmptyPages} consecutive empty pages`,
+            );
+            break;
+          }
+
+          const shouldContinue =
+            syncPageToken || (!hasNextDeltaToken && syncPageCount < 50);
+
+          if (!shouldContinue) {
+            console.log(`[syncEmails] No more pages and sync appears complete`);
+            break;
+          }
+        } while (syncPageCount < maxSyncPages);
+
+        if (syncEmails.length === 0) {
+          throw new Error(
+            "Sync API returned 0 emails after fetching all pages",
           );
         }
+
+        console.log(
+          `[syncEmails] ✓ Fetched ${syncEmails.length} emails from sync API, syncing to database...`,
+        );
+
+        for (const email of syncEmails) {
+          if (!email.sysLabels.includes("inbox")) {
+            email.sysLabels.push("inbox");
+          }
+        }
+
+        await syncEmailsToDatabase(syncEmails, account.id);
 
         await db.account.update({
           where: { id: account.id },
           data: {
-            nextDeltaToken: storedDeltaToken,
+            nextDeltaToken: syncResponse.syncUpdatedToken,
             lastInboxSyncAt: new Date(),
           },
         });
 
         console.log(
-          `[syncEmails] 30-day window sync completed for account ${account.id}`,
+          `[syncEmails] ✓ 30-day window sync completed using sync API for account ${account.id}. Synced ${syncEmails.length} emails.`,
         );
         return;
-      } catch (directFetchError) {
-        console.error(
-          "[syncEmails] Direct fetch failed, falling back to sync API:",
-          directFetchError,
+      } catch (syncApiError) {
+        console.error("[syncEmails] ✗ Sync API failed:", syncApiError);
+        const errorMessage =
+          syncApiError instanceof Error
+            ? syncApiError.message
+            : String(syncApiError);
+        throw new Error(
+          `Sync API failed: ${errorMessage}. Please check your account connection and try again.`,
         );
       }
     }
@@ -432,6 +519,18 @@ export class Account {
 
     console.log(`[syncEmails] Total emails to sync: ${allEmails.length}`);
 
+    if (allEmails.length === 0) {
+      console.error(`[syncEmails] ⚠ CRITICAL: No emails to sync for account ${account.id} after all sync methods. This indicates:
+      1. Account has no emails
+      2. API authentication/authorization failed
+      3. Query format is incorrect
+      4. Account needs to be reconnected
+      Please check account status and try reconnecting.`);
+      throw new Error(
+        "No emails found after attempting all sync methods. Please check your account connection.",
+      );
+    }
+
     try {
       console.log(
         `[syncEmails] Starting DB insert for ${allEmails.length} emails...`,
@@ -440,8 +539,39 @@ export class Account {
       console.log(
         `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
       );
+
+      const savedEmailCount = await db.email.count({
+        where: {
+          thread: {
+            accountId: account.id,
+          },
+        },
+      });
+      console.log(
+        `[syncEmails] Verification: ${savedEmailCount} total emails in database for account ${account.id}`,
+      );
+
+      const threadCount = await db.thread.count({
+        where: {
+          accountId: account.id,
+        },
+      });
+      console.log(
+        `[syncEmails] Verification: ${threadCount} total threads in database for account ${account.id}`,
+      );
+
+      const inboxThreadCount = await db.thread.count({
+        where: {
+          accountId: account.id,
+          inboxStatus: true,
+        },
+      });
+      console.log(
+        `[syncEmails] Verification: ${inboxThreadCount} inbox threads in database for account ${account.id}`,
+      );
     } catch (error) {
       console.error("[syncEmails] Error syncing emails to database:", error);
+      throw error;
     }
 
     console.log(
@@ -701,6 +831,29 @@ export class Account {
       console.log(
         "[fetchAllEmailsDirectly] Starting to fetch all emails from last 30 days...",
       );
+
+      try {
+        const accountInfo = await axios.get(
+          "https://api.aurinko.io/v1/account",
+          {
+            headers: this.aurinkoHeaders,
+          },
+        );
+        console.log(
+          `[fetchAllEmailsDirectly] ✓ API connection verified. Account: ${JSON.stringify(accountInfo.data)}`,
+        );
+      } catch (authError) {
+        if (axios.isAxiosError(authError)) {
+          console.error(
+            `[fetchAllEmailsDirectly] ✗ API authentication failed: ${authError.response?.status} - ${JSON.stringify(authError.response?.data)}`,
+          );
+          throw new Error(
+            `API authentication failed: ${authError.response?.status}. Please reconnect your account.`,
+          );
+        }
+        throw authError;
+      }
+
       const allEmails: EmailMessage[] = [];
       let pageToken: string | undefined = undefined;
       let pageCount = 0;
@@ -708,31 +861,55 @@ export class Account {
       let consecutiveEmptyPages = 0;
       const maxConsecutiveEmpty = 3;
 
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      thirtyDaysAgo.setHours(0, 0, 0, 0);
-      const year = thirtyDaysAgo.getFullYear();
-      const month = String(thirtyDaysAgo.getMonth() + 1).padStart(2, "0");
-      const day = String(thirtyDaysAgo.getDate()).padStart(2, "0");
-      const dateQuery = `after:${year}/${month}/${day}`;
-      const dateQueryAlt = `after:${year}-${month}-${day}`;
+      const inboxThreadCount = await db.thread.count({
+        where: {
+          accountId: this.id,
+          inboxStatus: true,
+        },
+      });
 
-      console.log(
-        `[fetchAllEmailsDirectly] Date query: ${dateQuery} (after ${year}-${month}-${day})`,
-      );
-      console.log(
-        `[fetchAllEmailsDirectly] 30 days ago timestamp: ${thirtyDaysAgo.toISOString()}`,
-      );
+      let dateQuery: string | undefined = undefined;
+
+      if (inboxThreadCount > 0) {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setUTCDate(now.getUTCDate() - 30);
+        thirtyDaysAgo.setUTCHours(0, 0, 0, 0);
+
+        const year = thirtyDaysAgo.getUTCFullYear();
+        const month = String(thirtyDaysAgo.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(thirtyDaysAgo.getUTCDate()).padStart(2, "0");
+        dateQuery = `after:${year}/${month}/${day}`;
+
+        console.log(
+          `[fetchAllEmailsDirectly] Current date: ${now.toISOString()}`,
+        );
+        console.log(
+          `[fetchAllEmailsDirectly] Date query: ${dateQuery} (after ${year}-${month}-${day})`,
+        );
+        console.log(
+          `[fetchAllEmailsDirectly] 30 days ago timestamp: ${thirtyDaysAgo.toISOString()}`,
+        );
+      } else {
+        console.log(
+          `[fetchAllEmailsDirectly] Inbox is empty (${inboxThreadCount} threads), fetching ALL emails without date filter`,
+        );
+      }
 
       while (pageCount < maxPages) {
         pageCount++;
         console.log(`[fetchAllEmailsDirectly] Fetching page ${pageCount}...`);
 
         const params: Record<string, string | number> = {
-          q: `in:all ${dateQuery}`,
           maxResults: 500,
           bodyType: "text",
         };
+
+        if (dateQuery) {
+          params.q = `in:inbox ${dateQuery}`;
+        } else {
+          params.q = "in:inbox";
+        }
 
         if (pageToken) {
           params.pageToken = pageToken;
@@ -747,17 +924,179 @@ export class Account {
             params,
           });
 
+          console.log(
+            `[fetchAllEmailsDirectly] Page ${pageCount} API Response:`,
+            JSON.stringify(
+              {
+                status: listResponse.status,
+                hasMessages: !!listResponse.data.messages,
+                messageCount: listResponse.data.messages?.length ?? 0,
+                hasNextPageToken: !!listResponse.data.nextPageToken,
+                nextPageToken: listResponse.data.nextPageToken
+                  ? listResponse.data.nextPageToken.substring(0, 20) + "..."
+                  : null,
+                params: params,
+              },
+              null,
+              2,
+            ),
+          );
+
           const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
           console.log(
             `[fetchAllEmailsDirectly] Page ${pageCount}: Found ${messageIds.length} message IDs, nextPageToken: ${listResponse.data.nextPageToken ? "yes" : "no"}`,
           );
 
-          if (pageCount === 1 && messageIds.length < 100 && !pageToken) {
+          if (listResponse.data.nextPageToken && messageIds.length === 0) {
+            console.error(
+              `[fetchAllEmailsDirectly] ⚠ SUSPICIOUS: API returned nextPageToken but 0 messages. Full response:`,
+              JSON.stringify(listResponse.data, null, 2),
+            );
+          }
+
+          if (pageCount === 1 && messageIds.length === 0 && !pageToken) {
+            console.log(
+              `[fetchAllEmailsDirectly] First page returned 0 results, trying different query formats...`,
+            );
+
+            const testParams1: Record<string, string | number> = {
+              maxResults: 10,
+              bodyType: "text",
+            };
+
+            try {
+              const testResponse1 = await axios.get<{
+                messages?: Array<{ id: string }>;
+                nextPageToken?: string;
+              }>("https://api.aurinko.io/v1/email/messages", {
+                headers: this.aurinkoHeaders,
+                params: testParams1,
+              });
+
+              const testMessageIds1 =
+                testResponse1.data.messages?.map((m) => m.id) ?? [];
+              console.log(
+                `[fetchAllEmailsDirectly] Test 1 (no query): Found ${testMessageIds1.length} message IDs`,
+              );
+
+              if (testMessageIds1.length > 0) {
+                console.log(
+                  `[fetchAllEmailsDirectly] ✓ Found emails without query! Removing date filter and retrying.`,
+                );
+
+                delete params.q;
+
+                pageCount = 0;
+                continue;
+              }
+            } catch (testError) {
+              console.error(
+                `[fetchAllEmailsDirectly] Test 1 failed:`,
+                testError,
+              );
+            }
+
+            const testParams2: Record<string, string | number> = {
+              q: "in:inbox",
+              maxResults: 10,
+              bodyType: "text",
+            };
+
+            try {
+              const testResponse2 = await axios.get<{
+                messages?: Array<{ id: string }>;
+                nextPageToken?: string;
+              }>("https://api.aurinko.io/v1/email/messages", {
+                headers: this.aurinkoHeaders,
+                params: testParams2,
+              });
+
+              const testMessageIds2 =
+                testResponse2.data.messages?.map((m) => m.id) ?? [];
+              console.log(
+                `[fetchAllEmailsDirectly] Test 2 (in:inbox): Found ${testMessageIds2.length} message IDs`,
+              );
+
+              if (testMessageIds2.length > 0) {
+                console.log(
+                  `[fetchAllEmailsDirectly] ✓ Found emails with in:inbox! Removing date filter and retrying.`,
+                );
+
+                params.q = "in:inbox";
+
+                pageCount = 0;
+                continue;
+              }
+            } catch (testError) {
+              console.error(
+                `[fetchAllEmailsDirectly] Test 2 failed:`,
+                testError,
+              );
+            }
+
+            const testParams3: Record<string, string | number> = {
+              q: "in:all",
+              maxResults: 10,
+              bodyType: "text",
+            };
+
+            try {
+              const testResponse3 = await axios.get<{
+                messages?: Array<{ id: string }>;
+                nextPageToken?: string;
+              }>("https://api.aurinko.io/v1/email/messages", {
+                headers: this.aurinkoHeaders,
+                params: testParams3,
+              });
+
+              const testMessageIds3 =
+                testResponse3.data.messages?.map((m) => m.id) ?? [];
+              console.log(
+                `[fetchAllEmailsDirectly] Test 3 (in:all): Found ${testMessageIds3.length} message IDs`,
+              );
+
+              if (testMessageIds3.length > 0) {
+                console.log(
+                  `[fetchAllEmailsDirectly] ✓ Found emails with in:all! Using this format.`,
+                );
+
+                params.q = "in:all";
+
+                pageCount = 0;
+                continue;
+              }
+            } catch (testError) {
+              console.error(
+                `[fetchAllEmailsDirectly] Test 3 failed:`,
+                testError,
+              );
+            }
+
+            console.warn(
+              `[fetchAllEmailsDirectly] ⚠ WARNING: No emails found with any query format. Possible issues:
+              1. Account has no emails
+              2. API authentication/authorization issue
+              3. API query format not supported
+              Check API credentials, account status, and Aurinko API documentation.`,
+            );
+          }
+
+          if (
+            pageCount === 1 &&
+            messageIds.length < 100 &&
+            !pageToken &&
+            messageIds.length > 0 &&
+            dateQuery
+          ) {
             console.log(
               `[fetchAllEmailsDirectly] First page returned ${messageIds.length} results, trying alternative queries to get ALL emails...`,
             );
 
-            params.q = dateQuery;
+            if (dateQuery) {
+              params.q = dateQuery;
+            } else {
+              delete params.q;
+            }
             const retryResponse1 = await axios.get<{
               messages?: Array<{ id: string }>;
               nextPageToken?: string;
@@ -776,7 +1115,11 @@ export class Account {
                 `[fetchAllEmailsDirectly] Using query without in:all (${retryMessageIds1.length} > ${messageIds.length})`,
               );
               pageToken = retryResponse1.data.nextPageToken;
-              params.q = dateQuery;
+              if (dateQuery) {
+                params.q = dateQuery;
+              } else {
+                delete params.q;
+              }
 
               const batchSize = 50;
               for (let i = 0; i < retryMessageIds1.length; i += batchSize) {
@@ -794,7 +1137,11 @@ export class Account {
               console.log(
                 `[fetchAllEmailsDirectly] Keeping in:all query (${messageIds.length} >= ${retryMessageIds1.length})`,
               );
-              params.q = `in:all ${dateQuery}`;
+              if (dateQuery) {
+                params.q = `in:inbox ${dateQuery}`;
+              } else {
+                params.q = "in:inbox";
+              }
             }
           }
 
@@ -839,6 +1186,13 @@ export class Account {
             const validEmails = batchEmails.filter(
               (e): e is EmailMessage => e !== null,
             );
+
+            for (const email of validEmails) {
+              if (!email.sysLabels.includes("inbox")) {
+                email.sysLabels.push("inbox");
+              }
+            }
+
             allEmails.push(...validEmails);
 
             console.log(
