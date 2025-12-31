@@ -38,6 +38,13 @@ export async function generateEmail(
                     - End with a professional closing (Best regards, Sincerely, Thank you, etc.) followed by the sender's name
                     - Keep sentences complete and coherent
                     - Use proper spacing between paragraphs
+                    - ⚠️⚠️⚠️ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING ⚠️⚠️⚠️:
+                      * The number, period, space, and text MUST ALL be on ONE SINGLE LINE
+                      * Format: "1. Text content here" - ALL on the same line with NO line breaks
+                      * NEVER put a line break (\\n) between the number and the text
+                      * NEVER put a blank line (\\n\\n) between the number and the text
+                      * Example CORRECT: "1. First achievement\\n2. Second achievement"
+                      * Example WRONG: "1.\\nFirst achievement" or "1.\\n\\nFirst achievement"
                     
                     CONTENT GUIDELINES:
                     - Be helpful, professional, and articulate
@@ -138,7 +145,8 @@ export async function generate(
                     - Ensure the response is contextually relevant and helpful
                     - NEVER include subject lines or email headers
                     - Use line breaks (\\n) for proper email formatting
-                    - Keep paragraphs concise and well-structured`,
+                    - Keep paragraphs concise and well-structured
+                    - ⚠️⚠️⚠️ NUMBERED LISTS: Number and text MUST be on SAME line - "1. Text here" NOT "1.\\nText here" ⚠️⚠️⚠️`,
         },
         {
           role: "user",

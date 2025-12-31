@@ -32,59 +32,11 @@ export class Account {
 
   async performInitialSync() {
     try {
-      console.log("[Initial Sync] Starting sync initialization...");
-
-      let syncResponse = await this.startSync();
-      while (!syncResponse.ready) {
-        console.log("[Initial Sync] Waiting for sync to be ready...");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        syncResponse = await this.startSync();
-      }
-
-      console.log("[Initial Sync] Sync ready, starting to fetch emails...");
-      let storedDeltaToken: string = syncResponse.syncUpdatedToken;
-
-      let updatedResponse = await this.getUpdatedEmails(storedDeltaToken);
-      let allEmails: EmailMessage[] = updatedResponse.records || [];
-      let pageCount = 1;
-
       console.log(
-        `[Initial Sync] Page ${pageCount}: ${allEmails.length} emails (total: ${allEmails.length})`,
+        "[Initial Sync] Starting initial sync - using direct fetch for ALL emails from last 30 days...",
       );
 
-      if (updatedResponse.nextDeltaToken) {
-        storedDeltaToken = updatedResponse.nextDeltaToken;
-      }
-
-      while (updatedResponse.nextPageToken) {
-        pageCount++;
-        console.log(
-          `[Initial Sync] Fetching page ${pageCount} with token: ${updatedResponse.nextPageToken.substring(0, 20)}...`,
-        );
-
-        updatedResponse = await this.getUpdatedEmails(
-          undefined,
-          updatedResponse.nextPageToken,
-        );
-
-        const pageEmails = updatedResponse.records || [];
-        allEmails = allEmails.concat(pageEmails);
-
-        console.log(
-          `[Initial Sync] Page ${pageCount}: ${pageEmails.length} emails (total: ${allEmails.length})`,
-        );
-
-        if (updatedResponse.nextDeltaToken) {
-          storedDeltaToken = updatedResponse.nextDeltaToken;
-        }
-
-        if (pageCount > 1000) {
-          console.warn(
-            `[Initial Sync] Safety limit reached (1000 pages), stopping pagination`,
-          );
-          break;
-        }
-      }
+      const allEmails = await this.fetchAllEmailsDirectly();
 
       const inboxCount = allEmails.filter(
         (e) =>
@@ -98,8 +50,24 @@ export class Account {
       ).length;
 
       console.log(
-        `[Initial Sync] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages (Inbox: ${inboxCount}, Sent: ${sentCount}, Drafts: ${draftCount})`,
+        `[Initial Sync] Complete! Fetched ${allEmails.length} emails (Inbox: ${inboxCount}, Sent: ${sentCount}, Drafts: ${draftCount})`,
       );
+
+      let storedDeltaToken: string = "";
+      try {
+        const syncResponse = await this.startSync();
+        if (syncResponse.ready && syncResponse.syncUpdatedToken) {
+          storedDeltaToken = syncResponse.syncUpdatedToken;
+          console.log(
+            `[Initial Sync] Delta token obtained: ${storedDeltaToken.substring(0, 20)}...`,
+          );
+        }
+      } catch (syncError) {
+        console.warn(
+          "[Initial Sync] Could not get delta token, continuing without it:",
+          syncError,
+        );
+      }
 
       return {
         emails: allEmails,
@@ -784,30 +752,35 @@ export class Account {
             `[fetchAllEmailsDirectly] Page ${pageCount}: Found ${messageIds.length} message IDs, nextPageToken: ${listResponse.data.nextPageToken ? "yes" : "no"}`,
           );
 
-          if (pageCount === 1 && messageIds.length < 50 && !pageToken) {
+          if (pageCount === 1 && messageIds.length < 100 && !pageToken) {
             console.log(
-              `[fetchAllEmailsDirectly] First page returned few results (${messageIds.length}), trying without in:all restriction...`,
+              `[fetchAllEmailsDirectly] First page returned ${messageIds.length} results, trying alternative queries to get ALL emails...`,
             );
 
             params.q = dateQuery;
-            const retryResponse = await axios.get<{
+            const retryResponse1 = await axios.get<{
               messages?: Array<{ id: string }>;
               nextPageToken?: string;
             }>("https://api.aurinko.io/v1/email/messages", {
               headers: this.aurinkoHeaders,
               params,
             });
-            const retryMessageIds =
-              retryResponse.data.messages?.map((m) => m.id) ?? [];
+            const retryMessageIds1 =
+              retryResponse1.data.messages?.map((m) => m.id) ?? [];
             console.log(
-              `[fetchAllEmailsDirectly] Retry without in:all: Found ${retryMessageIds.length} message IDs`,
+              `[fetchAllEmailsDirectly] Query without in:all: Found ${retryMessageIds1.length} message IDs`,
             );
-            if (retryMessageIds.length > messageIds.length) {
-              pageToken = retryResponse.data.nextPageToken;
+
+            if (retryMessageIds1.length > messageIds.length) {
+              console.log(
+                `[fetchAllEmailsDirectly] Using query without in:all (${retryMessageIds1.length} > ${messageIds.length})`,
+              );
+              pageToken = retryResponse1.data.nextPageToken;
+              params.q = dateQuery;
 
               const batchSize = 50;
-              for (let i = 0; i < retryMessageIds.length; i += batchSize) {
-                const batch = retryMessageIds.slice(i, i + batchSize);
+              for (let i = 0; i < retryMessageIds1.length; i += batchSize) {
+                const batch = retryMessageIds1.slice(i, i + batchSize);
                 const batchEmails = await Promise.all(
                   batch.map((id) => this.getEmailById(id)),
                 );
@@ -817,9 +790,12 @@ export class Account {
                 allEmails.push(...validEmails);
               }
               continue;
+            } else {
+              console.log(
+                `[fetchAllEmailsDirectly] Keeping in:all query (${messageIds.length} >= ${retryMessageIds1.length})`,
+              );
+              params.q = `in:all ${dateQuery}`;
             }
-
-            params.q = `in:all ${dateQuery}`;
           }
 
           if (messageIds.length === 0) {

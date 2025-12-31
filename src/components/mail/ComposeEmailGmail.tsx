@@ -206,7 +206,11 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       const result = await generateEmail(context, prompt);
 
       if (result.content && result.content.trim()) {
-        const content = result.content.trim();
+        let content = result.content.trim();
+        content = content.replace(/^(\d+\.)\s*\n+\s*([^\n\d])/gm, "$1 $2");
+        content = content.replace(/^([a-z]\.)\s*\n+\s*([^\n])/gm, "$1 $2");
+        content = content.replace(/(\n)(\d+\.)\s*\n([^\n\d])/g, "$1$2 $3");
+        content = content.replace(/(\n)([a-z]\.)\s*\n([^\n])/g, "$1$2 $3");
 
         let htmlContent = content;
         if (!content.includes("<") && content.includes("\n\n")) {
@@ -214,8 +218,22 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             .split(/\n\s*\n/)
             .filter((para) => para.trim().length > 0)
             .map((para) => {
-              const formatted = para.trim().replace(/\n/g, "<br>");
-              return `<p style="margin: 0 0 12px 0; line-height: 1.6;">${formatted}</p>`;
+              const trimmed = para.trim();
+              const hasList = /^\d+\.\s|^[a-z]\.\s/m.test(trimmed);
+
+              if (hasList) {
+                const formattedList = trimmed
+                  .split(/\n(?=\d+\.\s|[a-z]\.\s)/)
+                  .filter((item) => item.trim())
+                  .map((item) => {
+                    return item.trim().replace(/\n+/g, " ");
+                  })
+                  .join("\n");
+                return `<p style="margin: 0 0 12px 0; line-height: 1.6; white-space: pre-line;">${formattedList}</p>`;
+              } else {
+                const formatted = trimmed.replace(/\n/g, "<br>");
+                return `<p style="margin: 0 0 12px 0; line-height: 1.6;">${formatted}</p>`;
+              }
             })
             .join("");
         } else if (!content.includes("<") && content.includes("\n")) {

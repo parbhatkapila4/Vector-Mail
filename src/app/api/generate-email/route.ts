@@ -69,7 +69,9 @@ export async function POST(req: NextRequest) {
           - Ensure the response is contextually relevant and helpful
           - NEVER include subject lines or email headers
           - Use line breaks (\\n) for proper email formatting
-          - Keep paragraphs concise and well-structured`,
+          - Keep paragraphs concise and well-structured
+          - ⚠️⚠️⚠️ NUMBERED LISTS: Number and text MUST be on SAME line - "1. Text here" NOT "1.\\nText here" ⚠️⚠️⚠️
+          - NEVER put line breaks between number and text in lists`,
         },
         {
           role: "user",
@@ -78,7 +80,7 @@ export async function POST(req: NextRequest) {
 Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`,
         },
       ],
-      stream: false, // Disable streaming
+      stream: false,
     });
 
     const content = completion.choices[0]?.message?.content || "";

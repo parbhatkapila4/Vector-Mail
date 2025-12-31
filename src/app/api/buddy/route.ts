@@ -212,7 +212,7 @@ ${conversationContext}`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "anthropic/claude-3-haiku",
+      model: "anthropic/claude-3.5-sonnet",
       messages: [
         {
           role: "system",
@@ -634,7 +634,8 @@ export async function POST(req: Request) {
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: env.OPENROUTER_API_KEY,
       defaultHeaders: {
-        "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
         "X-Title": "VectorMail AI",
       },
     });
@@ -825,10 +826,16 @@ PARAGRAPH SPACING (MOST IMPORTANT - THIS IS MANDATORY - VIOLATION WILL BREAK THE
 - If a sentence ends with . ! or ? and the next sentence starts with a capital letter, you MUST use \\n\\n between them
 - DO NOT use single \\n anywhere between paragraphs - ONLY use \\n\\n
 
-LIST FORMATTING:
+LIST FORMATTING (CRITICAL - MUST FOLLOW EXACTLY):
 - ALWAYS add \\n\\n before lists
 - ALWAYS add \\n\\n after lists
-- Each list item on its own line
+- ⚠️⚠️⚠️ ABSOLUTELY CRITICAL: Each numbered list item MUST have the number, period, space, and text ALL on ONE SINGLE LINE
+- Format: "1. Text content here" - ALL on the same line with NO line breaks between number and text
+- NEVER put a line break (\\n) between the number and the text
+- NEVER put a blank line (\\n\\n) between the number and the text
+- Each complete list item (number + text) goes on its own line
+- Example CORRECT: "1. First achievement\\n2. Second achievement\\n3. Third achievement"
+- Example WRONG: "1.\\nFirst achievement" or "1.\\n\\nFirst achievement"
 - Use ONLY numbers (1., 2., 3.) or letters (a., b., c.)
 - NO symbols ever
 
@@ -841,8 +848,16 @@ FORMATTING RULES - NO SYMBOLS ALLOWED:
 - NEVER use asterisks (*), dashes (-), dots (•), or any other symbols for lists or emphasis
 - Keep formatting clean and professional with plain text only - NO markdown symbols at all
 
-CORRECT FORMAT EXAMPLE (COPY THIS STRUCTURE):
-Dear [Name],\\n\\nThank you for meeting with me. I wanted to follow up on our discussion.\\n\\n1. First key point\\na. Sub-point with details\\nb. Another sub-point\\n2. Second key point\\na. Sub-point details\\n\\nNext Steps:\\n\\n1. Action item one\\n2. Action item two\\n\\nBest regards,\\n[Your name]
+CORRECT FORMAT EXAMPLE (COPY THIS STRUCTURE - NOTE: Numbers and text on SAME line):
+Dear [Name],\\n\\nThank you for meeting with me. I wanted to follow up on our discussion.\\n\\n1. First key point\\na. Sub-point with details\\nb. Another sub-point\\n2. Second key point\\na. Sub-point details\\n3. Third key point\\n\\nNext Steps:\\n\\n1. Action item one\\n2. Action item two\\n3. Action item three\\n\\nBest regards,\\n[Your name]
+
+WRONG FORMAT (NEVER DO THIS):
+1.\\nFirst key point
+1.\\n\\nFirst key point
+2.\\nSecond key point
+
+CORRECT FORMAT (ALWAYS DO THIS):
+1. First key point\\n2. Second key point\\n3. Third key point
 
 ABSOLUTELY FORBIDDEN - DO NOT USE:
 * Asterisks
@@ -876,7 +891,14 @@ ${previousEmailContext ? `\n${previousEmailContext}\n` : ""}
 1. ALWAYS use \\n\\n (double newline) between paragraphs - this is MANDATORY - NEVER use single \\n
 2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS WILL BREAK THE EMAIL
 3. ALWAYS add \\n\\n before lists and \\n\\n after lists for proper spacing
-4. ALWAYS put each list item on its own line
+4. ⚠️⚠️⚠️ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING ⚠️⚠️⚠️:
+   - The number, period, space, and text MUST ALL be on ONE SINGLE LINE
+   - Format: "1. Text content here" - ALL on the same line with NO line breaks
+   - NEVER put a line break (\\n) between the number and the text
+   - NEVER put a blank line (\\n\\n) between the number and the text
+   - Each complete list item (number + text) goes on its own line
+   - Example CORRECT: "1. First achievement\\n2. Second achievement\\n3. Third achievement"
+   - Example WRONG: "1.\\nFirst achievement" or "1.\\n\\nFirst achievement" or "1.\\nFirst achievement"
 5. ALWAYS use proper spacing: blank line before sections, blank line after sections
 6. NEVER use symbols - only numbers (1., 2., 3.) or letters (a., b., c.) for lists
 7. NEVER combine paragraphs - each paragraph must be separated by \\n\\n - THIS IS CRITICAL
@@ -886,8 +908,17 @@ ${previousEmailContext ? `\n${previousEmailContext}\n` : ""}
 11. FOR LONGER EMAILS: Maintain consistent structure - greeting, introduction, main sections, conclusion, closing
 12. DO NOT use single \\n anywhere between paragraphs - ONLY use \\n\\n
 
-FORMAT EXAMPLE FOR LONGER EMAILS (copy this structure exactly):
-Dear [Name],\\n\\n[Opening paragraph]\\n\\n[Section Heading 1]\\n\\n[Detailed paragraph about section 1]\\n\\n[Sub-points or details]\\n\\n1. First main point\\na. Detailed explanation\\nb. Additional context\\n2. Second main point\\na. Detailed explanation\\n\\n[Section Heading 2]\\n\\n[Detailed paragraph about section 2]\\n\\n[More content]\\n\\n[Section Heading 3]\\n\\n[Detailed paragraph]\\n\\n[Conclusion paragraph]\\n\\nBest regards,\\n[Name]
+FORMAT EXAMPLE FOR LONGER EMAILS (copy this structure exactly - note numbers and text on same line, NO line break):
+Dear [Name],\\n\\n[Opening paragraph]\\n\\n[Section Heading 1]\\n\\n[Detailed paragraph about section 1]\\n\\n[Sub-points or details]\\n\\n1. First main point\\na. Detailed explanation\\nb. Additional context\\n2. Second main point\\na. Detailed explanation\\n3. Third main point\\n\\n[Section Heading 2]\\n\\n[Detailed paragraph about section 2]\\n\\n[More content]\\n\\n[Section Heading 3]\\n\\n[Detailed paragraph]\\n\\n[Conclusion paragraph]\\n\\nBest regards,\\n[Name]
+
+ABSOLUTELY FORBIDDEN - NEVER DO THIS (WRONG):
+1.\\nText here
+1.\\n\\nText here
+2.\\nMore text
+2.\\n\\nMore text
+
+MANDATORY FORMAT (CORRECT - DO THIS):
+1. Text here\\n2. More text\\n3. Even more text
 
 User request: ${userMessage}`;
       } else {
@@ -897,7 +928,14 @@ User request: ${userMessage}`;
 1. ALWAYS use \\n\\n (double newline) between EVERY paragraph - this is MANDATORY - NEVER use single \\n
 2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS WILL BREAK THE EMAIL IF YOU DON'T
 3. ALWAYS add \\n\\n before lists and \\n\\n after lists
-4. Each list item on its own line
+4. ⚠️⚠️⚠️ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING ⚠️⚠️⚠️:
+   - The number, period, space, and text MUST ALL be on ONE SINGLE LINE
+   - Format: "1. Text content here" - ALL on the same line
+   - NEVER put a line break (\\n) between the number and the text
+   - NEVER put a blank line between the number and the text
+   - Each complete list item (number + text) goes on its own line
+   - Example CORRECT: "1. First achievement\\n2. Second achievement\\n3. Third achievement"
+   - Example WRONG: "1.\\nFirst achievement" or "1.\\n\\nFirst achievement"
 5. NO symbols - use only numbers (1., 2., 3.) or letters (a., b., c.) for lists
 6. Use plain text formatting only
 7. After greeting, use \\n\\n before first paragraph - MANDATORY
@@ -905,8 +943,16 @@ User request: ${userMessage}`;
 9. If a sentence ends with . ! or ? and next starts with capital letter, use \\n\\n between them
 10. DO NOT combine paragraphs - each paragraph MUST be separated by \\n\\n
 
-FORMAT EXAMPLE:
-Dear [Name],\\n\\n[First paragraph]\\n\\n[Second paragraph]\\n\\n1. First item\\n2. Second item\\n\\n[Third paragraph]\\n\\nBest regards,\\n[Name]
+FORMAT EXAMPLE (CORRECT - number and text on same line, NO line break between them):
+Dear [Name],\\n\\n[First paragraph]\\n\\n[Second paragraph]\\n\\n1. First item\\n2. Second item\\n3. Third item\\n\\n[Third paragraph]\\n\\nBest regards,\\n[Name]
+
+ABSOLUTELY FORBIDDEN - NEVER DO THIS (WRONG):
+1.\\nText here
+1.\\n\\nText here
+2.\\nMore text
+
+MANDATORY FORMAT (CORRECT - DO THIS):
+1. Text here\\n2. More text\\n3. Even more text
 
 Summary: ${userMessage}`;
       }
@@ -982,7 +1028,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
             ];
           })();
 
-      let model = "anthropic/claude-3-haiku";
+      let model = "anthropic/claude-3.5-sonnet";
 
       try {
         completion = await openai.chat.completions.create({
@@ -994,7 +1040,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
         });
       } catch (primaryError) {
         console.warn(
-          "Primary model (Claude Haiku) failed, trying GPT-4o-mini:",
+          "Primary model (Claude 3.5 Sonnet) failed, trying GPT-4o-mini:",
           primaryError,
         );
         try {
@@ -1340,6 +1386,22 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
       }
 
       emailData.body = emailData.body.replace(/\n{3,}/g, "\n\n").trim();
+      emailData.body = emailData.body.replace(
+        /^(\d+\.)\s*\n+\s*([^\n\d])/gm,
+        "$1 $2",
+      );
+      emailData.body = emailData.body.replace(
+        /^([a-z]\.)\s*\n+\s*([^\n])/gm,
+        "$1 $2",
+      );
+      emailData.body = emailData.body.replace(
+        /(\n)(\d+\.)\s*\n([^\n\d])/g,
+        "$1$2 $3",
+      );
+      emailData.body = emailData.body.replace(
+        /(\n)([a-z]\.)\s*\n([^\n])/g,
+        "$1$2 $3",
+      );
 
       if (emailData.suggestions && Array.isArray(emailData.suggestions)) {
         emailData.suggestions = emailData.suggestions.map(
