@@ -178,8 +178,6 @@ export async function GET(req: NextRequest) {
     console.error("[CALLBACK] ✗ Initial sync failed:", error);
   }
 
-  // Initial sync is complete - no auto-refetch needed
-  // User can manually sync new emails using the sync button
   console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");
   return NextResponse.redirect(new URL("/mail", process.env.NEXT_PUBLIC_URL));
 }

@@ -1,5 +1,5 @@
 import "@/styles/globals.css";
-import "@/lib/suppress-console-errors"; // Suppress UNAUTHORIZED tRPC console errors
+import "@/lib/suppress-console-errors";
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";

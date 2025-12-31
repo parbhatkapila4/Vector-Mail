@@ -4,12 +4,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Configure Prisma with connection pool settings for Neon
+// Configure Prisma with connection pool settings
 // This prevents "connection closed" errors by properly managing the connection pool
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    // Connection pool is managed via DATABASE_URL connection string parameters:
+    // ?connection_limit=10&pool_timeout=20 (configure in .env if needed)
+    // Default Prisma pool size is 10 connections which should be sufficient with reduced concurrency
   });
 
 /**

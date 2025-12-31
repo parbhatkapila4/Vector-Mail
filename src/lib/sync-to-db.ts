@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 async function processBatch<T>(
   items: T[],
   processor: (item: T) => Promise<void>,
-  concurrency: number = 10,
+  concurrency: number = 5, // Reduced default from 10 to 5 to prevent connection pool exhaustion
 ): Promise<void> {
   const batches: T[][] = [];
   for (let i = 0; i < items.length; i += concurrency) {
@@ -21,22 +21,175 @@ export async function syncEmailsToDatabase(
   emails: EmailMessage[],
   accountId: string,
 ) {
+  if (!emails || emails.length === 0) {
+    console.warn(
+      `[syncEmailsToDatabase] No emails provided for account ${accountId}`,
+    );
+    return;
+  }
+
+  console.log(
+    `[syncEmailsToDatabase] Starting sync for ${emails.length} emails for account ${accountId}`,
+  );
+
+  let successCount = 0;
+  let errorCount = 0;
+
   try {
-    await processBatch(emails, (email) => upsertEmail(email, accountId), 10);
-    console.log("EMAIL SAVE LOOP FINISHED");
+    await processBatch(
+      emails,
+      async (email) => {
+        try {
+          await upsertEmail(email, accountId);
+          successCount++;
+        } catch (error) {
+          errorCount++;
+          console.error(
+            `[syncEmailsToDatabase] Failed to upsert email ${email.id}:`,
+            error,
+          );
+        }
+      },
+      5, // Reduced from 10 to 5 to prevent connection pool exhaustion
+    );
+
+    console.log(
+      `[syncEmailsToDatabase] EMAIL SAVE LOOP FINISHED - Success: ${successCount}, Errors: ${errorCount}`,
+    );
+
+    await recalculateAllThreadStatuses(accountId);
+
+    console.log(
+      `[syncEmailsToDatabase] Sync completed for account ${accountId}`,
+    );
   } catch (error) {
-    console.log("Sync error:", error);
+    console.error(
+      `[syncEmailsToDatabase] Fatal sync error for account ${accountId}:`,
+      error,
+    );
+    throw error;
+  }
+}
+
+async function recalculateAllThreadStatuses(accountId: string) {
+  try {
+    console.log(
+      `[recalculateAllThreadStatuses] Recalculating thread statuses for account ${accountId}...`,
+    );
+
+    const threads = await db.thread.findMany({
+      where: { accountId },
+      select: { id: true },
+    });
+
+    console.log(
+      `[recalculateAllThreadStatuses] Found ${threads.length} threads to recalculate`,
+    );
+
+    for (const thread of threads) {
+      const threadEmails = await db.email.findMany({
+        where: { threadId: thread.id },
+        select: {
+          emailLabel: true,
+          sysLabels: true,
+          sysClassifications: true,
+        },
+      });
+
+      let hasInboxEmail = false;
+      let hasDraftEmail = false;
+      let hasSentEmail = false;
+
+      for (const threadEmail of threadEmails) {
+        if (
+          threadEmail.emailLabel === "draft" ||
+          threadEmail.sysLabels?.includes("draft")
+        ) {
+          hasDraftEmail = true;
+          break;
+        }
+
+        if (
+          threadEmail.emailLabel === "inbox" ||
+          threadEmail.sysLabels?.includes("inbox") ||
+          threadEmail.sysLabels?.includes("spam") ||
+          threadEmail.sysLabels?.includes("junk") ||
+          threadEmail.sysClassifications?.includes("promotions") ||
+          threadEmail.sysClassifications?.includes("social") ||
+          threadEmail.sysClassifications?.includes("updates") ||
+          threadEmail.sysClassifications?.includes("forums")
+        ) {
+          hasInboxEmail = true;
+        }
+
+        if (!hasInboxEmail && threadEmail.emailLabel !== "sent") {
+          hasInboxEmail = true;
+        }
+
+        if (
+          threadEmail.emailLabel === "sent" &&
+          !threadEmail.sysLabels?.includes("inbox") &&
+          !threadEmail.sysLabels?.includes("spam") &&
+          !threadEmail.sysLabels?.includes("junk") &&
+          !threadEmail.sysClassifications?.includes("promotions") &&
+          !threadEmail.sysClassifications?.includes("social") &&
+          !threadEmail.sysClassifications?.includes("updates") &&
+          !threadEmail.sysClassifications?.includes("forums")
+        ) {
+          hasSentEmail = true;
+        }
+      }
+
+      let threadFolderType = "inbox";
+      if (hasDraftEmail) {
+        threadFolderType = "draft";
+      } else if (hasInboxEmail) {
+        threadFolderType = "inbox";
+      } else if (hasSentEmail) {
+        threadFolderType = "sent";
+      }
+
+      await db.thread.update({
+        where: { id: thread.id },
+        data: {
+          draftStatus: threadFolderType === "draft",
+          inboxStatus: threadFolderType === "inbox",
+          sentStatus: threadFolderType === "sent",
+        },
+      });
+    }
+
+    console.log(
+      `[recalculateAllThreadStatuses] Completed recalculating ${threads.length} threads`,
+    );
+  } catch (error) {
+    console.error("[recalculateAllThreadStatuses] Error:", error);
   }
 }
 
 async function upsertEmail(email: EmailMessage, accountId: string) {
-  console.log("SAVING EMAIL:", {
+  if (!email.id || !email.threadId) {
+    console.error(
+      `[upsertEmail] Invalid email data - missing id or threadId:`,
+      {
+        id: email.id,
+        threadId: email.threadId,
+        subject: email.subject,
+      },
+    );
+    return;
+  }
+
+  console.log(`[upsertEmail] SAVING EMAIL:`, {
     id: email.id,
     threadId: email.threadId,
     subject: email.subject,
+    accountId,
   });
+
   try {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
+
     if (email.sysLabels.includes("draft")) {
       emailLabelType = "draft";
     } else if (
@@ -52,6 +205,10 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       emailLabelType = "sent";
     } else {
       emailLabelType = "inbox";
+
+      if (!email.sysLabels.includes("inbox")) {
+        email.sysLabels.push("inbox");
+      }
     }
 
     const embeddingVector = null;
@@ -85,7 +242,10 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
 
     const fromAddress = addressMap.get(email.from.address);
     if (!fromAddress) {
-      console.log(`Failed to upsert from address`);
+      console.error(
+        `[upsertEmail] Failed to upsert from address for email ${email.id}:`,
+        email.from.address,
+      );
       return;
     }
 
@@ -109,9 +269,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         accountId,
         lastMessageDate: new Date(email.sentAt),
         done: false,
-        draftStatus: emailLabelType === "draft",
-        inboxStatus: emailLabelType === "inbox",
-        sentStatus: emailLabelType === "sent",
+
         participantIds: [
           ...new Set([
             fromAddress.id,
@@ -126,6 +284,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         accountId,
         subject: email.subject,
         done: false,
+
         draftStatus: emailLabelType === "draft",
         inboxStatus: emailLabelType === "inbox",
         sentStatus: emailLabelType === "sent",
@@ -225,16 +384,20 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       orderBy: { receivedAt: "asc" },
     });
 
-    let threadFolderType = "inbox";
+    let hasInboxEmail = false;
+    let hasDraftEmail = false;
+    let hasSentEmail = false;
 
     for (const threadEmail of threadEmails) {
       if (
         threadEmail.emailLabel === "draft" ||
         threadEmail.sysLabels?.includes("draft")
       ) {
-        threadFolderType = "draft";
+        hasDraftEmail = true;
         break;
-      } else if (
+      }
+
+      if (
         threadEmail.emailLabel === "inbox" ||
         threadEmail.sysLabels?.includes("inbox") ||
         threadEmail.sysLabels?.includes("spam") ||
@@ -244,8 +407,14 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         threadEmail.sysClassifications?.includes("updates") ||
         threadEmail.sysClassifications?.includes("forums")
       ) {
-        threadFolderType = "inbox";
-      } else if (
+        hasInboxEmail = true;
+      }
+
+      if (!hasInboxEmail && threadEmail.emailLabel !== "sent") {
+        hasInboxEmail = true;
+      }
+
+      if (
         threadEmail.emailLabel === "sent" &&
         !threadEmail.sysLabels?.includes("inbox") &&
         !threadEmail.sysLabels?.includes("spam") &&
@@ -255,10 +424,17 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         !threadEmail.sysClassifications?.includes("updates") &&
         !threadEmail.sysClassifications?.includes("forums")
       ) {
-        threadFolderType = "sent";
-      } else {
-        threadFolderType = "inbox";
+        hasSentEmail = true;
       }
+    }
+
+    let threadFolderType = "inbox";
+    if (hasDraftEmail) {
+      threadFolderType = "draft";
+    } else if (hasInboxEmail) {
+      threadFolderType = "inbox";
+    } else if (hasSentEmail) {
+      threadFolderType = "sent";
     }
 
     await db.thread.update({
@@ -277,8 +453,20 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     for (const attachment of metadataOnlyAttachments) {
       await upsertAttachment(email.id, attachment);
     }
+
+    console.log(
+      `[upsertEmail] Successfully saved email ${email.id} (thread: ${thread.id})`,
+    );
   } catch (error) {
-    console.log("Upsert email failed:", error);
+    console.error(`[upsertEmail] Failed to upsert email ${email.id}:`, error);
+    if (error instanceof Error) {
+      console.error(`[upsertEmail] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        emailId: email.id,
+        threadId: email.threadId,
+      });
+    }
   }
 }
 

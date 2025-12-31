@@ -25,9 +25,7 @@ const handler = async (req: NextRequest) =>
     onError:
       env.NODE_ENV === "development"
         ? ({ path, error }) => {
-            // Suppress UNAUTHORIZED errors - these are expected when user is not logged in
             if (error.code === "UNAUTHORIZED") {
-              // Don't log to console - this is expected behavior
               return;
             }
             console.error(
