@@ -7,10 +7,19 @@ export async function generateEmail(
 ): Promise<{ content: string }> {
   console.log("context", context);
 
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    console.error("OPENROUTER_API_KEY is not configured");
+    throw new Error(
+      "OpenRouter API key is not configured. Please configure OPENROUTER_API_KEY in your environment variables.",
+    );
+  }
+
   try {
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKey: apiKey,
       defaultHeaders: {
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
@@ -73,10 +82,11 @@ export async function generateEmail(
     return { content };
   } catch (error) {
     console.error("Error in generateEmail:", error);
-    return {
-      content:
-        "Error: Failed to generate email. Please check your OpenRouter API key and try again.",
-    };
+    throw new Error(
+      error instanceof Error
+        ? `Failed to generate email: ${error.message}`
+        : "Failed to generate email. Please check your OpenRouter API key and try again.",
+    );
   }
 }
 
@@ -87,10 +97,19 @@ export async function generate(
   console.log("input", input);
   console.log("context", context?.substring(0, 200) + "...");
 
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    console.error("OPENROUTER_API_KEY is not configured");
+    throw new Error(
+      "OpenRouter API key is not configured. Please configure OPENROUTER_API_KEY in your environment variables.",
+    );
+  }
+
   try {
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKey: apiKey,
       defaultHeaders: {
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
@@ -162,9 +181,10 @@ Format the response as a complete email with proper paragraphs. Use \\n\\n betwe
     return { content };
   } catch (error) {
     console.error("Error in generate:", error);
-    return {
-      content:
-        "Error: Failed to generate text. Please check your OpenRouter API key and try again.",
-    };
+    throw new Error(
+      error instanceof Error
+        ? `Failed to generate text: ${error.message}`
+        : "Failed to generate text. Please check your OpenRouter API key and try again.",
+    );
   }
 }

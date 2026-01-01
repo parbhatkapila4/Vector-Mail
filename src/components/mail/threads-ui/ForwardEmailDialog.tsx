@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Forward } from "lucide-react";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
+import { api } from "@/trpc/react";
 
 interface ForwardEmailDialogProps {
   open: boolean;
@@ -37,6 +38,15 @@ export function ForwardEmailDialog({
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [accountId] = useLocalStorage("accountId", "");
+
+  const { data: accounts, isLoading: accountsLoading } =
+    api.account.getAccounts.useQuery();
+
+  const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
+  const validAccountId =
+    accountId && accounts?.some((acc) => acc.id === accountId)
+      ? accountId
+      : firstAccountId;
 
   useEffect(() => {
     if (open) {
@@ -64,8 +74,13 @@ export function ForwardEmailDialog({
       return;
     }
 
-    if (!accountId) {
+    if (!validAccountId) {
       toast.error("Please select an account");
+      return;
+    }
+
+    if (accountsLoading) {
+      toast.error("Please wait while accounts are loading");
       return;
     }
 
@@ -78,17 +93,28 @@ export function ForwardEmailDialog({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          accountId,
+          accountId: validAccountId,
           to: to.split(",").map((email) => email.trim()),
           subject: subject.trim(),
           body: body.trim(),
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (parseError) {
+        console.error("[FORWARD] Error parsing response:", parseError);
+        toast.error("Failed to parse server response. Please try again.");
+        setIsSending(false);
+        return;
+      }
 
       if (!response.ok) {
+        console.error("[FORWARD] Email forward failed:", data);
         toast.error(data.message || data.error || "Failed to forward email");
+        setIsSending(false);
         return;
       }
 
@@ -97,7 +123,9 @@ export function ForwardEmailDialog({
     } catch (error) {
       console.error("Error forwarding email:", error);
       toast.error(
-        error instanceof Error ? error.message : "An unexpected error occurred",
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again.",
       );
     } finally {
       setIsSending(false);

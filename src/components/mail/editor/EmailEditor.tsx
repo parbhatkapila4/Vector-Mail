@@ -136,7 +136,11 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       }
     } catch (error) {
       console.error("AI generation failed:", error);
-      toast.error("AI generation failed. Try again.");
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "AI generation failed. Try again.";
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -316,7 +320,27 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
               navigator.platform.toLowerCase().includes("mac")
                 ? "Cmd + J"
                 : "Alt + J"}
-            </kbd>{" "}
+            </kbd>
+            {typeof navigator !== "undefined" &&
+            navigator.platform.toLowerCase().includes("mac") ? (
+              <>
+                {" "}
+                (Windows:{" "}
+                <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
+                  Alt + J
+                </kbd>
+                )
+              </>
+            ) : (
+              <>
+                {" "}
+                (Mac:{" "}
+                <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
+                  Cmd + J
+                </kbd>
+                )
+              </>
+            )}{" "}
             for AI autocomplete
           </span>
           {isGenerating && (

@@ -261,9 +261,11 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       }
     } catch (error) {
       console.error("Error generating email:", error);
-      toast.error(
-        "Failed to generate email. Please check your API key and try again.",
-      );
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to generate email. Please check your API key and try again.";
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
       setIsRegenerating(false);
@@ -278,6 +280,13 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
     hasGenerated,
     originalUserText,
   ]);
+
+  useEffect(() => {
+    if (!open) {
+      setIsGenerating(false);
+      setIsRegenerating(false);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -615,7 +624,8 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               <Label htmlFor="body">Body</Label>
               <span className="text-xs text-muted-foreground">
                 Press{" "}
-                {navigator.platform.toUpperCase().indexOf("MAC") >= 0
+                {typeof navigator !== "undefined" &&
+                navigator.platform.toUpperCase().indexOf("MAC") >= 0
                   ? "Cmd+J"
                   : "Alt+J"}{" "}
                 to auto-generate
@@ -685,7 +695,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 }}
                 data-placeholder="Email body (HTML supported). Press Alt+J (Windows) or Cmd+J (Mac) to auto-generate based on subject and your text."
               />
-              {!body && (
+              {!body && !isGenerating && (
                 <div
                   className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground"
                   style={{ whiteSpace: "pre-wrap" }}
@@ -694,18 +704,36 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   (Mac) to auto-generate based on subject and your text.
                 </div>
               )}
+              {isGenerating && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md border border-input bg-background/80 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-5 w-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-600"></div>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground">
+                        {isRegenerating
+                          ? "Generating a new version..."
+                          : "AI is crafting your email..."}
+                      </p>
+                      <div className="mt-1.5 flex items-center justify-center gap-1">
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.3s]"></span>
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.15s]"></span>
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            {isGenerating && (
-              <p className="text-sm text-muted-foreground">
-                {isRegenerating
-                  ? "Generating a different, improved version..."
-                  : "AI is generating your email..."}
-              </p>
-            )}
             {hasGenerated && !isGenerating && (
               <p className="text-xs text-muted-foreground">
                 💡 Press{" "}
-                {navigator.platform.toUpperCase().indexOf("MAC") >= 0
+                {typeof navigator !== "undefined" &&
+                navigator.platform.toUpperCase().indexOf("MAC") >= 0
                   ? "Cmd+J"
                   : "Alt+J"}{" "}
                 again to generate a different version
@@ -1143,7 +1171,11 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setIsGenerating(false);
+                setIsRegenerating(false);
+                setOpen(false);
+              }}
               disabled={isSending}
             >
               Cancel
