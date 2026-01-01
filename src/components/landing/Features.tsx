@@ -6,7 +6,7 @@ import { Play, Pause, Maximize2, Volume2, VolumeX } from "lucide-react";
 
 export function Features() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -81,7 +81,7 @@ export function Features() {
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
-                src="/Vector-Mail-1762579701087.mp4"
+                src="/Vector-Mail-Demo.mp4"
                 muted={isMuted}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={() => setIsPlaying(false)}
@@ -162,10 +162,10 @@ export function Features() {
 
         <div className="mx-auto mt-16 grid max-w-3xl grid-cols-2 gap-6 md:grid-cols-4">
           {[
-            { time: "0:15", label: "AI Search Demo" },
-            { time: "0:45", label: "Smart Summaries" },
-            { time: "1:20", label: "Quick Reply" },
-            { time: "1:50", label: "Full Walkthrough" },
+            { time: "0:30", label: "How Emails Are Fetched" },
+            { time: "1:00", label: "AI Compose, Reply & Search" },
+            { time: "3:20", label: "AI Buddy" },
+            { time: "4:00", label: "How AI Assistant Works" },
           ].map((chapter, i) => (
             <button
               key={i}
