@@ -81,8 +81,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const handleRefresh = useCallback(() => {
     if (accountId) {
-      console.log("[ThreadList] Sync button clicked - forcing full sync");
-      syncEmailsMutation.mutate({ accountId, forceFullSync: true });
+      console.log("[ThreadList] Sync button clicked - fetching latest emails");
+      syncEmailsMutation.mutate({ accountId, forceFullSync: false });
     } else {
       void refetch();
     }

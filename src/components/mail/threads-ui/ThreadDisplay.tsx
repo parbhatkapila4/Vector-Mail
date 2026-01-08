@@ -6,10 +6,12 @@ import useThreads from "@/hooks/use-threads";
 import { useAtom } from "jotai";
 import { isSearchingAtom } from "../search/SearchBar";
 import ReplyBox from "./ReplyBox";
-import { Mail, Forward } from "lucide-react";
+import { Mail, Forward, Reply, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { ForwardEmailDialog } from "./ForwardEmailDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
 
 type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -25,6 +27,8 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
   const _thread = threads?.find((t: Thread) => t.id === threadId);
   const [isSearching] = useAtom(isSearchingAtom);
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const { data: foundThread } = api.account.getThreadById.useQuery(
     { threadId: threadId ?? "" },
@@ -89,7 +93,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
       <div className="flex h-full flex-col bg-[#ffffff] dark:bg-[#111111]">
         {/* Email Header */}
         <div className="border-b border-[#e0e0e0] bg-[#ffffff] dark:border-[#1f1f1f] dark:bg-[#111111]">
-          <div className="flex items-center justify-end px-6 py-3">
+          <div className="hidden items-center justify-end px-4 py-3 md:flex md:px-6">
             <button
               onClick={() => setForwardDialogOpen(true)}
               className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
@@ -99,8 +103,8 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
             </button>
           </div>
 
-          <div className="px-6 pb-6">
-            <h1 className="mb-6 text-[22px] font-semibold leading-tight tracking-tight text-[#1a1a1a] dark:text-[#ffffff]">
+          <div className="px-4 pb-6 pt-4 md:px-6 md:pt-0">
+            <h1 className="mb-6 text-[18px] font-semibold leading-tight tracking-tight text-[#1a1a1a] dark:text-[#ffffff] md:text-[22px]">
               {firstEmail?.subject || "(No subject)"}
             </h1>
 
@@ -144,8 +148,8 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scroll-smooth">
-          <div className="px-6 py-8">
+        <div className="flex-1 overflow-y-auto scroll-smooth pb-20 md:pb-0">
+          <div className="px-6 py-8 md:px-6 md:py-8">
             {thread.emails.length > 1 && (
               <div className="mb-8 flex items-center gap-4">
                 <div className="h-px flex-1 bg-[#e0e0e0] dark:bg-[#1f1f1f]" />
@@ -198,7 +202,56 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           </div>
         </div>
 
-        <ReplyBox />
+        <div className="hidden md:block">
+          <ReplyBox />
+        </div>
+
+        {isMobile && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2 border-t border-white/[0.06] bg-[#0A0A0A] px-4 py-3 shadow-2xl shadow-black/50 md:hidden">
+            <Button
+              onClick={() => setReplyDialogOpen(true)}
+              className="flex-1 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:from-orange-700 hover:via-amber-700 hover:to-yellow-600"
+            >
+              <Reply className="mr-2 h-4 w-4" />
+              Reply
+            </Button>
+            <Button
+              onClick={() => setForwardDialogOpen(true)}
+              variant="outline"
+              className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10"
+            >
+              <Forward className="mr-2 h-4 w-4" />
+              Forward
+            </Button>
+          </div>
+        )}
+
+        {isMobile && replyDialogOpen && (
+          <div className="fixed inset-0 z-[60] flex flex-col bg-[#0A0A0A] md:hidden">
+            <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                  <Reply className="h-4 w-4 text-amber-500" />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Reply</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyDialogOpen(false)}
+                className="h-8 w-8 rounded-lg p-0 text-white hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-hidden pb-0">
+              <ReplyBox
+                onSendSuccess={() => setReplyDialogOpen(false)}
+                isInMobileDialog={true}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

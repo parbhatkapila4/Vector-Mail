@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { generateEmail } from "./editor/actions";
+import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 
 export default function ComposeEmailGmail() {
   const [open, setOpen] = useState(false);
@@ -492,7 +493,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         });
 
         try {
-          response = await fetch("/api/email/send", {
+          response = await fetchWithAuthRetry("/api/email/send", {
             method: "POST",
             body: formData,
           });
@@ -506,7 +507,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         }
       } else {
         try {
-          response = await fetch("/api/email/send", {
+          response = await fetchWithAuthRetry("/api/email/send", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

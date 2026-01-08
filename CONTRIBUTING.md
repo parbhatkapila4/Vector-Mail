@@ -229,9 +229,7 @@ When adding new features:
 ## 🤔 Questions?
 
 - Check existing [Issues](https://github.com/parbhatkapila4/Vector-Mail/issues)
-- Read the [Documentation](docs/)
-- Ask in [Discussions](https://github.com/parbhatkapila4/Vector-Mail/discussions)
-- Email us at [help@productionsolution.net](mailto:help@productionsolution.net)
+- Email us at [parbhat@parbhat.dev](mailto:parbhat@parbhat.dev)
 
 ## 📜 Code of Conduct
 
@@ -269,4 +267,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-**Thank you for making VectorMail better! 🚀**
+**Thank you for making VectorMail better!**

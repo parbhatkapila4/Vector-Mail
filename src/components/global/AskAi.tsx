@@ -7,6 +7,7 @@ import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
+import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 
 interface ChatMessage {
   id: string;
@@ -118,7 +119,7 @@ export default function EmailSearchAssistant({
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
       try {
-        const response = await fetch("/api/chat", {
+        const response = await fetchWithAuthRetry("/api/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

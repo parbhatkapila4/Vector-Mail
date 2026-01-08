@@ -15,6 +15,7 @@ import { Forward } from "lucide-react";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
+import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 
 interface ForwardEmailDialogProps {
   open: boolean;
@@ -87,7 +88,7 @@ export function ForwardEmailDialog({
     setIsSending(true);
 
     try {
-      const response = await fetch("/api/email/send", {
+      const response = await fetchWithAuthRetry("/api/email/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

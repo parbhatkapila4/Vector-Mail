@@ -16,7 +16,7 @@ const EmailDisplay = ({ email }: Props) => {
   const { account, accountId } = useThreads();
   const letterRef = React.useRef<HTMLDivElement>(null);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  
+
   const getInitialBody = (): string | null => {
     if ("body" in email && email.body) {
       return email.body;
@@ -46,10 +46,10 @@ const EmailDisplay = ({ email }: Props) => {
     {
       enabled: Boolean(
         accountId &&
-        accountId.length > 0 &&
-        email.id &&
-        email.id.length > 0 &&
-        needsFullBody,
+          accountId.length > 0 &&
+          email.id &&
+          email.id.length > 0 &&
+          needsFullBody,
       ),
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -58,7 +58,6 @@ const EmailDisplay = ({ email }: Props) => {
     },
   );
 
-  
   React.useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -67,7 +66,6 @@ const EmailDisplay = ({ email }: Props) => {
     };
   }, []);
 
-  
   React.useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -76,16 +74,16 @@ const EmailDisplay = ({ email }: Props) => {
 
     const queryEnabled = Boolean(
       accountId &&
-      accountId.length > 0 &&
-      email.id &&
-      email.id.length > 0 &&
-      needsFullBody,
+        accountId.length > 0 &&
+        email.id &&
+        email.id.length > 0 &&
+        needsFullBody,
     );
 
     if (isLoadingQuery && queryEnabled) {
       setIsLoadingBody(true);
       setLoadError(false);
-      
+
       timeoutRef.current = setTimeout(() => {
         console.warn("Email body loading timeout for email:", email.id);
         setIsLoadingBody(false);
@@ -96,7 +94,7 @@ const EmailDisplay = ({ email }: Props) => {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-      
+
       if (isError) {
         setIsLoadingBody(false);
         setLoadError(true);
@@ -113,7 +111,15 @@ const EmailDisplay = ({ email }: Props) => {
         timeoutRef.current = null;
       }
     }
-  }, [isLoadingQuery, isFetching, isError, fullBodyData, needsFullBody, accountId, email.id]);
+  }, [
+    isLoadingQuery,
+    isFetching,
+    isError,
+    fullBodyData,
+    needsFullBody,
+    accountId,
+    email.id,
+  ]);
 
   React.useEffect(() => {
     if (fullBodyData?.body) {
@@ -179,7 +185,7 @@ const EmailDisplay = ({ email }: Props) => {
   }, [emailBody]);
 
   const isMe = account?.emailAddress === email.from.address;
-  
+
   const rawBody = emailBody || email.bodySnippet || email.body || "";
   const hasContent = rawBody && rawBody.trim().length > 0;
 
@@ -194,7 +200,7 @@ const EmailDisplay = ({ email }: Props) => {
     : rawBody;
 
   const showLoading = isLoadingBody && !hasContent;
-  
+
   const showError = (loadError || isError) && !hasContent && !isLoadingBody;
 
   return (
@@ -221,7 +227,7 @@ const EmailDisplay = ({ email }: Props) => {
             {isMe ? "Me" : email.from.address}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="hidden text-xs text-muted-foreground md:block">
           {formatDistanceToNow(email.sentAt ?? new Date(), {
             addSuffix: true,
           })}
@@ -250,16 +256,14 @@ const EmailDisplay = ({ email }: Props) => {
                 <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
                   Preview
                 </div>
-                <div className="text-sm text-gray-700">
-                  {email.bodySnippet}
-                </div>
+                <div className="text-sm text-gray-700">{email.bodySnippet}</div>
               </div>
             )}
           </div>
         </div>
       ) : hasContent ? (
         <div
-          className="min-h-[500px] overflow-y-auto rounded-md bg-white"
+          className="min-h-[500px] overflow-y-auto rounded-md bg-white md:min-h-[500px]"
           ref={letterRef}
         >
           <div
@@ -330,6 +334,58 @@ const EmailDisplay = ({ email }: Props) => {
                 /* Preserve email spacing and layout */
                 .email-body-wrapper * {
                   box-sizing: border-box;
+                }
+                
+                /* Mobile-specific fixes for email pop-ups and overlays */
+                @media (max-width: 768px) {
+                  /* Fix fixed/absolute positioned elements that cover content */
+                  .email-body-wrapper [style*="position: fixed"],
+                  .email-body-wrapper [style*="position:fixed"],
+                  .email-body-wrapper [style*="position: absolute"],
+                  .email-body-wrapper [style*="position:absolute"] {
+                    position: relative !important;
+                    top: auto !important;
+                    left: auto !important;
+                    right: auto !important;
+                    bottom: auto !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    transform: none !important;
+                  }
+                  
+                  /* Fix pop-ups and modals in emails */
+                  .email-body-wrapper div[style*="z-index"],
+                  .email-body-wrapper div[style*="zIndex"] {
+                    position: relative !important;
+                    z-index: 1 !important;
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    margin: 0 auto !important;
+                    left: auto !important;
+                    right: auto !important;
+                    top: auto !important;
+                    bottom: auto !important;
+                  }
+                  
+                  /* Ensure all containers fit mobile screen */
+                  .email-body-wrapper > div,
+                  .email-body-wrapper > table {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    overflow-x: auto !important;
+                  }
+                  
+                  /* Fix any elements with fixed positioning */
+                  .email-body-wrapper *[style*="fixed"] {
+                    position: relative !important;
+                  }
+                  
+                  /* Make sure pop-ups don't overflow */
+                  .email-body-wrapper div {
+                    max-width: 100% !important;
+                    overflow-x: auto !important;
+                  }
                 }
               `,
             }}

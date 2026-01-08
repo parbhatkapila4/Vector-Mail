@@ -17,6 +17,7 @@ import { useLocalStorage } from "usehooks-ts";
 import AIComposeButton from "./AiComposeButton";
 import { toast } from "sonner";
 import useThreads from "@/hooks/use-threads";
+import { Sparkles } from "lucide-react";
 
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
@@ -73,6 +74,26 @@ const EmailEditor = ({
   const { threads: rawThreads, threadId, account } = useThreads();
   const threads = rawThreads as Thread[] | undefined;
 
+  const handleGenerateClick = () => {
+    if (isGenerating) {
+      toast.info("AI is generating, wait...", {
+        id: "ai-generating",
+        duration: 2000,
+      });
+      return;
+    }
+
+    const currentText = editor?.getText() || "";
+    if (currentText.trim()) {
+      aiGenerate(currentText);
+    } else {
+      toast.info("Write some text first, then generate", {
+        id: "write-text-first",
+        duration: 3000,
+      });
+    }
+  };
+
   const aiGenerate = async (prompt: string) => {
     if (isGenerating) return;
 
@@ -90,7 +111,7 @@ const EmailEditor = ({
           const emailBody =
             latestEmail.bodySnippet ||
             ("body" in latestEmail && latestEmail.body
-              ? latestEmail.body
+              ? latestEmail.body.substring(0, 1000)
               : "") ||
             "";
           context = `EMAIL THREAD CONTEXT FOR REPLY GENERATION:
@@ -98,49 +119,69 @@ const EmailEditor = ({
 ORIGINAL EMAIL DETAILS:
 Subject: ${latestEmail.subject}
 From: ${latestEmail.from.address}
-Date: ${latestEmail.sentAt.toLocaleDateString()}
 
 ORIGINAL EMAIL BODY:
 ${emailBody}
 
 REPLY CONTEXT:
 User's Name: ${account?.name || "User"}
-User's Email: ${account?.emailAddress || ""}
 
 INSTRUCTIONS:
 You are helping compose a reply to the above email. The user has started typing: "${prompt}"
 
-Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines.`;
+Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines. Keep it concise.`;
         }
       } else {
         context = `EMAIL COMPOSITION CONTEXT:
 
 User's Name: ${account?.name || "User"}
-User's Email: ${account?.emailAddress || ""}
 
 INSTRUCTIONS:
 You are helping compose a new email. The user has started typing: "${prompt}"
 
-Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines.`;
+Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines. Keep it concise.`;
       }
 
-      toast.info("AI is thinking...", { duration: 2000 });
+      toast.info("AI is thinking...", {
+        id: "ai-thinking",
+        duration: 5000,
+      });
+
+      const timeoutWarning = setTimeout(() => {
+        if (isGenerating) {
+          toast.warning("AI is taking longer than expected. Please wait...", {
+            id: "ai-timeout-warning",
+            duration: 3000,
+          });
+        }
+      }, 15000);
 
       const result = await generate(prompt, context);
+      clearTimeout(timeoutWarning);
+
       const fullGeneration = result.content || "";
 
       if (fullGeneration.trim()) {
         completeContentRef.current = fullGeneration;
         setDisplayContent(fullGeneration);
-        toast.success("AI suggestion ready!", { duration: 2000 });
+        toast.success("AI suggestion ready!", {
+          id: "ai-ready",
+          duration: 2000,
+        });
+      } else {
+        toast.error("AI generated empty response. Please try again.");
       }
     } catch (error) {
       console.error("AI generation failed:", error);
       const errorMessage =
         error instanceof Error
-          ? error.message
+          ? error.message.includes("timeout")
+            ? "Generation timed out. Please try again with a shorter prompt."
+            : error.message
           : "AI generation failed. Try again.";
-      toast.error(errorMessage);
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -151,7 +192,10 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       return {
         "Meta-j": () => {
           if (isGenerating) {
-            toast.info("AI is generating, wait...");
+            toast.info("AI is generating, wait...", {
+              id: "ai-generating",
+              duration: 2000,
+            });
             return true;
           }
 
@@ -159,13 +203,19 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
           if (currentText.trim()) {
             aiGenerate(currentText);
           } else {
-            toast.info("Write some text first, then press Alt+J");
+            toast.info("Write some text first, then press Alt+J", {
+              id: "write-text-first",
+              duration: 3000,
+            });
           }
           return true;
         },
         "Alt-j": () => {
           if (isGenerating) {
-            toast.info("AI is generating, wait...");
+            toast.info("AI is generating, wait...", {
+              id: "ai-generating",
+              duration: 2000,
+            });
             return true;
           }
 
@@ -173,7 +223,10 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
           if (currentText.trim()) {
             aiGenerate(currentText);
           } else {
-            toast.info("Write some text first, then press Alt+J");
+            toast.info("Write some text first, then press Alt+J", {
+              id: "write-text-first",
+              duration: 3000,
+            });
           }
           return true;
         },
@@ -188,9 +241,23 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
     editorProps: {
       attributes: {
         placeholder: "Write your email here...",
+        class: "prose prose-sm focus:outline-none min-h-full",
+      },
+      handleDOMEvents: {
+        mousedown: (view) => {
+          view.focus();
+          return false;
+        },
       },
     },
     onUpdate: () => {},
+    onCreate: ({ editor }) => {
+      if (editor && !editor.isDestroyed) {
+        editor.setOptions({
+          autofocus: false,
+        });
+      }
+    },
   });
 
   React.useEffect(() => {
@@ -233,11 +300,11 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex border-b p-4 py-2">
+      <div className="flex border-b p-2 md:p-4 md:py-2">
         {editor && <TipTapMenuBar editor={editor} />}
       </div>
 
-      <div ref={ref} className="space-y-2 p-4 pb-0">
+      <div ref={ref} className="flex-shrink-0 space-y-2 p-3 pb-0 md:p-4">
         {expanded && (
           <>
             <TagInput
@@ -285,16 +352,21 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
         </div>
       </div>
 
-      <div className="w-full flex-1 px-4 py-4">
+      <div className="min-h-0 w-full flex-1 overflow-y-auto px-3 py-2 md:px-4 md:py-4">
         <div
-          className={`relative h-full min-h-[300px] w-full rounded-lg border p-4 transition-all duration-200 ${
+          className={`relative h-full w-full rounded-lg border p-3 transition-all duration-200 md:min-h-[300px] md:p-4 ${
             isGenerating
               ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-200"
               : "border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"
           }`}
+          onClick={() => {
+            if (editor && !editor.isDestroyed) {
+              editor.commands.focus();
+            }
+          }}
         >
           <EditorContent
-            className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none"
+            className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:cursor-text [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none [&_.ProseMirror]:focus:outline-none"
             editor={editor}
             placeholder={
               isGenerating
@@ -311,8 +383,8 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
         </div>
       </div>
       <Separator />
-      <div className="sticky bottom-0 z-10 flex items-center justify-between bg-background/50 px-4 py-3 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-shrink-0 flex-col gap-3 bg-background/50 px-3 py-3 backdrop-blur-sm md:flex-row md:items-center md:justify-between md:px-4">
+        <div className="hidden items-center gap-4 md:flex">
           <span className="text-sm text-muted-foreground">
             Press{" "}
             <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
@@ -350,6 +422,30 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             </div>
           )}
         </div>
+
+        <div className="flex items-center gap-3 md:hidden">
+          <Button
+            onClick={handleGenerateClick}
+            disabled={isGenerating || isSending}
+            variant="outline"
+            className="h-11 flex-1 border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:from-orange-700 hover:via-amber-700 hover:to-yellow-600 disabled:opacity-50"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {isGenerating ? "Generating..." : "Generate"}
+          </Button>
+          <Button
+            onClick={async () => {
+              const content = editor?.getHTML() || "";
+              await handleSend(content);
+              editor?.commands.clearContent();
+            }}
+            disabled={isSending}
+            className="h-11 flex-1 bg-white text-black hover:bg-gray-100"
+          >
+            {isSending ? "Sending..." : "Send"}
+          </Button>
+        </div>
+
         <Button
           onClick={async () => {
             const content = editor?.getHTML() || "";
@@ -357,7 +453,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             editor?.commands.clearContent();
           }}
           disabled={isSending}
-          className="ml-4"
+          className="hidden md:ml-4 md:inline-flex"
         >
           {isSending ? "Sending..." : "Send"}
         </Button>

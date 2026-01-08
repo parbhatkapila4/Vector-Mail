@@ -42,6 +42,7 @@ interface MailLayoutProps {
 export function Mail({}: MailLayoutProps) {
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
   const isMobile = useIsMobile();
   const router = useRouter();
@@ -95,7 +96,7 @@ export function Mail({}: MailLayoutProps) {
       <TooltipProvider delayDuration={0}>
         <div className="flex h-full w-full flex-col bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
           <div className="flex items-center justify-between border-b border-neutral-200/80 bg-white/60 px-4 py-3 backdrop-blur-xl dark:border-neutral-800/50 dark:bg-black/60">
-            <Sheet>
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Menu className="h-5 w-5" />
@@ -110,6 +111,10 @@ export function Mail({}: MailLayoutProps) {
                   tab={tab}
                   setTab={setTab}
                   router={router}
+                  onBackToInbox={() => {
+                    handleThreadClose();
+                    setSheetOpen(false);
+                  }}
                 />
               </SheetContent>
             </Sheet>
@@ -131,19 +136,6 @@ export function Mail({}: MailLayoutProps) {
             </div>
           ) : (
             <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
-              <div className="flex items-center gap-3 border-b border-neutral-200/80 bg-white/60 px-4 py-3 backdrop-blur-xl dark:border-neutral-800/50 dark:bg-black/60">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleThreadClose}
-                  className="h-9 w-9"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  Back to {tab}
-                </span>
-              </div>
               <ThreadDisplay threadId={selectedThread} />
             </div>
           )}
@@ -322,6 +314,7 @@ function MobileSidebar({
   tab,
   setTab,
   router,
+  onBackToInbox,
 }: {
   navItems: Array<{
     id: string;
@@ -332,6 +325,7 @@ function MobileSidebar({
   tab: string;
   setTab: (tab: string) => void;
   router: ReturnType<typeof useRouter>;
+  onBackToInbox?: () => void;
 }) {
   return (
     <div className="flex h-full flex-col bg-white dark:bg-black">
@@ -360,7 +354,23 @@ function MobileSidebar({
       </Link>
 
       <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
-        <AccountSwitcher isCollapsed={false} />
+        <div className="md:hidden">
+          <Button
+            onClick={() => {
+              onBackToInbox?.();
+              setTab("inbox");
+            }}
+            variant="ghost"
+            className="w-full justify-start gap-3 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-[14px] font-semibold">Back to Inbox</span>
+          </Button>
+        </div>
+
+        <div className="hidden md:block">
+          <AccountSwitcher isCollapsed={false} />
+        </div>
       </div>
 
       <div className="flex-1 space-y-1 p-3">

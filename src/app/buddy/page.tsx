@@ -20,6 +20,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
+import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth, UserButton } from "@clerk/nextjs";
@@ -177,7 +178,7 @@ function BuddyPageContent() {
       setIsLoading(true);
 
       try {
-        const response = await fetch("/api/buddy", {
+        const response = await fetchWithAuthRetry("/api/buddy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

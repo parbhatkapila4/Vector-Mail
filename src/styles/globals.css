@@ -138,9 +138,11 @@
 
   [data-sonner-toast],
   [data-sonner-toast] *,
+  [data-sonner-toaster],
   .toast-black-text,
   .toast-black-text * {
     color: #000000 !important;
+    z-index: 99999 !important;
   }
 
   [data-sonner-toast] [data-title],
@@ -150,6 +152,21 @@
 
   [data-sonner-toast] svg {
     color: #000000 !important;
+  }
+
+
+  [data-sonner-toaster] {
+    z-index: 99999 !important;
+    position: fixed !important;
+  }
+
+
+  [data-sonner-toast] {
+    z-index: 99999 !important;
+    position: relative !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
   }
 
 

@@ -4,12 +4,15 @@ import { db, withDbRetry } from "@/server/db";
 import { emailAddressSchema } from "@/types";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
+import axios from "axios";
 
 interface AccountAccess {
   id: string;
   emailAddress: string;
   name: string;
   token: string;
+  nextDeltaToken: string | null;
 }
 
 export const authoriseAccountAccess = async (
@@ -26,6 +29,7 @@ export const authoriseAccountAccess = async (
       emailAddress: true,
       name: true,
       token: true,
+      nextDeltaToken: true,
     },
   });
 
@@ -311,21 +315,193 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!input.accountId || input.accountId.trim().length === 0) {
-        throw new Error("Account ID is required");
+      if (!ctx.auth.userId) {
+        console.error("[syncEmails mutation] User not authenticated");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "You must be logged in to sync emails",
+        });
       }
-      const account = await authoriseAccountAccess(
-        input.accountId,
-        ctx.auth.userId,
-      );
+
+      if (!input.accountId || input.accountId.trim().length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Account ID is required",
+        });
+      }
+
+      let account: AccountAccess;
+      try {
+        account = await authoriseAccountAccess(
+          input.accountId,
+          ctx.auth.userId,
+        );
+      } catch (error) {
+        console.error(
+          "[syncEmails mutation] Account authorization failed:",
+          error,
+        );
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Account not found or you don't have access to it",
+        });
+      }
+
+      if (!account.token || account.token.trim().length === 0) {
+        console.error(
+          `[syncEmails mutation] Account ${account.id} has no token, cannot sync.`,
+        );
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Account token is missing. Please reconnect your account.",
+        });
+      }
+
       const emailAccount = new Account(account.id, account.token);
 
       try {
-        const shouldForceFullSync = input.forceFullSync ?? true;
+        const shouldForceFullSync = input.forceFullSync ?? false;
         console.log(
           `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}`,
         );
-        await emailAccount.syncEmails(shouldForceFullSync);
+
+        if (!shouldForceFullSync && account.nextDeltaToken) {
+          console.log(
+            `[syncEmails mutation] Attempting lightweight sync using delta token...`,
+          );
+          try {
+            console.log(
+              `[syncEmails mutation] Calling syncLatestEmails for account ${account.id}...`,
+            );
+            const latestSyncResult = await emailAccount.syncLatestEmails();
+
+            console.log(
+              `[syncEmails mutation] syncLatestEmails returned:`,
+              JSON.stringify(latestSyncResult, null, 2),
+            );
+
+            if (latestSyncResult.authError) {
+              console.error(
+                `[syncEmails mutation] Authentication error during lightweight sync - account needs reconnection`,
+              );
+              console.error(
+                `[syncEmails mutation] Auth error details: success=${latestSyncResult.success}, count=${latestSyncResult.count}, authError=${latestSyncResult.authError}`,
+              );
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "Authentication failed. Please reconnect your account to continue syncing emails.",
+              });
+            }
+
+            if (latestSyncResult.success && latestSyncResult.count > 0) {
+              console.log(
+                `[syncEmails mutation] Lightweight sync successful - synced ${latestSyncResult.count} new emails`,
+              );
+
+              const threadCount = await ctx.db.thread.count({
+                where: {
+                  accountId: account.id,
+                  inboxStatus: true,
+                },
+              });
+
+              return {
+                success: true,
+                message: `Synced ${latestSyncResult.count} new emails`,
+                threadCount,
+              };
+            } else if (
+              latestSyncResult.success &&
+              latestSyncResult.count === 0
+            ) {
+              console.log(
+                `[syncEmails mutation] Lightweight sync completed but no new emails found`,
+              );
+
+              const threadCount = await ctx.db.thread.count({
+                where: {
+                  accountId: account.id,
+                  inboxStatus: true,
+                },
+              });
+
+              return {
+                success: true,
+                message: "No new emails to sync",
+                threadCount,
+              };
+            } else {
+              console.log(
+                `[syncEmails mutation] Lightweight sync failed (success: false), falling back to full sync...`,
+              );
+            }
+          } catch (lightweightError) {
+            if (lightweightError instanceof TRPCError) {
+              throw lightweightError;
+            }
+
+            const errorMessage =
+              lightweightError instanceof Error
+                ? lightweightError.message
+                : String(lightweightError);
+
+            console.error(
+              `[syncEmails mutation] Lightweight sync threw an error: ${errorMessage}`,
+            );
+
+            if (
+              errorMessage.includes("Authentication failed") ||
+              errorMessage.includes("Invalid token") ||
+              errorMessage.includes("401") ||
+              errorMessage.includes("UNAUTHORIZED") ||
+              (axios.isAxiosError(lightweightError) &&
+                lightweightError.response?.status === 401)
+            ) {
+              console.error(
+                `[syncEmails mutation] Authentication/token error during lightweight sync - account needs reconnection`,
+              );
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "Authentication failed. Please reconnect your account to continue syncing emails.",
+              });
+            }
+
+            console.log(
+              `[syncEmails mutation] Lightweight sync error (non-auth), falling back to full sync: ${errorMessage}`,
+            );
+          }
+        }
+
+        try {
+          await emailAccount.syncEmails(
+            shouldForceFullSync || !account.nextDeltaToken,
+          );
+        } catch (syncError) {
+          const syncErrorMessage =
+            syncError instanceof Error ? syncError.message : String(syncError);
+
+          console.error(
+            "[syncEmails mutation] Full sync failed:",
+            syncErrorMessage,
+          );
+
+          if (
+            syncErrorMessage.includes("Authentication failed") ||
+            syncErrorMessage.includes("401") ||
+            (axios.isAxiosError(syncError) &&
+              syncError.response?.status === 401)
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Authentication failed. Please reconnect your account to continue syncing emails.",
+            });
+          }
+
+          throw syncError;
+        }
 
         const threadCount = await ctx.db.thread.count({
           where: {
@@ -345,9 +521,31 @@ export const accountRouter = createTRPCRouter({
         };
       } catch (error) {
         console.error("[syncEmails mutation] Email sync failed:", error);
+
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to sync emails: ${errorMessage}`);
+
+        const isAuthError =
+          errorMessage.includes("Authentication failed") ||
+          errorMessage.includes("401") ||
+          (axios.isAxiosError(error) && error.response?.status === 401);
+
+        if (isAuthError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Authentication failed. Please reconnect your account to continue syncing emails.",
+          });
+        }
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to sync emails: ${errorMessage}`,
+        });
       }
     }),
 

@@ -110,6 +110,7 @@ export async function generate(
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: apiKey,
+      timeout: 30000,
       defaultHeaders: {
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
@@ -117,74 +118,144 @@ export async function generate(
       },
     });
 
-    const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
+    const limitedContext = context
+      ? context.length > 1500
+        ? context.substring(0, 1500) + "...[truncated]"
+        : context
+      : "";
 
-                    EMAIL CONTEXT:
-                    ${
-                      context
-                        ? `CONVERSATION HISTORY:
-                    ${context}
-                    
-                    `
-                        : ""
-                    }CURRENT DRAFT: "${input}"
+    const systemPrompt = `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
 
-                    YOUR CAPABILITIES:
-                    1. **Smart Completion**: Complete the current sentence or paragraph naturally
-                    2. **Tone Matching**: Match the existing tone (formal, casual, friendly, professional)
-                    3. **Context Awareness**: Use conversation history to provide relevant completions
-                    4. **Grammar Enhancement**: Fix grammar issues while maintaining the user's voice
-                    5. **Professional Polish**: Improve clarity and professionalism when appropriate
+EMAIL CONTEXT:
+${
+  limitedContext
+    ? `CONVERSATION HISTORY:
+${limitedContext}
 
-                    COMPLETION RULES:
-                    - Complete the current thought naturally and coherently
-                    - Maintain the same tone and style as the existing text
-                    - Generate a complete, well-structured EMAIL BODY ONLY
-                    - Use proper grammar, punctuation, and email conventions
-                    - Sound professional and appropriate for email communication
-                    - Include appropriate greetings and closings for a complete email body
-                    - Create a full, coherent response that flows naturally
-                    - Use the conversation context to provide relevant content
-                    - NEVER include subject lines, headers, or metadata
+`
+    : ""
+}CURRENT DRAFT: "${input}"
 
-                    CRITICAL: ONLY GENERATE EMAIL BODY CONTENT - NO SUBJECT LINES, NO HEADERS, NO METADATA
+COMPLETION RULES:
+- Complete the current thought naturally and coherently
+- Maintain the same tone and style as the existing text
+- Generate a complete, well-structured EMAIL BODY ONLY
+- Use proper grammar, punctuation, and email conventions
+- Include appropriate greetings and closings
+- Keep response concise (2-4 paragraphs max)
+- Use \\n\\n between paragraphs
+- NEVER include subject lines, headers, or metadata`;
 
-                    RESPONSE FORMAT:
-                    - Output ONLY the email body content
-                    - Include the original text as the starting point
-                    - Use proper paragraph breaks with \\n\\n between paragraphs
-                    - Structure the email with: greeting, main content paragraphs, closing
-                    - Include professional greeting and closing
-                    - Use proper email language conventions
-                    - Ensure the response is contextually relevant and helpful
-                    - NEVER include subject lines or email headers
-                    - Use line breaks (\\n) for proper email formatting
-                    - Keep paragraphs concise and well-structured
-                    - ⚠️⚠️⚠️ NUMBERED LISTS: Number and text MUST be on SAME line - "1. Text here" NOT "1.\\nText here" ⚠️⚠️⚠️`,
-        },
-        {
-          role: "user",
-          content: `Complete this email draft. Start with the text I've written: "${input}". 
+    const userPrompt = `Complete this email draft. Start with: "${input}". Format as complete email with proper paragraphs.`;
 
-Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`,
-        },
-      ],
-      stream: false,
-    });
+    const models = [
+      "google/gemini-2.0-flash-exp:free",
+      "google/gemini-2.5-flash",
+      "anthropic/claude-3-haiku:beta",
+      "openai/gpt-3.5-turbo",
+    ];
 
-    const content = completion.choices[0]?.message?.content || "";
-    return { content };
+    let lastError: Error | null = null;
+
+    for (const model of models) {
+      try {
+        const completion = await Promise.race([
+          openai.chat.completions.create({
+            model,
+            messages: [
+              {
+                role: "system",
+                content: systemPrompt,
+              },
+              {
+                role: "user",
+                content: userPrompt,
+              },
+            ],
+            stream: false,
+            max_tokens: 400,
+            temperature: 0.7,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error("Request timeout: AI generation took too long"),
+                ),
+              25000,
+            ),
+          ),
+        ]);
+
+        const content = completion.choices[0]?.message?.content || "";
+        if (content.trim()) {
+          console.log(`[AI] Successfully generated with model: ${model}`);
+          return { content };
+        }
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        const errorMsg = lastError.message.toLowerCase();
+
+        if (
+          errorMsg.includes("429") ||
+          errorMsg.includes("rate limit") ||
+          errorMsg.includes("too many requests") ||
+          errorMsg.includes("404") ||
+          errorMsg.includes("no endpoints found") ||
+          errorMsg.includes("not found") ||
+          errorMsg.includes("timeout")
+        ) {
+          console.warn(
+            `[AI] Model ${model} failed: ${lastError.message}, trying next model...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
+
+        console.error(
+          `[AI] Model ${model} failed with unrecoverable error: ${lastError.message}`,
+        );
+        throw lastError;
+      }
+    }
+
+    throw lastError || new Error("All AI models failed");
   } catch (error) {
-    console.error("Error in generate:", error);
+    console.error("[AI] Error in generate:", error);
+
+    if (error instanceof Error) {
+      const errorMsg = error.message.toLowerCase();
+
+      if (errorMsg.includes("timeout")) {
+        throw new Error("AI generation timed out. Please try again.");
+      }
+      if (errorMsg.includes("429") || errorMsg.includes("rate limit")) {
+        throw new Error(
+          "AI service is temporarily rate-limited. Please wait a moment and try again.",
+        );
+      }
+      if (errorMsg.includes("404") || errorMsg.includes("no endpoints found")) {
+        throw new Error(
+          "AI model not available. Please try again in a moment.",
+        );
+      }
+      if (errorMsg.includes("401") || errorMsg.includes("unauthorized")) {
+        throw new Error(
+          "AI service authentication failed. Please contact support.",
+        );
+      }
+      if (errorMsg.includes("all ai models failed")) {
+        throw new Error(
+          "All AI models are currently unavailable. Please try again later.",
+        );
+      }
+    }
+
     throw new Error(
       error instanceof Error
-        ? `Failed to generate text: ${error.message}`
-        : "Failed to generate text. Please check your OpenRouter API key and try again.",
+        ? `AI generation failed: ${error.message}`
+        : "AI generation failed. Please try again.",
     );
   }
 }

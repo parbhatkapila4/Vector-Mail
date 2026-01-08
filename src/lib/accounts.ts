@@ -30,6 +30,41 @@ export class Account {
     };
   }
 
+  private async validateToken(): Promise<boolean> {
+    try {
+      console.log(`[validateToken] Validating token for account ${this.id}...`);
+
+      const response = await axios.get(
+        `https://api.aurinko.io/v1/email/messages`,
+        {
+          headers: this.aurinkoHeaders,
+          params: {
+            maxResults: 1,
+            bodyType: "text",
+          },
+        },
+      );
+      console.log(
+        `[validateToken] Token is valid (status: ${response.status})`,
+      );
+      return response.status === 200;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        console.error(
+          `[validateToken] Token validation failed (401) for account ${this.id} - token is expired or invalid`,
+        );
+        console.error(`[validateToken] Error response:`, error.response?.data);
+        return false;
+      }
+
+      console.warn(
+        `[validateToken] Token validation check failed with non-401 error:`,
+        error,
+      );
+      return true;
+    }
+  }
+
   async performInitialSync() {
     try {
       console.log(
@@ -90,18 +125,30 @@ export class Account {
   private async startSync() {
     console.log("[AURINKO AUTH] Using accountToken for account:", this.id);
 
-    const response = await axios.post<syncResponse>(
-      `https://api.aurinko.io/v1/email/sync`,
-      {},
-      {
-        headers: this.aurinkoHeaders,
-        params: {
-          daysWithin: 30,
-          bodyType: "text",
+    try {
+      const response = await axios.post<syncResponse>(
+        `https://api.aurinko.io/v1/email/sync`,
+        {},
+        {
+          headers: this.aurinkoHeaders,
+          params: {
+            daysWithin: 30,
+            bodyType: "text",
+          },
         },
-      },
-    );
-    return response.data;
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        console.error(
+          "[startSync] Authentication failed (401) - token may be expired",
+        );
+        throw new Error(
+          "Authentication failed. Please reconnect your account.",
+        );
+      }
+      throw error;
+    }
   }
 
   private async getUpdatedEmails(
@@ -122,28 +169,57 @@ export class Account {
     }
 
     console.log(`[getUpdatedEmails] Calling sync/updated with:`, {
+      accountId: this.id,
       hasDeltaToken: !!deltaToken,
       hasPageToken: !!pageToken,
       deltaTokenPreview: deltaToken
         ? deltaToken.substring(0, 20) + "..."
         : null,
+      tokenPreview: this.token
+        ? `${this.token.substring(0, 20)}...`
+        : "MISSING",
     });
 
-    const response = await axios.get<syncUpdateResponse>(
-      `https://api.aurinko.io/v1/email/sync/updated`,
-      {
-        headers: this.aurinkoHeaders,
-        params,
-      },
-    );
+    try {
+      const response = await axios.get<syncUpdateResponse>(
+        `https://api.aurinko.io/v1/email/sync/updated`,
+        {
+          headers: this.aurinkoHeaders,
+          params,
+        },
+      );
 
-    console.log(`[getUpdatedEmails] Response:`, {
-      recordCount: response.data.records?.length ?? 0,
-      hasNextPage: !!response.data.nextPageToken,
-      hasNextDelta: !!response.data.nextDeltaToken,
-    });
+      console.log(`[getUpdatedEmails] Response:`, {
+        status: response.status,
+        recordCount: response.data.records?.length ?? 0,
+        hasNextPage: !!response.data.nextPageToken,
+        hasNextDelta: !!response.data.nextDeltaToken,
+      });
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const errorData = error.response?.data;
+
+        console.error(`[getUpdatedEmails] API error:`, {
+          status,
+          statusText: error.response?.statusText,
+          data: errorData,
+          headers: error.response?.headers,
+        });
+
+        if (status === 401) {
+          console.error(
+            `[getUpdatedEmails] Authentication failed (401) for account ${this.id} - token may be expired or invalid`,
+          );
+          throw new Error(
+            "Authentication failed. Please reconnect your account.",
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   async sendEmail({
@@ -278,10 +354,21 @@ export class Account {
   private async _performSync(forceFullSync = false) {
     const account = await db.account.findUnique({
       where: {
-        token: this.token,
+        id: this.id,
       },
     });
-    if (!account) throw new Error("Invalid token");
+    if (!account) {
+      console.error(`[_performSync] Account ${this.id} not found in database`);
+      throw new Error("Account not found");
+    }
+
+    if (!account.token) {
+      console.error(`[_performSync] Account ${this.id} has no token stored`);
+      throw new Error(
+        "Account token is missing. Please reconnect your account.",
+      );
+    }
+    this.token = account.token;
 
     console.log(
       `[syncEmails] Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync})`,
@@ -439,6 +526,19 @@ export class Account {
         return;
       } catch (syncApiError) {
         console.error("[syncEmails] ✗ Sync API failed:", syncApiError);
+
+        if (
+          axios.isAxiosError(syncApiError) &&
+          syncApiError.response?.status === 401
+        ) {
+          console.error(
+            `[syncEmails] Authentication failed (401) - token may be expired or invalid`,
+          );
+          throw new Error(
+            "Authentication failed. Please reconnect your account to continue syncing emails.",
+          );
+        }
+
         const errorMessage =
           syncApiError instanceof Error
             ? syncApiError.message
@@ -631,14 +731,41 @@ export class Account {
     }
   }
 
-  async syncLatestEmails(): Promise<{ success: boolean; count: number }> {
+  async syncLatestEmails(): Promise<{
+    success: boolean;
+    count: number;
+    authError?: boolean;
+  }> {
     const account = await db.account.findUnique({
       where: {
-        token: this.token,
+        id: this.id,
       },
     });
     if (!account) {
-      throw new Error("Invalid token");
+      console.error(
+        `[syncLatestEmails] Account ${this.id} not found in database`,
+      );
+      throw new Error("Account not found");
+    }
+
+    if (account.token) {
+      this.token = account.token;
+      console.log(
+        `[syncLatestEmails] Using token from database for account ${this.id}`,
+      );
+    } else {
+      console.error(
+        `[syncLatestEmails] Account ${this.id} has no token stored`,
+      );
+      return { success: false, count: 0, authError: true };
+    }
+
+    const isTokenValid = await this.validateToken();
+    if (!isTokenValid) {
+      console.error(
+        `[syncLatestEmails] Token validation failed for account ${this.id}`,
+      );
+      return { success: false, count: 0, authError: true };
     }
 
     const shouldRefresh = await this.shouldRefresh30DayWindow(account.id);
@@ -648,10 +775,12 @@ export class Account {
       );
       try {
         await this.syncEmails(true);
-        return { success: true, count: 0 };
+        return { success: true, count: 0, authError: false };
       } catch (error) {
         console.error(`[Latest Sync] Full sync failed:`, error);
-        return { success: false, count: 0 };
+        const isAuthError =
+          axios.isAxiosError(error) && error.response?.status === 401;
+        return { success: false, count: 0, authError: isAuthError };
       }
     }
 
@@ -659,7 +788,7 @@ export class Account {
       console.log(
         `Skipping latest sync - account ${account.id} needs initial sync first`,
       );
-      return { success: false, count: 0 };
+      return { success: false, count: 0, authError: false };
     }
 
     try {
@@ -709,7 +838,7 @@ export class Account {
           `[Latest Sync] Completed in ${duration}ms - synced ${newEmails.length} emails`,
         );
 
-        return { success: true, count: newEmails.length };
+        return { success: true, count: newEmails.length, authError: false };
       } else {
         if (response.nextDeltaToken) {
           await db.account.update({
@@ -720,16 +849,57 @@ export class Account {
 
         const duration = Date.now() - startTime;
         console.log(`[Latest Sync] No new emails (${duration}ms)`);
-        return { success: true, count: 0 };
+        return { success: true, count: 0, authError: false };
       }
     } catch (error) {
+      console.error(
+        `[Latest Sync] Error caught for account ${account.id}:`,
+        error,
+      );
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      const is401Error =
+        axios.isAxiosError(error) && error.response?.status === 401;
+
+      const isAuthErrorMessage =
+        errorMessage.includes("Authentication failed") ||
+        errorMessage.includes("UNAUTHORIZED") ||
+        errorMessage.includes("401");
+
+      const isAuthError = is401Error || isAuthErrorMessage;
+
+      if (isAuthError) {
+        console.error(
+          `[Latest Sync] Authentication failed for account ${account.id} - token may be expired or invalid`,
+        );
+        console.error(
+          `[Latest Sync] Error details:`,
+          axios.isAxiosError(error)
+            ? {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+              }
+            : errorMessage,
+        );
+        return { success: false, count: 0, authError: true };
+      }
+
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
         const errorData = error.response?.data;
 
+        console.error(`[Latest Sync] API error for account ${account.id}:`, {
+          status,
+          statusText: error.response?.statusText,
+          data: errorData,
+        });
+
         if (status === 400 || status === 410) {
           console.warn(
-            `[Latest Sync] Delta token invalid/expired for account ${account.id}, resetting...`,
+            `[Latest Sync] Delta token invalid/expired (${status}) for account ${account.id}, resetting...`,
           );
 
           await db.account.update({
@@ -740,21 +910,16 @@ export class Account {
           console.log(
             `[Latest Sync] Delta token reset - will use full sync on next regular sync`,
           );
-          return { success: false, count: 0 };
+          return { success: false, count: 0, authError: false };
         }
-
-        console.error(
-          `[Latest Sync] API error for account ${account.id}:`,
-          errorData,
-        );
       } else {
         console.error(
-          `[Latest Sync] Error syncing latest emails for account ${account.id}:`,
+          `[Latest Sync] Non-axios error syncing latest emails for account ${account.id}:`,
           error,
         );
       }
 
-      return { success: false, count: 0 };
+      return { success: false, count: 0, authError: false };
     }
   }
 

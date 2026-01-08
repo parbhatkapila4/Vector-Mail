@@ -15,7 +15,15 @@ type OptionType = {
   value: string;
 };
 
-const ReplyBox = () => {
+interface ReplyBoxProps {
+  onSendSuccess?: () => void;
+  isInMobileDialog?: boolean;
+}
+
+const ReplyBox = ({
+  onSendSuccess,
+  isInMobileDialog = false,
+}: ReplyBoxProps) => {
   const { threadId, threads: rawThreads, account } = useThreads();
   const [accountId] = useLocalStorage("accountId", "");
   const threads = rawThreads as Thread[] | undefined;
@@ -117,6 +125,7 @@ const ReplyBox = () => {
       {
         onSuccess: () => {
           toast.success("Email sent successfully!");
+          onSendSuccess?.();
         },
         onError: (error) => {
           console.log(error);
@@ -126,39 +135,45 @@ const ReplyBox = () => {
     );
   };
 
-  return (
-    <div className="sticky bottom-0 z-50 flex flex-col border-t border-white/[0.06] bg-[#0A0A0A] shadow-2xl shadow-black/50">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-            <Reply className="h-4 w-4 text-amber-500" />
-          </div>
-          <div>
-            <span className="text-sm font-medium text-white">Reply</span>
-            {toValues.length > 0 && (
-              <span className="ml-2 text-xs text-zinc-500">
-                to {toValues[0]?.value || "..."}
-              </span>
-            )}
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="h-8 w-8 rounded-lg p-0 text-white hover:bg-white/[0.06]"
-          aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
-        >
-          {isCollapsed ? (
-            <ChevronUp className="h-4 w-4 text-amber-500" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-amber-500" />
-          )}
-        </Button>
-      </div>
+  const shouldShowCollapsed = isInMobileDialog ? false : isCollapsed;
 
-      {!isCollapsed && (
-        <div className="max-h-[60vh] overflow-hidden border-t border-white/[0.06]">
+  return (
+    <div className="flex h-full flex-col border-t border-white/[0.06] bg-[#0A0A0A] shadow-2xl shadow-black/50 md:sticky md:bottom-0 md:z-50">
+      {!isInMobileDialog && (
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+              <Reply className="h-4 w-4 text-amber-500" />
+            </div>
+            <div>
+              <span className="text-sm font-medium text-white">Reply</span>
+              {toValues.length > 0 && (
+                <span className="ml-2 text-xs text-zinc-500">
+                  to {toValues[0]?.value || "..."}
+                </span>
+              )}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="h-8 w-8 rounded-lg p-0 text-white hover:bg-white/[0.06]"
+            aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
+          >
+            {isCollapsed ? (
+              <ChevronUp className="h-4 w-4 text-amber-500" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-amber-500" />
+            )}
+          </Button>
+        </div>
+      )}
+
+      {!shouldShowCollapsed && (
+        <div
+          className={`flex flex-1 flex-col ${isInMobileDialog ? "min-h-0" : "max-h-[60vh]"} overflow-hidden border-t border-white/[0.06]`}
+        >
           <EmailEditor
             toValues={toValues || []}
             ccValues={ccValues}

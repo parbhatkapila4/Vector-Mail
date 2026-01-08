@@ -48,10 +48,6 @@ function HeroSection() {
             fill="url(#tornGradient)"
           />
         </svg>
-
-        <div className="absolute bottom-0 right-[50px] top-0 w-[2px] bg-orange-800/70" />
-        <div className="absolute bottom-0 right-[65px] top-0 w-[6px] bg-orange-700/50" />
-        <div className="absolute bottom-0 right-[80px] top-0 w-[1px] bg-orange-900/60" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-[1200px] flex-col justify-center px-6 pb-16 pt-28">
