@@ -17,9 +17,6 @@
 
 [**Try VectorMail Free**](https://vectormail.space) &nbsp;&nbsp;|&nbsp;&nbsp; [**Watch Demo**](https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Vector-Mail-1762579701087.mp4) &nbsp;&nbsp;|&nbsp;&nbsp; [**Documentation**](#quick-start)
 
-<br />
-
-<img src="./public/Vector-mail-hero.png" alt="VectorMail Dashboard" width="100%" style="border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);" />
 
 </div>
 
