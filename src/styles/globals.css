@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -66,6 +68,12 @@
 
   html {
     scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
   }
 
   body {
@@ -73,29 +81,16 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-
-  ::-webkit-scrollbar {
-    width: 8px;
+  body::-webkit-scrollbar {
+    display: none;
   }
-
-  ::-webkit-scrollbar-track {
-    background: #f1f1f1;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-
 
   ::selection {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(196, 30, 58, 0.3);
   }
 }
 
@@ -103,7 +98,6 @@
   .text-balance {
     text-wrap: balance;
   }
-
 
   @keyframes blob {
     0% {
@@ -135,7 +129,6 @@
     animation-delay: 4s;
   }
 
-
   .bg-grid-pattern {
     background-image:
       linear-gradient(to right, #80808012 1px, transparent 1px),
@@ -143,7 +136,6 @@
     background-size: 24px 24px;
   }
 
-  
   [data-sonner-toast],
   [data-sonner-toast] *,
   .toast-black-text,
@@ -156,8 +148,18 @@
     color: #000000 !important;
   }
 
-  
   [data-sonner-toast] svg {
     color: #000000 !important;
+  }
+
+
+  .font-display {
+    font-family: 'Oswald', system-ui, sans-serif;
+  }
+
+
+  .grunge-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
   }
 }

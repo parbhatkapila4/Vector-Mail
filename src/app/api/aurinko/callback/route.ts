@@ -181,3 +181,7 @@ export async function GET(req: NextRequest) {
   console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");
   return NextResponse.redirect(new URL("/mail", process.env.NEXT_PUBLIC_URL));
 }
+
+export async function POST(req: NextRequest) {
+  return GET(req);
+}
