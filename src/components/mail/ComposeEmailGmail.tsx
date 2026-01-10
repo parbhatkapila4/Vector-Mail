@@ -25,6 +25,7 @@ import {
   Paperclip,
   X,
   Folder,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
@@ -593,37 +594,56 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           Compose
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] w-[95vw] max-w-7xl overflow-y-auto border-slate-800 bg-[#0a0a0a] text-white [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <DialogHeader>
-          <DialogTitle className="text-white">Compose Email</DialogTitle>
+      <DialogContent className="max-h-[90vh] w-[95vw] max-w-7xl overflow-y-auto border-slate-800 bg-[#0a0a0a] p-4 text-white [-ms-overflow-style:none] [scrollbar-width:none] md:p-6 [&::-webkit-scrollbar]:hidden">
+        <DialogHeader className="mb-4 md:mb-6">
+          <DialogTitle className="text-lg font-bold text-white md:text-xl">
+            Compose Email
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 md:space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="to">To</Label>
+            <Label
+              htmlFor="to"
+              className="text-sm font-medium text-white md:text-base"
+            >
+              To
+            </Label>
             <Input
               id="to"
-              placeholder="recipient@example.com (comma-separated for multiple)"
+              placeholder="recipient@example.com"
               value={to}
               onChange={(e) => setTo(e.target.value)}
               disabled={isSending}
+              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 md:h-10 md:text-sm"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
+            <Label
+              htmlFor="subject"
+              className="text-sm font-medium text-white md:text-base"
+            >
+              Subject
+            </Label>
             <Input
               id="subject"
               placeholder="Email subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               disabled={isSending}
+              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 md:h-10 md:text-sm"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="body">Body</Label>
-              <span className="text-xs text-muted-foreground">
+              <Label
+                htmlFor="body"
+                className="text-sm font-medium text-white md:text-base"
+              >
+                Body
+              </Label>
+              <span className="hidden text-xs text-muted-foreground md:inline">
                 Press{" "}
                 {typeof navigator !== "undefined" &&
                 navigator.platform.toUpperCase().indexOf("MAC") >= 0
@@ -689,7 +709,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                     }
                   }
                 }}
-                className="min-h-[200px] w-full resize-none overflow-y-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-scrollbar]:hidden [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
+                className="min-h-[250px] w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-base text-white ring-offset-background [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-gray-400 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[200px] md:px-3 md:py-2 md:text-sm [&::-webkit-scrollbar]:hidden [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
                 style={{
                   whiteSpace: "pre-wrap",
                   wordWrap: "break-word",
@@ -698,11 +718,14 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               />
               {!body && !isGenerating && (
                 <div
-                  className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground"
+                  className="pointer-events-none absolute left-4 top-3 text-sm text-gray-400 md:left-3 md:top-2"
                   style={{ whiteSpace: "pre-wrap" }}
                 >
-                  Email body (HTML supported). Press Alt+J (Windows) or Cmd+J
-                  (Mac) to auto-generate based on subject and your text.
+                  <span className="md:hidden">Tap to write your email...</span>
+                  <span className="hidden md:inline">
+                    Email body (HTML supported). Press Alt+J (Windows) or Cmd+J
+                    (Mac) to auto-generate based on subject and your text.
+                  </span>
                 </div>
               )}
               {isGenerating && (
@@ -731,7 +754,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               )}
             </div>
             {hasGenerated && !isGenerating && (
-              <p className="text-xs text-muted-foreground">
+              <p className="hidden text-xs text-muted-foreground md:block">
                 💡 Press{" "}
                 {typeof navigator !== "undefined" &&
                 navigator.platform.toUpperCase().indexOf("MAC") >= 0
@@ -743,20 +766,22 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           </div>
 
           {attachments.length > 0 && (
-            <div className="mt-2 space-y-2 border-t pt-3">
-              <div className="text-xs font-medium text-muted-foreground">
+            <div className="mt-4 space-y-3 border-t border-white/10 pt-4 md:mt-2 md:space-y-2 md:pt-3">
+              <div className="text-sm font-semibold text-white md:text-xs md:font-medium md:text-muted-foreground">
                 Attached Files ({attachments.length})
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:gap-2">
                 {attachments.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm"
+                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm md:gap-2 md:rounded-md md:bg-muted/50 md:px-3 md:py-2"
                   >
-                    <Paperclip className="size-4 text-muted-foreground" />
-                    <div className="flex flex-col">
-                      <span className="font-medium">{file.name}</span>
-                      <span className="text-xs text-muted-foreground">
+                    <Paperclip className="size-5 text-green-500 md:size-4 md:text-muted-foreground" />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm font-medium text-white md:text-foreground">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-gray-400 md:text-muted-foreground">
                         {formatFileSize(file.size)}
                       </span>
                     </div>
@@ -764,11 +789,11 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 hover:bg-destructive/10"
+                      className="h-8 w-8 flex-shrink-0 p-0 hover:bg-red-500/10 md:h-6 md:w-6"
                       onClick={() => handleRemoveAttachment(index)}
                       disabled={isSending}
                     >
-                      <X className="size-3 text-muted-foreground hover:text-destructive" />
+                      <X className="size-4 text-gray-400 hover:text-red-400 md:size-3 md:text-muted-foreground md:hover:text-destructive" />
                     </Button>
                   </div>
                 ))}
@@ -776,7 +801,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+          <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-4 md:flex md:flex-wrap md:items-center md:gap-2 md:border-t md:pt-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -800,11 +825,13 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               variant="outline"
               size="sm"
               disabled={isSending || isGenerating}
-              className="flex items-center gap-1.5"
+              className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="size-4 text-green-500" />
-              <span className="text-xs">Attach Files</span>
+              <span className="text-sm font-medium md:text-xs">
+                Attach Files
+              </span>
             </Button>
 
             <Button
@@ -812,11 +839,13 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               variant="outline"
               size="sm"
               disabled={isSending || isGenerating}
-              className="flex items-center gap-1.5"
+              className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
               onClick={() => folderInputRef.current?.click()}
             >
               <Folder className="size-4 text-blue-500" />
-              <span className="text-xs">Attach Folder</span>
+              <span className="text-sm font-medium md:text-xs">
+                Attach Folder
+              </span>
             </Button>
 
             <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
@@ -826,10 +855,12 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   variant="outline"
                   size="sm"
                   disabled={isSending || isGenerating}
-                  className="flex items-center gap-1.5"
+                  className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
                 >
                   <Link className="size-4 text-blue-500" />
-                  <span className="text-xs">Insert Link</span>
+                  <span className="text-sm font-medium md:text-xs">
+                    Insert Link
+                  </span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="border-slate-800 bg-[#0a0a0a] text-white">
@@ -981,7 +1012,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   variant="outline"
                   size="sm"
                   disabled={isSending || isGenerating}
-                  className="flex items-center gap-1.5"
+                  className="hidden items-center gap-1.5 md:flex"
                 >
                   <Smile className="size-4 text-yellow-500" />
                   <span className="text-xs">Emoji</span>
@@ -1162,14 +1193,16 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   bodyEditableRef.current?.focus();
                 }, 0);
               }}
-              className="flex items-center gap-1.5"
+              className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
             >
-              <FileSignature className="size-4" />
-              <span className="text-xs">Insert Signature</span>
+              <FileSignature className="size-4 text-white" />
+              <span className="text-sm font-medium md:text-xs">
+                Insert Signature
+              </span>
             </Button>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -1178,21 +1211,44 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 setOpen(false);
               }}
               disabled={isSending}
+              className="h-12 w-full border-white/20 bg-white/5 text-base font-medium text-white transition-all hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:w-auto md:flex-initial md:text-sm"
             >
               Cancel
             </Button>
             <Button
+              onClick={handleAIGenerate}
+              disabled={isSending || isGenerating}
+              className="h-12 w-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-base font-semibold text-white shadow-lg shadow-purple-500/30 transition-all duration-200 hover:from-purple-700 hover:via-purple-500 hover:to-amber-500 hover:shadow-xl hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:hidden"
+            >
+              {isGenerating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                  Generating...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <Sparkles className="h-4 w-4 text-white" />
+                  Generate
+                </span>
+              )}
+            </Button>
+            <Button
               onClick={handleSend}
               disabled={isSending || isGenerating}
-              className="bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white"
+              className="h-12 w-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-base font-semibold text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:h-10 md:w-auto md:flex-initial md:text-sm"
             >
               {isSending ? (
-                "Sending..."
+                <span className="flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                  <span className="md:hidden">Sending...</span>
+                  <span className="hidden md:inline">Sending...</span>
+                </span>
               ) : (
-                <>
-                  <Send className="mr-2 size-4 text-white" />
-                  Send Email
-                </>
+                <span className="flex items-center justify-center gap-2">
+                  <Send className="h-4 w-4 text-white" />
+                  <span className="md:hidden">Send</span>
+                  <span className="hidden md:inline">Send Email</span>
+                </span>
               )}
             </Button>
           </div>

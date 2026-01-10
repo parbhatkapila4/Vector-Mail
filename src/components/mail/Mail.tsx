@@ -3,13 +3,15 @@
 import React, { useState, useCallback } from "react";
 import {
   Menu,
-  ArrowLeft,
-  Search,
   Inbox,
   Send,
   Bot,
   X,
   Sparkles,
+  LogOut,
+  Zap,
+  Search,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -28,7 +30,7 @@ import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
 import SearchBar from "./search/SearchBar";
 import ComposeEmailGmail from "./ComposeEmailGmail";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useClerk } from "@clerk/nextjs";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
@@ -43,6 +45,7 @@ export function Mail({}: MailLayoutProps) {
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
   const isMobile = useIsMobile();
   const router = useRouter();
@@ -75,6 +78,25 @@ export function Mail({}: MailLayoutProps) {
   const handleThreadClose = useCallback(() => {
     setSelectedThread(null);
   }, []);
+
+  const handleMobileNavigation = useCallback(
+    (newTab?: string, isBuddy?: boolean) => {
+      setIsNavigating(true);
+      setSheetOpen(false);
+      handleThreadClose();
+
+      if (isBuddy) {
+        router.push("/buddy?fresh=true");
+
+        setTimeout(() => setIsNavigating(false), 800);
+      } else if (newTab) {
+        setTab(newTab);
+
+        setTimeout(() => setIsNavigating(false), 600);
+      }
+    },
+    [handleThreadClose, router, setTab],
+  );
 
   const navItems = [
     {
@@ -111,23 +133,49 @@ export function Mail({}: MailLayoutProps) {
                   tab={tab}
                   setTab={setTab}
                   router={router}
-                  onBackToInbox={() => {
-                    handleThreadClose();
-                    setSheetOpen(false);
-                  }}
+                  onNavigate={handleMobileNavigation}
                 />
               </SheetContent>
             </Sheet>
 
-            <h1 className="text-base font-semibold capitalize text-neutral-900 dark:text-neutral-100">
+            <button
+              onClick={() => {
+                handleThreadClose();
+                setTab("inbox");
+              }}
+              className="cursor-pointer border-none bg-transparent p-0 text-base font-semibold capitalize text-neutral-900 outline-none transition-opacity hover:opacity-70 dark:text-neutral-100"
+            >
               {tab}
-            </h1>
+            </button>
 
             <div className="flex items-center gap-2">
               <ComposeEmailGmail />
               <UserButton />
             </div>
           </div>
+
+          {isNavigating && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm dark:bg-black/80">
+              <div className="flex flex-col items-center gap-4 rounded-2xl bg-white/95 p-8 shadow-2xl dark:bg-neutral-900/95">
+                <div className="relative">
+                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500 dark:border-orange-800 dark:border-t-orange-400"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 dark:from-orange-500 dark:to-orange-700"></div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+                    Loading...
+                  </p>
+                  <div className="mt-2 flex items-center justify-center gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.3s]"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.15s]"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {!selectedThread ? (
             <div className="flex flex-1 flex-col overflow-hidden">
@@ -314,7 +362,7 @@ function MobileSidebar({
   tab,
   setTab,
   router,
-  onBackToInbox,
+  onNavigate,
 }: {
   navItems: Array<{
     id: string;
@@ -325,8 +373,19 @@ function MobileSidebar({
   tab: string;
   setTab: (tab: string) => void;
   router: ReturnType<typeof useRouter>;
-  onBackToInbox?: () => void;
+  onNavigate?: (newTab: string, isBuddy?: boolean) => void;
 }) {
+  const { signOut } = useClerk();
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut({ redirectUrl: "/" });
+      router.push("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  }, [signOut, router]);
+
   return (
     <div className="flex h-full flex-col bg-white dark:bg-black">
       <Link
@@ -353,31 +412,23 @@ function MobileSidebar({
         </div>
       </Link>
 
-      <div className="border-b border-neutral-200 p-4 dark:border-neutral-800">
-        <div className="md:hidden">
-          <Button
-            onClick={() => {
-              onBackToInbox?.();
-              setTab("inbox");
-            }}
-            variant="ghost"
-            className="w-full justify-start gap-3 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-[14px] font-semibold">Back to Inbox</span>
-          </Button>
-        </div>
-
+      <div className="border-neutral-200 dark:border-neutral-800 md:border-b md:p-4">
         <div className="hidden md:block">
           <AccountSwitcher isCollapsed={false} />
         </div>
       </div>
 
-      <div className="flex-1 space-y-1 p-3">
+      <div className="space-y-1 p-3">
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => setTab(item.id)}
+            onClick={() => {
+              if (onNavigate && tab !== item.id) {
+                onNavigate(item.id, false);
+              } else {
+                setTab(item.id);
+              }
+            }}
             className={cn(
               "flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
               tab === item.id
@@ -407,12 +458,70 @@ function MobileSidebar({
         <div className="my-3 h-px bg-neutral-200 dark:bg-neutral-800" />
 
         <button
-          onClick={() => router.push("/buddy?fresh=true")}
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate("", true);
+            } else {
+              router.push("/buddy?fresh=true");
+            }
+          }}
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-neutral-600 transition-all duration-200 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
         >
           <Bot className="h-4 w-4" />
           <span className="flex-1 text-left text-[14px] font-semibold">
             AI Buddy
+          </span>
+        </button>
+      </div>
+
+      <div className="flex min-h-0 flex-1 px-3 pb-3">
+        <button
+          type="button"
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate("", true);
+            } else {
+              router.push("/buddy?fresh=true");
+            }
+          }}
+          className="group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-400 p-5 text-left shadow-lg shadow-orange-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/40 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+        >
+          <div className="relative z-10 flex flex-col">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <Search className="h-3.5 w-3.5 text-white/90" />
+            </div>
+            <h3 className="mb-3 text-[16px] font-bold leading-snug text-white">
+              Want to enjoy an email assistant?
+            </h3>
+            <p className="mb-3 text-[13px] leading-relaxed text-white/90">
+              Our AI assistant helps you find emails instantly, summarize
+              conversations, and get smart insights from your inbox.
+            </p>
+            <p className="text-[12px] leading-relaxed text-white/85">
+              For the best experience, try using VectorMail on your laptop to
+              unlock the full power of our AI-powered features.
+            </p>
+          </div>
+          <div className="relative z-10 mt-auto flex items-center gap-2 pt-6 text-[13px] font-semibold text-white">
+            <span>Try Using on Your Laptop</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </div>
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-xl"></div>
+          <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-white/5 blur-lg"></div>
+        </button>
+      </div>
+
+      <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+        <button
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-red-600 transition-all duration-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="flex-1 text-left text-[14px] font-semibold">
+            Sign Out
           </span>
         </button>
       </div>

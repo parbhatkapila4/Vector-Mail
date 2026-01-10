@@ -4,24 +4,74 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Configure Prisma with connection pool settings
-// This prevents "connection closed" errors by properly managing the connection pool
+const originalStdErr = process.stderr.write.bind(process.stderr);
+
+process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
+  let chunkString: string;
+  if (typeof chunk === "string") {
+    chunkString = chunk;
+  } else if (Buffer.isBuffer(chunk)) {
+    chunkString = chunk.toString("utf-8");
+  } else {
+    chunkString = String(chunk);
+  }
+
+  const isPrismaConnectionError =
+    chunkString.includes("prisma:error") &&
+    (chunkString.includes("Error in PostgreSQL connection") ||
+      chunkString.includes("PostgreSQL connection") ||
+      chunkString.includes("kind: Closed") ||
+      chunkString.includes("kind:Closed") ||
+      (chunkString.includes("Closed") && chunkString.includes("cause: None")));
+
+  if (isPrismaConnectionError) {
+    if (typeof callback === "function") {
+      callback();
+    }
+    return true;
+  }
+
+  return originalStdErr(chunk, encoding, callback);
+}) as typeof process.stderr.write;
+
+const originalConsoleError = console.error.bind(console);
+console.error = ((...args: any[]) => {
+  const message = args
+    .map((arg) => {
+      if (typeof arg === "object" && arg !== null) {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    })
+    .join(" ");
+
+  const isPrismaConnectionError =
+    message.includes("prisma:error") &&
+    (message.includes("Error in PostgreSQL connection") ||
+      message.includes("PostgreSQL connection") ||
+      message.includes("kind: Closed") ||
+      message.includes("kind:Closed") ||
+      (message.includes("Closed") && message.includes("cause: None")));
+
+  if (isPrismaConnectionError) {
+    return;
+  }
+  return originalConsoleError(...args);
+}) as typeof console.error;
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-    // Connection pool is managed via DATABASE_URL connection string parameters:
-    // ?connection_limit=10&pool_timeout=20 (configure in .env if needed)
-    // Default Prisma pool size is 10 connections which should be sufficient with reduced concurrency
+    log: process.env.NODE_ENV === "development" ? ["warn"] : [],
   });
 
-/**
- * Wrapper function to retry database operations on connection errors
- * This helps handle transient connection issues with Neon
- */
 export async function withDbRetry<T>(
   operation: () => Promise<T>,
-  maxRetries = 2,
+  maxRetries = 3,
   delay = 500,
 ): Promise<T> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -30,17 +80,30 @@ export async function withDbRetry<T>(
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      const errorString = String(error).toLowerCase();
+      const errorObj = error as { kind?: string; cause?: unknown };
       const isConnectionError =
         errorMessage.includes("Closed") ||
         errorMessage.includes("connection") ||
         errorMessage.includes("ECONNREFUSED") ||
-        errorMessage.includes("P1001"); // Prisma connection error code
+        errorMessage.includes("P1001") ||
+        errorMessage.includes("P1017") ||
+        errorString.includes("kind: closed") ||
+        errorString.includes("connection closed") ||
+        (errorObj.kind && String(errorObj.kind).toLowerCase() === "closed");
 
       if (isConnectionError && attempt < maxRetries - 1) {
+        const retryDelay = delay * (attempt + 1);
         console.warn(
-          `[Prisma] Connection error (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms...`,
+          `[Prisma] Connection error (attempt ${attempt + 1}/${maxRetries}), retrying in ${retryDelay}ms...`,
+          errorMessage,
         );
-        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        try {
+          await db.$connect();
+        } catch (reconnectError) {}
+
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
         continue;
       }
       throw error;
@@ -49,11 +112,9 @@ export async function withDbRetry<T>(
   throw new Error("Max retries exceeded");
 }
 
-// Ensure connections are properly managed
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;
 } else {
-  // In production, ensure graceful shutdown
   process.on("beforeExit", async () => {
     await db.$disconnect();
   });

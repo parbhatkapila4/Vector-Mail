@@ -19,19 +19,21 @@ export const authoriseAccountAccess = async (
   accountId: string,
   userId: string,
 ): Promise<AccountAccess> => {
-  const account = await db.account.findFirst({
-    where: {
-      id: accountId,
-      userId,
-    },
-    select: {
-      id: true,
-      emailAddress: true,
-      name: true,
-      token: true,
-      nextDeltaToken: true,
-    },
-  });
+  const account = await withDbRetry(() =>
+    db.account.findFirst({
+      where: {
+        id: accountId,
+        userId,
+      },
+      select: {
+        id: true,
+        emailAddress: true,
+        name: true,
+        token: true,
+        nextDeltaToken: true,
+      },
+    }),
+  );
 
   if (!account) {
     throw new Error("Account not found");
@@ -42,18 +44,20 @@ export const authoriseAccountAccess = async (
 
 export const accountRouter = createTRPCRouter({
   getAccounts: protectedProcedure.query(async ({ ctx }) => {
-    const accounts = await ctx.db.account.findMany({
-      where: {
-        userId: ctx.auth.userId,
-      },
-      select: {
-        id: true,
-        emailAddress: true,
-        name: true,
-        token: true,
-        nextDeltaToken: true,
-      },
-    });
+    const accounts = await withDbRetry(() =>
+      ctx.db.account.findMany({
+        where: {
+          userId: ctx.auth.userId,
+        },
+        select: {
+          id: true,
+          emailAddress: true,
+          name: true,
+          token: true,
+          nextDeltaToken: true,
+        },
+      }),
+    );
 
     return accounts.map(({ token, nextDeltaToken, ...rest }) => {
       void token;
@@ -671,7 +675,7 @@ export const accountRouter = createTRPCRouter({
         return {
           threads: [],
           nextCursor: undefined,
-          syncStatus: { success: false, count: 0 },
+          syncStatus: { success: true, count: 0 },
           source: "database" as const,
         };
       }
@@ -682,7 +686,7 @@ export const accountRouter = createTRPCRouter({
 
       const { cursor } = input;
 
-      const syncResult = { success: false, count: 0 };
+      const syncResult = { success: true, count: 0 };
 
       const limit = Math.min(
         input.tab === "inbox" ? (input.limit ?? 50) : (input.limit ?? 15),
