@@ -47,6 +47,13 @@ export class Account {
       console.log(
         `[validateToken] Token is valid (status: ${response.status})`,
       );
+      
+      
+      await db.account.update({
+        where: { id: this.id },
+        data: { needsReconnection: false },
+      }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
+      
       return response.status === 200;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -54,6 +61,13 @@ export class Account {
           `[validateToken] Token validation failed (401) for account ${this.id} - token is expired or invalid`,
         );
         console.error(`[validateToken] Error response:`, error.response?.data);
+        
+        
+        await db.account.update({
+          where: { id: this.id },
+          data: { needsReconnection: true },
+        }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
+        
         return false;
       }
 
@@ -143,6 +157,13 @@ export class Account {
         console.error(
           "[startSync] Authentication failed (401) - token may be expired",
         );
+        
+        
+        await db.account.update({
+          where: { id: this.id },
+          data: { needsReconnection: true },
+        }).catch(err => console.error(`[startSync] Failed to update needsReconnection:`, err));
+        
         throw new Error(
           "Authentication failed. Please reconnect your account.",
         );
@@ -213,6 +234,13 @@ export class Account {
           console.error(
             `[getUpdatedEmails] Authentication failed (401) for account ${this.id} - token may be expired or invalid`,
           );
+          
+          
+          await db.account.update({
+            where: { id: this.id },
+            data: { needsReconnection: true },
+          }).catch(err => console.error(`[getUpdatedEmails] Failed to update needsReconnection:`, err));
+          
           throw new Error(
             "Authentication failed. Please reconnect your account.",
           );
@@ -534,6 +562,13 @@ export class Account {
           console.error(
             `[syncEmails] Authentication failed (401) - token may be expired or invalid`,
           );
+          
+          
+          await db.account.update({
+            where: { id: this.id },
+            data: { needsReconnection: true },
+          }).catch(err => console.error(`[syncEmails] Failed to update needsReconnection:`, err));
+          
           throw new Error(
             "Authentication failed. Please reconnect your account to continue syncing emails.",
           );
@@ -884,6 +919,13 @@ export class Account {
               }
             : errorMessage,
         );
+        
+        
+        await db.account.update({
+          where: { id: account.id },
+          data: { needsReconnection: true },
+        }).catch(err => console.error(`[Latest Sync] Failed to update needsReconnection:`, err));
+        
         return { success: false, count: 0, authError: true };
       }
 
@@ -1012,6 +1054,15 @@ export class Account {
           console.error(
             `[fetchAllEmailsDirectly] ✗ API authentication failed: ${authError.response?.status} - ${JSON.stringify(authError.response?.data)}`,
           );
+          
+          
+          if (authError.response?.status === 401) {
+            await db.account.update({
+              where: { id: this.id },
+              data: { needsReconnection: true },
+            }).catch(err => console.error(`[fetchAllEmailsDirectly] Failed to update needsReconnection:`, err));
+          }
+          
           throw new Error(
             `API authentication failed: ${authError.response?.status}. Please reconnect your account.`,
           );

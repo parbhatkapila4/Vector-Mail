@@ -13,6 +13,8 @@ interface AccountAccess {
   name: string;
   token: string;
   nextDeltaToken: string | null;
+  needsReconnection: boolean;
+  tokenExpiresAt: Date | null;
 }
 
 export const authoriseAccountAccess = async (
@@ -31,6 +33,8 @@ export const authoriseAccountAccess = async (
         name: true,
         token: true,
         nextDeltaToken: true,
+        needsReconnection: true,
+        tokenExpiresAt: true,
       },
     }),
   );
@@ -55,6 +59,8 @@ export const accountRouter = createTRPCRouter({
           name: true,
           token: true,
           nextDeltaToken: true,
+          needsReconnection: true,
+          tokenExpiresAt: true,
         },
       }),
     );
@@ -386,16 +392,20 @@ export const accountRouter = createTRPCRouter({
 
             if (latestSyncResult.authError) {
               console.error(
-                `[syncEmails mutation] Authentication error during lightweight sync - account needs reconnection`,
+                `[syncEmails mutation] Authentication error - token is actually dead`,
               );
-              console.error(
-                `[syncEmails mutation] Auth error details: success=${latestSyncResult.success}, count=${latestSyncResult.count}, authError=${latestSyncResult.authError}`,
-              );
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message:
-                  "Authentication failed. Please reconnect your account to continue syncing emails.",
+
+
+              const threadCount = await ctx.db.thread.count({
+                where: { accountId: account.id, inboxStatus: true },
               });
+
+              return {
+                success: false,
+                message: "Authentication failed. Your session may have expired.",
+                threadCount,
+                needsReconnection: true,
+              };
             }
 
             if (latestSyncResult.success && latestSyncResult.count > 0) {
@@ -463,13 +473,22 @@ export const accountRouter = createTRPCRouter({
                 lightweightError.response?.status === 401)
             ) {
               console.error(
-                `[syncEmails mutation] Authentication/token error during lightweight sync - account needs reconnection`,
+                `[syncEmails mutation] Authentication/token error during lightweight sync - account marked for reconnection`,
               );
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message:
-                  "Authentication failed. Please reconnect your account to continue syncing emails.",
-              });
+
+
+              await ctx.db.account.update({
+                where: { id: account.id },
+                data: { needsReconnection: true },
+              }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
+
+
+              return {
+                success: false,
+                message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
+                threadCount: 0,
+                needsReconnection: true,
+              };
             }
 
             console.log(
@@ -497,11 +516,18 @@ export const accountRouter = createTRPCRouter({
             (axios.isAxiosError(syncError) &&
               syncError.response?.status === 401)
           ) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message:
-                "Authentication failed. Please reconnect your account to continue syncing emails.",
-            });
+
+            await ctx.db.account.update({
+              where: { id: account.id },
+              data: { needsReconnection: true },
+            }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
+
+            return {
+              success: false,
+              message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
+              threadCount: 0,
+              needsReconnection: true,
+            };
           }
 
           throw syncError;
@@ -539,11 +565,18 @@ export const accountRouter = createTRPCRouter({
           (axios.isAxiosError(error) && error.response?.status === 401);
 
         if (isAuthError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Authentication failed. Please reconnect your account to continue syncing emails.",
-          });
+
+          await ctx.db.account.update({
+            where: { id: account.id },
+            data: { needsReconnection: true },
+          }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
+
+          return {
+            success: false,
+            message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
+            threadCount: 0,
+            needsReconnection: true,
+          };
         }
 
         throw new TRPCError({
@@ -1091,12 +1124,12 @@ export const accountRouter = createTRPCRouter({
                   email.meetingMessageMethod === null
                     ? undefined
                     : (email.meetingMessageMethod as
-                        | "request"
-                        | "reply"
-                        | "cancel"
-                        | "counter"
-                        | "other"
-                        | undefined),
+                      | "request"
+                      | "reply"
+                      | "cancel"
+                      | "counter"
+                      | "other"
+                      | undefined),
                 from: {
                   address: email.from.address,
                   name: email.from.name || "",

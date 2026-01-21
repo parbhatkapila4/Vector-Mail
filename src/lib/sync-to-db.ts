@@ -71,8 +71,11 @@ export async function syncEmailsToDatabase(
   }
 }
 
-async function recalculateAllThreadStatuses(accountId: string) {
+export async function recalculateAllThreadStatuses(accountId: string) {
   try {
+    console.log(
+      `\n========== [recalculateAllThreadStatuses] START ==========`,
+    );
     console.log(
       `[recalculateAllThreadStatuses] Recalculating thread statuses for account ${accountId}...`,
     );
@@ -85,6 +88,10 @@ async function recalculateAllThreadStatuses(accountId: string) {
     console.log(
       `[recalculateAllThreadStatuses] Found ${threads.length} threads to recalculate`,
     );
+
+    let inboxCount = 0;
+    let sentCount = 0;
+    let draftCount = 0;
 
     for (const thread of threads) {
       const threadEmails = await db.email.findMany({
@@ -101,6 +108,7 @@ async function recalculateAllThreadStatuses(accountId: string) {
       let hasSentEmail = false;
 
       for (const threadEmail of threadEmails) {
+
         if (
           threadEmail.emailLabel === "draft" ||
           threadEmail.sysLabels?.includes("draft")
@@ -109,36 +117,45 @@ async function recalculateAllThreadStatuses(accountId: string) {
           break;
         }
 
-        if (
+
+        const hasInboxLabel =
           threadEmail.emailLabel === "inbox" ||
           threadEmail.sysLabels?.includes("inbox") ||
+          threadEmail.sysLabels?.includes("unread") ||
+          threadEmail.sysLabels?.includes("important") ||
+          threadEmail.sysLabels?.includes("starred") ||
+          threadEmail.sysLabels?.includes("flagged") ||
           threadEmail.sysLabels?.includes("spam") ||
           threadEmail.sysLabels?.includes("junk") ||
           threadEmail.sysClassifications?.includes("promotions") ||
           threadEmail.sysClassifications?.includes("social") ||
           threadEmail.sysClassifications?.includes("updates") ||
-          threadEmail.sysClassifications?.includes("forums")
-        ) {
+          threadEmail.sysClassifications?.includes("forums");
+
+        if (hasInboxLabel) {
           hasInboxEmail = true;
         }
 
-        if (!hasInboxEmail && threadEmail.emailLabel !== "sent") {
-          hasInboxEmail = true;
-        }
 
-        if (
-          threadEmail.emailLabel === "sent" &&
+        const isSentOnly =
+          (threadEmail.emailLabel === "sent" ||
+            threadEmail.sysLabels?.includes("sent")) &&
           !threadEmail.sysLabels?.includes("inbox") &&
-          !threadEmail.sysLabels?.includes("spam") &&
-          !threadEmail.sysLabels?.includes("junk") &&
-          !threadEmail.sysClassifications?.includes("promotions") &&
-          !threadEmail.sysClassifications?.includes("social") &&
-          !threadEmail.sysClassifications?.includes("updates") &&
-          !threadEmail.sysClassifications?.includes("forums")
-        ) {
+          !threadEmail.sysLabels?.includes("unread") &&
+          !threadEmail.sysLabels?.includes("important");
+
+        if (isSentOnly) {
           hasSentEmail = true;
+        } else if (!isSentOnly && !hasDraftEmail) {
+
+
+          hasInboxEmail = true;
         }
       }
+
+
+
+
 
       let threadFolderType = "inbox";
       if (hasDraftEmail) {
@@ -149,19 +166,68 @@ async function recalculateAllThreadStatuses(accountId: string) {
         threadFolderType = "sent";
       }
 
+      const updateData = {
+        draftStatus: threadFolderType === "draft",
+        inboxStatus: threadFolderType === "inbox",
+        sentStatus: threadFolderType === "sent",
+      };
+
       await db.thread.update({
         where: { id: thread.id },
-        data: {
-          draftStatus: threadFolderType === "draft",
-          inboxStatus: threadFolderType === "inbox",
-          sentStatus: threadFolderType === "sent",
-        },
+        data: updateData,
       });
+
+
+      if (threadFolderType === "inbox") inboxCount++;
+      else if (threadFolderType === "sent") sentCount++;
+      else if (threadFolderType === "draft") draftCount++;
+
+
+      if ((inboxCount + sentCount + draftCount) <= 5) {
+        console.log(
+          `[recalculateAllThreadStatuses] Thread ${thread.id}: ${threadFolderType} (hasInbox: ${hasInboxEmail}, hasSent: ${hasSentEmail}, hasDraft: ${hasDraftEmail})`,
+        );
+      }
     }
 
     console.log(
-      `[recalculateAllThreadStatuses] Completed recalculating ${threads.length} threads`,
+      `[recalculateAllThreadStatuses] ✅ COMPLETED recalculating ${threads.length} threads`,
     );
+    console.log(
+      `[recalculateAllThreadStatuses] 📊 COUNTS: Inbox=${inboxCount}, Sent=${sentCount}, Draft=${draftCount}`,
+    );
+
+
+    const dbInboxCount = await db.thread.count({
+      where: { accountId, inboxStatus: true },
+    });
+    const dbSentCount = await db.thread.count({
+      where: { accountId, sentStatus: true },
+    });
+    const dbDraftCount = await db.thread.count({
+      where: { accountId, draftStatus: true },
+    });
+
+    console.log(
+      `[recalculateAllThreadStatuses] 📊 DB VERIFICATION: Inbox=${dbInboxCount}, Sent=${dbSentCount}, Draft=${dbDraftCount}`,
+    );
+
+    if (dbInboxCount === 0 && threads.length > 0) {
+      console.error(
+        `[recalculateAllThreadStatuses] ⚠️ WARNING: NO INBOX THREADS FOUND! This is likely the problem!`,
+      );
+    }
+
+
+    await db.account.update({
+      where: { id: accountId },
+      data: { lastInboxSyncAt: new Date() },
+    }).catch(err => console.error(`[recalculateAllThreadStatuses] Failed to update lastInboxSyncAt:`, err));
+
+    console.log(
+      `========== [recalculateAllThreadStatuses] END ==========\n`,
+    );
+
   } catch (error) {
     console.error("[recalculateAllThreadStatuses] Error:", error);
   }

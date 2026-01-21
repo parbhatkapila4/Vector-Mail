@@ -46,10 +46,10 @@ const EmailDisplay = ({ email }: Props) => {
     {
       enabled: Boolean(
         accountId &&
-          accountId.length > 0 &&
-          email.id &&
-          email.id.length > 0 &&
-          needsFullBody,
+        accountId.length > 0 &&
+        email.id &&
+        email.id.length > 0 &&
+        needsFullBody,
       ),
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -74,10 +74,10 @@ const EmailDisplay = ({ email }: Props) => {
 
     const queryEnabled = Boolean(
       accountId &&
-        accountId.length > 0 &&
-        email.id &&
-        email.id.length > 0 &&
-        needsFullBody,
+      accountId.length > 0 &&
+      email.id &&
+      email.id.length > 0 &&
+      needsFullBody,
     );
 
     if (isLoadingQuery && queryEnabled) {
@@ -190,13 +190,39 @@ const EmailDisplay = ({ email }: Props) => {
   const hasContent = rawBody && rawBody.trim().length > 0;
 
   const isPlainText = rawBody && !/<[^>]+>/g.test(rawBody);
+
+
+  const processPlainTextEmail = (text: string): string => {
+
+    let processed = text;
+    try {
+      processed = decodeURIComponent(text.replace(/\+/g, ' '));
+    } catch {
+
+      processed = text;
+    }
+
+
+    processed = processed.replace(/\n/g, "<br>");
+
+
+
+    processed = processed.replace(
+      /(\b(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/gi,
+      (match) => {
+
+        const url = match.startsWith('http') ? match : `https://${match}`;
+
+        const displayText = match.length > 60 ? match.substring(0, 57) + '...' : match;
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: underline; word-break: break-all; display: inline-block; max-width: 100%;">${displayText}</a>`;
+      }
+    );
+
+    return processed;
+  };
+
   const displayBody = isPlainText
-    ? rawBody
-        .replace(/\n/g, "<br>")
-        .replace(
-          /(https?:\/\/[^\s]+)/g,
-          '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
-        )
+    ? processPlainTextEmail(rawBody)
     : rawBody;
 
   const showLoading = isLoadingBody && !hasContent;
@@ -236,12 +262,20 @@ const EmailDisplay = ({ email }: Props) => {
       <div className="h-4"></div>
       {showLoading ? (
         <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
-          <div className="flex flex-col items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              Loading email content...
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-orange-500"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-6 w-6 animate-pulse rounded-full bg-orange-500/20"></div>
+              </div>
             </div>
-            <div className="h-1 w-32 overflow-hidden rounded-full bg-gray-200">
-              <div className="h-full w-full animate-pulse bg-gray-400"></div>
+            <div className="text-center">
+              <div className="text-sm font-medium text-gray-700">
+                Loading email content...
+              </div>
+              <div className="mt-1 text-xs text-gray-500">
+                Fetching full email body
+              </div>
             </div>
           </div>
         </div>
@@ -272,6 +306,9 @@ const EmailDisplay = ({ email }: Props) => {
               padding: "16px",
               wordWrap: "break-word",
               overflowWrap: "break-word",
+              wordBreak: "break-word",
+              maxWidth: "100%",
+              overflow: "hidden",
             }}
             dangerouslySetInnerHTML={{
               __html: sanitizeEmailHtml(displayBody),
@@ -314,15 +351,28 @@ const EmailDisplay = ({ email }: Props) => {
                   display: block;
                 }
                 
-                /* Ensure links are clickable */
+                /* Ensure links are clickable and wrap properly */
                 .email-body-wrapper a {
                   cursor: pointer;
+                  word-break: break-all;
+                  display: inline-block;
+                  max-width: 100%;
+                  overflow-wrap: break-word;
+                  hyphens: auto;
                 }
                 
                 /* Preserve original link colors if specified, otherwise use blue */
                 .email-body-wrapper a:not([style*="color"]):not([class*="color"]) {
                   color: #1a73e8 !important;
                   text-decoration: underline;
+                }
+                
+                /* Force long text/URLs to break */
+                .email-body-wrapper * {
+                  word-wrap: break-word;
+                  overflow-wrap: break-word;
+                  word-break: break-word;
+                  max-width: 100%;
                 }
                 
                 /* Preserve email's original table formatting */

@@ -58,19 +58,22 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const utils = api.useUtils();
   const syncEmailsMutation = api.account.syncEmails.useMutation({
-    onSuccess: () => {
-      console.log(
-        "[ThreadList] Full sync completed, invalidating cache and refetching threads",
-      );
+    onSuccess: async (data) => {
+      console.log("[ThreadList] ✅ Sync completed", data);
 
-      void utils.account.getThreads.invalidate();
-      void utils.account.getNumThreads.invalidate();
 
-      void refetch();
+      await utils.account.getThreads.invalidate();
+      await utils.account.getNumThreads.invalidate();
+      await utils.account.getAccounts.invalidate();
+
+
+      setTimeout(() => {
+        console.log("[ThreadList] Refetching threads...");
+        void refetch();
+      }, 300);
     },
     onError: (error) => {
-      console.error("[ThreadList] Sync failed:", error);
-
+      console.error("[ThreadList] ❌ Sync failed:", error);
       void utils.account.getThreads.invalidate();
       void utils.account.getNumThreads.invalidate();
       void refetch();

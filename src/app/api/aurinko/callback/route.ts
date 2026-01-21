@@ -3,7 +3,6 @@ import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Account } from "@/lib/accounts";
-import { syncEmailsToDatabase } from "@/lib/sync-to-db";
 import axios from "axios";
 
 export async function GET(req: NextRequest) {
@@ -61,10 +60,10 @@ export async function GET(req: NextRequest) {
       error instanceof Error ? error.message : "Unknown error";
     const errorDetails = axios.isAxiosError(error)
       ? {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-        }
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      }
       : null;
 
     console.error("[CALLBACK] Error details:", errorDetails);
@@ -119,12 +118,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 80);
+
     await db.account.upsert({
       where: { id: accountIdStr },
       update: {
         token: token.accountToken,
         userId,
         nextDeltaToken: null,
+        needsReconnection: false,
+        tokenExpiresAt,
       },
       create: {
         id: accountIdStr,
@@ -134,6 +139,8 @@ export async function GET(req: NextRequest) {
         userId,
         provider: "gmail",
         nextDeltaToken: null,
+        needsReconnection: false,
+        tokenExpiresAt,
       },
     });
     console.log("[CALLBACK] ✓ Account upserted");
@@ -145,37 +152,48 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  console.log("[CALLBACK] Starting immediate email sync...");
+  console.log("[CALLBACK] Starting FULL sync after reconnection...");
   try {
     const account = new Account(accountIdStr, token.accountToken);
-    const syncResult = await account.performInitialSync();
 
-    console.log("===== AURINKO RAW RESPONSE =====");
-    console.log("syncResult:", syncResult ? "EXISTS" : "NULL");
-    console.log("emails length:", syncResult?.emails?.length ?? 0);
-    console.log("data:", JSON.stringify(syncResult, null, 2));
-    console.log("================================");
 
-    if (syncResult && syncResult.emails.length > 0) {
-      console.log(
-        `[CALLBACK] ✓ Fetched ${syncResult.emails.length} emails from Aurinko`,
-      );
 
-      await syncEmailsToDatabase(syncResult.emails, accountIdStr);
-      console.log(
-        `[CALLBACK] ✓ Saved ${syncResult.emails.length} emails to database`,
-      );
+    console.log("[CALLBACK] Getting fresh delta token...");
+    const response = await axios.post(
+      `https://api.aurinko.io/v1/email/sync`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token.accountToken}`,
+          "X-Aurinko-Account-Id": accountIdStr,
+        },
+      },
+    );
 
+    if (response.data?.deltaToken) {
+      console.log("[CALLBACK] ✓ Fresh delta token obtained");
       await db.account.update({
         where: { id: accountIdStr },
-        data: { nextDeltaToken: syncResult.deltaToken },
+        data: {
+          nextDeltaToken: response.data.deltaToken,
+          needsReconnection: false,
+        },
       });
-      console.log("[CALLBACK] ✓ Delta token saved for future syncs");
-    } else {
-      console.log("[CALLBACK] ⚠ No emails returned from sync");
+      console.log("[CALLBACK] ✓ Delta token and reconnection flag updated");
     }
+
+
+    console.log("[CALLBACK] Syncing latest emails...");
+    const latestResult = await account.syncLatestEmails();
+    console.log("[CALLBACK] ✓ Latest sync result:", latestResult);
+
+
+    console.log("[CALLBACK] Recalculating thread statuses...");
+    const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+    await recalculateAllThreadStatuses(accountIdStr);
+    console.log("[CALLBACK] ✓ Thread statuses recalculated");
   } catch (error) {
-    console.error("[CALLBACK] ✗ Initial sync failed:", error);
+    console.error("[CALLBACK] ✗ Post-reconnection sync failed:", error);
   }
 
   console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");

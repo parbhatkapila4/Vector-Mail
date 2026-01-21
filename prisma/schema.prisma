@@ -47,18 +47,20 @@ model StripeSubscription {
 }
 
 model Account {
-  id               String         @id @default(cuid())
-  userId           String
-  binaryIndex      Json?
-  token            String         @unique
-  provider         String
-  emailAddress     String
-  name             String
-  nextDeltaToken   String?
-  lastInboxSyncAt  DateTime?
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailAddresses   EmailAddress[]
-  threads          Thread[]
+  id                String         @id @default(cuid())
+  userId            String
+  binaryIndex       Json?
+  token             String         @unique
+  provider          String
+  emailAddress      String
+  name              String
+  nextDeltaToken    String?
+  lastInboxSyncAt   DateTime?
+  needsReconnection Boolean        @default(false)
+  tokenExpiresAt    DateTime?
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailAddresses    EmailAddress[]
+  threads           Thread[]
 }
 
 model Thread {
@@ -83,18 +85,18 @@ model Thread {
 }
 
 model Email {
-  id                   String                @id @default(cuid())
+  id                   String                      @id @default(cuid())
   threadId             String
   createdTime          DateTime
   lastModifiedTime     DateTime
   sentAt               DateTime
   receivedAt           DateTime
-  internetMessageId    String              @unique 
+  internetMessageId    String                      @unique
   subject              String
   sysLabels            String[]
   keywords             String[]
   sysClassifications   String[]
-  sensitivity          Sensitivity           @default(normal)
+  sensitivity          Sensitivity                 @default(normal)
   meetingMessageMethod MeetingMessageMethod?
   fromId               String
   hasAttachments       Boolean
@@ -107,16 +109,16 @@ model Email {
   nativeProperties     Json?
   folderId             String?
   omitted              String[]
-  emailLabel           EmailLabel                      @default(inbox)
+  emailLabel           EmailLabel                  @default(inbox)
   summary              String?
   embedding            Unsupported("vector(768)")?
-  from                 EmailAddress          @relation("FromEmail", fields: [fromId], references: [id], onDelete: Cascade)
-  thread               Thread                @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  from                 EmailAddress                @relation("FromEmail", fields: [fromId], references: [id], onDelete: Cascade)
+  thread               Thread                      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   attachments          EmailAttachment[]
-  bcc                  EmailAddress[]        @relation("BccEmails")
-  cc                   EmailAddress[]        @relation("CcEmails")
-  replyTo              EmailAddress[]        @relation("ReplyToEmails")
-  to                   EmailAddress[]        @relation("ToEmails")
+  bcc                  EmailAddress[]              @relation("BccEmails")
+  cc                   EmailAddress[]              @relation("CcEmails")
+  replyTo              EmailAddress[]              @relation("ReplyToEmails")
+  to                   EmailAddress[]              @relation("ToEmails")
 
   @@index([threadId])
   @@index([emailLabel])
