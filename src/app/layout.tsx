@@ -8,6 +8,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { KeyboardShortcuts } from "@/components/global/KeyboardShortcuts";
 
 export const metadata: Metadata = {
   title: "VectorMail AI - Smart Email Management",
@@ -56,7 +57,10 @@ export default function RootLayout({
             enableSystem={false}
             disableTransitionOnChange
           >
-            <TRPCReactProvider>{children}</TRPCReactProvider>
+            <TRPCReactProvider>
+              <KeyboardShortcuts />
+              {children}
+            </TRPCReactProvider>
             <Toaster />
           </ThemeProvider>
         </body>

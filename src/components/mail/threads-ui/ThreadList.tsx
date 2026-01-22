@@ -8,6 +8,8 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
 import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
 import { SearchResults } from "../search/SearchResults";
+import { toast } from "sonner";
+import { useLocalStorage } from "usehooks-ts";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
@@ -52,6 +54,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const threads = rawThreads as RouterThread[] | undefined;
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
+  const [currentTab] = useLocalStorage("vector-mail", "inbox");
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
@@ -61,11 +64,37 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     onSuccess: async (data) => {
       console.log("[ThreadList] ✅ Sync completed", data);
 
+      if (data.needsReconnection) {
+        toast.error("Session expired", {
+          description: "Your account needs to be reconnected. Redirecting...",
+          duration: 3000,
+        });
+
+        setTimeout(async () => {
+          try {
+            const { getAurinkoAuthUrl } = await import("@/lib/aurinko");
+            const url = await getAurinkoAuthUrl("Google");
+            window.location.href = url;
+          } catch (error) {
+            console.error("Error reconnecting account:", error);
+            toast.error("Failed to reconnect", {
+              description: "Please try refreshing the page and reconnecting manually.",
+            });
+          }
+        }, 2000);
+        return;
+      }
+
+      if (data.success) {
+        toast.success("Emails synced", {
+          description: data.message,
+          duration: 2000,
+        });
+      }
 
       await utils.account.getThreads.invalidate();
       await utils.account.getNumThreads.invalidate();
       await utils.account.getAccounts.invalidate();
-
 
       setTimeout(() => {
         console.log("[ThreadList] Refetching threads...");
@@ -74,6 +103,27 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     },
     onError: (error) => {
       console.error("[ThreadList] ❌ Sync failed:", error);
+
+      const errorMessage = error.message || "Unknown error occurred";
+
+
+      if (errorMessage.includes("timed out") || errorMessage.includes("timeout")) {
+        toast.error("Sync timed out", {
+          description: "The request took too long. Please try again in a moment.",
+          duration: 4000,
+        });
+      } else if (errorMessage.includes("UNAUTHORIZED") || errorMessage.includes("Authentication")) {
+        toast.error("Sync failed", {
+          description: "There was an authentication issue. Please try again in a moment.",
+          duration: 4000,
+        });
+      } else {
+        toast.error("Sync failed", {
+          description: errorMessage.length > 100 ? "An error occurred while syncing. Please try again." : errorMessage,
+          duration: 4000,
+        });
+      }
+
       void utils.account.getThreads.invalidate();
       void utils.account.getNumThreads.invalidate();
       void refetch();
@@ -84,12 +134,17 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const handleRefresh = useCallback(() => {
     if (accountId) {
-      console.log("[ThreadList] Sync button clicked - fetching latest emails");
-      syncEmailsMutation.mutate({ accountId, forceFullSync: false });
+      const folder = currentTab === "sent" ? "sent" : "inbox";
+      console.log(`[ThreadList] Sync button clicked - fetching ${folder} emails`);
+      syncEmailsMutation.mutate({
+        accountId,
+        forceFullSync: false,
+        folder: folder as "inbox" | "sent",
+      });
     } else {
       void refetch();
     }
-  }, [refetch, accountId, syncEmailsMutation]);
+  }, [refetch, accountId, syncEmailsMutation, currentTab]);
 
   const handleAccountConnection = useCallback(async () => {
     try {
@@ -337,16 +392,16 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           variant="ghost"
           size="sm"
           onClick={handleRefresh}
-          disabled={isFetching || syncEmailsMutation.isPending}
+          disabled={syncEmailsMutation.isPending}
           className="h-7 gap-2 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
         >
           <RefreshCw
             className={cn(
               "h-3.5 w-3.5",
-              (isFetching || syncEmailsMutation.isPending) && "animate-spin",
+              syncEmailsMutation.isPending && "animate-spin",
             )}
           />
-          {isFetching || syncEmailsMutation.isPending ? "Syncing" : "Sync"}
+          {syncEmailsMutation.isPending ? "Syncing" : "Sync"}
         </Button>
       </div>
 

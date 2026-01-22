@@ -64,8 +64,8 @@ function useThreads() {
       enabled:
         hasValidAccount && !!currentTab && !!accountId && accountId.length > 0,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchOnWindowFocus: true,
-      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
       staleTime: 5 * 60 * 1000,
       gcTime: 30 * 60 * 1000,
       retry: false,

@@ -137,33 +137,36 @@ export async function recalculateAllThreadStatuses(accountId: string) {
         }
 
 
-        const isSentOnly =
+
+        const isSent =
           (threadEmail.emailLabel === "sent" ||
             threadEmail.sysLabels?.includes("sent")) &&
-          !threadEmail.sysLabels?.includes("inbox") &&
-          !threadEmail.sysLabels?.includes("unread") &&
-          !threadEmail.sysLabels?.includes("important");
+          !threadEmail.sysLabels?.includes("draft");
 
-        if (isSentOnly) {
+        if (isSent) {
           hasSentEmail = true;
-        } else if (!isSentOnly && !hasDraftEmail) {
+        }
 
 
+        const isInbox =
+          threadEmail.emailLabel === "inbox" ||
+          threadEmail.sysLabels?.includes("inbox") ||
+          threadEmail.sysLabels?.includes("unread") ||
+          threadEmail.sysLabels?.includes("important");
+
+        if (isInbox && !hasDraftEmail) {
           hasInboxEmail = true;
         }
       }
 
-
-
-
-
       let threadFolderType = "inbox";
       if (hasDraftEmail) {
         threadFolderType = "draft";
+      } else if (hasSentEmail) {
+
+        threadFolderType = "sent";
       } else if (hasInboxEmail) {
         threadFolderType = "inbox";
-      } else if (hasSentEmail) {
-        threadFolderType = "sent";
       }
 
       const updateData = {
@@ -191,10 +194,10 @@ export async function recalculateAllThreadStatuses(accountId: string) {
     }
 
     console.log(
-      `[recalculateAllThreadStatuses] ✅ COMPLETED recalculating ${threads.length} threads`,
+      `[recalculateAllThreadStatuses] COMPLETED recalculating ${threads.length} threads`,
     );
     console.log(
-      `[recalculateAllThreadStatuses] 📊 COUNTS: Inbox=${inboxCount}, Sent=${sentCount}, Draft=${draftCount}`,
+      `[recalculateAllThreadStatuses] COUNTS: Inbox=${inboxCount}, Sent=${sentCount}, Draft=${draftCount}`,
     );
 
 
@@ -209,12 +212,12 @@ export async function recalculateAllThreadStatuses(accountId: string) {
     });
 
     console.log(
-      `[recalculateAllThreadStatuses] 📊 DB VERIFICATION: Inbox=${dbInboxCount}, Sent=${dbSentCount}, Draft=${dbDraftCount}`,
+      `[recalculateAllThreadStatuses] DB VERIFICATION: Inbox=${dbInboxCount}, Sent=${dbSentCount}, Draft=${dbDraftCount}`,
     );
 
     if (dbInboxCount === 0 && threads.length > 0) {
       console.error(
-        `[recalculateAllThreadStatuses] ⚠️ WARNING: NO INBOX THREADS FOUND! This is likely the problem!`,
+        `[recalculateAllThreadStatuses] WARNING: NO INBOX THREADS FOUND! This is likely the problem!`,
       );
     }
 
@@ -256,20 +259,14 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
   try {
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
 
+
     if (email.sysLabels.includes("draft")) {
       emailLabelType = "draft";
-    } else if (
-      email.sysLabels.includes("sent") &&
-      !email.sysLabels.includes("inbox") &&
-      !(email.sysLabels as string[]).includes("spam") &&
-      !email.sysLabels.includes("junk") &&
-      !email.sysClassifications?.includes("promotions") &&
-      !email.sysClassifications?.includes("social") &&
-      !email.sysClassifications?.includes("updates") &&
-      !email.sysClassifications?.includes("forums")
-    ) {
+    } else if (email.sysLabels.includes("sent")) {
+
       emailLabelType = "sent";
     } else {
+
       emailLabelType = "inbox";
 
       if (!email.sysLabels.includes("inbox")) {
@@ -494,13 +491,16 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       }
     }
 
+
+
     let threadFolderType = "inbox";
     if (hasDraftEmail) {
       threadFolderType = "draft";
+    } else if (hasSentEmail) {
+
+      threadFolderType = "sent";
     } else if (hasInboxEmail) {
       threadFolderType = "inbox";
-    } else if (hasSentEmail) {
-      threadFolderType = "sent";
     }
 
     await db.thread.update({

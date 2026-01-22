@@ -322,6 +322,7 @@ export const accountRouter = createTRPCRouter({
       z.object({
         accountId: z.string().min(1),
         forceFullSync: z.boolean().optional().default(false),
+        folder: z.enum(["inbox", "sent"]).optional().default("inbox"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -371,11 +372,13 @@ export const accountRouter = createTRPCRouter({
 
       try {
         const shouldForceFullSync = input.forceFullSync ?? false;
+        const folder = input.folder === "sent" ? "sent" : undefined;
         console.log(
-          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}`,
+          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, folder: ${folder || "all"}`,
         );
 
-        if (!shouldForceFullSync && account.nextDeltaToken) {
+
+        if (!shouldForceFullSync && account.nextDeltaToken && !folder) {
           console.log(
             `[syncEmails mutation] Attempting lightweight sync using delta token...`,
           );
@@ -397,7 +400,12 @@ export const accountRouter = createTRPCRouter({
 
 
               const threadCount = await ctx.db.thread.count({
-                where: { accountId: account.id, inboxStatus: true },
+                where: {
+                  accountId: account.id,
+                  ...(input.folder === "sent"
+                    ? { sentStatus: true }
+                    : { inboxStatus: true }),
+                },
               });
 
               return {
@@ -416,7 +424,9 @@ export const accountRouter = createTRPCRouter({
               const threadCount = await ctx.db.thread.count({
                 where: {
                   accountId: account.id,
-                  inboxStatus: true,
+                  ...(input.folder === "sent"
+                    ? { sentStatus: true }
+                    : { inboxStatus: true }),
                 },
               });
 
@@ -436,7 +446,9 @@ export const accountRouter = createTRPCRouter({
               const threadCount = await ctx.db.thread.count({
                 where: {
                   accountId: account.id,
-                  inboxStatus: true,
+                  ...(input.folder === "sent"
+                    ? { sentStatus: true }
+                    : { inboxStatus: true }),
                 },
               });
 
@@ -498,8 +510,11 @@ export const accountRouter = createTRPCRouter({
         }
 
         try {
+
+          const folder = input.folder === "sent" ? "sent" : undefined;
           await emailAccount.syncEmails(
             shouldForceFullSync || !account.nextDeltaToken,
+            folder,
           );
         } catch (syncError) {
           const syncErrorMessage =
@@ -533,20 +548,24 @@ export const accountRouter = createTRPCRouter({
           throw syncError;
         }
 
+
         const threadCount = await ctx.db.thread.count({
           where: {
             accountId: account.id,
-            inboxStatus: true,
+            ...(input.folder === "sent"
+              ? { sentStatus: true }
+              : { inboxStatus: true }),
           },
         });
 
+        const folderName = input.folder === "sent" ? "sent" : "inbox";
         console.log(
-          `[syncEmails mutation] Sync completed. Found ${threadCount} inbox threads.`,
+          `[syncEmails mutation] Sync completed. Found ${threadCount} ${folderName} threads.`,
         );
 
         return {
           success: true,
-          message: "Emails synced successfully",
+          message: `Emails synced successfully`,
           threadCount,
         };
       } catch (error) {

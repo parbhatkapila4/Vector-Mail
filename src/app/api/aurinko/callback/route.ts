@@ -119,8 +119,9 @@ export async function GET(req: NextRequest) {
 
   try {
 
-    const tokenExpiresAt = new Date();
-    tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 80);
+
+
+    console.log("[CALLBACK] Note: Aurinko tokens are long-lived and don't expire");
 
     await db.account.upsert({
       where: { id: accountIdStr },
@@ -129,7 +130,7 @@ export async function GET(req: NextRequest) {
         userId,
         nextDeltaToken: null,
         needsReconnection: false,
-        tokenExpiresAt,
+        tokenExpiresAt: null,
       },
       create: {
         id: accountIdStr,
@@ -140,7 +141,7 @@ export async function GET(req: NextRequest) {
         provider: "gmail",
         nextDeltaToken: null,
         needsReconnection: false,
-        tokenExpiresAt,
+        tokenExpiresAt: null,
       },
     });
     console.log("[CALLBACK] ✓ Account upserted");

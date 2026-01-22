@@ -242,7 +242,7 @@ ${conversationContext}`;
       ) {
         return { subject: parsed.subject, body: parsed.body };
       }
-    } catch {}
+    } catch { }
   } catch (error) {
     console.error("Error extracting email from conversation:", error);
   }
@@ -588,7 +588,16 @@ export async function POST(req: Request) {
     const { userId } = await auth();
 
     if (!userId) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized",
+          message: "You must be logged in to use this feature.",
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     let body: ChatRequest;
@@ -701,6 +710,8 @@ export async function POST(req: Request) {
           emailAddress: true,
           name: true,
           token: true,
+          needsReconnection: true,
+          tokenExpiresAt: true,
         },
       });
 
@@ -711,6 +722,20 @@ export async function POST(req: Request) {
             message: "Please connect an email account first.",
           }),
           { status: 404, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+
+
+      if (account.needsReconnection) {
+        console.log("[BUDDY] Account needs reconnection - initiating silent reauth");
+        return new Response(
+          JSON.stringify({
+            error: "Authentication expired",
+            message: "Your session has expired. Please reconnect your account and try again.",
+            needsReconnection: true,
+          }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
         );
       }
 
@@ -729,6 +754,26 @@ export async function POST(req: Request) {
 
       try {
         const emailAccount = new Account(account.id, account.token);
+
+
+        console.log("[BUDDY] Validating token before sending email...");
+        const isTokenValid = await emailAccount['validateToken']?.() ?? true;
+        if (!isTokenValid) {
+          console.error("[BUDDY] Token validation failed - marking account for reconnection");
+          await db.account.update({
+            where: { id: account.id },
+            data: { needsReconnection: true },
+          }).catch(err => console.error("[BUDDY] Failed to update needsReconnection:", err));
+
+          return new Response(
+            JSON.stringify({
+              error: "Authentication expired",
+              message: "Your session has expired. Please reconnect your account and try again.",
+              needsReconnection: true,
+            }),
+            { status: 401, headers: { "Content-Type": "application/json" } },
+          );
+        }
 
         const formattedBody = lastEmail.body
           .split("\n\n")
@@ -793,15 +838,19 @@ export async function POST(req: Request) {
 
         let errorMessage = "Unknown error";
         let statusCode = 500;
+        let needsReconnection = false;
 
         if (error instanceof Error) {
           errorMessage = error.message;
           const errorWithStatus = error as unknown as {
             status?: number;
-            response?: unknown;
+            response?: { status?: number };
           };
           if (errorWithStatus.status) {
             statusCode = errorWithStatus.status;
+          }
+          if (errorWithStatus.response?.status) {
+            statusCode = errorWithStatus.response.status;
           }
 
           if (errorMessage.includes("Request failed with status code")) {
@@ -810,13 +859,34 @@ export async function POST(req: Request) {
               statusCode = parseInt(statusMatch[1] || "500", 10);
             }
           }
+
+
+          if (
+            statusCode === 401 ||
+            errorMessage.toLowerCase().includes("unauthorized") ||
+            errorMessage.toLowerCase().includes("authentication") ||
+            errorMessage.toLowerCase().includes("invalid token")
+          ) {
+            needsReconnection = true;
+            statusCode = 401;
+            errorMessage = "Your session has expired";
+
+
+            await db.account.update({
+              where: { id: account.id },
+              data: { needsReconnection: true },
+            }).catch(err => console.error("[BUDDY] Failed to update needsReconnection:", err));
+          }
         }
 
         return new Response(
           JSON.stringify({
-            error: "Failed to send email",
-            message: `Could not send the email: ${errorMessage}. Please try again.`,
+            error: needsReconnection ? "Authentication expired" : "Failed to send email",
+            message: needsReconnection
+              ? "Your session has expired. Please reconnect your account and try again."
+              : `Could not send the email: ${errorMessage}. Please try again.`,
             details: error instanceof Error ? error.message : undefined,
+            needsReconnection,
           }),
           {
             status: statusCode,
@@ -1057,22 +1127,22 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
     try {
       const completionMessages = isEmail
         ? [
-            { role: "system" as const, content: systemPrompt },
-            { role: "user" as const, content: userPrompt },
-          ]
+          { role: "system" as const, content: systemPrompt },
+          { role: "user" as const, content: userPrompt },
+        ]
         : (() => {
-            const conversationMessages = messages
-              .filter((msg) => msg.role !== "system")
-              .map((msg) => ({
-                role: msg.role as "user" | "assistant",
-                content: msg.content,
-              }));
+          const conversationMessages = messages
+            .filter((msg) => msg.role !== "system")
+            .map((msg) => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+            }));
 
-            return [
-              { role: "system" as const, content: systemPrompt },
-              ...conversationMessages,
-            ];
-          })();
+          return [
+            { role: "system" as const, content: systemPrompt },
+            ...conversationMessages,
+          ];
+        })();
 
       let model = "anthropic/claude-3.5-sonnet";
 

@@ -6,9 +6,6 @@ import { ArrowLeft, CheckCircle, Users, Grid, Boxes } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function PricingPage() {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">(
-    "annually",
-  );
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -21,20 +18,12 @@ export default function PricingPage() {
   }, []);
 
   const handleProCheckout = () => {
-    const proUrl = process.env.NEXT_PUBLIC_DODO_PRO_URL;
-    if (!proUrl) {
-      alert("Payment link not configured. Please try again later.");
-      return;
-    }
+    const proUrl = "https://checkout.dodopayments.com/buy/pdt_0NWp3mqNs4HTgUfiuQiG5?quantity=1&redirect_url=https://vectormail.space";
     window.location.href = proUrl;
   };
 
   const handleEnterpriseCheckout = () => {
-    const enterpriseUrl = process.env.NEXT_PUBLIC_DODO_ENTERPRISE_URL;
-    if (!enterpriseUrl) {
-      alert("Payment link not configured. Please try again later.");
-      return;
-    }
+    const enterpriseUrl = "https://checkout.dodopayments.com/buy/pdt_0NWp3NKQbiB3QzIER1ESN?quantity=1&redirect_url=https://vectormail.space%2F";
     window.location.href = enterpriseUrl;
   };
 
@@ -63,7 +52,9 @@ export default function PricingPage() {
       icon: Grid,
       description:
         "Ideal for professionals needing advanced AI capabilities and unlimited features.",
-      price: billingCycle === "monthly" ? "$12.99" : "$9.99",
+      price: "$12.34",
+      originalPrice: "$12.99",
+      discount: "5%",
       period: "/month",
       isPopular: true,
       features: [
@@ -84,7 +75,9 @@ export default function PricingPage() {
       icon: Boxes,
       description:
         "Tailored for teams requiring enterprise-grade features, security, and dedicated support.",
-      price: "$60",
+      price: "$54",
+      originalPrice: "$60",
+      discount: "10%",
       period: "/month",
       isPopular: false,
       features: [
@@ -106,9 +99,8 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
       <div
-        className={`fixed left-4 top-4 z-40 transition-opacity duration-300 sm:left-8 sm:top-6 sm:opacity-100 ${
-          isScrolled ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}
+        className={`fixed left-4 top-4 z-40 transition-opacity duration-300 sm:left-8 sm:top-6 sm:opacity-100 ${isScrolled ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
       >
         <Link href="/">
           <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
@@ -134,34 +126,6 @@ export default function PricingPage() {
               Choose the plan that best fits your requirements and start
               optimizing your time today!
             </p>
-
-            <div className="inline-flex items-center gap-4 rounded-full border border-slate-800 bg-slate-900/50 p-2">
-              <button
-                onClick={() => setBillingCycle("monthly")}
-                className={`rounded-full px-6 py-2 text-sm font-semibold transition-all ${
-                  billingCycle === "monthly"
-                    ? "border border-slate-700 bg-slate-800 text-white shadow-lg"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setBillingCycle("annually")}
-                className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${
-                  billingCycle === "annually"
-                    ? "border border-slate-700 bg-slate-800 text-white shadow-lg"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                Annually
-                {billingCycle === "annually" && (
-                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                    20% Off
-                  </span>
-                )}
-              </button>
-            </div>
           </motion.div>
 
           <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
@@ -179,20 +143,18 @@ export default function PricingPage() {
                 style={{ willChange: "transform" }}
               >
                 <div
-                  className={`absolute -inset-1 rounded-2xl transition-opacity duration-300 ${
-                    plan.isPopular
+                  className={`absolute -inset-1 rounded-2xl transition-opacity duration-300 ${plan.isPopular
                       ? "bg-gradient-to-r from-orange-600/20 via-amber-600/20 to-yellow-500/20 opacity-60 blur-xl group-hover:opacity-80"
                       : "opacity-0"
-                  }`}
+                    }`}
                   style={{ willChange: "opacity" }}
                 />
 
                 <div
-                  className={`relative flex h-full flex-col rounded-2xl border bg-[#0a0a0a] p-8 transition-all duration-300 ${
-                    plan.isPopular
+                  className={`relative flex h-full flex-col rounded-2xl border bg-[#0a0a0a] p-8 transition-all duration-300 ${plan.isPopular
                       ? "border-orange-500/50 shadow-2xl shadow-orange-500/20"
                       : "border-slate-800 hover:border-slate-700"
-                  } group-hover:-translate-y-2`}
+                    } group-hover:-translate-y-2`}
                   style={{ willChange: "transform, border-color" }}
                 >
                   {plan.isPopular && (
@@ -209,11 +171,10 @@ export default function PricingPage() {
                   )}
 
                   <div
-                    className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 sm:mx-0 ${
-                      plan.isPopular
+                    className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 sm:mx-0 ${plan.isPopular
                         ? "bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500"
                         : "bg-slate-900/50"
-                    }`}
+                      }`}
                   >
                     <plan.icon className="h-7 w-7 text-white" />
                   </div>
@@ -227,7 +188,19 @@ export default function PricingPage() {
                   </p>
 
                   <div className="mb-8">
+                    {plan.discount && (
+                      <div className="mb-2 flex items-center justify-center gap-2 sm:justify-start">
+                        <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-bold text-green-400">
+                          {plan.discount} OFF
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-baseline justify-center gap-1 sm:justify-start">
+                      {plan.originalPrice && (
+                        <span className="text-xl font-medium text-slate-500 line-through">
+                          {plan.originalPrice}
+                        </span>
+                      )}
                       <span className="text-5xl font-black text-white">
                         {plan.price}
                       </span>
@@ -244,11 +217,10 @@ export default function PricingPage() {
                         className="mx-auto flex max-w-fit items-start gap-3 sm:mx-0 sm:max-w-none"
                       >
                         <div
-                          className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
-                            plan.isPopular
+                          className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${plan.isPopular
                               ? "border border-orange-500/50 bg-gradient-to-br from-orange-500/30 to-amber-500/30"
                               : "bg-slate-800"
-                          }`}
+                            }`}
                         >
                           <CheckCircle
                             className={`h-3 w-3 ${plan.isPopular ? "text-orange-400" : "text-white"}`}
@@ -264,11 +236,10 @@ export default function PricingPage() {
                   {plan.name === "Basic" ? (
                     <Link href={plan.ctaLink}>
                       <button
-                        className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
-                          plan.isPopular
+                        className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${plan.isPopular
                             ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
                             : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
-                        }`}
+                          }`}
                         style={{ willChange: "transform" }}
                       >
                         {plan.cta}
@@ -277,11 +248,10 @@ export default function PricingPage() {
                   ) : plan.name === "Pro" ? (
                     <button
                       onClick={handleProCheckout}
-                      className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
-                        plan.isPopular
+                      className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${plan.isPopular
                           ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
                           : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
-                      }`}
+                        }`}
                       style={{ willChange: "transform" }}
                     >
                       {plan.cta}
@@ -289,11 +259,10 @@ export default function PricingPage() {
                   ) : (
                     <button
                       onClick={handleEnterpriseCheckout}
-                      className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${
-                        plan.isPopular
+                      className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${plan.isPopular
                           ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
                           : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
-                      }`}
+                        }`}
                       style={{ willChange: "transform" }}
                     >
                       {plan.cta}

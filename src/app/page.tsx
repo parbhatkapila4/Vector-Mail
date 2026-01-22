@@ -54,7 +54,7 @@ function HeroSection() {
         <div className="mb-8 inline-flex items-center self-start">
           <div className="flex items-center border-l-4 border-l-orange-500 bg-black/40 backdrop-blur-sm">
             <div className="flex items-center gap-4 px-4 py-3">
-              <span className="text-[8px] uppercase leading-tight tracking-[0.15em] text-zinc-500">
+              <span className="text-[8px] uppercase leading-tight tracking-[0.15em] text-white">
                 Search Latency
               </span>
               <div className="flex items-baseline">
@@ -71,7 +71,7 @@ function HeroSection() {
                   ms
                 </span>
               </div>
-              <span className="text-[8px] uppercase leading-tight tracking-[0.12em] text-zinc-500">
+              <span className="text-[8px] uppercase leading-tight tracking-[0.12em] text-white">
                 Vector Search
                 <br />
                 Powered By AI

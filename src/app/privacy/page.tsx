@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 export default function PrivacyPolicy() {
-  const lastUpdated = "December 2025";
+  const lastUpdated = "January 2026";
 
   const sections = [
     {

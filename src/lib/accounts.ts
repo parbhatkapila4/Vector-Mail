@@ -10,6 +10,12 @@ import { db } from "@/server/db";
 
 const syncLocks = new Map<string, Promise<void>>();
 
+
+const aurinkoAxios = axios.create({
+  timeout: 30000,
+  timeoutErrorMessage: 'Request timed out - please try again',
+});
+
 export class Account {
   private id: string;
   private token: string;
@@ -34,7 +40,7 @@ export class Account {
     try {
       console.log(`[validateToken] Validating token for account ${this.id}...`);
 
-      const response = await axios.get(
+      const response = await aurinkoAxios.get(
         `https://api.aurinko.io/v1/email/messages`,
         {
           headers: this.aurinkoHeaders,
@@ -42,45 +48,76 @@ export class Account {
             maxResults: 1,
             bodyType: "text",
           },
+          timeout: 10000,
         },
       );
       console.log(
         `[validateToken] Token is valid (status: ${response.status})`,
       );
-      
-      
+
+
       await db.account.update({
         where: { id: this.id },
         data: { needsReconnection: false },
       }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
-      
+
       return response.status === 200;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        console.error(
-          `[validateToken] Token validation failed (401) for account ${this.id} - token is expired or invalid`,
-        );
-        console.error(`[validateToken] Error response:`, error.response?.data);
-        
-        
-        await db.account.update({
-          where: { id: this.id },
-          data: { needsReconnection: true },
-        }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
-        
-        return false;
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          console.error(
+            `[validateToken] Token validation failed (401) for account ${this.id} - token is expired or invalid`,
+          );
+          console.error(`[validateToken] Error response:`, error.response?.data);
+
+
+          await db.account.update({
+            where: { id: this.id },
+            data: { needsReconnection: true },
+          }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
+
+          return false;
+        }
+
+        if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+          console.warn(
+            `[validateToken] Token validation timed out for account ${this.id} - treating as temporary network issue`,
+          );
+
+          return true;
+        }
       }
 
       console.warn(
-        `[validateToken] Token validation check failed with non-401 error:`,
+        `[validateToken] Token validation check failed with non-401 error (network/timeout):`,
         error,
       );
+
+
       return true;
     }
   }
 
-  async performInitialSync() {
+  async performInitialSync(folder?: "inbox" | "sent") {
     try {
+      if (folder) {
+        console.log(
+          `[Initial Sync] Starting initial sync for ${folder.toUpperCase()} folder only...`,
+        );
+        const folderEmails = await this.fetchEmailsByFolder(folder);
+        await syncEmailsToDatabase(folderEmails, this.id);
+
+        const count = folderEmails.length;
+        console.log(
+          `[Initial Sync] Complete! Fetched ${count} ${folder} emails`,
+        );
+
+        return {
+          emails: folderEmails,
+          deltaToken: "",
+        };
+      }
+
       console.log(
         "[Initial Sync] Starting initial sync - using direct fetch for ALL emails from last 30 days...",
       );
@@ -140,7 +177,7 @@ export class Account {
     console.log("[AURINKO AUTH] Using accountToken for account:", this.id);
 
     try {
-      const response = await axios.post<syncResponse>(
+      const response = await aurinkoAxios.post<syncResponse>(
         `https://api.aurinko.io/v1/email/sync`,
         {},
         {
@@ -157,13 +194,13 @@ export class Account {
         console.error(
           "[startSync] Authentication failed (401) - token may be expired",
         );
-        
-        
+
+
         await db.account.update({
           where: { id: this.id },
           data: { needsReconnection: true },
         }).catch(err => console.error(`[startSync] Failed to update needsReconnection:`, err));
-        
+
         throw new Error(
           "Authentication failed. Please reconnect your account.",
         );
@@ -202,7 +239,7 @@ export class Account {
     });
 
     try {
-      const response = await axios.get<syncUpdateResponse>(
+      const response = await aurinkoAxios.get<syncUpdateResponse>(
         `https://api.aurinko.io/v1/email/sync/updated`,
         {
           headers: this.aurinkoHeaders,
@@ -234,13 +271,13 @@ export class Account {
           console.error(
             `[getUpdatedEmails] Authentication failed (401) for account ${this.id} - token may be expired or invalid`,
           );
-          
-          
+
+
           await db.account.update({
             where: { id: this.id },
             data: { needsReconnection: true },
           }).catch(err => console.error(`[getUpdatedEmails] Failed to update needsReconnection:`, err));
-          
+
           throw new Error(
             "Authentication failed. Please reconnect your account.",
           );
@@ -288,7 +325,7 @@ export class Account {
       if (bcc && bcc.length > 0) payload.bcc = bcc;
       if (replyTo) payload.replyTo = [replyTo];
 
-      const response = await axios.post(
+      const response = await aurinkoAxios.post(
         `https://api.aurinko.io/v1/email/messages`,
         payload,
         {
@@ -332,7 +369,7 @@ export class Account {
 
   async getEmailById(emailId: string): Promise<EmailMessage | null> {
     try {
-      const response = await axios.get<EmailMessage>(
+      const response = await aurinkoAxios.get<EmailMessage>(
         `https://api.aurinko.io/v1/email/messages/${emailId}`,
         {
           headers: this.aurinkoHeaders,
@@ -356,7 +393,7 @@ export class Account {
     }
   }
 
-  async syncEmails(forceFullSync = false) {
+  async syncEmails(forceFullSync = false, folder?: "inbox" | "sent") {
     const existingSync = syncLocks.get(this.id);
     if (existingSync) {
       console.log(
@@ -369,7 +406,7 @@ export class Account {
       return;
     }
 
-    const syncPromise = this._performSync(forceFullSync);
+    const syncPromise = this._performSync(forceFullSync, folder);
     syncLocks.set(this.id, syncPromise);
 
     try {
@@ -379,7 +416,7 @@ export class Account {
     }
   }
 
-  private async _performSync(forceFullSync = false) {
+  private async _performSync(forceFullSync = false, folder?: "inbox" | "sent") {
     const account = await db.account.findUnique({
       where: {
         id: this.id,
@@ -399,8 +436,29 @@ export class Account {
     this.token = account.token;
 
     console.log(
-      `[syncEmails] Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync})`,
+      `[syncEmails] Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync}, folder: ${folder || "all"})`,
     );
+
+
+    if (folder) {
+      console.log(`[syncEmails] Folder-specific sync requested: ${folder}`);
+      try {
+        const folderEmails = await this.fetchEmailsByFolder(folder);
+        console.log(`[syncEmails] ✓ Fetched ${folderEmails.length} ${folder} emails`);
+
+        if (folderEmails.length > 0) {
+          await syncEmailsToDatabase(folderEmails, account.id);
+          console.log(`[syncEmails] ✓ Synced ${folderEmails.length} ${folder} emails to database`);
+        } else {
+          console.log(`[syncEmails] No ${folder} emails found to sync`);
+        }
+
+        return;
+      } catch (folderError) {
+        console.error(`[syncEmails] Folder-specific sync failed:`, folderError);
+        throw folderError;
+      }
+    }
 
     const inboxThreadCount = await db.thread.count({
       where: {
@@ -562,13 +620,13 @@ export class Account {
           console.error(
             `[syncEmails] Authentication failed (401) - token may be expired or invalid`,
           );
-          
-          
+
+
           await db.account.update({
             where: { id: this.id },
             data: { needsReconnection: true },
           }).catch(err => console.error(`[syncEmails] Failed to update needsReconnection:`, err));
-          
+
           throw new Error(
             "Authentication failed. Please reconnect your account to continue syncing emails.",
           );
@@ -913,19 +971,19 @@ export class Account {
           `[Latest Sync] Error details:`,
           axios.isAxiosError(error)
             ? {
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                data: error.response?.data,
-              }
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              data: error.response?.data,
+            }
             : errorMessage,
         );
-        
-        
+
+
         await db.account.update({
           where: { id: account.id },
           data: { needsReconnection: true },
         }).catch(err => console.error(`[Latest Sync] Failed to update needsReconnection:`, err));
-        
+
         return { success: false, count: 0, authError: true };
       }
 
@@ -989,7 +1047,7 @@ export class Account {
         params.pageToken = pageToken;
       }
 
-      const listResponse = await axios.get<{
+      const listResponse = await aurinkoAxios.get<{
         messages?: Array<{ id: string }>;
         nextPageToken?: string;
       }>("https://api.aurinko.io/v1/email/messages", {
@@ -1036,11 +1094,11 @@ export class Account {
   async fetchAllEmailsDirectly(): Promise<EmailMessage[]> {
     try {
       console.log(
-        "[fetchAllEmailsDirectly] Starting to fetch all emails from last 30 days...",
+        "[fetchAllEmailsDirectly] Starting to fetch all emails (inbox + sent) from last 30 days...",
       );
 
       try {
-        const accountInfo = await axios.get(
+        const accountInfo = await aurinkoAxios.get(
           "https://api.aurinko.io/v1/account",
           {
             headers: this.aurinkoHeaders,
@@ -1054,15 +1112,15 @@ export class Account {
           console.error(
             `[fetchAllEmailsDirectly] ✗ API authentication failed: ${authError.response?.status} - ${JSON.stringify(authError.response?.data)}`,
           );
-          
-          
+
+
           if (authError.response?.status === 401) {
             await db.account.update({
               where: { id: this.id },
               data: { needsReconnection: true },
             }).catch(err => console.error(`[fetchAllEmailsDirectly] Failed to update needsReconnection:`, err));
           }
-          
+
           throw new Error(
             `API authentication failed: ${authError.response?.status}. Please reconnect your account.`,
           );
@@ -1070,398 +1128,168 @@ export class Account {
         throw authError;
       }
 
-      const allEmails: EmailMessage[] = [];
-      let pageToken: string | undefined = undefined;
-      let pageCount = 0;
-      const maxPages = 500;
-      let consecutiveEmptyPages = 0;
-      const maxConsecutiveEmpty = 3;
 
-      const inboxThreadCount = await db.thread.count({
-        where: {
-          accountId: this.id,
-          inboxStatus: true,
-        },
-      });
+      console.log("[fetchAllEmailsDirectly] Step 1: Fetching INBOX emails...");
+      const inboxEmails = await this.fetchEmailsByFolder("inbox");
+      console.log(`[fetchAllEmailsDirectly] ✓ Fetched ${inboxEmails.length} inbox emails`);
 
-      let dateQuery: string | undefined = undefined;
+      console.log("[fetchAllEmailsDirectly] Step 2: Fetching SENT emails...");
+      const sentEmails = await this.fetchEmailsByFolder("sent");
+      console.log(`[fetchAllEmailsDirectly] ✓ Fetched ${sentEmails.length} sent emails`);
 
-      if (inboxThreadCount > 0) {
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now);
-        thirtyDaysAgo.setUTCDate(now.getUTCDate() - 30);
-        thirtyDaysAgo.setUTCHours(0, 0, 0, 0);
 
-        const year = thirtyDaysAgo.getUTCFullYear();
-        const month = String(thirtyDaysAgo.getUTCMonth() + 1).padStart(2, "0");
-        const day = String(thirtyDaysAgo.getUTCDate()).padStart(2, "0");
-        dateQuery = `after:${year}/${month}/${day}`;
-
-        console.log(
-          `[fetchAllEmailsDirectly] Current date: ${now.toISOString()}`,
-        );
-        console.log(
-          `[fetchAllEmailsDirectly] Date query: ${dateQuery} (after ${year}-${month}-${day})`,
-        );
-        console.log(
-          `[fetchAllEmailsDirectly] 30 days ago timestamp: ${thirtyDaysAgo.toISOString()}`,
-        );
-      } else {
-        console.log(
-          `[fetchAllEmailsDirectly] Inbox is empty (${inboxThreadCount} threads), fetching ALL emails without date filter`,
-        );
-      }
-
-      while (pageCount < maxPages) {
-        pageCount++;
-        console.log(`[fetchAllEmailsDirectly] Fetching page ${pageCount}...`);
-
-        const params: Record<string, string | number> = {
-          maxResults: 500,
-          bodyType: "text",
-        };
-
-        if (dateQuery) {
-          params.q = `in:inbox ${dateQuery}`;
-        } else {
-          params.q = "in:inbox";
-        }
-
-        if (pageToken) {
-          params.pageToken = pageToken;
-        }
-
-        try {
-          const listResponse = await axios.get<{
-            messages?: Array<{ id: string }>;
-            nextPageToken?: string;
-          }>("https://api.aurinko.io/v1/email/messages", {
-            headers: this.aurinkoHeaders,
-            params,
-          });
-
-          console.log(
-            `[fetchAllEmailsDirectly] Page ${pageCount} API Response:`,
-            JSON.stringify(
-              {
-                status: listResponse.status,
-                hasMessages: !!listResponse.data.messages,
-                messageCount: listResponse.data.messages?.length ?? 0,
-                hasNextPageToken: !!listResponse.data.nextPageToken,
-                nextPageToken: listResponse.data.nextPageToken
-                  ? listResponse.data.nextPageToken.substring(0, 20) + "..."
-                  : null,
-                params: params,
-              },
-              null,
-              2,
-            ),
-          );
-
-          const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
-          console.log(
-            `[fetchAllEmailsDirectly] Page ${pageCount}: Found ${messageIds.length} message IDs, nextPageToken: ${listResponse.data.nextPageToken ? "yes" : "no"}`,
-          );
-
-          if (listResponse.data.nextPageToken && messageIds.length === 0) {
-            console.error(
-              `[fetchAllEmailsDirectly] ⚠ SUSPICIOUS: API returned nextPageToken but 0 messages. Full response:`,
-              JSON.stringify(listResponse.data, null, 2),
-            );
-          }
-
-          if (pageCount === 1 && messageIds.length === 0 && !pageToken) {
-            console.log(
-              `[fetchAllEmailsDirectly] First page returned 0 results, trying different query formats...`,
-            );
-
-            const testParams1: Record<string, string | number> = {
-              maxResults: 10,
-              bodyType: "text",
-            };
-
-            try {
-              const testResponse1 = await axios.get<{
-                messages?: Array<{ id: string }>;
-                nextPageToken?: string;
-              }>("https://api.aurinko.io/v1/email/messages", {
-                headers: this.aurinkoHeaders,
-                params: testParams1,
-              });
-
-              const testMessageIds1 =
-                testResponse1.data.messages?.map((m) => m.id) ?? [];
-              console.log(
-                `[fetchAllEmailsDirectly] Test 1 (no query): Found ${testMessageIds1.length} message IDs`,
-              );
-
-              if (testMessageIds1.length > 0) {
-                console.log(
-                  `[fetchAllEmailsDirectly] ✓ Found emails without query! Removing date filter and retrying.`,
-                );
-
-                delete params.q;
-
-                pageCount = 0;
-                continue;
-              }
-            } catch (testError) {
-              console.error(
-                `[fetchAllEmailsDirectly] Test 1 failed:`,
-                testError,
-              );
-            }
-
-            const testParams2: Record<string, string | number> = {
-              q: "in:inbox",
-              maxResults: 10,
-              bodyType: "text",
-            };
-
-            try {
-              const testResponse2 = await axios.get<{
-                messages?: Array<{ id: string }>;
-                nextPageToken?: string;
-              }>("https://api.aurinko.io/v1/email/messages", {
-                headers: this.aurinkoHeaders,
-                params: testParams2,
-              });
-
-              const testMessageIds2 =
-                testResponse2.data.messages?.map((m) => m.id) ?? [];
-              console.log(
-                `[fetchAllEmailsDirectly] Test 2 (in:inbox): Found ${testMessageIds2.length} message IDs`,
-              );
-
-              if (testMessageIds2.length > 0) {
-                console.log(
-                  `[fetchAllEmailsDirectly] ✓ Found emails with in:inbox! Removing date filter and retrying.`,
-                );
-
-                params.q = "in:inbox";
-
-                pageCount = 0;
-                continue;
-              }
-            } catch (testError) {
-              console.error(
-                `[fetchAllEmailsDirectly] Test 2 failed:`,
-                testError,
-              );
-            }
-
-            const testParams3: Record<string, string | number> = {
-              q: "in:all",
-              maxResults: 10,
-              bodyType: "text",
-            };
-
-            try {
-              const testResponse3 = await axios.get<{
-                messages?: Array<{ id: string }>;
-                nextPageToken?: string;
-              }>("https://api.aurinko.io/v1/email/messages", {
-                headers: this.aurinkoHeaders,
-                params: testParams3,
-              });
-
-              const testMessageIds3 =
-                testResponse3.data.messages?.map((m) => m.id) ?? [];
-              console.log(
-                `[fetchAllEmailsDirectly] Test 3 (in:all): Found ${testMessageIds3.length} message IDs`,
-              );
-
-              if (testMessageIds3.length > 0) {
-                console.log(
-                  `[fetchAllEmailsDirectly] ✓ Found emails with in:all! Using this format.`,
-                );
-
-                params.q = "in:all";
-
-                pageCount = 0;
-                continue;
-              }
-            } catch (testError) {
-              console.error(
-                `[fetchAllEmailsDirectly] Test 3 failed:`,
-                testError,
-              );
-            }
-
-            console.warn(
-              `[fetchAllEmailsDirectly] ⚠ WARNING: No emails found with any query format. Possible issues:
-              1. Account has no emails
-              2. API authentication/authorization issue
-              3. API query format not supported
-              Check API credentials, account status, and Aurinko API documentation.`,
-            );
-          }
-
-          if (
-            pageCount === 1 &&
-            messageIds.length < 100 &&
-            !pageToken &&
-            messageIds.length > 0 &&
-            dateQuery
-          ) {
-            console.log(
-              `[fetchAllEmailsDirectly] First page returned ${messageIds.length} results, trying alternative queries to get ALL emails...`,
-            );
-
-            if (dateQuery) {
-              params.q = dateQuery;
-            } else {
-              delete params.q;
-            }
-            const retryResponse1 = await axios.get<{
-              messages?: Array<{ id: string }>;
-              nextPageToken?: string;
-            }>("https://api.aurinko.io/v1/email/messages", {
-              headers: this.aurinkoHeaders,
-              params,
-            });
-            const retryMessageIds1 =
-              retryResponse1.data.messages?.map((m) => m.id) ?? [];
-            console.log(
-              `[fetchAllEmailsDirectly] Query without in:all: Found ${retryMessageIds1.length} message IDs`,
-            );
-
-            if (retryMessageIds1.length > messageIds.length) {
-              console.log(
-                `[fetchAllEmailsDirectly] Using query without in:all (${retryMessageIds1.length} > ${messageIds.length})`,
-              );
-              pageToken = retryResponse1.data.nextPageToken;
-              if (dateQuery) {
-                params.q = dateQuery;
-              } else {
-                delete params.q;
-              }
-
-              const batchSize = 50;
-              for (let i = 0; i < retryMessageIds1.length; i += batchSize) {
-                const batch = retryMessageIds1.slice(i, i + batchSize);
-                const batchEmails = await Promise.all(
-                  batch.map((id) => this.getEmailById(id)),
-                );
-                const validEmails = batchEmails.filter(
-                  (e): e is EmailMessage => e !== null,
-                );
-                allEmails.push(...validEmails);
-              }
-              continue;
-            } else {
-              console.log(
-                `[fetchAllEmailsDirectly] Keeping in:all query (${messageIds.length} >= ${retryMessageIds1.length})`,
-              );
-              if (dateQuery) {
-                params.q = `in:inbox ${dateQuery}`;
-              } else {
-                params.q = "in:inbox";
-              }
-            }
-          }
-
-          if (messageIds.length === 0) {
-            consecutiveEmptyPages++;
-            console.log(
-              `[fetchAllEmailsDirectly] Empty page ${pageCount} (consecutive: ${consecutiveEmptyPages})`,
-            );
-
-            if (listResponse.data.nextPageToken) {
-              pageToken = listResponse.data.nextPageToken;
-              continue;
-            }
-
-            if (consecutiveEmptyPages >= maxConsecutiveEmpty) {
-              console.log(
-                `[fetchAllEmailsDirectly] Stopping after ${consecutiveEmptyPages} consecutive empty pages`,
-              );
-              break;
-            }
-
-            if (allEmails.length > 0 && !listResponse.data.nextPageToken) {
-              console.log(
-                `[fetchAllEmailsDirectly] No more pages available, stopping`,
-              );
-              break;
-            }
-
-            pageToken = listResponse.data.nextPageToken;
-            continue;
-          }
-
-          consecutiveEmptyPages = 0;
-
-          const batchSize = 50;
-          for (let i = 0; i < messageIds.length; i += batchSize) {
-            const batch = messageIds.slice(i, i + batchSize);
-            const batchEmails = await Promise.all(
-              batch.map((id) => this.getEmailById(id)),
-            );
-
-            const validEmails = batchEmails.filter(
-              (e): e is EmailMessage => e !== null,
-            );
-
-            for (const email of validEmails) {
-              if (!email.sysLabels.includes("inbox")) {
-                email.sysLabels.push("inbox");
-              }
-            }
-
-            allEmails.push(...validEmails);
-
-            console.log(
-              `[fetchAllEmailsDirectly] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(messageIds.length / batchSize)}, batch size: ${validEmails.length}, total emails: ${allEmails.length}`,
-            );
-          }
-
-          pageToken = listResponse.data.nextPageToken;
-
-          if (!pageToken) {
-            console.log(
-              `[fetchAllEmailsDirectly] No nextPageToken, finished fetching`,
-            );
-            break;
-          }
-        } catch (pageError) {
-          console.error(
-            `[fetchAllEmailsDirectly] Error on page ${pageCount}:`,
-            pageError,
-          );
-
-          if (axios.isAxiosError(pageError)) {
-            const status = pageError.response?.status;
-            if (status === 429 || (status && status >= 500 && status < 600)) {
-              console.log(
-                `[fetchAllEmailsDirectly] Rate limit or server error, waiting 2 seconds before retry...`,
-              );
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-              continue;
-            }
-          }
-
-          console.warn(
-            `[fetchAllEmailsDirectly] Breaking due to error on page ${pageCount}`,
-          );
-          break;
+      const emailMap = new Map<string, EmailMessage>();
+      for (const email of [...inboxEmails, ...sentEmails]) {
+        if (!emailMap.has(email.id)) {
+          emailMap.set(email.id, email);
         }
       }
-
-      if (pageCount >= maxPages) {
-        console.warn(
-          `[fetchAllEmailsDirectly] Reached max pages limit (${maxPages}), stopping. Total fetched: ${allEmails.length}`,
-        );
-      }
-
-      console.log(
-        `[fetchAllEmailsDirectly] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages`,
-      );
+      const allEmails = Array.from(emailMap.values());
+      console.log(`[fetchAllEmailsDirectly] ✓ Total unique emails: ${allEmails.length} (Inbox: ${inboxEmails.length}, Sent: ${sentEmails.length})`);
 
       return allEmails;
     } catch (error) {
-      console.error("[fetchAllEmailsDirectly] Failed:", error);
+      if (axios.isAxiosError(error)) {
+        console.error(
+          "[fetchAllEmailsDirectly] API error:",
+          error.response?.status,
+          error.response?.data,
+        );
+      } else {
+        console.error("[fetchAllEmailsDirectly] Error:", error);
+      }
       throw error;
     }
+  }
+
+  private async fetchEmailsByFolder(folder: "inbox" | "sent"): Promise<EmailMessage[]> {
+    const allEmails: EmailMessage[] = [];
+    let pageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const maxPages = 500;
+    let consecutiveEmptyPages = 0;
+    const maxConsecutiveEmpty = 3;
+
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setUTCDate(now.getUTCDate() - 30);
+    thirtyDaysAgo.setUTCHours(0, 0, 0, 0);
+
+    const year = thirtyDaysAgo.getUTCFullYear();
+    const month = String(thirtyDaysAgo.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(thirtyDaysAgo.getUTCDate()).padStart(2, "0");
+    const dateQuery = `after:${year}/${month}/${day}`;
+
+    console.log(`[fetchEmailsByFolder:${folder}] Fetching emails with query: in:${folder} ${dateQuery}`);
+
+    while (pageCount < maxPages) {
+      pageCount++;
+      console.log(`[fetchEmailsByFolder:${folder}] Fetching page ${pageCount}...`);
+
+      const params: Record<string, string | number> = {
+        maxResults: 500,
+        bodyType: "text",
+        q: `in:${folder} ${dateQuery}`,
+      };
+
+      if (pageToken) {
+        params.pageToken = pageToken;
+      }
+
+      try {
+        const listResponse = await aurinkoAxios.get<{
+          messages?: Array<{ id: string }>;
+          nextPageToken?: string;
+        }>("https://api.aurinko.io/v1/email/messages", {
+          headers: this.aurinkoHeaders,
+          params,
+        });
+
+        const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
+        console.log(
+          `[fetchEmailsByFolder:${folder}] Page ${pageCount}: Found ${messageIds.length} message IDs`,
+        );
+
+        if (messageIds.length === 0) {
+          consecutiveEmptyPages++;
+          console.log(
+            `[fetchEmailsByFolder:${folder}] Empty page ${pageCount} (consecutive: ${consecutiveEmptyPages})`,
+          );
+
+          if (consecutiveEmptyPages >= maxConsecutiveEmpty || !listResponse.data.nextPageToken) {
+            console.log(
+              `[fetchEmailsByFolder:${folder}] Stopping - ${consecutiveEmptyPages >= maxConsecutiveEmpty ? 'too many empty pages' : 'no more pages'}`,
+            );
+            break;
+          }
+
+          pageToken = listResponse.data.nextPageToken;
+          continue;
+        }
+
+        consecutiveEmptyPages = 0;
+
+        const batchSize = 50;
+        for (let i = 0; i < messageIds.length; i += batchSize) {
+          const batch = messageIds.slice(i, i + batchSize);
+          const batchEmails = await Promise.all(
+            batch.map((id) => this.getEmailById(id)),
+          );
+
+          const validEmails = batchEmails.filter(
+            (e): e is EmailMessage => e !== null,
+          );
+
+          allEmails.push(...validEmails);
+
+          console.log(
+            `[fetchEmailsByFolder:${folder}] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(messageIds.length / batchSize)}, batch size: ${validEmails.length}, total: ${allEmails.length}`,
+          );
+        }
+
+        pageToken = listResponse.data.nextPageToken;
+
+        if (!pageToken) {
+          console.log(
+            `[fetchEmailsByFolder:${folder}] No more pages, finished fetching`,
+          );
+          break;
+        }
+      } catch (pageError) {
+        console.error(
+          `[fetchEmailsByFolder:${folder}] Error on page ${pageCount}:`,
+          pageError,
+        );
+
+        if (axios.isAxiosError(pageError)) {
+          const status = pageError.response?.status;
+          if (status === 429 || (status && status >= 500 && status < 600)) {
+            console.log(
+              `[fetchEmailsByFolder:${folder}] Rate limit or server error, waiting 2 seconds before retry...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue;
+          }
+        }
+
+        console.warn(
+          `[fetchEmailsByFolder:${folder}] Breaking due to error on page ${pageCount}`,
+        );
+        break;
+      }
+    }
+
+    if (pageCount >= maxPages) {
+      console.warn(
+        `[fetchEmailsByFolder:${folder}] Reached max pages limit (${maxPages}), stopping. Total fetched: ${allEmails.length}`,
+      );
+    }
+
+    console.log(
+      `[fetchEmailsByFolder:${folder}] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages`,
+    );
+
+    return allEmails;
   }
 }

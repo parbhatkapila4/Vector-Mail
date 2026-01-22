@@ -197,6 +197,29 @@ function BuddyPageContent() {
             data.message ||
             data.error ||
             "Something went wrong. Please try again.";
+
+
+          if (data.needsReconnection) {
+            toast.error("Session expired", {
+              description: "Your account needs to be reconnected. Redirecting...",
+              duration: 3000,
+            });
+
+            setTimeout(async () => {
+              try {
+                const { getAurinkoAuthUrl } = await import("@/lib/aurinko");
+                const url = await getAurinkoAuthUrl("Google");
+                window.location.href = url;
+              } catch (error) {
+                console.error("Error reconnecting account:", error);
+                toast.error("Failed to reconnect", {
+                  description: "Please try refreshing the page and reconnecting manually.",
+                });
+              }
+            }, 2000);
+            return;
+          }
+
           toast.error(errorMessage);
           setMessages([
             ...updatedMessages,
@@ -299,6 +322,33 @@ function BuddyPageContent() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+
+      const isTyping =
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target as HTMLElement)?.isContentEditable;
+
+      if (isTyping) return;
+
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isShortcut = isMac
+        ? (event.metaKey && event.key === 'n')
+        : (event.altKey && event.key === 'n');
+
+      if (isShortcut) {
+        event.preventDefault();
+        handleNewChat();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNewChat]);
+
   if (!isLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0C0C0D]">
@@ -346,7 +396,7 @@ function BuddyPageContent() {
               <span>New chat</span>
             </div>
             <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
-              ⌘N
+              {typeof window !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "Command + N" : "Alt + N"}
             </kbd>
           </button>
         </div>
@@ -539,7 +589,7 @@ function BuddyPageContent() {
                                               <span key={lineIdx}>
                                                 {parts.map((part, j) =>
                                                   part.startsWith("**") &&
-                                                  part.endsWith("**") ? (
+                                                    part.endsWith("**") ? (
                                                     <strong
                                                       key={j}
                                                       className="font-semibold text-zinc-100"
@@ -593,7 +643,7 @@ function BuddyPageContent() {
                                               className="ml-2 shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-zinc-700 group-hover:opacity-100"
                                             >
                                               {copiedId ===
-                                              `${message.id}-${idx}` ? (
+                                                `${message.id}-${idx}` ? (
                                                 <Check className="h-3.5 w-3.5 text-emerald-400" />
                                               ) : (
                                                 <Copy className="h-3.5 w-3.5 text-zinc-500" />
