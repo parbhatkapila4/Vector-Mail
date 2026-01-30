@@ -54,7 +54,7 @@ function useThreads() {
     refetch,
   } = api.account.getThreads.useInfiniteQuery(
     {
-      accountId: hasValidAccount && accountId ? accountId : "placeholder", // Use placeholder when disabled, query won't run due to enabled flag
+      accountId: hasValidAccount && accountId ? accountId : "placeholder",
       tab: currentTab,
       important,
       unread,
@@ -62,7 +62,11 @@ function useThreads() {
     },
     {
       enabled:
-        hasValidAccount && !!currentTab && !!accountId && accountId.length > 0,
+        hasValidAccount &&
+        !!currentTab &&
+        !!accountId &&
+        accountId.length > 0 &&
+        currentTab !== "scheduled",
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -101,8 +105,7 @@ function useThreads() {
     }
   }, [data?.pages, utils, accountId, currentTab]);
 
-  // Type assertion needed because getThreads returns a union type (inbox threads + DB threads)
-  const pages = (data?.pages ?? []) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const pages = (data?.pages ?? []) as any[];
   const threads = pages.flatMap(
     (page: unknown) => (page as { threads: Thread[] }).threads,
   ) as Thread[];

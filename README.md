@@ -17,7 +17,6 @@
 
 [**Try VectorMail Free**](https://vectormail.space) &nbsp;&nbsp;|&nbsp;&nbsp; [**Watch Demo**](https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Vector-Mail-Demo.mp4) &nbsp;&nbsp;|&nbsp;&nbsp; [**Documentation**](#quick-start)
 
-
 </div>
 
 <br />
@@ -236,7 +235,27 @@ AURINKO_CLIENT_SECRET="..."
 # AI Services
 OPENROUTER_API_KEY="..."
 GEMINI_API_KEY="..."
+
+# Optional: Scheduled send cron (set a secret so only your cron can call the route)
+CRON_SECRET="your-random-secret"
 ```
+
+**Scheduled send (cron):** To process scheduled emails, call the cron route every minute (e.g. Vercel Cron or an external scheduler). Set `CRON_SECRET` in your environment, then invoke:
+
+- **GET or POST** `/api/cron/process-scheduled-sends`
+- **Auth:** `Authorization: Bearer <CRON_SECRET>` or header `x-cron-secret: <CRON_SECRET>`
+
+Example (Vercel): add to `vercel.json`:
+
+```json
+{
+  "crons": [
+    { "path": "/api/cron/process-scheduled-sends", "schedule": "* * * * *" }
+  ]
+}
+```
+
+Vercel Cron will send a secret in the request; configure `CRON_SECRET` in your project env to match.
 
 ### 3. Initialize Database
 

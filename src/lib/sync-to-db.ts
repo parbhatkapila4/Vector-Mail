@@ -257,19 +257,18 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
   });
 
   try {
+    const sysLabels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
+    const labelsLower = sysLabels.map((l) => String(l).toLowerCase());
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
 
-
-    if (email.sysLabels.includes("draft")) {
+    if (labelsLower.includes("draft")) {
       emailLabelType = "draft";
-    } else if (email.sysLabels.includes("sent")) {
-
+    } else if (labelsLower.includes("sent")) {
       emailLabelType = "sent";
     } else {
-
       emailLabelType = "inbox";
-
-      if (!email.sysLabels.includes("inbox")) {
+      if (!labelsLower.includes("inbox")) {
+        email.sysLabels = sysLabels;
         email.sysLabels.push("inbox");
       }
     }
@@ -332,7 +331,21 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         accountId,
         lastMessageDate: new Date(email.sentAt),
         done: false,
-
+        ...(emailLabelType === "inbox" && {
+          inboxStatus: true,
+          sentStatus: false,
+          draftStatus: false,
+        }),
+        ...(emailLabelType === "sent" && {
+          sentStatus: true,
+          inboxStatus: false,
+          draftStatus: false,
+        }),
+        ...(emailLabelType === "draft" && {
+          draftStatus: true,
+          inboxStatus: false,
+          sentStatus: false,
+        }),
         participantIds: [
           ...new Set([
             fromAddress.id,
@@ -567,29 +580,25 @@ async function upsertAttachment(emailId: string, attachment: EmailAttachment) {
 }
 
 async function upsertEmailAddress(address: EmailAddress, accountId: string) {
+  const addr = address.address ?? "";
+  if (!addr) return null;
   try {
-    const existingAddress = await db.emailAddress.findUnique({
+    return await db.emailAddress.upsert({
       where: {
         accountId_address: {
-          accountId: accountId,
-          address: address.address ?? "",
+          accountId,
+          address: addr,
         },
       },
-    });
-
-    if (existingAddress) {
-      return await db.emailAddress.update({
-        where: { id: existingAddress.id },
-        data: { name: address.name, raw: address.raw },
-      });
-    }
-
-    return await db.emailAddress.create({
-      data: {
-        address: address.address ?? "",
+      create: {
+        address: addr,
         name: address.name,
         raw: address.raw,
         accountId,
+      },
+      update: {
+        name: address.name,
+        raw: address.raw,
       },
     });
   } catch (error) {

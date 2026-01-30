@@ -10,8 +10,30 @@ import {
 } from "@/components/ui/dialog";
 
 import React from "react";
-import { generateEmail } from "./actions";
 import { Bot } from "lucide-react";
+
+const AI_GENERATE_TIMEOUT_MS = 60_000;
+
+async function generateEmailViaApi(
+  context: string,
+  prompt: string,
+  signal?: AbortSignal,
+): Promise<{ content: string }> {
+  const res = await fetch("/api/generate-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ context, prompt, mode: "compose" }),
+    signal,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data.error as string) || `Request failed: ${res.status}`,
+    );
+  }
+  return res.json() as Promise<{ content: string }>;
+}
 import { Textarea } from "@/components/ui/textarea";
 import useThreads from "@/hooks/use-threads";
 import { turndown } from "@/lib/turndown";
@@ -30,6 +52,11 @@ const AIComposeButton = (props: Props) => {
   const { account, threads, threadId } = useThreads();
   const thread = threads?.find((t) => t.id === threadId);
   const aiGenerate = async (prompt: string) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      AI_GENERATE_TIMEOUT_MS,
+    );
     try {
       let context: string | undefined = "";
       if (!props.isComposing) {
@@ -41,26 +68,28 @@ const AIComposeButton = (props: Props) => {
           .join("\n");
       }
 
-      console.log(
-        "Generating email with context:",
-        context?.substring(0, 200) + "...",
-      );
-      console.log("Prompt:", prompt);
-
-      const result = await generateEmail(
-        (context || "") + `\n\nMy name is: ${account?.name}\n\n`,
+      const fullContext =
+        (context || "") + `\n\nMy name is: ${account?.name}\n\n`;
+      const result = await generateEmailViaApi(
+        fullContext,
         prompt,
+        controller.signal,
       );
 
-      
       if (result.content && result.content.trim()) {
         props.onGenerate(result.content);
       }
     } catch (error) {
+      const isAbort =
+        error instanceof DOMException && error.name === "AbortError";
       console.error("Error generating email:", error);
       props.onGenerate(
-        "Error generating email. Please check your OpenAI API key and try again.",
+        isAbort
+          ? "Request took too long. Please try again."
+          : "Error generating email. Please check your OpenAI API key and try again.",
       );
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
   return (

@@ -15,6 +15,7 @@ export const env = createEnv({
       .transform((val) => val === "true")
       .default("false")
       .optional(),
+    CRON_SECRET: z.string().min(1).optional(),
   },
 
   client: {},
@@ -25,6 +26,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ENABLE_EMAIL_SEND: process.env.ENABLE_EMAIL_SEND,
+    CRON_SECRET: process.env.CRON_SECRET,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

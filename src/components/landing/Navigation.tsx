@@ -20,11 +20,10 @@ export function Navigation() {
 
   return (
     <nav
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled
           ? "border-b border-white/5 bg-[#030303]/80 backdrop-blur-2xl"
           : "bg-transparent"
-      }`}
+        }`}
     >
       <div className="mx-auto max-w-[1400px] px-8">
         <div className="flex h-16 items-center justify-between">
@@ -72,7 +71,10 @@ export function Navigation() {
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                   <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                    <UserButton afterSignOutUrl="/" />
+                    <UserButton
+                      afterSignOutUrl="/"
+                      appearance={{ elements: { footer: "hidden" } }}
+                    />
                     <span className="text-[13px] font-medium text-zinc-300">
                       {user?.firstName || "User"}
                     </span>
@@ -140,7 +142,10 @@ export function Navigation() {
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                   <div className="flex items-center gap-3 px-4 py-2">
-                    <UserButton afterSignOutUrl="/" />
+                    <UserButton
+                      afterSignOutUrl="/"
+                      appearance={{ elements: { footer: "hidden" } }}
+                    />
                     <span className="text-[15px] font-medium text-white">
                       {user?.fullName || user?.firstName || "User"}
                     </span>

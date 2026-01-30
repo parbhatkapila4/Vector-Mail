@@ -247,8 +247,11 @@ function BuddyPageContent() {
         };
         setMessages([...updatedMessages, assistantMessage]);
       } catch (error) {
-        const errorMessage =
-          error instanceof Error
+        const isAbort =
+          error instanceof DOMException && error.name === "AbortError";
+        const errorMessage = isAbort
+          ? "Request took too long. Please try again."
+          : error instanceof Error
             ? error.message
             : "Failed to generate response";
         toast.error(errorMessage);

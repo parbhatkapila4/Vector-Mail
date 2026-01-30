@@ -9,6 +9,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardShortcuts } from "@/components/global/KeyboardShortcuts";
+import { PendingSendProvider } from "@/contexts/PendingSendContext";
 
 export const metadata: Metadata = {
   title: "VectorMail AI - Smart Email Management",
@@ -47,7 +48,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        layout: { unsafe_disableDevelopmentModeWarnings: true },
+        elements: { footer: "hidden" },
+      }}
+    >
       <html lang="en" className={geist.variable} suppressHydrationWarning>
         <body suppressHydrationWarning>
           <ThemeProvider
@@ -58,8 +64,10 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <TRPCReactProvider>
-              <KeyboardShortcuts />
-              {children}
+              <PendingSendProvider>
+                <KeyboardShortcuts />
+                {children}
+              </PendingSendProvider>
             </TRPCReactProvider>
             <Toaster />
           </ThemeProvider>

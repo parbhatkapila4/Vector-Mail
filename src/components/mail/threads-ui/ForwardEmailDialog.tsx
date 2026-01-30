@@ -11,11 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Forward } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { TimeInput24 } from "@/components/ui/time-input-24";
+import { Forward, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
+import { usePendingSend } from "@/contexts/PendingSendContext";
 
 interface ForwardEmailDialogProps {
   open: boolean;
@@ -38,7 +42,28 @@ export function ForwardEmailDialog({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  });
+  const [scheduleTime, setScheduleTime] = useState("09:00");
   const [accountId] = useLocalStorage("accountId", "");
+  const { scheduleSend, isPending: isPendingSend } = usePendingSend();
+  const scheduleSendMutation = api.account.scheduleSend.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success("Forward scheduled", {
+        description: `Will send on ${format(variables.scheduledAt, "MMM d, yyyy 'at' h:mm a")}`,
+      });
+      setScheduleDialogOpen(false);
+      onOpenChange(false);
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to schedule send");
+    },
+  });
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
@@ -85,52 +110,79 @@ export function ForwardEmailDialog({
       return;
     }
 
-    setIsSending(true);
+    const toSend = to.trim();
+    const subjectSend = subject.trim();
+    const bodySend = body.trim();
+    const accountIdSend = validAccountId;
 
-    try {
+    const executeSend = async () => {
       const response = await fetchWithAuthRetry("/api/email/send", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          accountId: validAccountId,
-          to: to.split(",").map((email) => email.trim()),
-          subject: subject.trim(),
-          body: body.trim(),
+          accountId: accountIdSend,
+          to: toSend.split(",").map((email) => email.trim()),
+          subject: subjectSend,
+          body: bodySend,
         }),
       });
 
-      let data;
-      try {
-        const text = await response.text();
-        data = text ? JSON.parse(text) : {};
-      } catch (parseError) {
-        console.error("[FORWARD] Error parsing response:", parseError);
-        toast.error("Failed to parse server response. Please try again.");
-        setIsSending(false);
-        return;
-      }
-
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
       if (!response.ok) {
-        console.error("[FORWARD] Email forward failed:", data);
         toast.error(data.message || data.error || "Failed to forward email");
-        setIsSending(false);
         return;
       }
-
       toast.success("Email forwarded successfully");
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error forwarding email:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "An unexpected error occurred. Please try again.",
-      );
-    } finally {
-      setIsSending(false);
+    };
+
+    scheduleSend(executeSend);
+    onOpenChange(false);
+    setIsSending(false);
+  };
+
+  const handleScheduleForward = () => {
+    if (!to.trim()) {
+      toast.error("Please enter at least one recipient email address");
+      return;
     }
+    if (!subject.trim()) {
+      toast.error("Please enter a subject");
+      return;
+    }
+    if (!body.trim()) {
+      toast.error("Please enter email body");
+      return;
+    }
+    if (!validAccountId) {
+      toast.error("Please select an account");
+      return;
+    }
+    if (!scheduleDate) {
+      toast.error("Please pick a date");
+      return;
+    }
+    const parts = scheduleTime.split(":").map(Number);
+    const hours = Number.isFinite(parts[0]) ? (parts[0] ?? 9) : 9;
+    const minutes = Number.isFinite(parts[1]) ? (parts[1] ?? 0) : 0;
+    const scheduledAt = new Date(scheduleDate);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+    if (scheduledAt.getTime() <= Date.now()) {
+      toast.error("Please pick a future date and time");
+      return;
+    }
+    const payload = {
+      type: "rest" as const,
+      accountId: validAccountId,
+      to: to.trim().split(",").map((e) => e.trim()),
+      subject: subject.trim(),
+      body: body.trim(),
+    };
+    scheduleSendMutation.mutate({
+      accountId: validAccountId,
+      scheduledAt,
+      payload,
+    });
   };
 
   return (
@@ -185,16 +237,25 @@ export function ForwardEmailDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               className="border-white/[0.06] text-zinc-300 hover:bg-white/[0.04]"
-              disabled={isSending}
+              disabled={isSending || isPendingSend}
             >
               Cancel
             </Button>
             <Button
+              variant="outline"
+              onClick={() => setScheduleDialogOpen(true)}
+              disabled={isSending || isPendingSend}
+              className="border-white/[0.06] text-zinc-300 hover:bg-white/[0.04]"
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              Schedule send
+            </Button>
+            <Button
               onClick={handleForward}
-              disabled={isSending}
+              disabled={isSending || isPendingSend}
               className="bg-amber-500 font-medium text-black hover:bg-amber-600"
             >
-              {isSending ? (
+              {isSending || isPendingSend ? (
                 "Forwarding..."
               ) : (
                 <>
@@ -204,6 +265,52 @@ export function ForwardEmailDialog({
               )}
             </Button>
           </div>
+          <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+            <DialogContent className="max-w-sm border-white/[0.04] bg-[#0A0A0A] p-6 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">
+                  Schedule forward
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 py-2">
+                <div className="flex w-full flex-col items-center">
+                  <Label className="mb-2 block w-full text-center text-sm font-medium text-zinc-300">
+                    Date
+                  </Label>
+                  <div className="flex w-full justify-center">
+                    <Calendar
+                      mode="single"
+                      selected={scheduleDate}
+                      onSelect={setScheduleDate}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
+                      className="[--cell-size:1.2rem] text-[11px] rounded-lg border border-white/10 bg-[#030303] p-1.5 [&_[data-slot=calendar]]:text-[11px] [&_.rdp-month]:!gap-y-0.5 [&_.rdp-week]:!mt-0.5"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-3 block text-sm font-medium text-zinc-300">
+                    Time (24-hour)
+                  </Label>
+                  <TimeInput24
+                    value={scheduleTime}
+                    onChange={setScheduleTime}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleScheduleForward}
+                  disabled={scheduleSendMutation.isPending}
+                  className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
+                >
+                  {scheduleSendMutation.isPending
+                    ? "Scheduling..."
+                    : "Schedule send"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </DialogContent>
     </Dialog>

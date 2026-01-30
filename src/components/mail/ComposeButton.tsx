@@ -14,6 +14,7 @@ import EmailEditor from "./editor/EmailEditor";
 import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { toast } from "sonner";
+import { usePendingSend } from "@/contexts/PendingSendContext";
 
 type OptionType = {
   label: string | React.ReactNode;
@@ -66,40 +67,38 @@ const ComposeButton = () => {
   }, []);
 
   const sendEmail = api.account.sendEmail.useMutation();
+  const { scheduleSend, isPending: isPendingSend } = usePendingSend();
 
   const handleSend = async (value: string) => {
-    console.log(account);
-    console.log({ value });
     if (!account) return;
-    sendEmail.mutate(
-      {
-        accountId,
-        threadId: undefined,
-        body: value,
-        subject,
-        from: {
-          name: account?.name ?? "Me",
-          address: account?.emailAddress ?? "me@example.com",
-        },
-        to: toValues.map((to) => ({ name: to.value, address: to.value })),
-        cc: ccValues.map((cc) => ({ name: cc.value, address: cc.value })),
-        replyTo: {
-          name: account?.name ?? "Me",
-          address: account?.emailAddress ?? "me@example.com",
-        },
-        inReplyTo: undefined,
+    const payload = {
+      accountId,
+      threadId: undefined as string | undefined,
+      body: value,
+      subject,
+      from: {
+        name: account.name ?? "Me",
+        address: account.emailAddress ?? "me@example.com",
       },
-      {
-        onSuccess: () => {
-          toast.success("Email sent");
-          setOpen(false);
-        },
-        onError: (error) => {
-          console.log(error);
-          toast.error(error.message);
-        },
+      to: toValues.map((t) => ({ name: t.value, address: t.value })),
+      cc: ccValues.map((c) => ({ name: c.value, address: c.value })),
+      replyTo: {
+        name: account.name ?? "Me",
+        address: account.emailAddress ?? "me@example.com",
       },
-    );
+      inReplyTo: undefined as string | undefined,
+    };
+
+    scheduleSend(async () => {
+      try {
+        await sendEmail.mutateAsync(payload);
+        toast.success("Email sent");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to send";
+        toast.error(message);
+      }
+    });
+    setOpen(false);
   };
 
   return (
@@ -128,7 +127,7 @@ const ComposeButton = () => {
             setSubject={setSubject}
             to={toValues.map((to) => to.value)}
             handleSend={handleSend}
-            isSending={sendEmail.isPending}
+            isSending={sendEmail.isPending || isPendingSend}
             defaultToolbarExpand
           />
         </div>

@@ -7,8 +7,30 @@ import TipTapMenuBar from "./MenuBar";
 import Text from "@tiptap/extension-text";
 import { Button } from "@/components/ui/button";
 
-import { generate } from "./actions";
 import { Separator } from "@/components/ui/separator";
+
+const AI_GENERATE_TIMEOUT_MS = 60_000;
+
+async function generateViaApi(
+  prompt: string,
+  context: string,
+  signal?: AbortSignal,
+): Promise<{ content: string }> {
+  const res = await fetch("/api/generate-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, context, mode: "complete" }),
+    signal,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data.error as string) || `Request failed: ${res.status}`,
+    );
+  }
+  return res.json() as Promise<{ content: string }>;
+}
 import { api, type RouterOutputs } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import TagInput from "./TagInput";
@@ -40,6 +62,9 @@ type EmailEditorProps = {
   onCcChange: (values: OptionType[]) => void;
 
   defaultToolbarExpand?: boolean;
+
+  onScheduleSend?: (bodyHtml: string) => void;
+  isScheduling?: boolean;
 };
 
 const EmailEditor = ({
@@ -53,6 +78,8 @@ const EmailEditor = ({
   onToChange,
   onCcChange,
   defaultToolbarExpand,
+  onScheduleSend,
+  isScheduling = false,
 }: EmailEditorProps) => {
   const [ref] = useAutoAnimate();
   const [accountId] = useLocalStorage("accountId", "");
@@ -156,7 +183,17 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
         }
       }, 15000);
 
-      const result = await generate(prompt, context);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        AI_GENERATE_TIMEOUT_MS,
+      );
+      let result: { content: string };
+      try {
+        result = await generateViaApi(prompt, context, controller.signal);
+      } finally {
+        clearTimeout(timeoutId);
+      }
       clearTimeout(timeoutWarning);
 
       const fullGeneration = result.content || "";
@@ -173,12 +210,14 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       }
     } catch (error) {
       console.error("AI generation failed:", error);
+      const isAbort =
+        error instanceof DOMException && error.name === "AbortError";
       const errorMessage =
-        error instanceof Error
-          ? error.message.includes("timeout")
-            ? "Generation timed out. Please try again with a shorter prompt."
-            : error.message
-          : "AI generation failed. Try again.";
+        isAbort || (error instanceof Error && error.message.includes("timeout"))
+          ? "Generation timed out. Please try again with a shorter prompt."
+          : error instanceof Error
+            ? error.message
+            : "AI generation failed. Try again.";
       toast.error(errorMessage, {
         duration: 5000,
       });
@@ -250,7 +289,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
         },
       },
     },
-    onUpdate: () => {},
+    onUpdate: () => { },
     onCreate: ({ editor }) => {
       if (editor && !editor.isDestroyed) {
         editor.setOptions({
@@ -354,11 +393,10 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
 
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-3 py-2 md:px-4 md:py-4">
         <div
-          className={`relative h-full w-full rounded-lg border p-3 transition-all duration-200 md:min-h-[300px] md:p-4 ${
-            isGenerating
+          className={`relative h-full w-full rounded-lg border p-3 transition-all duration-200 md:min-h-[300px] md:p-4 ${isGenerating
               ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-200"
               : "border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"
-          }`}
+            }`}
           onClick={() => {
             if (editor && !editor.isDestroyed) {
               editor.commands.focus();
@@ -389,12 +427,12 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             Press{" "}
             <kbd className="rounded-lg border border-gray-200 bg-gray-100 px-2 py-1.5 text-xs font-semibold text-gray-800">
               {typeof navigator !== "undefined" &&
-              navigator.platform.toLowerCase().includes("mac")
+                navigator.platform.toLowerCase().includes("mac")
                 ? "Cmd + J"
                 : "Alt + J"}
             </kbd>
             {typeof navigator !== "undefined" &&
-            navigator.platform.toLowerCase().includes("mac") ? (
+              navigator.platform.toLowerCase().includes("mac") ? (
               <>
                 {" "}
                 (Windows:{" "}
@@ -433,6 +471,17 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             <Sparkles className="mr-2 h-4 w-4" />
             {isGenerating ? "Generating..." : "Generate"}
           </Button>
+          {onScheduleSend && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSending || isScheduling}
+              onClick={() => onScheduleSend(editor?.getHTML() ?? "")}
+              className="h-11 flex-1"
+            >
+              {isScheduling ? "Scheduling..." : "Schedule send"}
+            </Button>
+          )}
           <Button
             onClick={async () => {
               const content = editor?.getHTML() || "";
@@ -446,6 +495,17 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
           </Button>
         </div>
 
+        {onScheduleSend && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSending || isScheduling}
+            onClick={() => onScheduleSend(editor?.getHTML() ?? "")}
+            className="hidden md:inline-flex md:ml-4"
+          >
+            {isScheduling ? "Scheduling..." : "Schedule send"}
+          </Button>
+        )}
         <Button
           onClick={async () => {
             const content = editor?.getHTML() || "";

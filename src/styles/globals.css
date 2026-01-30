@@ -180,3 +180,8 @@
     mix-blend-mode: overlay;
   }
 }
+
+.cl-userButtonPopoverFooter,
+.cl-userButtonPopoverCard .cl-footer {
+  display: none !important;
+}

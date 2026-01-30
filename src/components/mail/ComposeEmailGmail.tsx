@@ -26,12 +26,39 @@ import {
   X,
   Folder,
   Sparkles,
+  Clock,
 } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
-import { generateEmail } from "./editor/actions";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
+import { usePendingSend } from "@/contexts/PendingSendContext";
+
+const AI_GENERATE_TIMEOUT_MS = 60_000;
+
+async function generateEmailViaApi(
+  context: string,
+  prompt: string,
+  signal?: AbortSignal,
+): Promise<{ content: string }> {
+  const res = await fetch("/api/generate-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ context, prompt, mode: "compose" }),
+    signal,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data.error as string) || `Request failed: ${res.status}`,
+    );
+  }
+  return res.json() as Promise<{ content: string }>;
+}
 
 export default function ComposeEmailGmail() {
   const [open, setOpen] = useState(false);
@@ -48,6 +75,14 @@ export default function ComposeEmailGmail() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
+  const [scheduleSendOpen, setScheduleSendOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  });
+  const [scheduleTime, setScheduleTime] = useState("09:00");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isUserTyping, setIsUserTyping] = useState(false);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -68,6 +103,26 @@ export default function ComposeEmailGmail() {
 
   const hasValidAccount =
     !accountsLoading && !!validAccountId && validAccountId.length > 0;
+
+  const { scheduleSend } = usePendingSend();
+  const scheduleSendMutation = api.account.scheduleSend.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success("Email scheduled", {
+        description: `Will send on ${format(variables.scheduledAt, "MMM d, yyyy 'at' h:mm a")}`,
+      });
+      setScheduleSendOpen(false);
+      setTo("");
+      setSubject("");
+      setBody("");
+      setOriginalUserText("");
+      setHasGenerated(false);
+      setAttachments([]);
+      setOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to schedule send");
+    },
+  });
 
   const { data: account } = api.account.getMyAccount.useQuery(
     { accountId: validAccountId || "placeholder" },
@@ -180,9 +235,8 @@ User's Name: ${account?.name || "User"}
 User's Email: ${account?.emailAddress || ""}
 
 INSTRUCTIONS:
-${
-  isRegeneration
-    ? `The user has already generated an email body, but wants a DIFFERENT and BETTER version. 
+${isRegeneration
+          ? `The user has already generated an email body, but wants a DIFFERENT and BETTER version. 
   
 IMPORTANT REGENERATION REQUIREMENTS:
 - Generate a COMPLETELY DIFFERENT version from what was previously generated
@@ -192,12 +246,12 @@ IMPORTANT REGENERATION REQUIREMENTS:
 - Still incorporate the user's original intent: "${originalUserText || userInput}"
 - Ensure it makes sense and is contextually appropriate
 - Use proper email formatting with paragraphs`
-    : `You are helping compose a new email. The user has provided:
+          : `You are helping compose a new email. The user has provided:
 - Subject: ${subject || "None"}
 - Initial draft: ${userInput || "None"}
 
 Generate a complete, professional email body based on the subject and any initial text provided. If the user has started writing, continue from where they left off. Use proper email formatting with paragraphs.`
-}
+        }
 
 ${isRegeneration ? `\nGenerate a fresh, improved, and completely different version of this email.` : ""}`;
 
@@ -205,7 +259,21 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         ? `Generate a completely different and better version of an email about: "${subject}". The user's original intent was: "${originalUserText || userInput}". Make it fresh, improved, and professional.`
         : userInput;
 
-      const result = await generateEmail(context, prompt);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        AI_GENERATE_TIMEOUT_MS,
+      );
+      let result: { content: string };
+      try {
+        result = await generateEmailViaApi(
+          context,
+          prompt,
+          controller.signal,
+        );
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (result.content && result.content.trim()) {
         let content = result.content.trim();
@@ -263,8 +331,11 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       }
     } catch (error) {
       console.error("Error generating email:", error);
-      const errorMessage =
-        error instanceof Error
+      const isAbort =
+        error instanceof DOMException && error.name === "AbortError";
+      const errorMessage = isAbort
+        ? "Request took too long. Please try again."
+        : error instanceof Error
           ? error.message
           : "Failed to generate email. Please check your API key and try again.";
       toast.error(errorMessage);
@@ -447,137 +518,118 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       return;
     }
 
-    setIsSending(true);
+    const maxSize = 25 * 1024 * 1024;
+    const validAttachments = attachments.filter((file) => file.size <= maxSize);
+    if (attachments.length > 0 && validAttachments.length === 0) {
+      toast.error("All selected files are too large (max 25MB each).");
+      return;
+    }
 
-    try {
-      const bodyContent = bodyEditableRef.current?.innerHTML || body;
+    const toSend = to;
+    const subjectSend = subject;
+    const bodySend = bodyContent.trim();
+    const accountIdSend = validAccountId;
+    const attachmentsToSend = [...validAttachments];
 
+    const executeSend = async () => {
       let response: Response;
-
-      if (attachments.length > 0) {
+      if (attachmentsToSend.length > 0) {
         const formData = new FormData();
-        formData.append("accountId", validAccountId);
+        formData.append("accountId", accountIdSend);
         formData.append(
           "to",
-          JSON.stringify(to.split(",").map((email) => email.trim())),
+          JSON.stringify(toSend.split(",").map((email) => email.trim())),
         );
-        formData.append("subject", subject.trim());
-        formData.append("body", bodyContent.trim());
-
-        const maxSize = 25 * 1024 * 1024;
-        const validAttachments = attachments.filter((file) => {
-          if (file.size > maxSize) {
-            toast.error(
-              `File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum size is 25MB.`,
-            );
-            return false;
-          }
-          return true;
+        formData.append("subject", subjectSend.trim());
+        formData.append("body", bodySend);
+        attachmentsToSend.forEach((file) => formData.append("attachments", file));
+        response = await fetchWithAuthRetry("/api/email/send", {
+          method: "POST",
+          body: formData,
         });
-
-        if (validAttachments.length === 0 && attachments.length > 0) {
-          setIsSending(false);
-          return;
-        }
-
-        validAttachments.forEach((file) => {
-          formData.append("attachments", file);
-        });
-
-        console.log(
-          `[COMPOSE] Sending email with ${validAttachments.length} attachment(s)`,
-        );
-        validAttachments.forEach((file) => {
-          console.log(
-            `[COMPOSE] - ${file.name}: ${file.size} bytes (${(file.size / 1024 / 1024).toFixed(2)} MB), type: ${file.type || "unknown"}`,
-          );
-        });
-
-        try {
-          response = await fetchWithAuthRetry("/api/email/send", {
-            method: "POST",
-            body: formData,
-          });
-        } catch (fetchError) {
-          console.error("[COMPOSE] Fetch error:", fetchError);
-          toast.error(
-            "Failed to send email. Network error - please check your connection and try again.",
-          );
-          setIsSending(false);
-          return;
-        }
       } else {
-        try {
-          response = await fetchWithAuthRetry("/api/email/send", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              accountId: validAccountId,
-              to: to.split(",").map((email) => email.trim()),
-              subject: subject.trim(),
-              body: bodyContent.trim(),
-            }),
-          });
-        } catch (fetchError) {
-          console.error("[COMPOSE] Fetch error:", fetchError);
-          toast.error(
-            "Failed to send email. Network error - please check your connection and try again.",
-          );
-          setIsSending(false);
-          return;
-        }
+        response = await fetchWithAuthRetry("/api/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accountId: accountIdSend,
+            to: toSend.split(",").map((email) => email.trim()),
+            subject: subjectSend.trim(),
+            body: bodySend,
+          }),
+        });
       }
 
-      let data;
-      try {
-        const text = await response.text();
-        data = text ? JSON.parse(text) : {};
-      } catch (parseError) {
-        console.error("[COMPOSE] Error parsing response:", parseError);
-        console.error("[COMPOSE] Response status:", response.status);
-        toast.error("Failed to parse server response. Please try again.");
-        setIsSending(false);
-        return;
-      }
-
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
       if (!response.ok) {
-        console.error("[COMPOSE] Email send failed:", data);
         toast.error(data.message || data.error || "Failed to send email");
-        if (data.details) {
-          console.error("[COMPOSE] Error details:", data.details);
-        }
-        if (data.hint) {
-          toast.info(data.hint, { duration: 5000 });
-        }
-        setIsSending(false);
+        if (data.hint) toast.info(data.hint, { duration: 5000 });
         return;
       }
+      if (data.warning) toast.warning(data.warning, { duration: 6000 });
+    };
 
-      if (data.warning) {
-        toast.warning(data.warning, { duration: 6000 });
-      } else {
-        toast.success("Email sent successfully");
-      }
+    scheduleSend(executeSend);
+    setTo("");
+    setSubject("");
+    setBody("");
+    setOriginalUserText("");
+    setHasGenerated(false);
+    setLinkUrl("");
+    setLinkText("");
+    setAttachments([]);
+    setOpen(false);
+    setIsSending(false);
+  };
 
-      setTo("");
-      setSubject("");
-      setBody("");
-      setOriginalUserText("");
-      setHasGenerated(false);
-      setLinkUrl("");
-      setLinkText("");
-      setAttachments([]);
-      setOpen(false);
-    } catch (error) {
-      console.error("Error sending email:", error);
-      toast.error(
-        error instanceof Error ? error.message : "An unexpected error occurred",
-      );
-    } finally {
-      setIsSending(false);
+  const handleScheduleSend = () => {
+    if (!to.trim()) {
+      toast.error("Please enter at least one recipient");
+      return;
     }
+    if (!subject.trim()) {
+      toast.error("Please enter a subject");
+      return;
+    }
+    const bodyContent = bodyEditableRef.current?.innerHTML || body;
+    if (
+      !bodyContent?.trim() ||
+      bodyContent === "<br>" ||
+      bodyContent === "<div><br></div>"
+    ) {
+      toast.error("Please enter email body");
+      return;
+    }
+    if (!validAccountId) {
+      toast.error("Please select an account");
+      return;
+    }
+    if (!scheduleDate) {
+      toast.error("Please pick a date");
+      return;
+    }
+    const parts = scheduleTime.split(":").map(Number);
+    const hours = Number.isFinite(parts[0]) ? (parts[0] ?? 9) : 9;
+    const minutes = Number.isFinite(parts[1]) ? (parts[1] ?? 0) : 0;
+    const scheduledAt = new Date(scheduleDate);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+    if (scheduledAt.getTime() <= Date.now()) {
+      toast.error("Please pick a future date and time");
+      return;
+    }
+    const payload = {
+      type: "rest" as const,
+      accountId: validAccountId,
+      to: to.split(",").map((e) => e.trim()),
+      subject: subject.trim(),
+      body: bodyContent.trim(),
+    };
+    scheduleSendMutation.mutate({
+      accountId: validAccountId,
+      scheduledAt,
+      payload,
+    });
   };
 
   const isButtonDisabled = accountsLoading || !hasValidAccount;
@@ -646,7 +698,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               <span className="hidden text-xs text-muted-foreground md:inline">
                 Press{" "}
                 {typeof navigator !== "undefined" &&
-                navigator.platform.toUpperCase().indexOf("MAC") >= 0
+                  navigator.platform.toUpperCase().indexOf("MAC") >= 0
                   ? "Cmd+J"
                   : "Alt+J"}{" "}
                 to auto-generate
@@ -757,7 +809,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               <p className="hidden text-xs text-muted-foreground md:block">
                 💡 Press{" "}
                 {typeof navigator !== "undefined" &&
-                navigator.platform.toUpperCase().indexOf("MAC") >= 0
+                  navigator.platform.toUpperCase().indexOf("MAC") >= 0
                   ? "Cmd+J"
                   : "Alt+J"}{" "}
                 again to generate a different version
@@ -902,7 +954,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                         if (linkUrl && linkText) {
                           const formattedUrl =
                             linkUrl.startsWith("http://") ||
-                            linkUrl.startsWith("https://")
+                              linkUrl.startsWith("https://")
                               ? linkUrl
                               : `https://${linkUrl}`;
 
@@ -937,7 +989,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                                 Node.TEXT_NODE &&
                                 range.startContainer.textContent &&
                                 range.startContainer.textContent.trim().length >
-                                  0);
+                                0);
 
                             if (
                               hasContentBefore &&
@@ -1202,7 +1254,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             </Button>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-nowrap md:items-center md:justify-end md:gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -1232,6 +1284,63 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 </span>
               )}
             </Button>
+            <Popover open={scheduleSendOpen} onOpenChange={setScheduleSendOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSending || isGenerating}
+                  className="h-12 shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/20 md:h-10"
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  <span className="md:hidden">Schedule</span>
+                  <span className="hidden md:inline">Schedule send</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto min-w-[280px] border-slate-800 bg-[#0a0a0a] p-6 text-white"
+                align="end"
+              >
+                <div className="space-y-6">
+                  <div className="flex w-full flex-col items-center">
+                    <Label className="mb-2 block w-full text-center text-sm font-medium text-zinc-300">
+                      Date
+                    </Label>
+                    <div className="flex w-full justify-center">
+                      <Calendar
+                        mode="single"
+                        selected={scheduleDate}
+                        onSelect={setScheduleDate}
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                        }
+                        className="[--cell-size:1.2rem] text-[11px] rounded-lg border border-white/10 bg-white/5 p-1.5 [&_[data-slot=calendar]]:text-[11px] [&_.rdp-month]:!gap-y-0.5 [&_.rdp-week]:!mt-0.5"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="mb-3 block text-sm font-medium text-zinc-300">
+                      Time (24-hour)
+                    </Label>
+                    <TimeInput24
+                      value={scheduleTime}
+                      onChange={setScheduleTime}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleScheduleSend}
+                    disabled={scheduleSendMutation.isPending}
+                    className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
+                  >
+                    {scheduleSendMutation.isPending
+                      ? "Scheduling..."
+                      : "Schedule send"}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               onClick={handleSend}
               disabled={isSending || isGenerating}

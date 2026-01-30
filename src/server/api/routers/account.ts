@@ -111,6 +111,115 @@ export const accountRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  scheduleSend: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        scheduledAt: z.date(),
+        payload: z.union([
+          z.object({
+            type: z.literal("rest"),
+            accountId: z.string(),
+            to: z.array(z.string()),
+            subject: z.string(),
+            body: z.string(),
+            cc: z.array(z.string()).optional(),
+            bcc: z.array(z.string()).optional(),
+            attachments: z
+              .array(
+                z.object({
+                  name: z.string(),
+                  content: z.string(),
+                  contentType: z.string(),
+                }),
+              )
+              .optional(),
+          }),
+          z.object({
+            type: z.literal("trpc"),
+            accountId: z.string(),
+            from: emailAddressSchema,
+            to: z.array(emailAddressSchema),
+            subject: z.string(),
+            body: z.string(),
+            threadId: z.string().optional(),
+            inReplyTo: z.string().optional(),
+            references: z.string().optional(),
+            replyTo: emailAddressSchema.optional(),
+            cc: z.array(emailAddressSchema).optional(),
+            bcc: z.array(emailAddressSchema).optional(),
+          }),
+        ]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.scheduledAt.getTime() <= Date.now()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "scheduledAt must be in the future",
+        });
+      }
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const created = await ctx.db.scheduledSend.create({
+        data: {
+          userId: ctx.auth.userId,
+          accountId: input.accountId,
+          scheduledAt: input.scheduledAt,
+          status: "pending",
+          payload: input.payload as object,
+        },
+      });
+      return { id: created.id };
+    }),
+
+  cancelScheduledSend: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.db.scheduledSend.findFirst({
+        where: { id: input.id, userId: ctx.auth.userId, status: "pending" },
+      });
+      if (!row) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Scheduled send not found or already sent/cancelled",
+        });
+      }
+      await ctx.db.scheduledSend.update({
+        where: { id: input.id },
+        data: { status: "cancelled" },
+      });
+      return { success: true };
+    }),
+
+  getScheduledSends: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const rows = await ctx.db.scheduledSend.findMany({
+        where: {
+          accountId: input.accountId,
+          userId: ctx.auth.userId,
+          status: "pending",
+        },
+        orderBy: { scheduledAt: "asc" },
+        select: {
+          id: true,
+          scheduledAt: true,
+          payload: true,
+          createdAt: true,
+        },
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        scheduledAt: r.scheduledAt,
+        subject:
+          (r.payload && typeof r.payload === "object" && "subject" in r.payload
+            ? (r.payload as { subject?: string }).subject
+            : undefined) ?? "(no subject)",
+        createdAt: r.createdAt,
+      }));
+    }),
+
   getEmailSuggestions: protectedProcedure
     .input(z.object({ accountId: z.string(), query: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -153,6 +262,10 @@ export const accountRouter = createTRPCRouter({
           where: {
             accountId: account.id,
             inboxStatus: true,
+            OR: [
+              { snoozedUntil: null },
+              { snoozedUntil: { lte: new Date() } },
+            ],
           },
         });
 
@@ -186,6 +299,20 @@ export const accountRouter = createTRPCRouter({
         }
 
         return Math.max(threadCount, emailBasedCount);
+      } else if (input.tab === "snoozed") {
+        return await ctx.db.thread.count({
+          where: {
+            accountId: account.id,
+            inboxStatus: true,
+            snoozedUntil: { gt: new Date() },
+          },
+        });
+      } else if (input.tab === "reminders") {
+        const now = new Date();
+        const result = await ctx.db.$queryRaw<
+          Array<{ count: bigint }>
+        >`SELECT COUNT(*) as count FROM "Thread" WHERE "accountId" = ${account.id} AND "remindAt" IS NOT NULL AND "remindIfNoReplySince" IS NOT NULL AND "remindAt" <= ${now} AND "lastMessageDate" <= "remindIfNoReplySince"`;
+        return Number(result[0]?.count ?? 0);
       } else if (input.tab === "drafts") {
         return await ctx.db.thread.count({
           where: {
@@ -317,12 +444,129 @@ export const accountRouter = createTRPCRouter({
       return { success: true, message: "Thread moved to trash" };
     }),
 
+  snoozeThread: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        accountId: z.string().min(1),
+        snoozedUntil: z.string().datetime(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      const snoozedUntilDate = new Date(input.snoozedUntil);
+      if (snoozedUntilDate.getTime() <= Date.now()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Please pick a future time",
+        });
+      }
+      await ctx.db.thread.update({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        data: { snoozedUntil: snoozedUntilDate },
+      });
+      return { success: true };
+    }),
+
+  unsnoozeThread: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        accountId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      await ctx.db.thread.update({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        data: { snoozedUntil: null },
+      });
+      return { success: true };
+    }),
+
+  setReminder: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        accountId: z.string().min(1),
+        days: z.number().min(1).max(60),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      const thread = await ctx.db.thread.findFirst({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        select: { id: true, lastMessageDate: true },
+      });
+      if (!thread) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Thread not found",
+        });
+      }
+      const remindAt = new Date();
+      remindAt.setDate(remindAt.getDate() + input.days);
+      remindAt.setHours(9, 0, 0, 0);
+      await ctx.db.thread.update({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        data: {
+          remindAt,
+          remindIfNoReplySince: thread.lastMessageDate,
+        },
+      });
+      return { success: true };
+    }),
+
+  clearReminder: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        accountId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      await ctx.db.thread.update({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        data: { remindAt: null, remindIfNoReplySince: null },
+      });
+      return { success: true };
+    }),
+
   syncEmails: protectedProcedure
     .input(
       z.object({
         accountId: z.string().min(1),
         forceFullSync: z.boolean().optional().default(false),
         folder: z.enum(["inbox", "sent"]).optional().default("inbox"),
+        continueToken: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -372,13 +616,52 @@ export const accountRouter = createTRPCRouter({
 
       try {
         const shouldForceFullSync = input.forceFullSync ?? false;
-        const folder = input.folder === "sent" ? "sent" : undefined;
+        const folder: "inbox" | "sent" = input.folder ?? "inbox";
         console.log(
-          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, folder: ${folder || "all"}`,
+          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, folder: ${folder}`,
         );
 
+        const decodeContinueToken = (token: string): { pageToken?: string; sentUseLabel?: boolean } => {
+          try {
+            const decoded = JSON.parse(Buffer.from(token, "base64url").toString()) as unknown;
+            return typeof decoded === "object" && decoded !== null && "pageToken" in decoded
+              ? { pageToken: (decoded as { pageToken?: string }).pageToken, sentUseLabel: (decoded as { sentUseLabel?: boolean }).sentUseLabel }
+              : {};
+          } catch {
+            return {};
+          }
+        };
+        const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean) =>
+          Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false }), "utf8").toString("base64url");
 
-        if (!shouldForceFullSync && account.nextDeltaToken && !folder) {
+        if (folder === "inbox" || folder === "sent") {
+          const { pageToken, sentUseLabel } = input.continueToken ? decodeContinueToken(input.continueToken) : {};
+          const result = await emailAccount.fetchEmailsByFolderOnePage(folder, pageToken, sentUseLabel ?? false);
+          if (result.emails.length > 0) {
+            const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+            await syncEmailsToDatabase(result.emails, account.id);
+          }
+          const threadCount = await ctx.db.thread.count({
+            where: {
+              accountId: account.id,
+              ...(folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
+            },
+          });
+          const hasMore = !!result.nextPageToken;
+          const continueToken = hasMore ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel) : undefined;
+          console.log(
+            `[syncEmails mutation] Chunk done: ${result.emails.length} emails synced, hasMore: ${hasMore}, total ${folder} threads: ${threadCount}`,
+          );
+          return {
+            success: true,
+            message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+            threadCount,
+            hasMore,
+            continueToken,
+          };
+        }
+
+        if (!shouldForceFullSync && account.nextDeltaToken) {
           console.log(
             `[syncEmails mutation] Attempting lightweight sync using delta token...`,
           );
@@ -751,6 +1034,17 @@ export const accountRouter = createTRPCRouter({
 
       if (input.tab === "inbox") {
         whereClause.inboxStatus = true;
+        whereClause.AND = [
+          {
+            OR: [
+              { snoozedUntil: null },
+              { snoozedUntil: { lte: new Date() } },
+            ],
+          },
+        ];
+      } else if (input.tab === "snoozed") {
+        whereClause.inboxStatus = true;
+        whereClause.snoozedUntil = { gt: new Date() };
       } else if (input.tab === "drafts") {
         whereClause.draftStatus = true;
         whereClause.inboxStatus = false;
@@ -783,10 +1077,25 @@ export const accountRouter = createTRPCRouter({
             },
           },
         };
+      } else if (input.tab === "reminders") {
       } else {
-        whereClause.sentStatus = true;
-        whereClause.inboxStatus = false;
-        whereClause.draftStatus = false;
+        whereClause.OR = [
+          {
+            sentStatus: true,
+            inboxStatus: false,
+            draftStatus: false,
+          },
+          {
+            inboxStatus: false,
+            draftStatus: false,
+            emails: {
+              some: { emailLabel: "sent" },
+            },
+          },
+        ];
+        delete (whereClause as Record<string, unknown>).sentStatus;
+        delete (whereClause as Record<string, unknown>).inboxStatus;
+        delete (whereClause as Record<string, unknown>).draftStatus;
       }
 
       console.log(
@@ -798,29 +1107,99 @@ export const accountRouter = createTRPCRouter({
         ),
       );
 
-      const threads = await ctx.db.thread.findMany({
-        take: limit + 1,
-        where: whereClause,
-        cursor: cursor ? { id: cursor } : undefined,
-        orderBy: {
-          lastMessageDate: "desc",
-        },
-        include: {
-          emails: {
+      let threads: Awaited<
+        ReturnType<typeof ctx.db.thread.findMany<{
+          include: {
+            emails: {
+              include: {
+                from: true;
+                to: true;
+                cc: true;
+                bcc: true;
+                replyTo: true;
+              };
+              orderBy: { sentAt: "desc" };
+              take: 1;
+            };
+          };
+        }>>
+      >;
+
+      if (input.tab === "reminders") {
+        const now = new Date();
+        const idsResult = cursor
+          ? await ctx.db.$queryRaw<
+            Array<{ id: string }>
+          >`SELECT t.id FROM "Thread" t
+  WHERE t."accountId" = ${account.id}
+    AND t."remindAt" IS NOT NULL
+    AND t."remindIfNoReplySince" IS NOT NULL
+    AND t."remindAt" <= ${now}
+    AND t."lastMessageDate" <= t."remindIfNoReplySince"
+    AND (t."remindAt" > (SELECT "remindAt" FROM "Thread" WHERE "id" = ${cursor})
+         OR (t."remindAt" = (SELECT "remindAt" FROM "Thread" WHERE "id" = ${cursor}) AND t."id" > ${cursor}))
+  ORDER BY t."remindAt" ASC, t."id" ASC
+  LIMIT ${limit + 1}`
+          : await ctx.db.$queryRaw<
+            Array<{ id: string }>
+          >`SELECT t.id FROM "Thread" t
+  WHERE t."accountId" = ${account.id}
+    AND t."remindAt" IS NOT NULL
+    AND t."remindIfNoReplySince" IS NOT NULL
+    AND t."remindAt" <= ${now}
+    AND t."lastMessageDate" <= t."remindIfNoReplySince"
+  ORDER BY t."remindAt" ASC, t."id" ASC
+  LIMIT ${limit + 1}`;
+        const ids = idsResult.map((r) => r.id);
+        if (ids.length === 0) {
+          threads = [];
+        } else {
+          const rows = await ctx.db.thread.findMany({
+            where: { id: { in: ids } },
             include: {
-              from: true,
-              to: true,
-              cc: true,
-              bcc: true,
-              replyTo: true,
+              emails: {
+                include: {
+                  from: true,
+                  to: true,
+                  cc: true,
+                  bcc: true,
+                  replyTo: true,
+                },
+                orderBy: { sentAt: "desc" },
+                take: 1,
+              },
             },
-            orderBy: {
-              sentAt: "desc",
-            },
-            take: 1,
+          });
+          const idOrder = new Map(ids.map((id, i) => [id, i]));
+          threads = rows.sort(
+            (a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
+          );
+        }
+      } else {
+        threads = await ctx.db.thread.findMany({
+          take: limit + 1,
+          where: whereClause,
+          cursor: cursor ? { id: cursor } : undefined,
+          orderBy: {
+            lastMessageDate: "desc",
           },
-        },
-      });
+          include: {
+            emails: {
+              include: {
+                from: true,
+                to: true,
+                cc: true,
+                bcc: true,
+                replyTo: true,
+              },
+              orderBy: {
+                sentAt: "desc",
+              },
+              take: 1,
+            },
+          },
+        });
+      }
 
       console.log(
         `[getThreads] Initial query returned ${threads.length} threads`,

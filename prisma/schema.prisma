@@ -47,34 +47,53 @@ model StripeSubscription {
 }
 
 model Account {
-  id                String         @id @default(cuid())
+  id                String          @id @default(cuid())
   userId            String
   binaryIndex       Json?
-  token             String         @unique
+  token             String          @unique
   provider          String
   emailAddress      String
   name              String
   nextDeltaToken    String?
   lastInboxSyncAt   DateTime?
-  needsReconnection Boolean        @default(false)
+  needsReconnection Boolean         @default(false)
   tokenExpiresAt    DateTime?
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailAddresses    EmailAddress[]
   threads           Thread[]
+  scheduledSends    ScheduledSend[]
+}
+
+model ScheduledSend {
+  id          String    @id @default(cuid())
+  userId      String
+  accountId   String
+  scheduledAt DateTime
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+  payload     Json
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledAt, status])
+  @@index([accountId])
 }
 
 model Thread {
-  id              String   @id @default(cuid())
-  subject         String
-  lastMessageDate DateTime
-  participantIds  String[]
-  accountId       String
-  done            Boolean  @default(false)
-  inboxStatus     Boolean  @default(true)
-  draftStatus     Boolean  @default(false)
-  sentStatus      Boolean  @default(false)
-  emails          Email[]
-  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(cuid())
+  subject              String
+  lastMessageDate      DateTime
+  participantIds       String[]
+  accountId            String
+  done                 Boolean   @default(false)
+  inboxStatus          Boolean   @default(true)
+  draftStatus          Boolean   @default(false)
+  sentStatus           Boolean   @default(false)
+  snoozedUntil         DateTime?
+  remindAt             DateTime?
+  remindIfNoReplySince DateTime?
+  emails               Email[]
+  account              Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
   @@index([done])
@@ -82,6 +101,8 @@ model Thread {
   @@index([draftStatus])
   @@index([sentStatus])
   @@index([lastMessageDate])
+  @@index([snoozedUntil])
+  @@index([remindAt])
 }
 
 model Email {

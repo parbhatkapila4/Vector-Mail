@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Nav } from "./Nav";
-import { Bot, Inbox, Send } from "lucide-react";
+import { Bot, Bell, Clock, Inbox, Send, CalendarClock } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 
@@ -63,6 +63,42 @@ const SideBar = ({ isCollapsed }: Props) => {
     },
   );
 
+  const { data: snoozedThreads } = api.account.getNumThreads.useQuery(
+    {
+      accountId: accountId || "placeholder",
+      tab: "snoozed",
+    },
+    {
+      enabled: isEnabled && !!accountId && accountId.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: false,
+    },
+  );
+
+  const { data: reminderThreads } = api.account.getNumThreads.useQuery(
+    {
+      accountId: accountId || "placeholder",
+      tab: "reminders",
+    },
+    {
+      enabled: isEnabled && !!accountId && accountId.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: false,
+    },
+  );
+
+  const { data: scheduledSends } = api.account.getScheduledSends.useQuery(
+    { accountId: accountId || "placeholder" },
+    {
+      enabled: isEnabled && !!accountId && accountId.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
+  );
+  const scheduledCount = scheduledSends?.length ?? 0;
+
   return (
     <Nav
       isCollapsed={isCollapsed}
@@ -78,6 +114,24 @@ const SideBar = ({ isCollapsed }: Props) => {
           label: sentThreads?.toString() || "0",
           icon: Send,
           variant: currentTab === "sent" ? "default" : "ghost",
+        },
+        {
+          title: "Snoozed",
+          label: snoozedThreads?.toString() || "0",
+          icon: Clock,
+          variant: currentTab === "snoozed" ? "default" : "ghost",
+        },
+        {
+          title: "Reminders",
+          label: reminderThreads?.toString() || "0",
+          icon: Bell,
+          variant: currentTab === "reminders" ? "default" : "ghost",
+        },
+        {
+          title: "Scheduled",
+          label: scheduledCount > 0 ? scheduledCount.toString() : "0",
+          icon: CalendarClock,
+          variant: currentTab === "scheduled" ? "default" : "ghost",
         },
         {
           title: "AI Buddy",

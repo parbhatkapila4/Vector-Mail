@@ -19,6 +19,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       position="bottom-right"
       offset="80px"
+      gap={24}
       richColors
       expand={true}
       visibleToasts={5}
@@ -26,6 +27,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         style: {
           zIndex: 99999,
           marginRight: "0px",
+          marginBottom: "4px",
           color: "#000000",
           background: "#ffffff",
           boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",

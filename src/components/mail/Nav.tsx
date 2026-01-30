@@ -34,6 +34,12 @@ export function Nav({ links, isCollapsed }: NavProps) {
         return "text-blue-400";
       case "Sent":
         return "text-emerald-400";
+      case "Snoozed":
+        return "text-slate-400";
+      case "Reminders":
+        return "text-amber-400";
+      case "Scheduled":
+        return "text-slate-400";
       case "AI Buddy":
         return "text-violet-400";
       default:

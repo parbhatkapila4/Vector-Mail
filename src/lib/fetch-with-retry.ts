@@ -1,23 +1,44 @@
+const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
+
 export async function fetchWithAuthRetry(
   url: string,
   options: RequestInit = {},
   maxRetries = 2,
+  requestTimeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS,
 ): Promise<Response> {
   let lastError: Error | null = null;
+  const timeoutIdRef: { current: ReturnType<typeof setTimeout> | null } = {
+    current: null,
+  };
+  const controller =
+    options.signal && "abort" in options.signal
+      ? null
+      : new AbortController();
+  const signal = (options.signal ?? controller?.signal) as AbortSignal;
+
+  if (controller && requestTimeoutMs > 0) {
+    timeoutIdRef.current = setTimeout(() => {
+      controller.abort();
+    }, requestTimeoutMs);
+  }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const signal = options.signal as AbortSignal | undefined;
       if (signal?.aborted) {
         throw new DOMException("The operation was aborted.", "AbortError");
       }
 
       const response = await fetch(url, {
         ...options,
+        signal,
         credentials: "include",
       });
 
       if (response.ok || response.status !== 401) {
+        if (timeoutIdRef.current) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
         return response;
       }
 
@@ -61,21 +82,25 @@ export async function fetchWithAuthRetry(
 
       return response;
     } catch (error) {
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
       if (error instanceof DOMException && error.name === "AbortError") {
         throw error;
       }
 
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {
-        const signal = options.signal as AbortSignal | undefined;
+        const retrySignal = options.signal as AbortSignal | undefined;
         if (signal?.aborted) {
           throw new DOMException("The operation was aborted.", "AbortError");
         }
 
         await new Promise((resolve) => {
           const timeoutId = setTimeout(resolve, 300 * (attempt + 1));
-          if (signal) {
-            signal.addEventListener("abort", () => {
+          if (retrySignal) {
+            retrySignal.addEventListener("abort", () => {
               clearTimeout(timeoutId);
               resolve(undefined);
             });

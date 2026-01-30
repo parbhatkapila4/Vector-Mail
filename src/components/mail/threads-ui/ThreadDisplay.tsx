@@ -6,12 +6,15 @@ import useThreads from "@/hooks/use-threads";
 import { useAtom } from "jotai";
 import { isSearchingAtom } from "../search/SearchBar";
 import ReplyBox from "./ReplyBox";
-import { Mail, Forward, Reply, X } from "lucide-react";
+import { Mail, Forward, Reply, X, Clock, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { ForwardEmailDialog } from "./ForwardEmailDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
+import { SnoozeMenu } from "./SnoozeMenu";
+import { RemindMenu } from "./RemindMenu";
+import { useLocalStorage } from "usehooks-ts";
 
 type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -21,7 +24,7 @@ interface ThreadDisplayProps {
 }
 
 export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
-  const { threads: rawThreads, threadId: hookThreadId } = useThreads();
+  const { threads: rawThreads, threadId: hookThreadId, accountId } = useThreads();
   const threadId = propThreadId ?? hookThreadId;
   const threads = rawThreads as Thread[] | undefined;
   const _thread = threads?.find((t: Thread) => t.id === threadId);
@@ -29,6 +32,17 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const isMobile = useIsMobile();
+  const [currentTab] = useLocalStorage("vector-mail", "inbox");
+  const showSnooze =
+    threadId &&
+    accountId &&
+    (currentTab === "inbox" || currentTab === "snoozed");
+  const showRemind =
+    threadId &&
+    accountId &&
+    (currentTab === "inbox" ||
+      currentTab === "snoozed" ||
+      currentTab === "reminders");
 
   const { data: foundThread } = api.account.getThreadById.useQuery(
     { threadId: threadId ?? "" },
@@ -91,9 +105,39 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
         originalDate={originalDate}
       />
       <div className="flex h-full flex-col bg-[#ffffff] dark:bg-[#111111]">
-        {/* Email Header */}
+
         <div className="border-b border-[#e0e0e0] bg-[#ffffff] dark:border-[#1f1f1f] dark:bg-[#111111]">
-          <div className="hidden items-center justify-end px-4 py-3 md:flex md:px-6">
+          <div className="hidden items-center justify-end gap-2 px-4 py-3 md:flex md:px-6">
+            {showSnooze && (
+              <SnoozeMenu
+                threadId={threadId}
+                accountId={accountId}
+                isSnoozedTab={currentTab === "snoozed"}
+              >
+                <button
+                  type="button"
+                  className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Snooze
+                </button>
+              </SnoozeMenu>
+            )}
+            {showRemind && (
+              <RemindMenu
+                threadId={threadId}
+                accountId={accountId}
+                isRemindersTab={currentTab === "reminders"}
+              >
+                <button
+                  type="button"
+                  className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
+                >
+                  <Bell className="h-3.5 w-3.5" />
+                  Remind me
+                </button>
+              </RemindMenu>
+            )}
             <button
               onClick={() => setForwardDialogOpen(true)}
               className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
@@ -166,7 +210,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
                   key={email.id}
                   className={cn(
                     index > 0 &&
-                      "border-t border-[#e0e0e0] pt-10 dark:border-[#1f1f1f]",
+                    "border-t border-[#e0e0e0] pt-10 dark:border-[#1f1f1f]",
                   )}
                 >
                   {index > 0 && (

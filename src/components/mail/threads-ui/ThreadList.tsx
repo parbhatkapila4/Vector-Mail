@@ -1,6 +1,6 @@
 import React, { useRef, useCallback, useMemo } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { RefreshCw, Mail, Star } from "lucide-react";
+import { MoreVertical, RefreshCw, Mail, Star, Bell, CalendarClock, X } from "lucide-react";
 import { useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,40 @@ import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
 import { SearchResults } from "../search/SearchResults";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
+import { SnoozeMenu } from "./SnoozeMenu";
+import { RemindMenu } from "./RemindMenu";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
 }
 
 type RouterThread = RouterOutputs["account"]["getThreads"]["threads"][0];
+
+const CATEGORY_BADGE: Record<
+  string,
+  { label: string; className: string }
+> = {
+  promotions: {
+    label: "Promotions",
+    className:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+  },
+  social: {
+    label: "Social",
+    className:
+      "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  },
+  updates: {
+    label: "Updates",
+    className:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+  },
+  forums: {
+    label: "Forums",
+    className:
+      "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+  },
+};
 
 interface Thread {
   id: string;
@@ -25,6 +53,7 @@ interface Thread {
     from?: { name: string | null };
     bodySnippet?: string | null;
     sysLabels: string[];
+    sysClassifications?: string[];
   }>;
 }
 
@@ -55,6 +84,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
   const [currentTab] = useLocalStorage("vector-mail", "inbox");
+  const [refreshingAfterSync, setRefreshingAfterSync] = React.useState(false);
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
@@ -85,21 +115,35 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         return;
       }
 
-      if (data.success) {
-        toast.success("Emails synced", {
-          description: data.message,
-          duration: 2000,
-        });
-      }
-
       await utils.account.getThreads.invalidate();
       await utils.account.getNumThreads.invalidate();
       await utils.account.getAccounts.invalidate();
 
-      setTimeout(() => {
-        console.log("[ThreadList] Refetching threads...");
-        void refetch();
-      }, 300);
+      setRefreshingAfterSync(true);
+      try {
+        await refetch();
+      } finally {
+        setRefreshingAfterSync(false);
+      }
+
+      const hasMore = "hasMore" in data && data.hasMore;
+      const continueToken = "continueToken" in data ? data.continueToken : undefined;
+      if (data.success && hasMore && continueToken && accountId) {
+        const folder = currentTab === "sent" ? "sent" : "inbox";
+        syncEmailsMutation.mutate({
+          accountId,
+          folder: folder as "inbox" | "sent",
+          continueToken,
+        });
+        return;
+      }
+
+      if (data.success) {
+        toast.success("Sync complete", {
+          description: data.message ?? "Emails synced",
+          duration: 2000,
+        });
+      }
     },
     onError: (error) => {
       console.error("[ThreadList] ❌ Sync failed:", error);
@@ -135,10 +179,10 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const handleRefresh = useCallback(() => {
     if (accountId) {
       const folder = currentTab === "sent" ? "sent" : "inbox";
-      console.log(`[ThreadList] Sync button clicked - fetching ${folder} emails`);
+      console.log(`[ThreadList] Sync button clicked - full sync (60-day window) for ${folder}`);
       syncEmailsMutation.mutate({
         accountId,
-        forceFullSync: false,
+        forceFullSync: true,
         folder: folder as "inbox" | "sent",
       });
     } else {
@@ -157,7 +201,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   }, []);
 
   const lastThreadElementRef = useCallback(
-    (node: HTMLButtonElement) => {
+    (node: HTMLDivElement | null) => {
       if (isFetchingNextPage) return;
       if (observerRef.current) observerRef.current.disconnect();
       observerRef.current = new IntersectionObserver((entries) => {
@@ -193,6 +237,25 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     [setThreadId, onThreadSelect],
   );
 
+  const { data: scheduledSends } = api.account.getScheduledSends.useQuery(
+    { accountId: accountId || "placeholder" },
+    {
+      enabled:
+        currentTab === "scheduled" &&
+        !!accountId &&
+        accountId.length > 0 &&
+        !accountsLoading,
+    },
+  );
+  const cancelScheduledMutation = api.account.cancelScheduledSend.useMutation({
+    onSuccess: () => {
+      void utils.account.getScheduledSends.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to cancel");
+    },
+  });
+
   if (accountsLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-white dark:bg-black">
@@ -201,6 +264,62 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           <p className="mt-4 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Loading...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentTab === "scheduled") {
+    return (
+      <div className="flex h-full flex-col bg-white dark:bg-black">
+        <div className="flex-shrink-0 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+            Scheduled sends
+          </h2>
+          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+            Emails that will be sent at the chosen time
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {!scheduledSends || scheduledSends.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+              <CalendarClock className="h-12 w-12 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                No scheduled sends
+              </p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                Schedule an email from Compose, Reply, or Forward
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+              {scheduledSends.map((item: { id: string; subject: string; scheduledAt: Date }) => (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-neutral-900 dark:text-white">
+                      {item.subject}
+                    </p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {format(item.scheduledAt, "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                    onClick={() => cancelScheduledMutation.mutate({ id: item.id })}
+                    disabled={cancelScheduledMutation.isPending}
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Cancel
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     );
@@ -255,89 +374,174 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     const date = thread.lastMessageDate ?? new Date();
     const bodySnippet = latestEmail?.bodySnippet ?? null;
     const sysLabels = latestEmail?.sysLabels ?? [];
+    const sysClassifications = latestEmail?.sysClassifications ?? [];
     const isUnread = sysLabels.includes("unread");
     const isImportant = sysLabels.includes("important");
     const isSelected = threadId === thread.id;
+    const categoryBadges = sysClassifications
+      .filter((c): c is string => Boolean(c) && c !== "personal")
+      .slice(0, 2)
+      .map((c) => CATEGORY_BADGE[c.toLowerCase()])
+      .filter(
+        (b): b is { label: string; className: string } => Boolean(b),
+      );
+
+    const showSnooze =
+      accountId &&
+      (currentTab === "inbox" || currentTab === "snoozed");
+    const showRemind =
+      accountId &&
+      (currentTab === "inbox" ||
+        currentTab === "snoozed" ||
+        currentTab === "reminders");
 
     return (
-      <button
+      <div
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
         className={cn(
-          "relative flex w-full gap-4 border-b border-neutral-100 px-5 py-3.5 text-left transition-all duration-150 dark:border-neutral-900",
+          "relative flex w-full items-stretch gap-0 border-b border-neutral-100 text-left transition-all duration-150 dark:border-neutral-900",
           isSelected
             ? "bg-gradient-to-r from-orange-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-orange-500 dark:from-orange-950/30 dark:to-amber-950/30 dark:before:bg-orange-400"
             : isUnread && !isSelected
               ? "bg-white hover:bg-neutral-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
               : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
         )}
-        onClick={() => {
-          setThreadId(thread.id);
-          onThreadSelect?.(thread.id);
-        }}
       >
-        <div
+        <button
+          type="button"
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-semibold transition-all duration-150",
-            isSelected
-              ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30"
-              : isUnread
-                ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+            "relative flex min-w-0 flex-1 gap-4 px-5 py-3.5 text-left outline-none",
           )}
+          onClick={() => {
+            setThreadId(thread.id);
+            onThreadSelect?.(thread.id);
+          }}
         >
-          {fromName.charAt(0).toUpperCase()}
-        </div>
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-semibold transition-all duration-150",
+              isSelected
+                ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30"
+                : isUnread
+                  ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                  : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+            )}
+          >
+            {fromName.charAt(0).toUpperCase()}
+          </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-2">
-                <span
-                  className={cn(
-                    "truncate text-[14px] font-semibold",
-                    isUnread || isSelected
-                      ? "text-neutral-900 dark:text-white"
-                      : "text-neutral-700 dark:text-neutral-300",
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "truncate text-[14px] font-semibold",
+                      isUnread || isSelected
+                        ? "text-neutral-900 dark:text-white"
+                        : "text-neutral-700 dark:text-neutral-300",
+                    )}
+                  >
+                    {fromName}
+                  </span>
+                  {isUnread && !isSelected && (
+                    <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500 dark:bg-orange-400" />
                   )}
-                >
-                  {fromName}
-                </span>
-                {isUnread && !isSelected && (
-                  <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500 dark:bg-orange-400" />
-                )}
-              </div>
-              <div
-                className={cn(
-                  "mb-1 truncate text-[14px]",
-                  isUnread || isSelected
-                    ? "font-medium text-neutral-900 dark:text-white"
-                    : "font-normal text-neutral-600 dark:text-neutral-400",
-                )}
-              >
-                {subject}
-              </div>
-              {bodySnippet && (
-                <div className="line-clamp-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-500">
-                  {bodySnippet}
                 </div>
-              )}
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
-              {isImportant && (
-                <Star className="h-3.5 w-3.5 fill-orange-500 text-orange-500 dark:fill-orange-400 dark:text-orange-400" />
-              )}
-              <span className="whitespace-nowrap text-[11px] font-medium text-neutral-500 dark:text-neutral-500">
-                {formatDistanceToNow(date, { addSuffix: false })}
-              </span>
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "truncate text-[14px]",
+                      isUnread || isSelected
+                        ? "font-medium text-neutral-900 dark:text-white"
+                        : "font-normal text-neutral-600 dark:text-neutral-400",
+                    )}
+                  >
+                    {subject}
+                  </span>
+                  {categoryBadges.map((badge) => (
+                    <span
+                      key={badge.label}
+                      className={cn(
+                        "inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                        badge.className,
+                      )}
+                    >
+                      {badge.label}
+                    </span>
+                  ))}
+                </div>
+                {bodySnippet && (
+                  <div className="line-clamp-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-500">
+                    {bodySnippet}
+                  </div>
+                )}
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+                {isImportant && (
+                  <Star className="h-3.5 w-3.5 fill-orange-500 text-orange-500 dark:fill-orange-400 dark:text-orange-400" />
+                )}
+                <span className="whitespace-nowrap text-[11px] font-medium text-neutral-500 dark:text-neutral-500">
+                  {formatDistanceToNow(date, { addSuffix: false })}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </button>
+        </button>
+        {(showSnooze || showRemind) && (
+          <div className="flex items-center gap-0.5 pr-1">
+            {showSnooze && (
+              <SnoozeMenu
+                threadId={thread.id}
+                accountId={accountId}
+                isSnoozedTab={currentTab === "snoozed"}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  aria-label="Snooze"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </SnoozeMenu>
+            )}
+            {showRemind && (
+              <RemindMenu
+                threadId={thread.id}
+                accountId={accountId}
+                isRemindersTab={currentTab === "reminders"}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  aria-label="Remind me if no reply"
+                >
+                  <Bell className="h-4 w-4" />
+                </Button>
+              </RemindMenu>
+            )}
+          </div>
+        )}
+      </div>
     );
   };
 
   const renderThreadsList = () => {
+    if (refreshingAfterSync) {
+      return (
+        <div className="flex h-64 flex-col items-center justify-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
+            Refreshing inbox…
+          </p>
+        </div>
+      );
+    }
     if (isFetching && threadsToRender.length === 0) {
       return (
         <div className="flex h-64 items-center justify-center">
@@ -347,11 +551,18 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
+      const isRemindersTab = currentTab === "reminders";
       return (
         <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
-          <Mail className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+          {isRemindersTab ? (
+            <Bell className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+          ) : (
+            <Mail className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+          )}
           <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
-            No emails found
+            {isRemindersTab
+              ? "No reminders due"
+              : "No emails found"}
           </p>
         </div>
       );
@@ -386,23 +597,27 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
           {isSearching && searchValue
             ? "Search Results"
-            : `${threadsToRender.length} conversations`}
+            : currentTab === "reminders"
+              ? `${threadsToRender.length} reminder${threadsToRender.length === 1 ? "" : "s"}`
+              : `${threadsToRender.length} conversations`}
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={syncEmailsMutation.isPending}
-          className="h-7 gap-2 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
-        >
-          <RefreshCw
-            className={cn(
-              "h-3.5 w-3.5",
-              syncEmailsMutation.isPending && "animate-spin",
-            )}
-          />
-          {syncEmailsMutation.isPending ? "Syncing" : "Sync"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={syncEmailsMutation.isPending}
+            className="h-7 gap-2 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+          >
+            <RefreshCw
+              className={cn(
+                "h-3.5 w-3.5",
+                syncEmailsMutation.isPending && "animate-spin",
+              )}
+            />
+            {syncEmailsMutation.isPending ? "Syncing" : "Sync"}
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
