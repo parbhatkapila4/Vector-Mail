@@ -162,11 +162,10 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       let threadFolderType = "inbox";
       if (hasDraftEmail) {
         threadFolderType = "draft";
-      } else if (hasSentEmail) {
-
-        threadFolderType = "sent";
       } else if (hasInboxEmail) {
         threadFolderType = "inbox";
+      } else if (hasSentEmail) {
+        threadFolderType = "sent";
       }
 
       const updateData = {

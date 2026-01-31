@@ -1,9 +1,20 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, { useRef, useCallback, useMemo, useEffect } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { MoreVertical, RefreshCw, Mail, Star, Bell, CalendarClock, X } from "lucide-react";
+import { MoreVertical, RefreshCw, Mail, MailOpen, Star, Bell, CalendarClock, X, Archive, Trash2 } from "lucide-react";
 import { useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api, type RouterOutputs } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
 import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
@@ -85,6 +96,30 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const [searchValue] = useAtom(searchValueAtom);
   const [currentTab] = useLocalStorage("vector-mail", "inbox");
   const [refreshingAfterSync, setRefreshingAfterSync] = React.useState(false);
+  const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSelectedThreadIds(new Set());
+  }, [currentTab]);
+
+  const hasTriggeredFirstSyncRef = useRef(false);
+
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedThreadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedThreadIds(new Set()), []);
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedThreadIds(new Set((threads ?? []).map((t) => t.id)));
+  }, [threads]);
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
@@ -156,10 +191,14 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           description: "The request took too long. Please try again in a moment.",
           duration: 4000,
         });
-      } else if (errorMessage.includes("UNAUTHORIZED") || errorMessage.includes("Authentication")) {
+      } else if (
+        errorMessage.includes("UNAUTHORIZED") ||
+        errorMessage.includes("Authentication") ||
+        errorMessage.toLowerCase().includes("sign in")
+      ) {
         toast.error("Sync failed", {
-          description: "There was an authentication issue. Please try again in a moment.",
-          duration: 4000,
+          description: "Your session may have expired. Refresh the page or sign out and back in.",
+          duration: 5000,
         });
       } else {
         toast.error("Sync failed", {
@@ -173,6 +212,60 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       void refetch();
     },
   });
+
+  const invalidateAndClearSelection = useCallback(async () => {
+    await utils.account.getThreads.invalidate();
+    await utils.account.getNumThreads.invalidate();
+    setSelectedThreadIds(new Set());
+  }, [utils]);
+
+  const bulkMarkReadMutation = api.account.bulkMarkRead.useMutation({
+    onSuccess: async () => {
+      await invalidateAndClearSelection();
+      toast.success("Marked as read");
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to mark as read");
+    },
+  });
+
+  const bulkMarkUnreadMutation = api.account.bulkMarkUnread.useMutation({
+    onSuccess: async () => {
+      await invalidateAndClearSelection();
+      toast.success("Marked as unread");
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to mark as unread");
+    },
+  });
+
+  const bulkArchiveMutation = api.account.bulkArchiveThreads.useMutation({
+    onSuccess: async () => {
+      await invalidateAndClearSelection();
+      toast.success("Archived");
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to archive");
+    },
+  });
+
+  const bulkDeleteMutation = api.account.bulkDeleteThreads.useMutation({
+    onSuccess: async () => {
+      setDeleteConfirmOpen(false);
+      await invalidateAndClearSelection();
+      toast.success("Moved to trash");
+    },
+    onError: (err) => {
+      setDeleteConfirmOpen(false);
+      toast.error(err.message ?? "Failed to move to trash");
+    },
+  });
+
+  const isBulkPending =
+    bulkMarkReadMutation.isPending ||
+    bulkMarkUnreadMutation.isPending ||
+    bulkArchiveMutation.isPending ||
+    bulkDeleteMutation.isPending;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -212,6 +305,19 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       if (node) observerRef.current.observe(node);
     },
     [isFetchingNextPage, hasNextPage, fetchNextPage],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "x" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement;
+      if (target.closest("button") || target.closest("[role='checkbox']")) return;
+      if (threadId) {
+        e.preventDefault();
+        toggleSelection(threadId);
+      }
+    },
+    [threadId, toggleSelection],
   );
 
   const threadsToRender = useMemo(() => threads ?? [], [threads]);
@@ -255,6 +361,30 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       toast.error(err.message ?? "Failed to cancel");
     },
   });
+
+  useEffect(() => {
+    if (
+      !accountId ||
+      currentTab !== "inbox" ||
+      isSearching ||
+      syncEmailsMutation.isPending ||
+      hasTriggeredFirstSyncRef.current
+    )
+      return;
+    const threadListLoaded = !isFetching && Array.isArray(threads);
+    if (threadListLoaded && threads.length === 0) {
+      hasTriggeredFirstSyncRef.current = true;
+      toast.info("Syncing your inbox…", {
+        description: "Fetching your emails for the first time. This may take a moment.",
+        duration: 4000,
+      });
+      syncEmailsMutation.mutate({
+        accountId,
+        forceFullSync: true,
+        folder: "inbox",
+      });
+    }
+  }, [accountId, currentTab, isFetching, isSearching, threads?.length, syncEmailsMutation]);
 
   if (accountsLoading) {
     return (
@@ -378,6 +508,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     const isUnread = sysLabels.includes("unread");
     const isImportant = sysLabels.includes("important");
     const isSelected = threadId === thread.id;
+    const isRowSelected = selectedThreadIds.has(thread.id);
     const categoryBadges = sysClassifications
       .filter((c): c is string => Boolean(c) && c !== "personal")
       .slice(0, 2)
@@ -408,10 +539,22 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
         )}
       >
+        <div
+          className="flex shrink-0 items-center pl-3"
+          onClick={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <Checkbox
+            checked={isRowSelected}
+            onCheckedChange={() => toggleSelection(thread.id)}
+            aria-label={`Select ${subject}`}
+            className="border-neutral-300 dark:border-neutral-600"
+          />
+        </div>
         <button
           type="button"
           className={cn(
-            "relative flex min-w-0 flex-1 gap-4 px-5 py-3.5 text-left outline-none",
+            "relative flex min-w-0 flex-1 gap-4 px-2 py-3.5 pr-5 text-left outline-none",
           )}
           onClick={() => {
             setThreadId(thread.id);
@@ -552,18 +695,99 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       const isRemindersTab = currentTab === "reminders";
+      const isSyncingInbox =
+        currentTab === "inbox" &&
+        threadsToRender.length === 0 &&
+        syncEmailsMutation.isPending;
+      const syncFailedInbox =
+        currentTab === "inbox" &&
+        threadsToRender.length === 0 &&
+        syncEmailsMutation.isError;
       return (
         <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
-          {isRemindersTab ? (
-            <Bell className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+          {isSyncingInbox ? (
+            <>
+              <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-700 dark:border-t-orange-400" />
+              <p className="text-[14px] font-medium text-neutral-700 dark:text-neutral-300">
+                Syncing your inbox…
+              </p>
+              <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                Fetching your emails. This may take a moment.
+              </p>
+            </>
+          ) : syncFailedInbox ? (
+            <>
+              <Mail className="mb-4 h-11 w-11 text-red-400/80 dark:text-red-500/80" />
+              <p className="text-[14px] font-medium text-neutral-800 dark:text-neutral-200">
+                Sync failed
+              </p>
+              <p className="mt-1 max-w-sm text-[12px] text-neutral-600 dark:text-neutral-400">
+                {syncEmailsMutation.error?.message?.toLowerCase().includes("sign in") ||
+                  syncEmailsMutation.error?.message?.toLowerCase().includes("unauthorized")
+                  ? "Your session may have expired. Refresh the page or sign out and back in."
+                  : syncEmailsMutation.error?.message ?? "Something went wrong. Check your connection and try again."}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                >
+                  Refresh page
+                </Button>
+                {accountId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      syncEmailsMutation.mutate({
+                        accountId,
+                        forceFullSync: true,
+                        folder: "inbox",
+                      })
+                    }
+                    disabled={syncEmailsMutation.isPending}
+                  >
+                    {syncEmailsMutation.isPending ? "Syncing…" : "Sync again"}
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : isRemindersTab ? (
+            <>
+              <Bell className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+              <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
+                No reminders due
+              </p>
+            </>
           ) : (
-            <Mail className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+            <>
+              <Mail className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
+              <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
+                No emails found
+              </p>
+              <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                Click <strong>Sync</strong> above to load your emails, or check back later.
+              </p>
+              {currentTab === "inbox" && accountId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() =>
+                    syncEmailsMutation.mutate({
+                      accountId,
+                      forceFullSync: true,
+                      folder: "inbox",
+                    })
+                  }
+                  disabled={syncEmailsMutation.isPending}
+                >
+                  {syncEmailsMutation.isPending ? "Syncing…" : "Sync inbox"}
+                </Button>
+              )}
+            </>
           )}
-          <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
-            {isRemindersTab
-              ? "No reminders due"
-              : "No emails found"}
-          </p>
         </div>
       );
     }
@@ -591,6 +815,21 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     );
   };
 
+  const selectedCount = selectedThreadIds.size;
+  const showBulkBar = selectedCount > 0 && !isSearching;
+  const showArchiveAndDelete =
+    currentTab === "inbox" ||
+    currentTab === "snoozed" ||
+    currentTab === "archive";
+
+  const handleBulkDelete = () => {
+    if (!accountId) return;
+    bulkDeleteMutation.mutate({
+      accountId,
+      threadIds: Array.from(selectedThreadIds),
+    });
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white dark:bg-black">
       <div className="flex items-center justify-between border-b border-neutral-200/50 px-5 py-2.5 dark:border-neutral-800/30">
@@ -602,6 +841,16 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               : `${threadsToRender.length} conversations`}
         </span>
         <div className="flex items-center gap-2">
+          {threadsToRender.length > 0 && !isSearching && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={selectAllVisible}
+              className="h-7 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+            >
+              Select all
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -620,7 +869,115 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {showBulkBar && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200/50 bg-neutral-50 px-4 py-2.5 dark:border-neutral-800/30 dark:bg-neutral-900/50">
+          <span className="text-[12px] font-medium text-neutral-700 dark:text-neutral-300">
+            {selectedCount} selected
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-[12px]"
+              disabled={isBulkPending}
+              onClick={() =>
+                accountId &&
+                bulkMarkReadMutation.mutate({
+                  accountId,
+                  threadIds: Array.from(selectedThreadIds),
+                })
+              }
+            >
+              <MailOpen className="h-3.5 w-3.5" />
+              Mark read
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-[12px]"
+              disabled={isBulkPending}
+              onClick={() =>
+                accountId &&
+                bulkMarkUnreadMutation.mutate({
+                  accountId,
+                  threadIds: Array.from(selectedThreadIds),
+                })
+              }
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Mark unread
+            </Button>
+            {showArchiveAndDelete && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-[12px]"
+                  disabled={isBulkPending}
+                  onClick={() =>
+                    accountId &&
+                    bulkArchiveMutation.mutate({
+                      accountId,
+                      threadIds: Array.from(selectedThreadIds),
+                    })
+                  }
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  Archive
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-[12px] text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                  disabled={isBulkPending}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[12px]"
+              disabled={isBulkPending}
+              onClick={clearSelection}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedCount} thread{selectedCount !== 1 ? "s" : ""} will be moved to trash. You can restore them from Trash later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+            >
+              Move to trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div
+        ref={listContainerRef}
+        tabIndex={0}
+        role="listbox"
+        aria-label="Thread list"
+        className="flex-1 overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden outline-none"
+        onKeyDown={handleKeyDown}
+      >
         {isSearching && searchValue ? (
           <SearchResults onResultSelect={handleSearchResultSelect} />
         ) : (

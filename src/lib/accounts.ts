@@ -140,15 +140,36 @@ export class Account {
           headers: this.aurinkoHeaders,
           params: {
             maxResults: INITIAL_FIRST_BATCH_SIZE,
-            q: `in:inbox ${newerThanQuery}`,
+            q: `label:inbox ${newerThanQuery}`,
             bodyType: "text",
           },
         });
 
-        const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
+        let messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
         console.log(
-          `[Initial Sync] First batch list returned ${messageIds.length} message IDs (fetching in chunks of ${FIRST_BATCH_CONCURRENCY})`,
+          `[Initial Sync] First batch list returned ${messageIds.length} message IDs (query: label:inbox newer_than:${SYNC_WINDOW_DAYS}d)`,
         );
+
+        if (messageIds.length === 0) {
+          console.log(
+            `[Initial Sync] No messages with date filter - trying label:inbox without date limit...`,
+          );
+          const fallbackResponse = await aurinkoAxios.get<{
+            messages?: Array<{ id: string }>;
+            nextPageToken?: string;
+          }>("https://api.aurinko.io/v1/email/messages", {
+            headers: this.aurinkoHeaders,
+            params: {
+              maxResults: INITIAL_FIRST_BATCH_SIZE,
+              q: "label:inbox",
+              bodyType: "text",
+            },
+          });
+          messageIds = fallbackResponse.data.messages?.map((m) => m.id) ?? [];
+          console.log(
+            `[Initial Sync] Fallback query (label:inbox only) returned ${messageIds.length} message IDs`,
+          );
+        }
 
         if (messageIds.length === 0) {
           let storedDeltaToken = "";
@@ -159,6 +180,9 @@ export class Account {
             }
           } catch {
           }
+          console.warn(
+            "[Initial Sync] No inbox messages found - account may be empty, or check Aurinko/Gmail connection",
+          );
           return { emails: [], deltaToken: storedDeltaToken };
         }
 
@@ -268,6 +292,7 @@ export class Account {
           params: {
             daysWithin: SYNC_WINDOW_DAYS,
             bodyType: "text",
+            awaitReady: true,
           },
         },
       );
@@ -564,25 +589,8 @@ export class Account {
     if (shouldMaintain30DayWindow) {
       if (inboxThreadCount === 0) {
         console.log(
-          `[syncEmails] New user (0 inbox threads) - fast first batch only, then return`,
+          `[syncEmails] New user (0 inbox threads) - using Sync API (messages list returns empty)`,
         );
-        const initialResult = await this.performInitialSync(undefined, {
-          firstBatchOnly: true,
-        });
-        await db.account.update({
-          where: { id: account.id },
-          data: { lastInboxSyncAt: new Date() },
-        });
-        if (initialResult.deltaToken) {
-          await db.account.update({
-            where: { id: account.id },
-            data: { nextDeltaToken: initialResult.deltaToken },
-          });
-        }
-        console.log(
-          `[syncEmails] First batch complete: ${initialResult.emails.length} emails synced`,
-        );
-        return;
       }
 
       console.log(
@@ -591,7 +599,17 @@ export class Account {
 
       try {
         console.log(`[syncEmails] Starting sync API...`);
-        const syncResponse = await this.startSync();
+        let syncResponse = await this.startSync();
+        let readyAttempts = 0;
+        const maxReadyAttempts = 12;
+        while (!syncResponse.ready && readyAttempts < maxReadyAttempts) {
+          readyAttempts++;
+          console.log(
+            `[syncEmails] Sync not ready, waiting 5s before retry (${readyAttempts}/${maxReadyAttempts})...`,
+          );
+          await new Promise((r) => setTimeout(r, 5000));
+          syncResponse = await this.startSync();
+        }
         console.log(`[syncEmails] Sync API response:`, {
           ready: syncResponse.ready,
           hasToken: !!syncResponse.syncUpdatedToken,
@@ -601,7 +619,7 @@ export class Account {
         });
 
         if (!syncResponse.ready) {
-          throw new Error("Sync API not ready - waiting might be required");
+          throw new Error("Sync API not ready after waiting - try again in a few minutes");
         }
 
         if (!syncResponse.syncUpdatedToken) {
@@ -1331,8 +1349,9 @@ export class Account {
 
 
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
-    let searchQuery = `in:${folder} ${newerThanQuery}`;
+    let searchQuery = `label:${folder} ${newerThanQuery}`;
     let triedLabelFallback = false;
+    let triedNoDateFallback = false;
 
     console.log(`[fetchEmailsByFolder:${folder}] Fetching emails with query: ${searchQuery} (window: ${SYNC_WINDOW_DAYS} days)`);
 
@@ -1380,6 +1399,20 @@ export class Account {
             pageToken = undefined;
             console.log(
               `[fetchEmailsByFolder:sent] First page empty with in:sent, retrying with: ${searchQuery}`,
+            );
+            pageCount--;
+            continue;
+          }
+
+          if (
+            pageCount === 1 &&
+            !triedNoDateFallback
+          ) {
+            triedNoDateFallback = true;
+            searchQuery = `label:${folder}`;
+            pageToken = undefined;
+            console.log(
+              `[fetchEmailsByFolder:${folder}] First page empty with date filter, retrying with: ${searchQuery}`,
             );
             pageCount--;
             continue;

@@ -444,6 +444,290 @@ export const accountRouter = createTRPCRouter({
       return { success: true, message: "Thread moved to trash" };
     }),
 
+  archiveThread: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      const thread = await ctx.db.thread.findFirst({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        include: { emails: true },
+      });
+
+      if (!thread) {
+        throw new Error("Thread not found");
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const email of thread.emails) {
+          const labels = (email.sysLabels as string[]) || [];
+          const updatedLabels = labels.filter((label) => label !== "inbox");
+          await tx.email.update({
+            where: { id: email.id },
+            data: { sysLabels: updatedLabels },
+          });
+        }
+        await tx.thread.update({
+          where: { id: input.threadId },
+          data: { inboxStatus: false },
+        });
+      });
+
+      return { success: true, message: "Thread archived" };
+    }),
+
+  markThreadRead: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      const thread = await ctx.db.thread.findFirst({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        include: { emails: true },
+      });
+
+      if (!thread) {
+        throw new Error("Thread not found");
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const email of thread.emails) {
+          const labels = (email.sysLabels as string[]) || [];
+          const updatedLabels = labels.filter((label) => label !== "unread");
+          await tx.email.update({
+            where: { id: email.id },
+            data: { sysLabels: updatedLabels },
+          });
+        }
+      });
+
+      return { success: true };
+    }),
+
+  markThreadUnread: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      const thread = await ctx.db.thread.findFirst({
+        where: {
+          id: input.threadId,
+          accountId: account.id,
+        },
+        include: {
+          emails: {
+            orderBy: { sentAt: "desc" },
+            take: 1,
+          },
+        },
+      });
+
+      if (!thread) {
+        throw new Error("Thread not found");
+      }
+
+      const latestEmail = thread.emails[0];
+      if (latestEmail) {
+        const labels = (latestEmail.sysLabels as string[]) || [];
+        if (!labels.includes("unread")) {
+          await ctx.db.email.update({
+            where: { id: latestEmail.id },
+            data: { sysLabels: [...labels, "unread"] },
+          });
+        }
+      }
+
+      return { success: true };
+    }),
+
+  bulkDeleteThreads: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadIds: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      let count = 0;
+      for (const threadId of input.threadIds) {
+        const thread = await ctx.db.thread.findFirst({
+          where: { id: threadId, accountId: account.id },
+          include: { emails: true },
+        });
+        if (!thread) continue;
+
+        await ctx.db.$transaction(async (tx) => {
+          for (const email of thread.emails) {
+            const labels = (email.sysLabels as string[]) || [];
+            const updatedLabels = labels.filter((l) => l !== "inbox");
+            if (!updatedLabels.includes("trash")) updatedLabels.push("trash");
+            await tx.email.update({
+              where: { id: email.id },
+              data: { sysLabels: updatedLabels },
+            });
+          }
+          await tx.thread.update({
+            where: { id: threadId },
+            data: { inboxStatus: false },
+          });
+        });
+        count++;
+      }
+      return { success: true, count };
+    }),
+
+  bulkArchiveThreads: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadIds: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      let count = 0;
+      for (const threadId of input.threadIds) {
+        const thread = await ctx.db.thread.findFirst({
+          where: { id: threadId, accountId: account.id },
+          include: { emails: true },
+        });
+        if (!thread) continue;
+
+        await ctx.db.$transaction(async (tx) => {
+          for (const email of thread.emails) {
+            const labels = (email.sysLabels as string[]) || [];
+            const updatedLabels = labels.filter((l) => l !== "inbox");
+            await tx.email.update({
+              where: { id: email.id },
+              data: { sysLabels: updatedLabels },
+            });
+          }
+          await tx.thread.update({
+            where: { id: threadId },
+            data: { inboxStatus: false },
+          });
+        });
+        count++;
+      }
+      return { success: true, count };
+    }),
+
+  bulkMarkRead: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadIds: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      let count = 0;
+      for (const threadId of input.threadIds) {
+        const thread = await ctx.db.thread.findFirst({
+          where: { id: threadId, accountId: account.id },
+          include: { emails: true },
+        });
+        if (!thread) continue;
+
+        await ctx.db.$transaction(async (tx) => {
+          for (const email of thread.emails) {
+            const labels = (email.sysLabels as string[]) || [];
+            const updatedLabels = labels.filter((l) => l !== "unread");
+            await tx.email.update({
+              where: { id: email.id },
+              data: { sysLabels: updatedLabels },
+            });
+          }
+        });
+        count++;
+      }
+      return { success: true, count };
+    }),
+
+  bulkMarkUnread: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string(),
+        threadIds: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      let count = 0;
+      for (const threadId of input.threadIds) {
+        const thread = await ctx.db.thread.findFirst({
+          where: { id: threadId, accountId: account.id },
+          include: {
+            emails: {
+              orderBy: { sentAt: "desc" },
+              take: 1,
+            },
+          },
+        });
+        if (!thread) continue;
+
+        const latestEmail = thread.emails[0];
+        if (latestEmail) {
+          const labels = (latestEmail.sysLabels as string[]) || [];
+          if (!labels.includes("unread")) {
+            await ctx.db.email.update({
+              where: { id: latestEmail.id },
+              data: { sysLabels: [...labels, "unread"] },
+            });
+          }
+        }
+        count++;
+      }
+      return { success: true, count };
+    }),
+
   snoozeThread: protectedProcedure
     .input(
       z.object({
@@ -634,8 +918,8 @@ export const accountRouter = createTRPCRouter({
         const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean) =>
           Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false }), "utf8").toString("base64url");
 
-        if (folder === "inbox" || folder === "sent") {
-          const { pageToken, sentUseLabel } = input.continueToken ? decodeContinueToken(input.continueToken) : {};
+        if ((folder === "inbox" || folder === "sent") && input.continueToken) {
+          const { pageToken, sentUseLabel } = decodeContinueToken(input.continueToken);
           const result = await emailAccount.fetchEmailsByFolderOnePage(folder, pageToken, sentUseLabel ?? false);
           if (result.emails.length > 0) {
             const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
@@ -793,12 +1077,13 @@ export const accountRouter = createTRPCRouter({
         }
 
         try {
-
           const folder = input.folder === "sent" ? "sent" : undefined;
           await emailAccount.syncEmails(
             shouldForceFullSync || !account.nextDeltaToken,
             folder,
           );
+          const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+          await recalculateAllThreadStatuses(account.id);
         } catch (syncError) {
           const syncErrorMessage =
             syncError instanceof Error ? syncError.message : String(syncError);
