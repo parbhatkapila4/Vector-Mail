@@ -175,6 +175,61 @@ model EmailAttachment {
   Email           Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
 }
 
+model EmailOpen {
+  id         String    @id @default(cuid())
+  trackingId String    @unique
+  messageId  String?
+  accountId  String?
+  openedAt   DateTime?
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime  @default(now())
+
+  @@index([trackingId])
+  @@index([messageId])
+}
+
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  accountId    String?
+  operation    String
+  inputTokens  Int
+  outputTokens Int
+  model        String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model FailedJob {
+  id           String   @id @default(cuid())
+  jobType      String
+  resourceId   String
+  payload      Json?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([jobType, resourceId])
+  @@index([jobType])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  resourceId String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
 enum Role {
   user
   admin

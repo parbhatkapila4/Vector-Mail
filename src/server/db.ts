@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 
 const originalStdErr = process.stderr.write.bind(process.stderr);
 
-process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
+process.stderr.write = ((chunk: unknown, encoding?: BufferEncoding, callback?: () => void) => {
   let chunkString: string;
   if (typeof chunk === "string") {
     chunkString = chunk;
@@ -31,11 +31,11 @@ process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
     return true;
   }
 
-  return originalStdErr(chunk, encoding, callback);
+  return originalStdErr(chunk as string | Uint8Array, encoding, callback);
 }) as typeof process.stderr.write;
 
 const originalConsoleError = console.error.bind(console);
-console.error = ((...args: any[]) => {
+console.error = ((...args: unknown[]) => {
   const message = args
     .map((arg) => {
       if (typeof arg === "object" && arg !== null) {
@@ -101,7 +101,7 @@ export async function withDbRetry<T>(
 
         try {
           await db.$connect();
-        } catch (reconnectError) {}
+        } catch { }
 
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         continue;

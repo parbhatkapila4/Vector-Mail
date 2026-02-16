@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { env } from "@/env.js";
+import { recordUsage } from "@/lib/ai-usage";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -26,6 +27,7 @@ export async function generateConversationalSummary(
   email: EmailForSummary,
   lengthPreference: SummaryLength = "auto",
   userRequest?: string,
+  options?: { userId?: string; accountId?: string },
 ): Promise<string> {
   try {
     let detectedLength: SummaryLength = lengthPreference;
@@ -110,6 +112,18 @@ Summary:`;
       max_tokens: maxTokens,
       temperature: 0.5,
     });
+
+    if (options?.userId) {
+      const u = completion.usage;
+      recordUsage({
+        userId: options.userId,
+        accountId: options.accountId,
+        operation: "summary",
+        inputTokens: u?.prompt_tokens ?? 0,
+        outputTokens: u?.completion_tokens ?? 0,
+        model: completion.model ?? undefined,
+      });
+    }
 
     const summary = completion.choices[0]?.message?.content?.trim();
 

@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimeInput24 } from "@/components/ui/time-input-24";
 import {
   getLaterToday,
   getNextWeek,
@@ -170,40 +170,43 @@ export function SnoozeMenu({
 
       <Dialog open={customPickerOpen} onOpenChange={setCustomPickerOpen}>
         <DialogContent
-          className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 sm:max-w-[360px]"
+          className="z-[100] border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:max-w-[400px]"
           onClick={(e) => e.stopPropagation()}
         >
-          <DialogHeader>
-            <DialogTitle>Snooze until</DialogTitle>
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-lg font-semibold">
+              Snooze until
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-2">
-            <div>
-              <Label className="text-xs text-neutral-500 dark:text-neutral-400">
+          <div className="flex flex-col gap-6 py-2">
+            <div className="flex flex-col gap-3">
+              <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 Date
               </Label>
-              <Calendar
-                mode="single"
-                selected={pickedDate}
-                onSelect={setPickedDate}
-                disabled={(date) =>
-                  startOfDay(date) < startOfDay(new Date())
-                }
-                className="rounded-md border border-neutral-200 dark:border-neutral-800"
-              />
+              <div className="flex justify-center rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+                <Calendar
+                  mode="single"
+                  selected={pickedDate}
+                  onSelect={setPickedDate}
+                  disabled={(date) =>
+                    startOfDay(date) < startOfDay(new Date())
+                  }
+                  className="rounded-md border-0 bg-transparent p-0 [--cell-size:2.25rem]"
+                />
+              </div>
             </div>
-            <div>
-              <Label className="text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 Time
               </Label>
-              <Input
-                type="time"
+              <TimeInput24
                 value={pickedTime}
-                onChange={(e) => setPickedTime(e.target.value)}
-                className="mt-1"
+                onChange={setPickedTime}
+                className="w-full"
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex flex-row justify-end gap-2 pt-4">
             <Button
               variant="ghost"
               size="sm"

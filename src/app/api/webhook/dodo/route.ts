@@ -3,10 +3,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
-    // Read raw body
     const rawBody = await request.text();
-    
-    // Get webhook secret
+
     const webhookSecret = process.env.DODO_WEBHOOK_SECRET;
     if (!webhookSecret) {
       console.error("DODO_WEBHOOK_SECRET is not configured");
@@ -16,7 +14,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get signature from headers (try common header names)
     const signature =
       request.headers.get("signature") ||
       request.headers.get("x-signature") ||
@@ -31,12 +28,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify signature using HMAC-SHA256
     const expectedSignature = createHmac("sha256", webhookSecret)
       .update(rawBody)
       .digest("hex");
 
-    // Compare signatures using constant-time comparison
     try {
       const signatureBuffer = Buffer.from(signature, "hex");
       const expectedBuffer = Buffer.from(expectedSignature, "hex");
@@ -51,8 +46,7 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-    } catch (bufferError) {
-      // If signature is not valid hex, try direct string comparison
+    } catch {
       if (signature !== expectedSignature) {
         console.error("Invalid Dodo webhook signature");
         return NextResponse.json(
@@ -62,7 +56,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Parse JSON body
     let event;
     try {
       event = JSON.parse(rawBody);
@@ -74,14 +67,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log event type
     const eventType = event.type || event.event || event.event_type;
     console.log("Dodo webhook received - Event type:", eventType);
 
-    // Only process payment.succeeded events
     if (eventType === "payment.succeeded") {
       console.log("Processing payment.succeeded event");
-      // TODO: Add business logic here later
     } else {
       console.log(`Ignoring event type: ${eventType}`);
     }

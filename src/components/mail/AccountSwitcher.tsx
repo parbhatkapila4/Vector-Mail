@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus } from "lucide-react";
 import { getAurinkoAuthUrl } from "@/lib/aurinko";
 import { toast } from "sonner";
 

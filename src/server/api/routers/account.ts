@@ -1,4 +1,9 @@
 import { Account } from "@/lib/accounts";
+import { checkDailyCap } from "@/lib/ai-usage";
+import { log as auditLog } from "@/lib/audit/audit-log";
+import { checkUserRateLimit } from "@/lib/rate-limit";
+import { incrementSyncFailure } from "@/lib/metrics/store";
+import { env } from "@/env.js";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db, withDbRetry } from "@/server/db";
 import { emailAddressSchema } from "@/types";
@@ -99,6 +104,7 @@ export const accountRouter = createTRPCRouter({
         bcc: z.array(emailAddressSchema).optional(),
         inReplyTo: z.string().optional(),
         references: z.string().optional(),
+        trackOpens: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -106,8 +112,46 @@ export const accountRouter = createTRPCRouter({
         input.accountId,
         ctx.auth.userId,
       );
+      let body = input.body;
+      let trackingId: string | null = null;
+      if (input.trackOpens) {
+        const {
+          createTrackingRecord,
+          getTrackingPixelUrl,
+          injectTrackingPixel,
+        } = await import("@/lib/email-open-tracking");
+        try {
+          trackingId = await createTrackingRecord(account.id);
+          const pixelUrl = getTrackingPixelUrl(trackingId);
+          body = injectTrackingPixel(input.body, pixelUrl);
+        } catch (trackErr) {
+          console.error("[sendEmail] Open tracking setup failed:", trackErr);
+        }
+      }
       const emailAccount = new Account(account.id, account.token);
-      await emailAccount.sendEmail(input);
+      const result = await emailAccount.sendEmail({
+        ...input,
+        body,
+      });
+      if (trackingId && result?.id) {
+        try {
+          const { updateTrackingMessageId } = await import(
+            "@/lib/email-open-tracking"
+          );
+          await updateTrackingMessageId(trackingId, String(result.id));
+        } catch (updateErr) {
+          console.error(
+            "[sendEmail] Failed to link tracking to messageId:",
+            updateErr,
+          );
+        }
+      }
+      auditLog({
+        userId: ctx.auth.userId,
+        action: "email_sent",
+        resourceId: input.threadId ?? (result as { id?: string })?.id ?? undefined,
+        metadata: { accountId: input.accountId },
+      });
       return { success: true };
     }),
 
@@ -125,6 +169,7 @@ export const accountRouter = createTRPCRouter({
             body: z.string(),
             cc: z.array(z.string()).optional(),
             bcc: z.array(z.string()).optional(),
+            trackOpens: z.boolean().optional(),
             attachments: z
               .array(
                 z.object({
@@ -148,6 +193,7 @@ export const accountRouter = createTRPCRouter({
             replyTo: emailAddressSchema.optional(),
             cc: z.array(emailAddressSchema).optional(),
             bcc: z.array(emailAddressSchema).optional(),
+            trackOpens: z.boolean().optional(),
           }),
         ]),
       }),
@@ -168,6 +214,12 @@ export const accountRouter = createTRPCRouter({
           status: "pending",
           payload: input.payload as object,
         },
+      });
+      auditLog({
+        userId: ctx.auth.userId,
+        action: "scheduled_send_created",
+        resourceId: created.id,
+        metadata: { accountId: input.accountId, scheduledAt: input.scheduledAt },
       });
       return { id: created.id };
     }),
@@ -284,7 +336,7 @@ export const accountRouter = createTRPCRouter({
 
         const emailBasedCount = threadsWithInboxEmails.length;
 
-        if (threadCount === 0 && emailBasedCount > 0) {
+        if (emailBasedCount > threadCount && emailBasedCount > 0) {
           const threadIds = threadsWithInboxEmails.map((e) => e.threadId);
           await ctx.db.thread.updateMany({
             where: {
@@ -295,7 +347,6 @@ export const accountRouter = createTRPCRouter({
               inboxStatus: true,
             },
           });
-          return emailBasedCount;
         }
 
         return Math.max(threadCount, emailBasedCount);
@@ -897,10 +948,27 @@ export const accountRouter = createTRPCRouter({
       }
 
       const emailAccount = new Account(account.id, account.token);
+      const syncStartTime = Date.now();
+
+      const shouldForceFullSync = input.forceFullSync ?? false;
+      const folder: "inbox" | "sent" = input.folder ?? "inbox";
+      auditLog({
+        userId: ctx.auth.userId,
+        action: "sync_triggered",
+        resourceId: input.accountId,
+        metadata: { folder },
+      });
 
       try {
-        const shouldForceFullSync = input.forceFullSync ?? false;
-        const folder: "inbox" | "sent" = input.folder ?? "inbox";
+        ctx.log?.info(
+          {
+            event: "sync_start",
+            accountId: account.id,
+            forceFullSync: shouldForceFullSync,
+            folder,
+          },
+          "sync started",
+        );
         console.log(
           `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, folder: ${folder}`,
         );
@@ -933,6 +1001,18 @@ export const accountRouter = createTRPCRouter({
           });
           const hasMore = !!result.nextPageToken;
           const continueToken = hasMore ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel) : undefined;
+          ctx.log?.info(
+            {
+              event: "sync_success",
+              accountId: account.id,
+              folder,
+              durationMs: Date.now() - syncStartTime,
+              countSynced: result.emails.length,
+              threadCount,
+              hasMore,
+            },
+            "sync chunk done",
+          );
           console.log(
             `[syncEmails mutation] Chunk done: ${result.emails.length} emails synced, hasMore: ${hasMore}, total ${folder} threads: ${threadCount}`,
           );
@@ -975,6 +1055,17 @@ export const accountRouter = createTRPCRouter({
                 },
               });
 
+              ctx.log?.warn(
+                {
+                  event: "sync_error",
+                  accountId: account.id,
+                  durationMs: Date.now() - syncStartTime,
+                  error: "auth_error",
+                  needsReconnection: true,
+                },
+                "sync auth error",
+              );
+              incrementSyncFailure();
               return {
                 success: false,
                 message: "Authentication failed. Your session may have expired.",
@@ -984,10 +1075,6 @@ export const accountRouter = createTRPCRouter({
             }
 
             if (latestSyncResult.success && latestSyncResult.count > 0) {
-              console.log(
-                `[syncEmails mutation] Lightweight sync successful - synced ${latestSyncResult.count} new emails`,
-              );
-
               const threadCount = await ctx.db.thread.count({
                 where: {
                   accountId: account.id,
@@ -995,6 +1082,27 @@ export const accountRouter = createTRPCRouter({
                     ? { sentStatus: true }
                     : { inboxStatus: true }),
                 },
+              });
+              ctx.log?.info(
+                {
+                  event: "sync_success",
+                  accountId: account.id,
+                  durationMs: Date.now() - syncStartTime,
+                  countSynced: latestSyncResult.count,
+                  threadCount,
+                  mode: "lightweight",
+                },
+                "sync success (lightweight)",
+              );
+              console.log(
+                `[syncEmails mutation] Lightweight sync successful - synced ${latestSyncResult.count} new emails`,
+              );
+
+              const { enqueueEmbeddingJobsForAccount } = await import(
+                "@/lib/jobs/enqueue"
+              );
+              enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
+                console.error("[syncEmails] Enqueue embedding jobs failed:", err);
               });
 
               return {
@@ -1006,10 +1114,6 @@ export const accountRouter = createTRPCRouter({
               latestSyncResult.success &&
               latestSyncResult.count === 0
             ) {
-              console.log(
-                `[syncEmails mutation] Lightweight sync completed but no new emails found`,
-              );
-
               const threadCount = await ctx.db.thread.count({
                 where: {
                   accountId: account.id,
@@ -1018,6 +1122,20 @@ export const accountRouter = createTRPCRouter({
                     : { inboxStatus: true }),
                 },
               });
+              ctx.log?.info(
+                {
+                  event: "sync_success",
+                  accountId: account.id,
+                  durationMs: Date.now() - syncStartTime,
+                  countSynced: 0,
+                  threadCount,
+                  mode: "lightweight",
+                },
+                "sync success (no new emails)",
+              );
+              console.log(
+                `[syncEmails mutation] Lightweight sync completed but no new emails found`,
+              );
 
               return {
                 success: true,
@@ -1061,7 +1179,17 @@ export const accountRouter = createTRPCRouter({
                 data: { needsReconnection: true },
               }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
 
-
+              ctx.log?.warn(
+                {
+                  event: "sync_error",
+                  accountId: account.id,
+                  durationMs: Date.now() - syncStartTime,
+                  error: errorMessage,
+                  needsReconnection: true,
+                },
+                "sync auth error during lightweight",
+              );
+              incrementSyncFailure();
               return {
                 success: false,
                 message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
@@ -1088,6 +1216,17 @@ export const accountRouter = createTRPCRouter({
           const syncErrorMessage =
             syncError instanceof Error ? syncError.message : String(syncError);
 
+          ctx.log?.error(
+            {
+              event: "sync_error",
+              accountId: account.id,
+              durationMs: Date.now() - syncStartTime,
+              error: syncErrorMessage,
+              phase: "full_sync",
+            },
+            "full sync failed",
+          );
+          incrementSyncFailure();
           console.error(
             "[syncEmails mutation] Full sync failed:",
             syncErrorMessage,
@@ -1127,9 +1266,27 @@ export const accountRouter = createTRPCRouter({
         });
 
         const folderName = input.folder === "sent" ? "sent" : "inbox";
+        ctx.log?.info(
+          {
+            event: "sync_success",
+            accountId: account.id,
+            folder: folderName,
+            durationMs: Date.now() - syncStartTime,
+            threadCount,
+            mode: "full",
+          },
+          "sync completed",
+        );
         console.log(
           `[syncEmails mutation] Sync completed. Found ${threadCount} ${folderName} threads.`,
         );
+
+        const { enqueueEmbeddingJobsForAccount } = await import(
+          "@/lib/jobs/enqueue"
+        );
+        enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
+          console.error("[syncEmails] Enqueue embedding jobs failed:", err);
+        });
 
         return {
           success: true,
@@ -1137,14 +1294,24 @@ export const accountRouter = createTRPCRouter({
           threadCount,
         };
       } catch (error) {
+        const durationMs = Date.now() - syncStartTime;
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        ctx.log?.error(
+          {
+            event: "sync_error",
+            accountId: account?.id,
+            durationMs,
+            error: errorMessage,
+          },
+          "sync failed",
+        );
+        incrementSyncFailure();
         console.error("[syncEmails mutation] Email sync failed:", error);
 
         if (error instanceof TRPCError) {
           throw error;
         }
-
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
 
         const isAuthError =
           errorMessage.includes("Authentication failed") ||
@@ -1152,7 +1319,16 @@ export const accountRouter = createTRPCRouter({
           (axios.isAxiosError(error) && error.response?.status === 401);
 
         if (isAuthError) {
-
+          ctx.log?.warn(
+            {
+              event: "sync_error",
+              accountId: account.id,
+              durationMs,
+              error: errorMessage,
+              needsReconnection: true,
+            },
+            "sync failed (auth)",
+          );
           await ctx.db.account.update({
             where: { id: account.id },
             data: { needsReconnection: true },
@@ -1318,6 +1494,41 @@ export const accountRouter = createTRPCRouter({
       };
 
       if (input.tab === "inbox") {
+        try {
+          const threadsWithInboxEmails = await ctx.db.email.findMany({
+            where: {
+              thread: { accountId: account.id },
+              emailLabel: "inbox",
+            },
+            select: { threadId: true },
+            distinct: ["threadId"],
+          });
+          const inboxThreadCount = await ctx.db.thread.count({
+            where: {
+              accountId: account.id,
+              inboxStatus: true,
+              OR: [
+                { snoozedUntil: null },
+                { snoozedUntil: { lte: new Date() } },
+              ],
+            },
+          });
+          if (
+            threadsWithInboxEmails.length > inboxThreadCount &&
+            threadsWithInboxEmails.length > 0
+          ) {
+            const threadIds = threadsWithInboxEmails.map((e) => e.threadId);
+            await ctx.db.thread.updateMany({
+              where: {
+                id: { in: threadIds },
+                accountId: account.id,
+              },
+              data: { inboxStatus: true },
+            });
+          }
+        } catch (fixErr) {
+          console.warn("[getThreads] Inbox status fix failed, continuing:", fixErr);
+        }
         whereClause.inboxStatus = true;
         whereClause.AND = [
           {
@@ -1774,129 +1985,12 @@ export const accountRouter = createTRPCRouter({
         (email) => !email.summary,
       );
       if (emailsNeedingAnalysis.length > 0) {
-        const { analyzeEmail } = await import("@/lib/email-analysis");
-        const { arrayToVector } = await import("@/lib/vector-utils");
-        Promise.all(
-          emailsNeedingAnalysis.map(async (email) => {
-            try {
-              const emailMessage = {
-                id: email.id,
-                threadId: email.threadId,
-                createdTime: email.createdTime.toISOString(),
-                lastModifiedTime: email.lastModifiedTime.toISOString(),
-                sentAt: email.sentAt.toISOString(),
-                receivedAt: email.receivedAt.toISOString(),
-                internetMessageId: email.internetMessageId,
-                subject: email.subject,
-                sysLabels: email.sysLabels as Array<
-                  | "junk"
-                  | "trash"
-                  | "sent"
-                  | "inbox"
-                  | "unread"
-                  | "flagged"
-                  | "important"
-                  | "draft"
-                >,
-                keywords: email.keywords,
-                sysClassifications: email.sysClassifications as Array<
-                  "personal" | "social" | "promotions" | "updates" | "forums"
-                >,
-                sensitivity: email.sensitivity,
-                meetingMessageMethod:
-                  email.meetingMessageMethod === null
-                    ? undefined
-                    : (email.meetingMessageMethod as
-                      | "request"
-                      | "reply"
-                      | "cancel"
-                      | "counter"
-                      | "other"
-                      | undefined),
-                from: {
-                  address: email.from.address,
-                  name: email.from.name || "",
-                },
-                to: email.to.map((t) => ({
-                  address: t.address,
-                  name: t.name || "",
-                })),
-                cc: email.cc.map((c) => ({
-                  address: c.address,
-                  name: c.name || "",
-                })),
-                bcc: email.bcc.map((b) => ({
-                  address: b.address,
-                  name: b.name || "",
-                })),
-                replyTo: email.replyTo.map((r) => ({
-                  address: r.address,
-                  name: r.name || "",
-                })),
-                hasAttachments: email.hasAttachments,
-                body: email.body || undefined,
-                bodySnippet: email.bodySnippet || undefined,
-                attachments: email.attachments.map((a) => ({
-                  id: a.id,
-                  name: a.name,
-                  mimeType: a.mimeType,
-                  size: a.size,
-                  inline: a.inline,
-                  contentId: a.contentId || undefined,
-                  content: a.content || undefined,
-                  contentLocation: a.contentLocation || undefined,
-                })),
-                inReplyTo: email.inReplyTo || undefined,
-                references: email.references || undefined,
-                threadIndex: email.threadIndex || undefined,
-                internetHeaders:
-                  (email.internetHeaders as unknown as Array<{
-                    name: string;
-                    value: string;
-                  }>) || [],
-                nativeProperties:
-                  (email.nativeProperties as unknown as Record<
-                    string,
-                    string
-                  >) || {},
-                folderId: email.folderId || undefined,
-                omitted: email.omitted as Array<
-                  | "threadId"
-                  | "body"
-                  | "attachments"
-                  | "recipients"
-                  | "internetHeaders"
-                >,
-              };
-
-              const analysis = await analyzeEmail(emailMessage);
-
-              await ctx.db.email.update({
-                where: { id: email.id },
-                data: {
-                  summary: analysis.summary,
-                  keywords: analysis.tags,
-                },
-              });
-
-              const embeddingVectorString = arrayToVector(
-                analysis.vectorEmbedding,
-              );
-              await ctx.db.$executeRaw`
-                UPDATE "Email" 
-                SET embedding = ${embeddingVectorString}::vector
-                WHERE id = ${email.id}
-              `;
-            } catch (error) {
-              console.error(
-                `Failed to analyze email ${email.id} on-demand:`,
-                error,
-              );
-            }
-          }),
-        ).catch((error) => {
-          console.error("Background email analysis failed:", error);
-        });
+        const { enqueueEmailAnalysisJobs } = await import("@/lib/jobs/enqueue");
+        enqueueEmailAnalysisJobs(emailsNeedingAnalysis.map((e) => e.id)).catch(
+          (err) => {
+            console.error("Enqueue email analysis jobs failed:", err);
+          },
+        );
       }
 
       return thread;
@@ -2001,5 +2095,25 @@ export const accountRouter = createTRPCRouter({
           cached: false,
         };
       }
+    }),
+
+  getEmailOpenByMessageId: protectedProcedure
+    .input(
+      z.object({
+        messageId: z.string(),
+        accountId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const open = await ctx.db.emailOpen.findFirst({
+        where: {
+          messageId: input.messageId,
+          accountId: input.accountId,
+        },
+        select: { openedAt: true },
+      });
+      if (!open?.openedAt) return null;
+      return { openedAt: open.openedAt };
     }),
 });

@@ -1,29 +1,24 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { db, withDbRetry } from "@/server/db";
+import { withDbRetry } from "@/server/db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Account } from "@/lib/accounts";
 import type { EmailMessage } from "@/types";
 
-// Helper function to fetch emails from Gmail API using Account class
 async function fetchEmailsForAnalytics(
   account: { id: string; token: string },
   days: number,
 ): Promise<EmailMessage[]> {
   const accountInstance = new Account(account.id, account.token);
-  
-  // Use fetchAllEmailsDirectly which fetches from Gmail API
-  // This method already handles pagination - it fetches from last 30 days by default
+
   const allEmails = await accountInstance.fetchAllEmailsDirectly();
-  
-  // Filter emails by the requested date range
+
   const now = new Date();
   const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
   startDate.setUTCHours(0, 0, 0, 0);
 
   return allEmails.filter((email) => {
-    // Use receivedAt for inbox emails, sentAt for sent emails
-    const emailDate = email.sysLabels.includes("sent") 
+    const emailDate = email.sysLabels.includes("sent")
       ? new Date(email.sentAt)
       : new Date(email.receivedAt);
     return emailDate >= startDate;
@@ -59,28 +54,25 @@ export const analyticsRouter = createTRPCRouter({
         });
       }
 
-      // Fetch emails directly from Gmail API
       const allEmails = await fetchEmailsForAnalytics(account, input.days);
 
-      // Group by date
       const dateMap = new Map<string, { received: number; sent: number }>();
-      
+
       allEmails.forEach((email) => {
-        const isInbox = email.sysLabels.includes("inbox") || 
-                       (!email.sysLabels.includes("sent") && !email.sysLabels.includes("draft"));
+        const isInbox = email.sysLabels.includes("inbox") ||
+          (!email.sysLabels.includes("sent") && !email.sysLabels.includes("draft"));
         const isSent = email.sysLabels.includes("sent") && !email.sysLabels.includes("draft");
-        
-        // Use receivedAt for inbox emails, sentAt for sent emails
-        const emailDate = isSent 
+
+        const emailDate = isSent
           ? new Date(email.sentAt)
           : new Date(email.receivedAt);
         const dateStr = emailDate.toISOString().split('T')[0]!;
-        
+
         if (!dateMap.has(dateStr)) {
           dateMap.set(dateStr, { received: 0, sent: 0 });
         }
         const entry = dateMap.get(dateStr)!;
-        
+
         if (isInbox) entry.received++;
         if (isSent) entry.sent++;
       });
@@ -123,16 +115,15 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get response times for emails that are replies (have inReplyTo)
       const responseTimes = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          date_str: string;
-          avg_response_hours: number | null;
-          median_response_hours: number | null;
-          response_count: bigint;
-        }>
-      >`
+          Array<{
+            date_str: string;
+            avg_response_hours: number | null;
+            median_response_hours: number | null;
+            response_count: bigint;
+          }>
+        >`
         WITH reply_emails AS (
           SELECT 
             e1.id,
@@ -195,18 +186,17 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get overall productivity metrics - use appropriate date fields
       const metricsArray = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          total_emails: bigint;
-          received_emails: bigint;
-          sent_emails: bigint;
-          avg_response_hours: number | null;
-          threads_with_replies: bigint;
-          emails_per_day: number;
-        }>
-      >`
+          Array<{
+            total_emails: bigint;
+            received_emails: bigint;
+            sent_emails: bigint;
+            avg_response_hours: number | null;
+            threads_with_replies: bigint;
+            emails_per_day: number;
+          }>
+        >`
         WITH email_stats AS (
           SELECT 
             COUNT(*)::bigint as total_emails,
@@ -301,16 +291,15 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get top contacts by email count (from "from" field since we're looking at received emails)
       const topContacts = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          email_address: string;
-          name: string | null;
-          email_count: bigint;
-          last_contact: Date;
-        }>
-      >`
+          Array<{
+            email_address: string;
+            name: string | null;
+            email_count: bigint;
+            last_contact: Date;
+          }>
+        >`
         SELECT 
           ea.address as email_address,
           ea.name,
@@ -364,14 +353,13 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get email distribution by category - use appropriate date fields
       const distribution = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          label: string;
-          count: bigint;
-        }>
-      >`
+          Array<{
+            label: string;
+            count: bigint;
+          }>
+        >`
         SELECT 
           e."emailLabel" as label,
           COUNT(*)::bigint as count
@@ -423,15 +411,14 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get hourly email distribution - use appropriate date fields
       const hourlyRaw = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          hour: number;
-          received: bigint;
-          sent: bigint;
-        }>
-      >`
+          Array<{
+            hour: number;
+            received: bigint;
+            sent: bigint;
+          }>
+        >`
         SELECT 
           hours.hour::int as hour,
           COALESCE(i.count, 0::bigint) as received,
@@ -503,16 +490,15 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get weekly activity (day of week) - use appropriate date fields
       const weeklyRaw = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          day_of_week: number;
-          day_name: string;
-          received: bigint;
-          sent: bigint;
-        }>
-      >`
+          Array<{
+            day_of_week: number;
+            day_name: string;
+            received: bigint;
+            sent: bigint;
+          }>
+        >`
         SELECT 
           d.day_of_week,
           d.day_name,
@@ -589,15 +575,14 @@ export const analyticsRouter = createTRPCRouter({
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
       startDate.setUTCHours(0, 0, 0, 0);
 
-      // Get email with/without attachments breakdown - use appropriate date fields
       const attachmentStatsArray = await withDbRetry(() =>
         ctx.db.$queryRaw<
-        Array<{
-          with_attachments: bigint;
-          without_attachments: bigint;
-          total_attachments: bigint;
-        }>
-      >`
+          Array<{
+            with_attachments: bigint;
+            without_attachments: bigint;
+            total_attachments: bigint;
+          }>
+        >`
         SELECT 
           COUNT(CASE WHEN e."hasAttachments" = true THEN 1 END)::bigint as with_attachments,
           COUNT(CASE WHEN e."hasAttachments" = false OR e."hasAttachments" IS NULL THEN 1 END)::bigint as without_attachments,
@@ -623,8 +608,8 @@ export const analyticsRouter = createTRPCRouter({
       }
 
       const total = Number(attachmentStats.with_attachments) + Number(attachmentStats.without_attachments);
-      const percentage = total > 0 
-        ? (Number(attachmentStats.with_attachments) / total) * 100 
+      const percentage = total > 0
+        ? (Number(attachmentStats.with_attachments) / total) * 100
         : 0;
 
       return {

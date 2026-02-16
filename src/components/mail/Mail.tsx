@@ -30,6 +30,13 @@ import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
 import SearchBar from "./search/SearchBar";
 import ComposeEmailGmail from "./ComposeEmailGmail";
+import { MailKeyboardShortcuts } from "./MailKeyboardShortcuts";
+import { ShortcutHelpModal } from "./ShortcutHelpModal";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { UserButton, useClerk } from "@clerk/nextjs";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
@@ -41,14 +48,24 @@ interface MailLayoutProps {
   navCollapsedSize?: number;
 }
 
-export function Mail({}: MailLayoutProps) {
+export function Mail({ }: MailLayoutProps) {
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
   const isMobile = useIsMobile();
   const router = useRouter();
+
+  const focusSearch = useCallback(() => {
+    document.getElementById("mail-search-input")?.focus();
+  }, []);
+
+  const focusReply = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("focus-reply"));
+  }, []);
 
   const { data: accounts } = api.account.getAccounts.useQuery();
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
@@ -116,6 +133,18 @@ export function Mail({}: MailLayoutProps) {
   if (isMobile) {
     return (
       <TooltipProvider delayDuration={0}>
+        <MailKeyboardShortcuts
+          selectedThread={selectedThread}
+          setSelectedThread={setSelectedThread}
+          focusSearch={focusSearch}
+          openCompose={() => setComposeOpen(true)}
+          focusReply={focusReply}
+          onCloseThread={handleThreadClose}
+          showHelp={() => setHelpOpen(true)}
+          helpOpen={helpOpen}
+          closeHelp={() => setHelpOpen(false)}
+        />
+        <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
         <div className="flex h-full w-full flex-col bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
           <div className="flex items-center justify-between border-b border-neutral-200/80 bg-white/60 px-4 py-3 backdrop-blur-xl dark:border-neutral-800/50 dark:bg-black/60">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -149,7 +178,10 @@ export function Mail({}: MailLayoutProps) {
             </button>
 
             <div className="flex items-center gap-2">
-              <ComposeEmailGmail />
+              <ComposeEmailGmail
+                open={composeOpen}
+                onOpenChange={setComposeOpen}
+              />
               <UserButton />
             </div>
           </div>
@@ -194,6 +226,18 @@ export function Mail({}: MailLayoutProps) {
 
   return (
     <TooltipProvider delayDuration={0}>
+      <MailKeyboardShortcuts
+        selectedThread={selectedThread}
+        setSelectedThread={setSelectedThread}
+        focusSearch={focusSearch}
+        openCompose={() => setComposeOpen(true)}
+        focusReply={focusReply}
+        onCloseThread={handleThreadClose}
+        showHelp={() => setHelpOpen(true)}
+        helpOpen={helpOpen}
+        closeHelp={() => setHelpOpen(false)}
+      />
+      <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <div className="flex h-full w-full flex-col bg-gradient-to-br from-neutral-50 via-white to-neutral-50 dark:from-neutral-950 dark:via-black dark:to-neutral-950">
         <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-neutral-200/50 bg-white/40 px-8 backdrop-blur-2xl dark:border-neutral-800/30 dark:bg-black/40">
           <div className="flex items-center gap-10">
@@ -291,7 +335,12 @@ export function Mail({}: MailLayoutProps) {
               </TooltipContent>
             </Tooltip>
 
-            <ComposeEmailGmail />
+            <ComposeEmailGmail
+              open={composeOpen}
+              onOpenChange={(open) => {
+                setComposeOpen(open);
+              }}
+            />
 
             <div className="mx-1 h-6 w-px bg-neutral-200 dark:bg-neutral-800" />
 
@@ -300,28 +349,41 @@ export function Mail({}: MailLayoutProps) {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          <aside
-            className={cn(
-              "flex flex-col border-r border-neutral-200/50 bg-white/60 backdrop-blur-xl transition-all duration-300 ease-out dark:border-neutral-800/30 dark:bg-black/60",
-              selectedThread ? "w-[360px]" : "w-[420px]",
-            )}
+          <ResizablePanelGroup
+            direction="horizontal"
+            autoSaveId="mail-sidebar"
+            className="min-w-0 flex-1"
           >
-            <div className="border-b border-neutral-200/50 px-6 py-4 dark:border-neutral-800/30">
-              <SearchBar />
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <ThreadList onThreadSelect={handleThreadSelect} />
-            </div>
-          </aside>
-
-          <main
-            className={cn(
-              "flex flex-1 flex-col bg-gradient-to-br from-neutral-50 to-white transition-all duration-300 ease-out dark:from-neutral-950 dark:to-black",
-              showAIPanel && "mr-[360px]",
-            )}
-          >
-            <ThreadDisplay threadId={selectedThread} />
-          </main>
+            <ResizablePanel
+              defaultSize={28}
+              minSize={20}
+              maxSize={50}
+              className="flex flex-col"
+            >
+              <aside className="flex h-full min-w-0 flex-col border-r border-neutral-200/50 bg-white/60 backdrop-blur-xl dark:border-neutral-800/30 dark:bg-black/60">
+                <div className="border-b border-neutral-200/50 px-6 py-4 dark:border-neutral-800/30">
+                  <SearchBar />
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <ThreadList onThreadSelect={handleThreadSelect} />
+                </div>
+              </aside>
+            </ResizablePanel>
+            <ResizableHandle
+              withHandle
+              className="bg-neutral-200/80 hover:bg-orange-500/30 dark:bg-neutral-700/80 dark:hover:bg-orange-500/30"
+            />
+            <ResizablePanel defaultSize={72} minSize={30} className="min-w-0">
+              <main
+                className={cn(
+                  "flex h-full flex-1 flex-col bg-gradient-to-br from-neutral-50 to-white dark:from-neutral-950 dark:to-black",
+                  showAIPanel && "mr-[360px]",
+                )}
+              >
+                <ThreadDisplay threadId={selectedThread} />
+              </main>
+            </ResizablePanel>
+          </ResizablePanelGroup>
 
           <aside
             className={cn(
@@ -528,3 +590,5 @@ function MobileSidebar({
     </div>
   );
 }
+
+export default Mail;

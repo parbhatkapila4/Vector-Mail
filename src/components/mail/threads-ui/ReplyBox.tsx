@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import useThreads from "@/hooks/use-threads";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { toast } from "sonner";
@@ -17,7 +17,9 @@ import {
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, ChevronUp, Reply } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 import { usePendingSend } from "@/contexts/PendingSendContext";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
@@ -58,6 +60,23 @@ const ReplyBox = ({
   const [toValues, setToValues] = React.useState<OptionType[]>([]);
   const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
   const [isCollapsed, setIsCollapsed] = React.useState(true);
+  const bodyContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFocusReply = () => {
+      setIsCollapsed(false);
+      requestAnimationFrame(() => {
+        const editable = bodyContainerRef.current?.querySelector<HTMLElement>(
+          "[contenteditable=true], textarea"
+        );
+        editable?.focus();
+      });
+    };
+    window.addEventListener("focus-reply", handleFocusReply as EventListener);
+    return () =>
+      window.removeEventListener("focus-reply", handleFocusReply as EventListener);
+  }, []);
+  const [trackOpens, setTrackOpens] = useState(false);
   const [scheduleSendOpen, setScheduleSendOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
     const d = new Date();
@@ -69,6 +88,7 @@ const ReplyBox = ({
   const [pendingScheduleBody, setPendingScheduleBody] = useState<string>("");
 
   const sendEmail = api.account.sendEmail.useMutation();
+  const { isLoaded: authLoaded, userId } = useAuth();
   const { scheduleSend, isPending: isPendingSend } = usePendingSend();
   const scheduleSendMutation = api.account.scheduleSend.useMutation({
     onSuccess: (_, variables) => {
@@ -153,6 +173,7 @@ const ReplyBox = ({
         address: account.emailAddress ?? "me@example.com",
       },
       inReplyTo: getInReplyTo(),
+      trackOpens,
     };
 
     scheduleSend(async () => {
@@ -221,6 +242,7 @@ const ReplyBox = ({
         address: account.emailAddress ?? "me@example.com",
       },
       cc: ccList,
+      trackOpens,
     };
     scheduleSendMutation.mutate({ accountId, scheduledAt, payload });
   };
@@ -262,8 +284,26 @@ const ReplyBox = ({
 
       {!shouldShowCollapsed && (
         <div
+          ref={bodyContainerRef}
           className={`flex flex-1 flex-col ${isInMobileDialog ? "min-h-0" : "max-h-[60vh]"} overflow-hidden border-t border-white/[0.06]`}
         >
+          <div className="flex flex-col gap-1 border-b border-white/[0.06] px-4 py-2">
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <Checkbox
+                checked={trackOpens}
+                onCheckedChange={(c) => setTrackOpens(c === true)}
+                disabled={sendEmail.isPending || isPendingSend}
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+              />
+              <span className="text-zinc-400">
+                Track when this email is opened
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500 md:ml-7">
+              Adds a small image that loads when the recipient opens the email.
+              Some email clients block images.
+            </p>
+          </div>
           <EmailEditor
             toValues={toValues || []}
             ccValues={ccValues}
@@ -317,12 +357,16 @@ const ReplyBox = ({
                 <Button
                   type="button"
                   onClick={handleScheduleSendConfirm}
-                  disabled={scheduleSendMutation.isPending}
+                  disabled={
+                    scheduleSendMutation.isPending || !authLoaded || !userId
+                  }
                   className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
                 >
-                  {scheduleSendMutation.isPending
-                    ? "Scheduling..."
-                    : "Schedule send"}
+                  {!authLoaded || !userId
+                    ? "Loading..."
+                    : scheduleSendMutation.isPending
+                      ? "Scheduling..."
+                      : "Schedule send"}
                 </Button>
               </div>
             </DialogContent>

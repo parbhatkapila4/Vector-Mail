@@ -2,49 +2,52 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { arrayToVector, vectorToArray } from "@/lib/vector-utils";
 
+interface VectorTestResults {
+  vectorConversion: boolean;
+  pgvectorEnabled: boolean;
+  schemaCorrect: boolean;
+  schema?: Array<{ column_name: string; data_type: string }>;
+  emailStats: { total: number; withSummary: number; withEmbedding: number; needProcessing: number };
+}
+
 export async function GET() {
   try {
-    const results: any = {
+    const results: VectorTestResults = {
       vectorConversion: false,
       pgvectorEnabled: false,
       schemaCorrect: false,
-      emailStats: {},
+      emailStats: { total: 0, withSummary: 0, withEmbedding: 0, needProcessing: 0 },
     };
 
-    // Test 1: Vector conversion
+
     const testEmbedding = Array.from({ length: 768 }, () => Math.random());
     const vectorString = arrayToVector(testEmbedding);
     const parsedBack = vectorToArray(vectorString);
     results.vectorConversion = parsedBack.length === 768;
 
-    // Test 2: Check pgvector extension
-    const ext = (await db.$queryRaw`
-            SELECT * FROM pg_extension WHERE extname = 'vector'
-        `) as any[];
+    const ext = await db.$queryRaw<unknown[]>`SELECT * FROM pg_extension WHERE extname = 'vector'`;
     results.pgvectorEnabled = ext.length > 0;
 
-    // Test 3: Check schema
-    const schema = (await db.$queryRaw`
+    const schema = await db.$queryRaw<Array<{ column_name: string; data_type: string }>>`
             SELECT column_name, data_type 
             FROM information_schema.columns 
             WHERE table_name = 'Email' 
             AND column_name IN ('summary', 'embedding')
-        `) as any[];
+        `;
 
     results.schema = schema;
     results.schemaCorrect = schema.some(
-      (col: any) =>
-        col.column_name === "embedding" && col.data_type === "USER-DEFINED",
+      (col) => col.column_name === "embedding" && col.data_type === "USER-DEFINED",
     );
 
-    // Test 4: Email stats
     const total = await db.email.count();
     const withSummary = await db.email.count({
       where: { summary: { not: null } },
     });
-    const withEmbedding = await db.email.count({
-      where: { embedding: { not: null } },
-    });
+    const embeddingCountResult = await db.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count FROM "Email" WHERE embedding IS NOT NULL
+    `;
+    const withEmbedding = Number(embeddingCountResult[0]?.count ?? 0);
 
     results.emailStats = {
       total,

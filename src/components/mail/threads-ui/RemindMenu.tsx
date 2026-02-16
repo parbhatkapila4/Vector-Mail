@@ -2,7 +2,7 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { Bell, BellOff } from "lucide-react";
+import { BellOff } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import {
@@ -27,7 +27,6 @@ export function RemindMenu({
   accountId,
   isRemindersTab = false,
   children,
-  className,
   onReminderSet,
 }: RemindMenuProps) {
   const utils = api.useUtils();

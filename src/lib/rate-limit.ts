@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+export const SEARCH_LIMIT_PER_MINUTE = 60;
+export const AI_LIMIT_PER_MINUTE = 100;
+
+const WINDOW_MS = 60 * 1000;
 
 interface RateLimitConfig {
   interval: number;
@@ -67,6 +71,53 @@ const limiters = {
     uniqueTokenPerInterval: 10,
   }),
 };
+
+const userSearchLimiter = new RateLimiter({
+  interval: WINDOW_MS,
+  uniqueTokenPerInterval: SEARCH_LIMIT_PER_MINUTE,
+});
+const userAiLimiter = new RateLimiter({
+  interval: WINDOW_MS,
+  uniqueTokenPerInterval: AI_LIMIT_PER_MINUTE,
+});
+
+export type UserRateLimitType = "search" | "ai";
+
+export function checkUserRateLimit(
+  userId: string,
+  type: UserRateLimitType,
+): { allowed: boolean; remaining: number; limit: number } {
+  const limiter = type === "search" ? userSearchLimiter : userAiLimiter;
+  const key = `${type}:${userId}`;
+  const { success, remaining } = limiter.check(key);
+  const limit = type === "search" ? SEARCH_LIMIT_PER_MINUTE : AI_LIMIT_PER_MINUTE;
+  return { allowed: success, remaining, limit };
+}
+
+export function rateLimit429Response(options: {
+  message?: string;
+  remaining?: number;
+  limit?: number;
+  retryAfterSec?: number;
+}): NextResponse {
+  const {
+    message = "Too many requests. Try again later.",
+    remaining = 0,
+    limit = 60,
+    retryAfterSec = 60,
+  } = options;
+  return NextResponse.json(
+    { error: "Rate limit exceeded", message },
+    {
+      status: 429,
+      headers: {
+        "X-RateLimit-Limit": String(limit),
+        "X-RateLimit-Remaining": String(remaining),
+        "Retry-After": String(retryAfterSec),
+      },
+    },
+  );
+}
 
 export function getIdentifier(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");

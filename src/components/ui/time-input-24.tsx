@@ -63,7 +63,7 @@ export function TimeInput24({
         <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-amber-500/50">
           <SelectValue placeholder="00" />
         </SelectTrigger>
-        <SelectContent className="border-white/10 bg-[#0a0a0a] text-white">
+        <SelectContent className="max-h-64 overflow-y-auto border-white/10 bg-[#0a0a0a] text-white">
           {HOURS.map((h) => (
             <SelectItem
               key={h}
@@ -84,7 +84,7 @@ export function TimeInput24({
         <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-amber-500/50">
           <SelectValue placeholder="00" />
         </SelectTrigger>
-        <SelectContent className="border-white/10 bg-[#0a0a0a] text-white">
+        <SelectContent className="max-h-64 overflow-y-auto border-white/10 bg-[#0a0a0a] text-white">
           {MINUTES.map((m) => (
             <SelectItem
               key={m}

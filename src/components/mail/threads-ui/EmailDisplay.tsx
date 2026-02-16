@@ -4,7 +4,7 @@ import type { RouterOutputs } from "@/trpc/react";
 import React from "react";
 import useThreads from "@/hooks/use-threads";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { api } from "@/trpc/react";
 import { sanitizeEmailHtml } from "@/lib/validation";
 
@@ -16,6 +16,18 @@ const EmailDisplay = ({ email }: Props) => {
   const { account, accountId } = useThreads();
   const letterRef = React.useRef<HTMLDivElement>(null);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const isMe = account?.emailAddress === email.from.address;
+  const { data: openData } = api.account.getEmailOpenByMessageId.useQuery(
+    {
+      messageId: email.id,
+      accountId: accountId ?? "",
+    },
+    {
+      enabled: Boolean(isMe && email.id && accountId && accountId.length > 0),
+      refetchOnWindowFocus: false,
+    },
+  );
 
   const getInitialBody = (): string | null => {
     if ("body" in email && email.body) {
@@ -184,36 +196,62 @@ const EmailDisplay = ({ email }: Props) => {
     }
   }, [emailBody]);
 
-  const isMe = account?.emailAddress === email.from.address;
-
   const rawBody = emailBody || email.bodySnippet || email.body || "";
   const hasContent = rawBody && rawBody.trim().length > 0;
 
   const isPlainText = rawBody && !/<[^>]+>/g.test(rawBody);
 
 
-  const processPlainTextEmail = (text: string): string => {
 
+  const normalizeQuoteMarkers = (html: string): string => {
+    let out = html;
+    out = out.replace(/&gt;(&gt;)+/g, "&gt;");
+    out = out.replace(/(>{2,})/g, ">");
+    return out;
+  };
+
+  const processPlainTextEmail = (text: string): string => {
     let processed = text;
     try {
-      processed = decodeURIComponent(text.replace(/\+/g, ' '));
+      processed = decodeURIComponent(text.replace(/\+/g, " "));
     } catch {
-
       processed = text;
     }
 
+    const lines = processed.split(/\r?\n/);
+    const result: string[] = [];
+    let inBlockquote = false;
 
-    processed = processed.replace(/\n/g, "<br>");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
+      const quoteMatch = line.match(/^(\s*>(?:>|\s)*)(.*)$/);
+      const isQuotedLine = quoteMatch !== null;
 
+      if (isQuotedLine) {
+        const quotedContent = quoteMatch![2]!.trimEnd();
+        if (!inBlockquote) {
+          result.push("<blockquote style=\"margin:0 0 0 1em; padding-left:1em; border-left:3px solid #ccc; color:#666;\">");
+          inBlockquote = true;
+        }
+        result.push(quotedContent ? `${quotedContent}<br>` : "<br>");
+      } else {
+        if (inBlockquote) {
+          result.push("</blockquote>");
+          inBlockquote = false;
+        }
+        result.push(line.replace(/\n/g, "<br>") + "<br>");
+      }
+    }
+    if (inBlockquote) result.push("</blockquote>");
 
+    processed = result.join("");
 
     processed = processed.replace(
       /(\b(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/gi,
       (match) => {
-
-        const url = match.startsWith('http') ? match : `https://${match}`;
-
-        const displayText = match.length > 60 ? match.substring(0, 57) + '...' : match;
+        const url = match.startsWith("http") ? match : `https://${match}`;
+        const displayText =
+          match.length > 60 ? match.substring(0, 57) + "..." : match;
         return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: underline; word-break: break-all; display: inline-block; max-width: 100%;">${displayText}</a>`;
       }
     );
@@ -221,9 +259,10 @@ const EmailDisplay = ({ email }: Props) => {
     return processed;
   };
 
-  const displayBody = isPlainText
+  let displayBody = isPlainText
     ? processPlainTextEmail(rawBody)
     : rawBody;
+  displayBody = normalizeQuoteMarkers(displayBody);
 
   const showLoading = isLoadingBody && !hasContent;
 
@@ -259,6 +298,12 @@ const EmailDisplay = ({ email }: Props) => {
           })}
         </p>
       </div>
+      {isMe && openData?.openedAt && (
+        <p className="mt-1 text-xs text-zinc-500">
+          Opened{" "}
+          {format(new Date(openData.openedAt), "MMM d, yyyy 'at' h:mm a")}
+        </p>
+      )}
       <div className="h-4"></div>
       {showLoading ? (
         <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">

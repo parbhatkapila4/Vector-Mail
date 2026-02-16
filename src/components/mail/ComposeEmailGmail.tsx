@@ -30,14 +30,21 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 import { usePendingSend } from "@/contexts/PendingSendContext";
 
 const AI_GENERATE_TIMEOUT_MS = 60_000;
+
+interface ComposeEmailGmailProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
 
 async function generateEmailViaApi(
   context: string,
@@ -60,8 +67,13 @@ async function generateEmailViaApi(
   return res.json() as Promise<{ content: string }>;
 }
 
-export default function ComposeEmailGmail() {
-  const [open, setOpen] = useState(false);
+export default function ComposeEmailGmail({
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: ComposeEmailGmailProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [accountId] = useLocalStorage("accountId", "");
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -84,6 +96,7 @@ export default function ComposeEmailGmail() {
   });
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [trackOpens, setTrackOpens] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const bodyEditableRef = useRef<HTMLDivElement>(null);
@@ -104,6 +117,7 @@ export default function ComposeEmailGmail() {
   const hasValidAccount =
     !accountsLoading && !!validAccountId && validAccountId.length > 0;
 
+  const { isLoaded: authLoaded, userId } = useAuth();
   const { scheduleSend } = usePendingSend();
   const scheduleSendMutation = api.account.scheduleSend.useMutation({
     onSuccess: (_, variables) => {
@@ -542,6 +556,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         );
         formData.append("subject", subjectSend.trim());
         formData.append("body", bodySend);
+        formData.append("trackOpens", String(trackOpens));
         attachmentsToSend.forEach((file) => formData.append("attachments", file));
         response = await fetchWithAuthRetry("/api/email/send", {
           method: "POST",
@@ -556,6 +571,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             to: toSend.split(",").map((email) => email.trim()),
             subject: subjectSend.trim(),
             body: bodySend,
+            trackOpens,
           }),
         });
       }
@@ -624,6 +640,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       to: to.split(",").map((e) => e.trim()),
       subject: subject.trim(),
       body: bodyContent.trim(),
+      trackOpens,
     };
     scheduleSendMutation.mutate({
       accountId: validAccountId,
@@ -1254,6 +1271,25 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             </Button>
           </div>
 
+          <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3 md:pt-2">
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <Checkbox
+                checked={trackOpens}
+                onCheckedChange={(c) => setTrackOpens(c === true)}
+                disabled={isSending || isGenerating}
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+              />
+              <span className="text-zinc-300">
+                Track when this email is opened
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500 md:ml-7">
+              Adds a small image that loads when the recipient opens the email.
+              Some email clients block images. Open tracking may not work in all
+              clients.
+            </p>
+          </div>
+
           <div className="flex flex-col gap-3 md:flex-row md:flex-nowrap md:items-center md:justify-end md:gap-2">
             <Button
               variant="outline"
@@ -1331,12 +1367,16 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   <Button
                     type="button"
                     onClick={handleScheduleSend}
-                    disabled={scheduleSendMutation.isPending}
+                    disabled={
+                      scheduleSendMutation.isPending || !authLoaded || !userId
+                    }
                     className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
                   >
-                    {scheduleSendMutation.isPending
-                      ? "Scheduling..."
-                      : "Schedule send"}
+                    {!authLoaded || !userId
+                      ? "Loading..."
+                      : scheduleSendMutation.isPending
+                        ? "Scheduling..."
+                        : "Schedule send"}
                   </Button>
                 </div>
               </PopoverContent>

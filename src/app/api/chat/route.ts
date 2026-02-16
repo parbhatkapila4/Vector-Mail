@@ -7,6 +7,9 @@ import { detectIntent } from "@/lib/intent-detection";
 import { selectEmails, formatEmailOptions } from "@/lib/email-selection";
 import { generateConversationalSummary } from "@/lib/conversational-summary";
 import { searchEmailsByVector } from "@/lib/vector-search";
+import { withRequestId } from "@/lib/logging/with-request-id";
+import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
+import { checkUserRateLimit } from "@/lib/rate-limit";
 import type { EmailAddress, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -127,7 +130,7 @@ function isFindOrSummarizeQuery(query: string): boolean {
   return isFindQuery || isSummarizeQuery;
 }
 
-export async function POST(req: Request) {
+async function chatPostHandler(req: Request) {
   try {
     const { userId } = await auth();
 
@@ -135,10 +138,42 @@ export async function POST(req: Request) {
       console.error("[Chat API] Unauthorized: No userId found");
       return new Response(
         JSON.stringify({ error: "Unauthorized. Please sign in.", code: "UNAUTHORIZED" }),
-        { 
+        {
           status: 401,
           headers: { "Content-Type": "application/json" },
         }
+      );
+    }
+
+    const aiLimit = checkUserRateLimit(userId, "ai");
+    if (!aiLimit.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded",
+          message: "Too many AI requests. Try again later.",
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": String(aiLimit.limit),
+            "X-RateLimit-Remaining": String(aiLimit.remaining),
+            "Retry-After": "60",
+          },
+        },
+      );
+    }
+
+    const cap = await checkDailyCap(userId, env.AI_DAILY_CAP_TOKENS);
+    if (!cap.allowed) {
+      const { log: auditLog } = await import("@/lib/audit/audit-log");
+      auditLog({ userId, action: "ai_cap_exceeded", metadata: {} });
+      return new Response(
+        JSON.stringify({
+          error: "Daily AI limit reached",
+          message: `You have used ${cap.used} of ${cap.limit} tokens today. Try again tomorrow.`,
+        }),
+        { status: 429, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -149,7 +184,7 @@ export async function POST(req: Request) {
       console.error("[Chat API] Failed to parse request body:", parseError);
       return new Response(
         JSON.stringify({ error: "Invalid request body", code: "INVALID_REQUEST" }),
-        { 
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
@@ -162,7 +197,7 @@ export async function POST(req: Request) {
       console.error("[Chat API] Account ID is required");
       return new Response(
         JSON.stringify({ error: "Account ID is required. Please select an email account.", code: "MISSING_ACCOUNT_ID" }),
-        { 
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
@@ -173,7 +208,7 @@ export async function POST(req: Request) {
       console.error("[Chat API] Invalid messages array");
       return new Response(
         JSON.stringify({ error: "Messages array is required and must not be empty", code: "INVALID_MESSAGES" }),
-        { 
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
@@ -185,7 +220,7 @@ export async function POST(req: Request) {
       console.error("[Chat API] No message content provided");
       return new Response(
         JSON.stringify({ error: "No message content provided", code: "MISSING_CONTENT" }),
-        { 
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
@@ -215,32 +250,32 @@ export async function POST(req: Request) {
 
     if (!account) {
       console.error(`[Chat API] Account not found. userId: ${userId}, accountId: ${accountId}`);
-      
+
       const accountExists = await db.account.findFirst({
         where: { id: accountId },
         select: { userId: true },
       });
-      
+
       if (accountExists) {
         console.error(`[Chat API] Account exists but belongs to different user: ${accountExists.userId}`);
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             error: "Account not found or access denied. Please reconnect your email account.",
             code: "ACCOUNT_ACCESS_DENIED"
           }),
-          { 
+          {
             status: 403,
             headers: { "Content-Type": "application/json" },
           }
         );
       }
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Account not found. Please connect your email account first.",
           code: "ACCOUNT_NOT_FOUND"
         }),
-        { 
+        {
           status: 404,
           headers: { "Content-Type": "application/json" },
         }
@@ -340,6 +375,15 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
               temperature: 0.3,
             });
 
+            recordUsage({
+              userId,
+              accountId: accountId ?? undefined,
+              operation: "chat",
+              inputTokens: completion.usage?.prompt_tokens ?? 0,
+              outputTokens: completion.usage?.completion_tokens ?? 0,
+              model: completion.model ?? undefined,
+            });
+
             const llmResponse = completion.choices[0]?.message?.content?.trim();
             const emailNumber = parseInt(llmResponse || "0");
 
@@ -355,6 +399,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
                   },
                   "auto",
                   userQuery,
+                  { userId, accountId: accountId ?? undefined },
                 );
 
                 const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
@@ -406,6 +451,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           },
           "auto",
           userQuery,
+          { userId, accountId: accountId ?? undefined },
         );
 
         const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
@@ -535,6 +581,17 @@ Return ONLY a JSON object in this exact format:
             max_tokens: 200,
             temperature: 0.1,
             response_format: { type: "json_object" },
+          });
+        }
+
+        if (understandingResponse?.usage) {
+          recordUsage({
+            userId,
+            accountId: accountId ?? undefined,
+            operation: "chat",
+            inputTokens: understandingResponse.usage.prompt_tokens ?? 0,
+            outputTokens: understandingResponse.usage.completion_tokens ?? 0,
+            model: understandingResponse.model ?? undefined,
           });
         }
 
@@ -783,6 +840,15 @@ If NONE are relevant, return: 0`;
           temperature: 0.1,
         });
 
+        recordUsage({
+          userId,
+          accountId: accountId ?? undefined,
+          operation: "chat",
+          inputTokens: filterResponse.usage?.prompt_tokens ?? 0,
+          outputTokens: filterResponse.usage?.completion_tokens ?? 0,
+          model: filterResponse.model ?? undefined,
+        });
+
         const relevantIndices =
           filterResponse.choices[0]?.message?.content?.trim();
         if (relevantIndices && relevantIndices !== "0") {
@@ -819,8 +885,8 @@ If NONE are relevant, return: 0`;
         : "Unknown",
       to: email.to
         ? email.to
-            .map((t) => `${t.name || ""} <${t.address}>`.trim())
-            .join(", ")
+          .map((t) => `${t.name || ""} <${t.address}>`.trim())
+          .join(", ")
         : "",
     }));
 
@@ -894,16 +960,16 @@ ABSOLUTELY FORBIDDEN - DO NOT USE:
 Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
 
 ${emailContext
-  .map(
-    (email, index) => `
+        .map(
+          (email, index) => `
 ${index + 1}. From: ${email.from}
 Subject: ${email.subject}
 Date: ${new Date(email.date).toLocaleDateString()}
 ${email.summary ? `Summary: ${email.summary}` : ""}
 Preview: ${email.content.substring(0, 300)}...
 `,
-  )
-  .join("\n")}
+        )
+        .join("\n")}
 
 CRITICAL RELEVANCE FILTERING - ABSOLUTELY MANDATORY:
 ${queryIntent ? `The user is looking for: ${queryIntent}\n` : ""}
@@ -926,12 +992,12 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       const resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
-              .slice(0, 5)
-              .map(
-                (e, i) =>
-                  `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`,
-              )
-              .join("\n\n")}`
+            .slice(0, 5)
+            .map(
+              (e, i) =>
+                `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`,
+            )
+            .join("\n\n")}`
           : "No emails found for that query.";
 
       return new Response(resp, {
@@ -963,6 +1029,10 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       const encoder = new TextEncoder();
       let accumulatedRaw = "";
       let accumulatedProcessed = "";
+      let streamUsage: { prompt_tokens: number; completion_tokens: number } = {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+      };
       const readable = new ReadableStream({
         async start(controller) {
           try {
@@ -979,11 +1049,26 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
                   accumulatedProcessed = fullyProcessed;
                 }
               }
+              const u = (chunk as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+              if (u) {
+                streamUsage = {
+                  prompt_tokens: u.prompt_tokens ?? 0,
+                  completion_tokens: u.completion_tokens ?? 0,
+                };
+              }
             }
           } catch (error) {
             console.error("Streaming error:", error);
             controller.enqueue(encoder.encode("\n\nError streaming response"));
           } finally {
+            recordUsage({
+              userId,
+              accountId: accountId ?? undefined,
+              operation: "chat",
+              inputTokens: streamUsage.prompt_tokens,
+              outputTokens: streamUsage.completion_tokens,
+              model: "google/gemini-2.0-flash-exp:free",
+            });
             controller.close();
           }
         },
@@ -1000,12 +1085,12 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       const resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
-              .slice(0, 5)
-              .map(
-                (e, i) =>
-                  `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`,
-              )
-              .join("\n\n")}`
+            .slice(0, 5)
+            .map(
+              (e, i) =>
+                `${i + 1}. ${e.subject} (${e.from?.name || e.from?.address})\n   ${new Date(e.sentAt).toLocaleDateString()}`,
+            )
+            .join("\n\n")}`
           : "No emails found.";
 
       return new Response(resp, {
@@ -1021,7 +1106,6 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
-    // Don't expose internal error details in production
     const isDevelopment = process.env.NODE_ENV === "development";
 
     return new Response(
@@ -1037,3 +1121,5 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
     );
   }
 }
+
+export const POST = withRequestId(chatPostHandler);

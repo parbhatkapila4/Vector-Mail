@@ -2,15 +2,35 @@ import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { searchEmailsByVector } from "@/lib/vector-search";
+import { serverLog } from "@/lib/logging/server-logger";
+import { withRequestId } from "@/lib/logging/with-request-id";
+import { recordSearchLatency } from "@/lib/metrics/store";
+import {
+  checkUserRateLimit,
+  rateLimit429Response,
+} from "@/lib/rate-limit";
 
-export async function GET(req: NextRequest) {
+async function searchHandler(req: NextRequest | Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const searchParams = req.nextUrl.searchParams;
+    const searchLimit = checkUserRateLimit(userId, "search");
+    if (!searchLimit.allowed) {
+      return rateLimit429Response({
+        message: "Too many search requests. Try again later.",
+        remaining: searchLimit.remaining,
+        limit: searchLimit.limit,
+        retryAfterSec: 60,
+      });
+    }
+
+    const searchParams =
+      "nextUrl" in req && req.nextUrl
+        ? req.nextUrl.searchParams
+        : new URL(req.url).searchParams;
     const query = searchParams.get("q");
     const accountId = searchParams.get("accountId");
 
@@ -98,7 +118,18 @@ export async function GET(req: NextRequest) {
     const limitedResults = finalResults.slice(0, 20);
 
     const totalTime = Date.now() - startTime;
+    recordSearchLatency(totalTime);
 
+    serverLog.info(
+      {
+        event: "search_complete",
+        latencyMs: totalTime,
+        resultCount: limitedResults.length,
+        searchType: shouldUseSemanticSearch ? "hybrid" : "keyword",
+        keywordMs: keywordSearchTime,
+      },
+      "email search completed",
+    );
     console.log(
       `[Search] Query: "${searchQuery}" | Results: ${limitedResults.length} | Time: ${totalTime}ms | Keyword: ${keywordSearchTime}ms`,
     );
@@ -127,6 +158,8 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const GET = withRequestId(searchHandler);
 
 async function performKeywordSearch(
   query: string,

@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
+import { serverLog } from "./logging/server-logger";
 import type { EmailMessage } from "@/types";
 import { arrayToVector } from "./vector-utils";
 
@@ -116,7 +117,33 @@ export async function backfillEmailAnalysis(
           `Analyzing email ${processed + 1}/${emailsWithoutAnalysis.length}: ${email.subject}`,
         );
 
-        const analysis = await analyzeEmail(emailMessage);
+        const embeddingStart = Date.now();
+        let analysis;
+        try {
+          analysis = await analyzeEmail(emailMessage);
+          serverLog.info(
+            {
+              event: "embedding_success",
+              emailId: email.id,
+              durationMs: Date.now() - embeddingStart,
+            },
+            "embedding generated",
+          );
+        } catch (embeddingErr) {
+          serverLog.error(
+            {
+              event: "embedding_failure",
+              emailId: email.id,
+              durationMs: Date.now() - embeddingStart,
+              error:
+                embeddingErr instanceof Error
+                  ? embeddingErr.message
+                  : String(embeddingErr),
+            },
+            "embedding failed",
+          );
+          throw embeddingErr;
+        }
 
         const embeddingVector = arrayToVector(analysis.vectorEmbedding);
 

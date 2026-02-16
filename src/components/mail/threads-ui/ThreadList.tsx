@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow, format } from "date-fns";
-import { MoreVertical, RefreshCw, Mail, MailOpen, Star, Bell, CalendarClock, X, Archive, Trash2 } from "lucide-react";
+import { MoreVertical, RefreshCw, Mail, MailOpen, Star, Bell, CalendarClock, X, Trash2 } from "lucide-react";
 import { useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ const CONNECTION_ERROR_MESSAGES = {
 } as const;
 
 export function ThreadList({ onThreadSelect }: ThreadListProps) {
+  const searchParams = useSearchParams();
   const {
     threads: rawThreads,
     threadId,
@@ -95,16 +97,26 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
   const [currentTab] = useLocalStorage("vector-mail", "inbox");
-  const [refreshingAfterSync, setRefreshingAfterSync] = React.useState(false);
+  const [refreshingAfterSync] = React.useState(false);
   const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (searchParams.get("reconnect_failed") === "1") {
+      toast.error("Reconnect didn’t complete", {
+        description: "Auth failed right after connecting. Please try reconnecting again or check your Google account.",
+        duration: 5000,
+      });
+      const url = new URL(window.location.href);
+      url.searchParams.delete("reconnect_failed");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     setSelectedThreadIds(new Set());
   }, [currentTab]);
-
-  const hasTriggeredFirstSyncRef = useRef(false);
 
   const toggleSelection = useCallback((id: string) => {
     setSelectedThreadIds((prev) => {
@@ -130,36 +142,18 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       console.log("[ThreadList] ✅ Sync completed", data);
 
       if (data.needsReconnection) {
-        toast.error("Session expired", {
-          description: "Your account needs to be reconnected. Redirecting...",
-          duration: 3000,
+        toast.error("Sync failed", {
+          description: "Sign in again when you want to sync new emails. Your current emails are still here.",
+          duration: 5000,
         });
-
-        setTimeout(async () => {
-          try {
-            const { getAurinkoAuthUrl } = await import("@/lib/aurinko");
-            const url = await getAurinkoAuthUrl("Google");
-            window.location.href = url;
-          } catch (error) {
-            console.error("Error reconnecting account:", error);
-            toast.error("Failed to reconnect", {
-              description: "Please try refreshing the page and reconnecting manually.",
-            });
-          }
-        }, 2000);
+        void utils.account.getAccounts.invalidate();
         return;
       }
 
+      void utils.account.getNumThreads.invalidate();
+      void utils.account.getAccounts.invalidate();
       await utils.account.getThreads.invalidate();
-      await utils.account.getNumThreads.invalidate();
-      await utils.account.getAccounts.invalidate();
-
-      setRefreshingAfterSync(true);
-      try {
-        await refetch();
-      } finally {
-        setRefreshingAfterSync(false);
-      }
+      void refetch();
 
       const hasMore = "hasMore" in data && data.hasMore;
       const continueToken = "continueToken" in data ? data.continueToken : undefined;
@@ -197,7 +191,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         errorMessage.toLowerCase().includes("sign in")
       ) {
         toast.error("Sync failed", {
-          description: "Your session may have expired. Refresh the page or sign out and back in.",
+          description: "Sign in again to sync.",
           duration: 5000,
         });
       } else {
@@ -207,8 +201,12 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         });
       }
 
-      void utils.account.getThreads.invalidate();
       void utils.account.getNumThreads.invalidate();
+      void utils.account.getThreads.invalidate();
+      void refetch();
+    },
+    onSettled: () => {
+      void utils.account.getThreads.invalidate();
       void refetch();
     },
   });
@@ -239,35 +237,36 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     },
   });
 
-  const bulkArchiveMutation = api.account.bulkArchiveThreads.useMutation({
-    onSuccess: async () => {
-      await invalidateAndClearSelection();
-      toast.success("Archived");
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to archive");
-    },
-  });
-
   const bulkDeleteMutation = api.account.bulkDeleteThreads.useMutation({
     onSuccess: async () => {
       setDeleteConfirmOpen(false);
+      toast.success("Deleted", { id: "bulk-delete" });
       await invalidateAndClearSelection();
-      toast.success("Moved to trash");
     },
     onError: (err) => {
       setDeleteConfirmOpen(false);
-      toast.error(err.message ?? "Failed to move to trash");
+      toast.error(err.message ?? "Failed to delete", { id: "bulk-delete" });
     },
   });
 
   const isBulkPending =
     bulkMarkReadMutation.isPending ||
     bulkMarkUnreadMutation.isPending ||
-    bulkArchiveMutation.isPending ||
     bulkDeleteMutation.isPending;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+
+  useEffect(() => {
+    if (!syncEmailsMutation.isPending) return;
+    const poll = () => {
+      void utils.account.getThreads.invalidate();
+      void refetch();
+    };
+    poll();
+    const interval = setInterval(poll, 8000);
+    return () => clearInterval(interval);
+  }, [syncEmailsMutation.isPending, utils.account.getThreads, refetch]);
 
   const handleRefresh = useCallback(() => {
     if (accountId) {
@@ -361,30 +360,6 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       toast.error(err.message ?? "Failed to cancel");
     },
   });
-
-  useEffect(() => {
-    if (
-      !accountId ||
-      currentTab !== "inbox" ||
-      isSearching ||
-      syncEmailsMutation.isPending ||
-      hasTriggeredFirstSyncRef.current
-    )
-      return;
-    const threadListLoaded = !isFetching && Array.isArray(threads);
-    if (threadListLoaded && threads.length === 0) {
-      hasTriggeredFirstSyncRef.current = true;
-      toast.info("Syncing your inbox…", {
-        description: "Fetching your emails for the first time. This may take a moment.",
-        duration: 4000,
-      });
-      syncEmailsMutation.mutate({
-        accountId,
-        forceFullSync: true,
-        folder: "inbox",
-      });
-    }
-  }, [accountId, currentTab, isFetching, isSearching, threads?.length, syncEmailsMutation]);
 
   if (accountsLoading) {
     return (
@@ -531,7 +506,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
         className={cn(
-          "relative flex w-full items-stretch gap-0 border-b border-neutral-100 text-left transition-all duration-150 dark:border-neutral-900",
+          "group relative flex w-full items-start gap-0 border-b border-neutral-100 text-left transition-all duration-150 dark:border-neutral-900",
           isSelected
             ? "bg-gradient-to-r from-orange-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-orange-500 dark:from-orange-950/30 dark:to-amber-950/30 dark:before:bg-orange-400"
             : isUnread && !isSelected
@@ -540,16 +515,23 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         )}
       >
         <div
-          className="flex shrink-0 items-center pl-3"
+          className={cn(
+            "flex shrink-0 flex-col overflow-hidden pt-3.5 transition-[width,padding,opacity] duration-150",
+            isRowSelected
+              ? "w-[52px] pl-3 opacity-100 pointer-events-auto"
+              : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[52px] group-hover:min-w-0 group-hover:pl-3 group-hover:opacity-100 group-hover:pointer-events-auto",
+          )}
           onClick={(e) => e.stopPropagation()}
           role="presentation"
         >
-          <Checkbox
-            checked={isRowSelected}
-            onCheckedChange={() => toggleSelection(thread.id)}
-            aria-label={`Select ${subject}`}
-            className="border-neutral-300 dark:border-neutral-600"
-          />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <Checkbox
+              checked={isRowSelected}
+              onCheckedChange={() => toggleSelection(thread.id)}
+              aria-label={`Select ${subject}`}
+              className="border-neutral-300 dark:border-neutral-600"
+            />
+          </div>
         </div>
         <button
           type="button"
@@ -707,12 +689,12 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
           {isSyncingInbox ? (
             <>
-              <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-700 dark:border-t-orange-400" />
-              <p className="text-[14px] font-medium text-neutral-700 dark:text-neutral-300">
-                Syncing your inbox…
+              <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-700 dark:border-t-orange-400" />
+              <p className="text-[13px] font-medium text-neutral-600 dark:text-neutral-300">
+                Syncing…
               </p>
-              <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
-                Fetching your emails. This may take a moment.
+              <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                Inbox will update when done.
               </p>
             </>
           ) : syncFailedInbox ? (
@@ -824,6 +806,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   const handleBulkDelete = () => {
     if (!accountId) return;
+    toast.loading("Deleting…", { id: "bulk-delete" });
     bulkDeleteMutation.mutate({
       accountId,
       threadIds: Array.from(selectedThreadIds),
@@ -908,34 +891,16 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               Mark unread
             </Button>
             {showArchiveAndDelete && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 text-[12px]"
-                  disabled={isBulkPending}
-                  onClick={() =>
-                    accountId &&
-                    bulkArchiveMutation.mutate({
-                      accountId,
-                      threadIds: Array.from(selectedThreadIds),
-                    })
-                  }
-                >
-                  <Archive className="h-3.5 w-3.5" />
-                  Archive
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 text-[12px] text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
-                  disabled={isBulkPending}
-                  onClick={() => setDeleteConfirmOpen(true)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </Button>
-              </>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-[12px] text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                disabled={isBulkPending}
+                onClick={() => setDeleteConfirmOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
             )}
             <Button
               variant="ghost"
@@ -953,9 +918,9 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to trash?</AlertDialogTitle>
+            <AlertDialogTitle>Delete?</AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedCount} thread{selectedCount !== 1 ? "s" : ""} will be moved to trash. You can restore them from Trash later.
+              {selectedCount} conversation{selectedCount !== 1 ? "s" : ""} will be deleted and removed from your inbox. You can restore them from Trash later if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -964,7 +929,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               onClick={handleBulkDelete}
               className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
             >
-              Move to trash
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

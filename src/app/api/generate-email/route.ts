@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
+import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
+import {
+  checkUserRateLimit,
+  rateLimit429Response,
+} from "@/lib/rate-limit";
+import { env } from "@/env.js";
 
 const COMPLETE_SYSTEM = (context: string, prompt: string) =>
   `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
@@ -88,6 +95,34 @@ const COMPOSE_SYSTEM = (context: string) =>
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const aiLimit = checkUserRateLimit(userId, "ai");
+    if (!aiLimit.allowed) {
+      return rateLimit429Response({
+        message: "Too many AI requests. Try again later.",
+        remaining: aiLimit.remaining,
+        limit: aiLimit.limit,
+        retryAfterSec: 60,
+      });
+    }
+
+    const cap = await checkDailyCap(userId, env.AI_DAILY_CAP_TOKENS);
+    if (!cap.allowed) {
+      const { log: auditLog } = await import("@/lib/audit/audit-log");
+      auditLog({ userId, action: "ai_cap_exceeded", metadata: {} });
+      return NextResponse.json(
+        {
+          error: "Daily AI limit reached",
+          message: `You have used ${cap.used} of ${cap.limit} tokens today. Try again tomorrow.`,
+        },
+        { status: 429 },
+      );
+    }
+
     const body = await req.json();
     const { prompt, context = "", mode = "complete" } = body;
 
@@ -125,6 +160,15 @@ Format the response as a complete email with proper paragraphs. Use \\n\\n betwe
         { role: "user", content: userContent },
       ],
       stream: false,
+    });
+
+    const usage = completion.usage;
+    recordUsage({
+      userId,
+      operation: "compose",
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+      model: completion.model ?? undefined,
     });
 
     const content = completion.choices[0]?.message?.content || "";

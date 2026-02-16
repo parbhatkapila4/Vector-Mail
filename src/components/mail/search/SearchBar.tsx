@@ -108,6 +108,7 @@ const SearchBar = () => {
       <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-600" />
       <Input
         ref={ref}
+        id="mail-search-input"
         placeholder="Search conversations..."
         className="h-10 rounded-xl border-neutral-200/60 bg-neutral-50/50 pl-10 pr-9 text-[13px] font-medium text-neutral-900 backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-orange-500/50 focus:bg-white focus-visible:ring-2 focus-visible:ring-orange-500/20 dark:border-neutral-800/60 dark:bg-neutral-950/50 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:border-orange-400/50 dark:focus:bg-neutral-900 dark:focus-visible:ring-orange-400/20"
         value={searchValue}

@@ -6,9 +6,10 @@ import type {
 } from "@/types";
 import axios from "axios";
 import { syncEmailsToDatabase } from "./sync-to-db";
+import { withLock } from "./sync-lock";
 import { db } from "@/server/db";
 
-const syncLocks = new Map<string, Promise<void>>();
+const SYNC_LOCK_TTL_MS = 30 * 60 * 1000;
 
 
 const SYNC_WINDOW_DAYS = 60;
@@ -321,7 +322,8 @@ export class Account {
     deltaToken?: string,
     pageToken?: string,
     metadataOnly: boolean = false,
-  ) {
+    isRetry = false,
+  ): Promise<syncUpdateResponse> {
     const params: Record<string, string> = {};
 
     if (pageToken) {
@@ -338,9 +340,7 @@ export class Account {
       accountId: this.id,
       hasDeltaToken: !!deltaToken,
       hasPageToken: !!pageToken,
-      deltaTokenPreview: deltaToken
-        ? deltaToken.substring(0, 20) + "..."
-        : null,
+      isRetry,
       tokenPreview: this.token
         ? `${this.token.substring(0, 20)}...`
         : "MISSING",
@@ -366,26 +366,60 @@ export class Account {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
-        const errorData = error.response?.data;
-
-        console.error(`[getUpdatedEmails] API error:`, {
-          status,
-          statusText: error.response?.statusText,
-          data: errorData,
-          headers: error.response?.headers,
-        });
 
         if (status === 401) {
+          if (!isRetry) {
+            console.warn(
+              `[getUpdatedEmails] 401 for account ${this.id} - retrying once in case of transient failure`,
+            );
+            try {
+              return await this.getUpdatedEmails(
+                deltaToken,
+                pageToken,
+                metadataOnly,
+                true,
+              );
+            } catch (retryError) {
+              if (
+                axios.isAxiosError(retryError) &&
+                retryError.response?.status === 401
+              ) {
+                console.error(
+                  `[getUpdatedEmails] Retry also 401 for account ${this.id} - token is invalid`,
+                );
+                await db.account
+                  .update({
+                    where: { id: this.id },
+                    data: { needsReconnection: true },
+                  })
+                  .catch((err) =>
+                    console.error(
+                      `[getUpdatedEmails] Failed to update needsReconnection:`,
+                      err,
+                    ),
+                  );
+                throw new Error(
+                  "Authentication failed. Please reconnect your account.",
+                );
+              }
+              throw retryError;
+            }
+          }
+
           console.error(
             `[getUpdatedEmails] Authentication failed (401) for account ${this.id} - token may be expired or invalid`,
           );
-
-
-          await db.account.update({
-            where: { id: this.id },
-            data: { needsReconnection: true },
-          }).catch(err => console.error(`[getUpdatedEmails] Failed to update needsReconnection:`, err));
-
+          await db.account
+            .update({
+              where: { id: this.id },
+              data: { needsReconnection: true },
+            })
+            .catch((err) =>
+              console.error(
+                `[getUpdatedEmails] Failed to update needsReconnection:`,
+                err,
+              ),
+            );
           throw new Error(
             "Authentication failed. Please reconnect your account.",
           );
@@ -502,26 +536,9 @@ export class Account {
   }
 
   async syncEmails(forceFullSync = false, folder?: "inbox" | "sent") {
-    const existingSync = syncLocks.get(this.id);
-    if (existingSync) {
-      console.log(
-        `[syncEmails] Sync already in progress for account ${this.id}, waiting for it to complete...`,
-      );
-      await existingSync;
-      console.log(
-        `[syncEmails] Existing sync completed, skipping duplicate sync request`,
-      );
-      return;
-    }
-
-    const syncPromise = this._performSync(forceFullSync, folder);
-    syncLocks.set(this.id, syncPromise);
-
-    try {
-      await syncPromise;
-    } finally {
-      syncLocks.delete(this.id);
-    }
+    await withLock(this.id, SYNC_LOCK_TTL_MS, () =>
+      this._performSync(forceFullSync, folder),
+    );
   }
 
   private async _performSync(forceFullSync = false, folder?: "inbox" | "sent") {
@@ -1033,13 +1050,13 @@ export class Account {
 
       if (newEmails.length > 0) {
         const inboxCount = newEmails.filter(
-          (e) =>
+          (e: EmailMessage) =>
             e.sysLabels.includes("inbox") || e.sysLabels.includes("important"),
         ).length;
         const sentCount = newEmails.filter(
-          (e) => e.sysLabels.includes("sent") && !e.sysLabels.includes("draft"),
+          (e: EmailMessage) => e.sysLabels.includes("sent") && !e.sysLabels.includes("draft"),
         ).length;
-        const draftCount = newEmails.filter((e) =>
+        const draftCount = newEmails.filter((e: EmailMessage) =>
           e.sysLabels.includes("draft"),
         ).length;
 

@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Account } from "@/lib/accounts";
 import axios from "axios";
+import { log as auditLog } from "@/lib/audit/audit-log";
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
@@ -48,11 +49,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (!token.accountToken) {
-      console.warn(
-        "[CALLBACK] ⚠ accountToken missing, using accessToken as fallback",
-      );
-    }
   } catch (error: unknown) {
     console.error("[CALLBACK] ✗ Token exchange threw error:", error);
 
@@ -117,16 +113,13 @@ export async function GET(req: NextRequest) {
     console.error("[CALLBACK] ✗ User upsert failed:", error);
   }
 
+  const tokenToStore = token.accessToken;
+
   try {
-
-
-
-    console.log("[CALLBACK] Note: Aurinko tokens are long-lived and don't expire");
-
     await db.account.upsert({
       where: { id: accountIdStr },
       update: {
-        token: token.accountToken,
+        token: tokenToStore,
         userId,
         nextDeltaToken: null,
         needsReconnection: false,
@@ -134,7 +127,7 @@ export async function GET(req: NextRequest) {
       },
       create: {
         id: accountIdStr,
-        token: token.accountToken,
+        token: tokenToStore,
         emailAddress: accountInfo.email,
         name: accountInfo.name,
         userId,
@@ -145,6 +138,12 @@ export async function GET(req: NextRequest) {
       },
     });
     console.log("[CALLBACK] ✓ Account upserted");
+    auditLog({
+      userId,
+      action: "account_connected",
+      resourceId: accountIdStr,
+      metadata: { provider: "gmail" },
+    });
   } catch (error) {
     console.error("[CALLBACK] ✗ Account upsert failed:", error);
     return NextResponse.json(
@@ -155,9 +154,7 @@ export async function GET(req: NextRequest) {
 
   console.log("[CALLBACK] Starting FULL sync after reconnection...");
   try {
-    const account = new Account(accountIdStr, token.accountToken);
-
-
+    const account = new Account(accountIdStr, tokenToStore);
 
     console.log("[CALLBACK] Getting fresh delta token...");
     const response = await axios.post(
@@ -165,7 +162,7 @@ export async function GET(req: NextRequest) {
       {},
       {
         headers: {
-          Authorization: `Bearer ${token.accountToken}`,
+          Authorization: `Bearer ${tokenToStore}`,
           "X-Aurinko-Account-Id": accountIdStr,
         },
       },
@@ -195,6 +192,23 @@ export async function GET(req: NextRequest) {
     console.log("[CALLBACK] ✓ Thread statuses recalculated");
   } catch (error) {
     console.error("[CALLBACK] ✗ Post-reconnection sync failed:", error);
+
+    const is401 =
+      axios.isAxiosError(error) && error.response?.status === 401;
+    if (is401) {
+      await db.account
+        .update({
+          where: { id: accountIdStr },
+          data: { needsReconnection: true },
+        })
+        .catch((err) =>
+          console.error("[CALLBACK] Failed to set needsReconnection:", err),
+        );
+      const mailUrl = new URL("/mail", process.env.NEXT_PUBLIC_URL);
+      mailUrl.searchParams.set("reconnect_failed", "1");
+      console.log("[CALLBACK] Redirecting with reconnect_failed (401 after reconnect)");
+      return NextResponse.redirect(mailUrl);
+    }
   }
 
   console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");

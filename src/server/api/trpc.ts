@@ -2,14 +2,19 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { getRequestId } from "@/lib/correlation";
+import { serverLog } from "@/lib/logging/server-logger";
 import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const user = await auth();
+  const requestId = getRequestId();
   return {
     db,
     auth: user,
+    requestId,
+    log: serverLog,
     ...opts,
   };
 };

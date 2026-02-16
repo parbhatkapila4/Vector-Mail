@@ -1,5 +1,4 @@
-
-
+/* eslint-disable @typescript-eslint/no-unused-vars -- deprecated stubs, params kept for API shape */
 export async function generateEmail(
   _context: string,
   _prompt: string,
@@ -17,3 +16,4 @@ export async function generate(
     "generate is deprecated. Use fetch('/api/generate-email', { body: JSON.stringify({ prompt, context, mode: 'complete' }) }) with a timeout instead.",
   );
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */

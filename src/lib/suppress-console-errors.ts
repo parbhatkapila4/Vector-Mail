@@ -1,4 +1,20 @@
 if (typeof window !== "undefined") {
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const message =
+      event.reason instanceof Error
+        ? event.reason.message
+        : String(event.reason ?? "");
+    if (
+      typeof message === "string" &&
+      message.includes("unrecognized HMR message") &&
+      message.includes("ping")
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  });
+
   const originalError = console.error;
 
   console.error = (...args: unknown[]) => {

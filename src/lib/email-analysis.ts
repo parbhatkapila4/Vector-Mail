@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import { env } from "@/env.js";
 import type { EmailMessage } from "@/types";
 import { getGenerateEmbeddings } from "./embedding";
+import { incrementLlmCall } from "@/lib/metrics/store";
+import { recordUsage } from "@/lib/ai-usage";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -20,6 +22,7 @@ export interface EmailAnalysis {
 
 export async function generateEmailSummary(
   email: EmailMessage,
+  options?: { userId?: string; accountId?: string },
 ): Promise<string> {
   try {
     const bodyContent = email.body || email.bodySnippet || "No content";
@@ -64,10 +67,23 @@ Summary:`;
 
     const summary = completion.choices[0]?.message?.content?.trim();
 
+    if (options?.userId) {
+      const u = completion.usage;
+      recordUsage({
+        userId: options.userId,
+        accountId: options.accountId,
+        operation: "summary",
+        inputTokens: u?.prompt_tokens ?? 0,
+        outputTokens: u?.completion_tokens ?? 0,
+        model: completion.model ?? undefined,
+      });
+    }
+
     if (!summary || summary.length < 20) {
       return `Email from ${email.from.name || email.from.address} about: ${email.subject}`;
     }
 
+    incrementLlmCall();
     return summary;
   } catch (error) {
     console.error("Failed to generate summary:", error);
@@ -77,6 +93,7 @@ Summary:`;
 
 export async function generateEmailTags(
   email: EmailMessage,
+  options?: { userId?: string; accountId?: string },
 ): Promise<string[]> {
   try {
     const emailContent = `
@@ -110,6 +127,19 @@ Return only the tags as a comma-separated list, no other text.`;
 
     const tagsText = completion.choices[0]?.message?.content?.trim() || "";
 
+    if (options?.userId) {
+      const u = completion.usage;
+      recordUsage({
+        userId: options.userId,
+        accountId: options.accountId,
+        operation: "summary",
+        inputTokens: u?.prompt_tokens ?? 0,
+        outputTokens: u?.completion_tokens ?? 0,
+        model: completion.model ?? undefined,
+      });
+    }
+
+    incrementLlmCall();
     return tagsText
       .split(",")
       .map((tag: string) => tag.trim().toLowerCase())
@@ -129,6 +159,7 @@ Return only the tags as a comma-separated list, no other text.`;
 export async function generateEmailEmbedding(
   summary: string,
   email?: EmailMessage,
+  options?: { userId?: string; accountId?: string },
 ): Promise<number[]> {
   try {
     let embeddingText = summary;
@@ -139,7 +170,7 @@ export async function generateEmailEmbedding(
       embeddingText = `${summary}\n\nFrom: ${senderInfo}\nDate: ${dateInfo}\nSubject: ${email.subject}`;
     }
 
-    const embedding = await getGenerateEmbeddings(embeddingText);
+    const embedding = await getGenerateEmbeddings(embeddingText, options);
 
     if (!embedding || embedding.length === 0) {
       throw new Error("No embeddings returned from Gemini");
@@ -154,13 +185,14 @@ export async function generateEmailEmbedding(
 
 export async function analyzeEmail(
   email: EmailMessage,
+  options?: { userId?: string; accountId?: string },
 ): Promise<EmailAnalysis> {
   try {
     console.log(`Analyzing: ${email.subject}`);
 
-    const summary = await generateEmailSummary(email);
-    const vectorEmbedding = await generateEmailEmbedding(summary, email);
-    const tags = await generateEmailTags(email);
+    const summary = await generateEmailSummary(email, options);
+    const vectorEmbedding = await generateEmailEmbedding(summary, email, options);
+    const tags = await generateEmailTags(email, options);
 
     console.log(`Tags: ${tags.join(", ")}`);
 

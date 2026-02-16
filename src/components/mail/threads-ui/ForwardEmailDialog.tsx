@@ -17,9 +17,11 @@ import { Forward, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useLocalStorage } from "usehooks-ts";
+import { useAuth } from "@clerk/nextjs";
 import { api } from "@/trpc/react";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 import { usePendingSend } from "@/contexts/PendingSendContext";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ForwardEmailDialogProps {
   open: boolean;
@@ -42,6 +44,7 @@ export function ForwardEmailDialog({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [trackOpens, setTrackOpens] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
     const d = new Date();
@@ -51,6 +54,7 @@ export function ForwardEmailDialog({
   });
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [accountId] = useLocalStorage("accountId", "");
+  const { isLoaded: authLoaded, userId } = useAuth();
   const { scheduleSend, isPending: isPendingSend } = usePendingSend();
   const scheduleSendMutation = api.account.scheduleSend.useMutation({
     onSuccess: (_, variables) => {
@@ -124,6 +128,7 @@ export function ForwardEmailDialog({
           to: toSend.split(",").map((email) => email.trim()),
           subject: subjectSend,
           body: bodySend,
+          trackOpens,
         }),
       });
 
@@ -177,6 +182,7 @@ export function ForwardEmailDialog({
       to: to.trim().split(",").map((e) => e.trim()),
       subject: subject.trim(),
       body: body.trim(),
+      trackOpens,
     };
     scheduleSendMutation.mutate({
       accountId: validAccountId,
@@ -230,6 +236,24 @@ export function ForwardEmailDialog({
               className="min-h-[300px] resize-none border-white/[0.06] bg-[#030303] text-white focus:border-amber-500/50"
               placeholder="Enter your message..."
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5 border-t border-white/[0.06] pt-3">
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <Checkbox
+                checked={trackOpens}
+                onCheckedChange={(c) => setTrackOpens(c === true)}
+                disabled={isSending || isPendingSend}
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+              />
+              <span className="text-zinc-400">
+                Track when this email is opened
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500 md:ml-7">
+              Adds a small image that loads when the recipient opens the email.
+              Some email clients block images.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -301,12 +325,18 @@ export function ForwardEmailDialog({
                 <Button
                   type="button"
                   onClick={handleScheduleForward}
-                  disabled={scheduleSendMutation.isPending}
+                  disabled={
+                    scheduleSendMutation.isPending ||
+                    !authLoaded ||
+                    !userId
+                  }
                   className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
                 >
-                  {scheduleSendMutation.isPending
-                    ? "Scheduling..."
-                    : "Schedule send"}
+                  {!authLoaded || !userId
+                    ? "Loading..."
+                    : scheduleSendMutation.isPending
+                      ? "Scheduling..."
+                      : "Schedule send"}
                 </Button>
               </div>
             </DialogContent>

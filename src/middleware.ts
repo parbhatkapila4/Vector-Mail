@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+const REQUEST_ID_HEADER = "x-request-id";
 
 const isProtectedRoute = createRouteMatcher(["/mail(.*)", "/buddy(.*)"]);
 const isWebhookRoute = createRouteMatcher(["/api/webhook(.*)"]);
@@ -15,6 +16,11 @@ export default clerkMiddleware(async (auth, req) => {
 
   const response = NextResponse.next();
 
+  const requestId = req.headers.get(REQUEST_ID_HEADER);
+  if (requestId?.trim()) {
+    response.headers.set(REQUEST_ID_HEADER, requestId.trim());
+  }
+
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -27,7 +33,7 @@ export default clerkMiddleware(async (auth, req) => {
     "max-age=31536000; includeSubDomains",
   );
 
-  
+
   response.headers.set(
     "Content-Security-Policy",
     [

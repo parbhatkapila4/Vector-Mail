@@ -2,6 +2,7 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { atom, useAtom } from "jotai";
 import { useEffect, useRef } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 
 export const threadIdAtom = atom<string | null>(null);
 
@@ -68,11 +69,12 @@ function useThreads() {
         accountId.length > 0 &&
         currentTab !== "scheduled",
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       refetchOnMount: false,
-      staleTime: 5 * 60 * 1000,
-      gcTime: 30 * 60 * 1000,
+      staleTime: 60 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
       retry: false,
+      placeholderData: keepPreviousData,
     },
   );
 
@@ -91,24 +93,17 @@ function useThreads() {
         const syncKey = `${accountId}-${currentTab}-${syncStatus.count}-${pageHash}`;
 
         if (lastProcessedSyncRef.current !== syncKey) {
-          console.log(
-            `[Auto-Update] ${syncStatus.count} new email(s) synced, refreshing ${currentTab}...`,
-          );
-
           lastProcessedSyncRef.current = syncKey;
-
-          setTimeout(() => {
-            void utils.account.getThreads.invalidate();
-          }, 100);
+          void refetch();
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.pages, utils, accountId, currentTab]);
 
-  const pages = (data?.pages ?? []) as any[];
-  const threads = pages.flatMap(
-    (page: unknown) => (page as { threads: Thread[] }).threads,
-  ) as Thread[];
+  type ThreadPage = { threads: Thread[] };
+  const pages = (data?.pages ?? []) as ThreadPage[];
+  const threads = pages.flatMap((page) => page.threads);
 
   return {
     threads,

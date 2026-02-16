@@ -177,6 +177,7 @@ export interface RestSendPayload {
   body: string;
   cc?: string[];
   bcc?: string[];
+  trackOpens?: boolean;
   attachments?: Array<{
     name: string;
     content: string;
@@ -198,7 +199,26 @@ export async function sendEmailRest(
   const fromEmail = account.emailAddress;
   const fromName = account.name || account.emailAddress;
   const formattedBody = formatEmailBody(payload.body);
-  const emailBodyWithWatermark = formattedBody + WATERMARK;
+  let emailBodyWithWatermark = formattedBody + WATERMARK;
+
+  let trackingId: string | null = null;
+  if (payload.trackOpens) {
+    try {
+      const {
+        createTrackingRecord,
+        getTrackingPixelUrl,
+        injectTrackingPixel,
+      } = await import("@/lib/email-open-tracking");
+      trackingId = await createTrackingRecord(account.id);
+      const pixelUrl = getTrackingPixelUrl(trackingId);
+      emailBodyWithWatermark = injectTrackingPixel(
+        emailBodyWithWatermark,
+        pixelUrl,
+      );
+    } catch {
+      trackingId = null;
+    }
+  }
 
   const aurinkoHeaders: Record<string, string> = {
     Authorization: `Bearer ${account.token}`,
@@ -239,5 +259,15 @@ export async function sendEmailRest(
     },
   );
 
-  return response.data;
+  const data = response.data as { id?: string };
+  if (trackingId && data?.id) {
+    try {
+      const { updateTrackingMessageId } = await import(
+        "@/lib/email-open-tracking"
+      );
+      await updateTrackingMessageId(trackingId, String(data.id));
+    } catch {
+    }
+  }
+  return data;
 }

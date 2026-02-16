@@ -4,12 +4,7 @@ import "@/lib/suppress-console-errors";
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 
-import { TRPCReactProvider } from "@/trpc/react";
-import { ClerkProvider } from "@clerk/nextjs";
-import { ThemeProvider } from "@/provider/ThemeProvider";
-import { Toaster } from "@/components/ui/sonner";
-import { KeyboardShortcuts } from "@/components/global/KeyboardShortcuts";
-import { PendingSendProvider } from "@/contexts/PendingSendContext";
+import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
 
 export const metadata: Metadata = {
   title: "VectorMail AI - Smart Email Management",
@@ -48,31 +43,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider
-      appearance={{
-        layout: { unsafe_disableDevelopmentModeWarnings: true },
-        elements: { footer: "hidden" },
-      }}
-    >
-      <html lang="en" className={geist.variable} suppressHydrationWarning>
-        <body suppressHydrationWarning>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            forcedTheme="dark"
-            enableSystem={false}
-            disableTransitionOnChange
-          >
-            <TRPCReactProvider>
-              <PendingSendProvider>
-                <KeyboardShortcuts />
-                {children}
-              </PendingSendProvider>
-            </TRPCReactProvider>
-            <Toaster />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={geist.variable} suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <ProvidersWrapper>{children}</ProvidersWrapper>
+      </body>
+    </html>
   );
 }

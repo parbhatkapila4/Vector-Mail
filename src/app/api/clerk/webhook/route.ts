@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { Webhook } from "svix";
 
@@ -23,7 +22,6 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await request.text();
-    const body = JSON.parse(payload);
 
     const wh = new Webhook(WEBHOOK_SECRET);
     let evt;
@@ -39,7 +37,14 @@ export async function POST(request: NextRequest) {
       return new Response("Webhook verification failed", { status: 400 });
     }
 
-    const { data, type } = evt as { data: any; type: string };
+    interface WebhookUserData {
+      id?: string;
+      email_addresses?: Array<{ email_address?: string }>;
+      first_name?: string | null;
+      last_name?: string | null;
+      image_url?: string | null;
+    }
+    const { data, type } = evt as { data: WebhookUserData; type: string };
 
     if (!data || !data.id) {
       console.error("Invalid webhook data: missing data or id");
@@ -56,9 +61,9 @@ export async function POST(request: NextRequest) {
         return new Response("No email address", { status: 400 });
       }
 
-      const firstName = data.first_name || null;
-      const lastName = data.last_name || null;
-      const imageUrl = data.image_url || null;
+      const firstName = data.first_name ?? null;
+      const lastName = data.last_name ?? null;
+      const imageUrl = data.image_url ?? null;
       const id = data.id;
 
       console.log("User data:", { emailAddress, firstName, lastName, id });

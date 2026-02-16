@@ -93,21 +93,11 @@ export async function exchangeAurinkoCodeForToken(code: string) {
 
     const accountToken = data.accountToken || data.token || data.account_token;
 
-    if (!accountToken) {
-      console.warn(
-        "[TOKEN] ⚠ accountToken not found in response, checking if it's required...",
-      );
-      console.warn("[TOKEN] Available fields:", Object.keys(data));
-    }
-
     console.log("[TOKEN] ✓ Success - accessToken and accountId present");
-    if (accountToken) {
-      console.log("[TOKEN] ✓ accountToken found");
-    } else {
-      console.warn(
-        "[TOKEN] ⚠ accountToken missing - using accessToken as fallback",
-      );
-    }
+    console.log(
+      "[TOKEN] API token:",
+      accountToken ? "accountToken" : "accessToken (fallback)",
+    );
 
     return {
       accessToken: data.accessToken,
