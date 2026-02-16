@@ -104,7 +104,7 @@ const ComposeButton = () => {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button className="bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-white transition-all hover:shadow-lg hover:shadow-purple-500/50">
+        <Button className="bg-gradient-to-r from-purple-600 via-purple-400 to-yellow-400 text-white transition-all hover:shadow-lg hover:shadow-purple-500/50">
           <Pencil className="mr-1 size-4" />
           Compose
         </Button>

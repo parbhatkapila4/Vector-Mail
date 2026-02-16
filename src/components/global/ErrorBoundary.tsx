@@ -4,6 +4,7 @@ import React, { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 interface WindowWithSentry extends Window {
   Sentry?: {
@@ -62,6 +63,11 @@ export class ErrorBoundary extends Component<Props, State> {
         });
       }
     }
+
+    logger.error(error.message, {
+      componentStack: errorInfo?.componentStack ?? undefined,
+      name: error?.name ?? undefined,
+    });
   }
 
   private handleReset = () => {
@@ -80,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-black p-4">
-          <div className="w-full max-w-md rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-amber-900/20 p-8 text-center">
+          <div className="w-full max-w-md rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-yellow-900/20 p-8 text-center">
             <div className="mb-6 flex justify-center">
               <div className="rounded-full bg-red-500/20 p-4">
                 <AlertCircle className="h-12 w-12 text-red-400" />

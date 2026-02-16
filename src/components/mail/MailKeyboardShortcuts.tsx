@@ -6,6 +6,8 @@ import { useLocalStorage } from "usehooks-ts";
 import useThreads from "@/hooks/use-threads";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import type { InfiniteData } from "@tanstack/react-query";
+import type { RouterOutputs } from "@/trpc/react";
 
 const G_WAIT_MS = 500;
 
@@ -42,6 +44,8 @@ export function MailKeyboardShortcuts({
 }: MailKeyboardShortcutsProps) {
   const pathname = usePathname();
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
+  const [important] = useLocalStorage("vector-mail-important", false);
+  const [unread] = useLocalStorage("vector-mail-unread", false);
   const {
     threads,
     threadId,
@@ -52,21 +56,81 @@ export function MailKeyboardShortcuts({
   const gTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const utils = api.useUtils();
+  type GetThreadsPage = RouterOutputs["account"]["getThreads"];
+  const getThreadsInput = useMemo(
+    () => ({
+      accountId: accountId ?? "placeholder",
+      tab: tab ?? "inbox",
+      important,
+      unread,
+      limit: tab === "inbox" ? 50 : 15,
+    }),
+    [accountId, tab, important, unread],
+  );
+
   const bulkArchiveMutation = api.account.bulkArchiveThreads.useMutation({
+    onMutate: async (input) => {
+      await utils.account.getThreads.cancel();
+      const previousData = utils.account.getThreads.getInfiniteData(getThreadsInput) as
+        | InfiniteData<GetThreadsPage>
+        | undefined;
+      if (previousData?.pages) {
+        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+          ...page,
+          threads: page.threads.filter((t) => !input.threadIds.includes(t.id)),
+        }));
+        utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
+          old ? { ...old, pages: newPages } : old,
+        );
+      }
+      return { previousPages: previousData };
+    },
+    onError: (err, _input, context) => {
+      if (context?.previousPages !== undefined) {
+        utils.account.getThreads.setInfiniteData(getThreadsInput, context.previousPages as never);
+      }
+      toast.error(err.message ?? "Failed to archive");
+    },
     onSuccess: async () => {
       await utils.account.getThreads.invalidate();
       await utils.account.getNumThreads.invalidate();
       toast.success("Archived");
     },
-    onError: (err) => toast.error(err.message ?? "Failed to archive"),
+    onSettled: () => {
+      void utils.account.getThreads.invalidate();
+    },
   });
   const bulkDeleteMutation = api.account.bulkDeleteThreads.useMutation({
+    onMutate: async (input) => {
+      await utils.account.getThreads.cancel();
+      const previousData = utils.account.getThreads.getInfiniteData(getThreadsInput) as
+        | InfiniteData<GetThreadsPage>
+        | undefined;
+      if (previousData?.pages) {
+        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+          ...page,
+          threads: page.threads.filter((t) => !input.threadIds.includes(t.id)),
+        }));
+        utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
+          old ? { ...old, pages: newPages } : old,
+        );
+      }
+      return { previousPages: previousData };
+    },
+    onError: (err, _input, context) => {
+      if (context?.previousPages !== undefined) {
+        utils.account.getThreads.setInfiniteData(getThreadsInput, context.previousPages as never);
+      }
+      toast.error(err.message ?? "Failed to move to trash");
+    },
     onSuccess: async () => {
       await utils.account.getThreads.invalidate();
       await utils.account.getNumThreads.invalidate();
       toast.success("Moved to trash");
     },
-    onError: (err) => toast.error(err.message ?? "Failed to move to trash"),
+    onSettled: () => {
+      void utils.account.getThreads.invalidate();
+    },
   });
 
   const flatThreads = useMemo(() => threads ?? [], [threads]);

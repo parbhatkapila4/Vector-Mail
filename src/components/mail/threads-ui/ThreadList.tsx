@@ -23,7 +23,9 @@ import { SearchResults } from "../search/SearchResults";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
 import { SnoozeMenu } from "./SnoozeMenu";
+import type { InfiniteData } from "@tanstack/react-query";
 import { RemindMenu } from "./RemindMenu";
+import { ThreadListSkeleton } from "./ThreadListSkeleton";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
@@ -38,7 +40,7 @@ const CATEGORY_BADGE: Record<
   promotions: {
     label: "Promotions",
     className:
-      "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
   },
   social: {
     label: "Social",
@@ -97,6 +99,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
   const [currentTab] = useLocalStorage("vector-mail", "inbox");
+  const [important] = useLocalStorage("vector-mail-important", false);
+  const [unread] = useLocalStorage("vector-mail-unread", false);
   const [refreshingAfterSync] = React.useState(false);
   const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
@@ -211,6 +215,17 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     },
   });
 
+  const getThreadsInput = useMemo(
+    () => ({
+      accountId: accountId ?? "placeholder",
+      tab: currentTab,
+      important,
+      unread,
+      limit: currentTab === "inbox" ? 50 : 15,
+    }),
+    [accountId, currentTab, important, unread],
+  );
+
   const invalidateAndClearSelection = useCallback(async () => {
     await utils.account.getThreads.invalidate();
     await utils.account.getNumThreads.invalidate();
@@ -237,22 +252,78 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     },
   });
 
+  type GetThreadsPage = RouterOutputs["account"]["getThreads"];
   const bulkDeleteMutation = api.account.bulkDeleteThreads.useMutation({
+    onMutate: async (input) => {
+      await utils.account.getThreads.cancel();
+      const previousData = utils.account.getThreads.getInfiniteData(getThreadsInput) as
+        | InfiniteData<GetThreadsPage>
+        | undefined;
+      if (previousData?.pages) {
+        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+          ...page,
+          threads: page.threads.filter((t: RouterThread) => !input.threadIds.includes(t.id)),
+        }));
+        utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
+          old ? { ...old, pages: newPages } : old,
+        );
+      }
+      return { previousPages: previousData };
+    },
+    onError: (err, _input, context) => {
+      setDeleteConfirmOpen(false);
+      if (context?.previousPages !== undefined) {
+        utils.account.getThreads.setInfiniteData(getThreadsInput, context.previousPages as never);
+      }
+      toast.error(err.message ?? "Failed to delete", { id: "bulk-delete" });
+    },
     onSuccess: async () => {
       setDeleteConfirmOpen(false);
       toast.success("Deleted", { id: "bulk-delete" });
       await invalidateAndClearSelection();
     },
-    onError: (err) => {
-      setDeleteConfirmOpen(false);
-      toast.error(err.message ?? "Failed to delete", { id: "bulk-delete" });
+    onSettled: () => {
+      void utils.account.getThreads.invalidate();
+    },
+  });
+
+  const bulkArchiveMutation = api.account.bulkArchiveThreads.useMutation({
+    onMutate: async (input) => {
+      await utils.account.getThreads.cancel();
+      const previousData = utils.account.getThreads.getInfiniteData(getThreadsInput) as
+        | InfiniteData<GetThreadsPage>
+        | undefined;
+      if (previousData?.pages) {
+        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+          ...page,
+          threads: page.threads.filter((t: RouterThread) => !input.threadIds.includes(t.id)),
+        }));
+        utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
+          old ? { ...old, pages: newPages } : old,
+        );
+      }
+      return { previousPages: previousData };
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previousPages !== undefined) {
+        utils.account.getThreads.setInfiniteData(getThreadsInput, context.previousPages as never);
+      }
+      toast.error("Failed to archive");
+    },
+    onSuccess: async () => {
+      await invalidateAndClearSelection();
+      toast.success("Archived");
+    },
+    onSettled: () => {
+      void utils.account.getThreads.invalidate();
     },
   });
 
   const isBulkPending =
     bulkMarkReadMutation.isPending ||
     bulkMarkUnreadMutation.isPending ||
-    bulkDeleteMutation.isPending;
+    bulkDeleteMutation.isPending ||
+    bulkArchiveMutation.isPending;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -365,7 +436,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     return (
       <div className="flex h-full items-center justify-center bg-white dark:bg-black">
         <div className="text-center">
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
+          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-800 dark:border-t-yellow-400" />
           <p className="mt-4 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Loading...
           </p>
@@ -445,7 +516,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           </p>
           <button
             onClick={handleAccountConnection}
-            className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-orange-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-orange-500/40"
+            className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-400 px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-yellow-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-yellow-500/40"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -508,7 +579,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         className={cn(
           "group relative flex w-full items-start gap-0 border-b border-neutral-100 text-left transition-all duration-150 dark:border-neutral-900",
           isSelected
-            ? "bg-gradient-to-r from-orange-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-orange-500 dark:from-orange-950/30 dark:to-amber-950/30 dark:before:bg-orange-400"
+            ? "bg-gradient-to-r from-yellow-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-yellow-500 dark:from-yellow-950/30 dark:to-yellow-950/30 dark:before:bg-yellow-400"
             : isUnread && !isSelected
               ? "bg-white hover:bg-neutral-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
               : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
@@ -547,7 +618,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-semibold transition-all duration-150",
               isSelected
-                ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30"
+                ? "bg-gradient-to-br from-yellow-600 to-yellow-400 text-white shadow-lg shadow-yellow-500/30"
                 : isUnread
                   ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
                   : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
@@ -571,7 +642,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
                     {fromName}
                   </span>
                   {isUnread && !isSelected && (
-                    <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500 dark:bg-orange-400" />
+                    <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-500 dark:bg-yellow-400" />
                   )}
                 </div>
                 <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -605,7 +676,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
                 {isImportant && (
-                  <Star className="h-3.5 w-3.5 fill-orange-500 text-orange-500 dark:fill-orange-400 dark:text-orange-400" />
+                  <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500 dark:fill-yellow-400 dark:text-yellow-400" />
                 )}
                 <span className="whitespace-nowrap text-[11px] font-medium text-neutral-500 dark:text-neutral-500">
                   {formatDistanceToNow(date, { addSuffix: false })}
@@ -660,7 +731,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     if (refreshingAfterSync) {
       return (
         <div className="flex h-64 flex-col items-center justify-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-800 dark:border-t-yellow-400" />
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Refreshing inbox…
           </p>
@@ -668,11 +739,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       );
     }
     if (isFetching && threadsToRender.length === 0) {
-      return (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
-        </div>
-      );
+      return <ThreadListSkeleton />;
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
@@ -689,7 +756,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
           {isSyncingInbox ? (
             <>
-              <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-700 dark:border-t-orange-400" />
+              <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-700 dark:border-t-yellow-400" />
               <p className="text-[13px] font-medium text-neutral-600 dark:text-neutral-300">
                 Syncing…
               </p>
@@ -790,7 +857,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         ))}
         {isFetchingNextPage && (
           <div className="flex justify-center py-8">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-800 dark:border-t-yellow-400" />
           </div>
         )}
       </div>

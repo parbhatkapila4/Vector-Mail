@@ -98,9 +98,9 @@ export function Testimonials() {
     <section className="relative py-32">
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-20 text-center">
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-5 py-2">
-            <Cpu className="h-4 w-4 text-amber-400" />
-            <span className="text-sm font-medium text-amber-300">
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-5 py-2">
+            <Cpu className="h-4 w-4 text-yellow-400" />
+            <span className="text-sm font-medium text-yellow-300">
               Under The Hood
             </span>
           </div>
@@ -108,7 +108,7 @@ export function Testimonials() {
           <h2 className="mb-6 text-5xl font-bold tracking-tight md:text-6xl lg:text-7xl">
             <span className="text-white">Built with</span>
             <br />
-            <span className="bg-gradient-to-r from-amber-200 via-orange-300 to-amber-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-amber-200 via-yellow-400 to-yellow-300 bg-clip-text text-transparent">
               production-grade tech
             </span>
           </h2>
@@ -122,7 +122,7 @@ export function Testimonials() {
         <div className="mb-20 flex flex-wrap items-center justify-center gap-3">
           {stack.map((tech, i) => (
             <div key={i} className="group relative">
-              <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 opacity-0 blur transition-opacity group-hover:opacity-100" />
+              <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-yellow-500/20 to-amber-500/20 opacity-0 blur transition-opacity group-hover:opacity-100" />
               <div className="relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/[0.06]">
                 <span className="text-sm font-medium text-white">
                   {tech.name}
@@ -177,7 +177,7 @@ export function Testimonials() {
         </div>
 
         <div className="relative mt-16">
-          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-amber-500/30 via-orange-500/30 to-violet-500/30 opacity-50 blur-2xl" />
+          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-yellow-500/30 via-yellow-500/30 to-violet-500/30 opacity-50 blur-2xl" />
 
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-white/[0.05] to-transparent p-10 backdrop-blur-xl">
             <div className="absolute inset-0 opacity-10">
@@ -192,8 +192,8 @@ export function Testimonials() {
             <div className="relative flex flex-col items-center justify-between gap-8 lg:flex-row">
               <div className="text-center lg:text-left">
                 <div className="mb-4 flex items-center justify-center gap-3 lg:justify-start">
-                  <GitBranch className="h-6 w-6 text-amber-400" />
-                  <span className="text-sm font-medium uppercase tracking-wider text-amber-300">
+                  <GitBranch className="h-6 w-6 text-yellow-400" />
+                  <span className="text-sm font-medium uppercase tracking-wider text-yellow-300">
                     Architecture
                   </span>
                 </div>
@@ -251,7 +251,7 @@ export function Testimonials() {
               key={i}
               className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-center"
             >
-              <div className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-4xl font-bold text-transparent md:text-5xl">
+              <div className="bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-4xl font-bold text-transparent md:text-5xl">
                 {stat.value}
               </div>
               <div className="mt-2 text-sm font-medium text-white">

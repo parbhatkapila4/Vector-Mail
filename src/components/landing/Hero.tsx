@@ -12,9 +12,9 @@ export function Hero() {
     <section className="relative min-h-screen">
       <div className="relative mx-auto max-w-[1400px] px-8 pb-24 pt-32">
         <div className="mb-8 flex justify-center">
-          <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-            <span className="text-[13px] font-medium text-amber-200/90">
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-4 py-2">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
+            <span className="text-[13px] font-medium text-yellow-200/90">
               Introducing VectorMail 2.0
             </span>
           </div>
@@ -30,7 +30,7 @@ export function Hero() {
             Email that works
             <br />
             <span className="relative">
-              <span className="bg-gradient-to-r from-amber-300 via-orange-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-300 via-yellow-400 to-yellow-300 bg-clip-text text-transparent">
                 for you
               </span>
               <svg
@@ -53,8 +53,8 @@ export function Hero() {
                     x2="200"
                     y2="0"
                   >
-                    <stop offset="0%" stopColor="#fcd34d" />
-                    <stop offset="100%" stopColor="#f97316" />
+                    <stop offset="0%" stopColor="#fde047" />
+                    <stop offset="100%" stopColor="#eab308" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -78,7 +78,7 @@ export function Hero() {
         </div>
 
         <div className="relative mt-20">
-          <div className="absolute -inset-4 rounded-[40px] bg-gradient-to-b from-amber-500/20 via-transparent to-violet-500/10 opacity-40 blur-3xl" />
+          <div className="absolute -inset-4 rounded-[40px] bg-gradient-to-b from-yellow-500/20 via-transparent to-violet-500/10 opacity-40 blur-3xl" />
 
           <div className="relative rounded-[32px] border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-transparent p-[1px] backdrop-blur-xl">
             <div className="overflow-hidden rounded-[31px] bg-[#0C0C0D]">
@@ -124,9 +124,9 @@ export function Hero() {
 
               <div className="flex">
                 <div className="hidden w-[240px] border-r border-white/[0.06] bg-[#0A0A0A] p-4 lg:block">
-                  <div className="mb-3 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-orange-500/5 px-3 py-2.5">
+                  <div className="mb-3 flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-gradient-to-r from-yellow-500/10 to-amber-500/5 px-3 py-2.5">
                     <svg
-                      className="h-4 w-4 text-amber-400"
+                      className="h-4 w-4 text-yellow-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -138,7 +138,7 @@ export function Hero() {
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
-                    <span className="text-[13px] font-medium text-amber-300/90">
+                    <span className="text-[13px] font-medium text-yellow-300/90">
                       AI Search
                     </span>
                   </div>
@@ -204,10 +204,10 @@ export function Hero() {
                 <div className="min-h-[480px] flex-1">
                   <div className="border-b border-white/[0.06] p-4">
                     <div className="relative">
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
-                      <div className="relative flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/[0.08] to-orange-500/[0.04] px-5 py-4">
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-500/20 to-amber-500/20 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
+                      <div className="relative flex items-center gap-3 rounded-2xl border border-yellow-500/20 bg-gradient-to-r from-yellow-500/[0.08] to-yellow-500/[0.04] px-5 py-4">
                         <svg
-                          className="h-5 w-5 text-amber-400"
+                          className="h-5 w-5 text-yellow-400"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -223,9 +223,9 @@ export function Hero() {
                           &ldquo;Show me all emails from Sarah about the Q3
                           budget&rdquo;
                         </span>
-                        <div className="flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-1">
-                          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-                          <span className="font-mono text-[12px] font-medium text-amber-300">
+                        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/20 px-3 py-1">
+                          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-yellow-400" />
+                          <span className="font-mono text-[12px] font-medium text-yellow-300">
                             47ms
                           </span>
                         </div>
@@ -245,8 +245,8 @@ export function Hero() {
 
                     <div className="space-y-2">
                       <div className="group relative">
-                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                        <div className="relative flex items-center gap-4 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/[0.06] to-transparent p-4 transition-colors hover:border-amber-500/30">
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-500/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                        <div className="relative flex items-center gap-4 rounded-2xl border border-yellow-500/20 bg-gradient-to-r from-yellow-500/[0.06] to-transparent p-4 transition-colors hover:border-yellow-500/30">
                           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-[14px] font-semibold text-white">
                             SC
                           </div>
@@ -255,7 +255,7 @@ export function Hero() {
                               <span className="text-[14px] font-semibold text-white">
                                 Q3 Budget Contract - Final Version
                               </span>
-                              <span className="rounded-full border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                              <span className="rounded-full border border-yellow-500/30 bg-yellow-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-yellow-300">
                                 Best Match
                               </span>
                             </div>
@@ -265,7 +265,7 @@ export function Hero() {
                             </p>
                           </div>
                           <div className="flex-shrink-0 text-right">
-                            <div className="text-[28px] font-bold leading-none text-amber-400">
+                            <div className="text-[28px] font-bold leading-none text-yellow-400">
                               98%
                             </div>
                             <div className="mt-0.5 text-[11px] text-zinc-500">
@@ -349,7 +349,7 @@ export function Hero() {
                   <div className="mb-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
                     <p className="text-[13px] leading-relaxed text-zinc-300">
                       Sarah sent the{" "}
-                      <span className="font-medium text-amber-400">
+                      <span className="font-medium text-yellow-400">
                         final Q3 budget contract
                       </span>{" "}
                       on Oct 15. Key points:

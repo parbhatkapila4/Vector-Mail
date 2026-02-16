@@ -280,7 +280,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
     editorProps: {
       attributes: {
         placeholder: "Write your email here...",
-        class: "prose prose-sm focus:outline-none min-h-full",
+        class: "pyellow pyellow-sm focus:outline-none min-h-full",
       },
       handleDOMEvents: {
         mousedown: (view) => {
@@ -378,7 +378,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             className="cursor-pointer"
             onClick={() => setExpanded((e) => !e)}
           >
-            <span className="font-medium text-green-600">Draft </span>
+            <span className="font-medium text-amber-600">Draft </span>
             <span>to {to.length > 0 ? to.join(", ") : "..."}</span>
           </div>
           <AIComposeButton
@@ -404,7 +404,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
           }}
         >
           <EditorContent
-            className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:cursor-text [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none [&_.ProseMirror]:focus:outline-none"
+            className="pyellow pyellow-sm h-full w-full max-w-none border-none focus:outline-none [&_.PyellowMirror]:h-full [&_.PyellowMirror]:min-h-full [&_.PyellowMirror]:cursor-text [&_.PyellowMirror]:p-0 [&_.PyellowMirror]:outline-none [&_.PyellowMirror]:focus:outline-none"
             editor={editor}
             placeholder={
               isGenerating
@@ -466,7 +466,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             onClick={handleGenerateClick}
             disabled={isGenerating || isSending}
             variant="outline"
-            className="h-11 flex-1 border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:from-orange-700 hover:via-amber-700 hover:to-yellow-600 disabled:opacity-50"
+            className="h-11 flex-1 border-yellow-500/30 bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white hover:from-yellow-700 hover:via-yellow-700 hover:to-amber-600 disabled:opacity-50"
           >
             <Sparkles className="mr-2 h-4 w-4" />
             {isGenerating ? "Generating..." : "Generate"}

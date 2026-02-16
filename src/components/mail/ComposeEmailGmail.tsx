@@ -657,7 +657,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         <Button
           variant="outline"
           disabled={isButtonDisabled}
-          className="border-orange-500/30 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white transition-all hover:shadow-lg hover:shadow-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="border-yellow-500/30 bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white transition-all hover:shadow-lg hover:shadow-yellow-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Pencil className="mr-2 size-4 text-white" />
           Compose
@@ -683,7 +683,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               value={to}
               onChange={(e) => setTo(e.target.value)}
               disabled={isSending}
-              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 md:h-10 md:text-sm"
+              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-yellow-500 focus:ring-yellow-500 md:h-10 md:text-sm"
             />
           </div>
 
@@ -700,7 +700,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               disabled={isSending}
-              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 md:h-10 md:text-sm"
+              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-yellow-500 focus:ring-yellow-500 md:h-10 md:text-sm"
             />
           </div>
 
@@ -778,7 +778,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                     }
                   }
                 }}
-                className="min-h-[250px] w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-base text-white ring-offset-background [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-gray-400 focus-visible:border-orange-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[200px] md:px-3 md:py-2 md:text-sm [&::-webkit-scrollbar]:hidden [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
+                className="min-h-[250px] w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-base text-white ring-offset-background [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-gray-400 focus-visible:border-yellow-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[200px] md:px-3 md:py-2 md:text-sm [&::-webkit-scrollbar]:hidden [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
                 style={{
                   whiteSpace: "pre-wrap",
                   wordWrap: "break-word",
@@ -801,9 +801,9 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md border border-input bg-background/80 backdrop-blur-sm">
                   <div className="flex flex-col items-center gap-3">
                     <div className="relative">
-                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500"></div>
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-200 border-t-yellow-500"></div>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="h-5 w-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-600"></div>
+                        <div className="h-5 w-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600"></div>
                       </div>
                     </div>
                     <div className="text-center">
@@ -813,9 +813,9 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                           : "AI is crafting your email..."}
                       </p>
                       <div className="mt-1.5 flex items-center justify-center gap-1">
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.3s]"></span>
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.15s]"></span>
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500"></span>
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.3s]"></span>
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.15s]"></span>
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500"></span>
                       </div>
                     </div>
                   </div>
@@ -845,7 +845,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                     key={index}
                     className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm md:gap-2 md:rounded-md md:bg-muted/50 md:px-3 md:py-2"
                   >
-                    <Paperclip className="size-5 text-green-500 md:size-4 md:text-muted-foreground" />
+                    <Paperclip className="size-5 text-amber-500 md:size-4 md:text-muted-foreground" />
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm font-medium text-white md:text-foreground">
                         {file.name}
@@ -897,7 +897,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
               onClick={() => fileInputRef.current?.click()}
             >
-              <Paperclip className="size-4 text-green-500" />
+              <Paperclip className="size-4 text-amber-500" />
               <span className="text-sm font-medium md:text-xs">
                 Attach Files
               </span>
@@ -1277,7 +1277,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 checked={trackOpens}
                 onCheckedChange={(c) => setTrackOpens(c === true)}
                 disabled={isSending || isGenerating}
-                className="mt-0.5 border-white/30 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
               />
               <span className="text-zinc-300">
                 Track when this email is opened
@@ -1306,7 +1306,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             <Button
               onClick={handleAIGenerate}
               disabled={isSending || isGenerating}
-              className="h-12 w-full bg-gradient-to-r from-purple-600 via-purple-400 to-amber-400 text-base font-semibold text-white shadow-lg shadow-purple-500/30 transition-all duration-200 hover:from-purple-700 hover:via-purple-500 hover:to-amber-500 hover:shadow-xl hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:hidden"
+              className="h-12 w-full bg-gradient-to-r from-purple-600 via-purple-400 to-yellow-400 text-base font-semibold text-white shadow-lg shadow-purple-500/30 transition-all duration-200 hover:from-purple-700 hover:via-purple-500 hover:to-yellow-500 hover:shadow-xl hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:hidden"
             >
               {isGenerating ? (
                 <span className="flex items-center justify-center gap-2">
@@ -1327,7 +1327,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                   variant="outline"
                   size="sm"
                   disabled={isSending || isGenerating}
-                  className="h-12 shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/20 md:h-10"
+                  className="h-12 shrink-0 border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:border-yellow-500/60 hover:bg-yellow-500/20 md:h-10"
                 >
                   <Clock className="mr-2 h-4 w-4" />
                   <span className="md:hidden">Schedule</span>
@@ -1370,7 +1370,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                     disabled={
                       scheduleSendMutation.isPending || !authLoaded || !userId
                     }
-                    className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
+                    className="w-full py-2.5 bg-yellow-500 font-medium text-black hover:bg-yellow-600"
                   >
                     {!authLoaded || !userId
                       ? "Loading..."
@@ -1384,7 +1384,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             <Button
               onClick={handleSend}
               disabled={isSending || isGenerating}
-              className="h-12 w-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-base font-semibold text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:h-10 md:w-auto md:flex-initial md:text-sm"
+              className="h-12 w-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-base font-semibold text-white shadow-lg shadow-yellow-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-yellow-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:h-10 md:w-auto md:flex-initial md:text-sm"
             >
               {isSending ? (
                 <span className="flex items-center justify-center gap-2">

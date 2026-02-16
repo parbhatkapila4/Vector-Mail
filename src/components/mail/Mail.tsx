@@ -190,9 +190,9 @@ export function Mail({ }: MailLayoutProps) {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm dark:bg-black/80">
               <div className="flex flex-col items-center gap-4 rounded-2xl bg-white/95 p-8 shadow-2xl dark:bg-neutral-900/95">
                 <div className="relative">
-                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500 dark:border-orange-800 dark:border-t-orange-400"></div>
+                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-yellow-200 border-t-yellow-500 dark:border-yellow-800 dark:border-t-yellow-400"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 dark:from-orange-500 dark:to-orange-700"></div>
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700"></div>
                   </div>
                 </div>
                 <div className="text-center">
@@ -200,9 +200,9 @@ export function Mail({ }: MailLayoutProps) {
                     Loading...
                   </p>
                   <div className="mt-2 flex items-center justify-center gap-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.3s]"></span>
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500 [animation-delay:-0.15s]"></span>
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-orange-500"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.3s]"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.15s]"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500"></span>
                   </div>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export function Mail({ }: MailLayoutProps) {
         <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-neutral-200/50 bg-white/40 px-8 backdrop-blur-2xl dark:border-neutral-800/30 dark:bg-black/40">
           <div className="flex items-center gap-10">
             <Link href="/" className="group flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 shadow-lg shadow-orange-500/20 ring-1 ring-orange-500/20 transition-transform group-hover:scale-105">
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-yellow-600 via-yellow-500 to-amber-400 shadow-lg shadow-yellow-500/20 ring-1 ring-yellow-500/20 transition-transform group-hover:scale-105">
                 <video
                   src="/Vectormail-logo.mp4"
                   autoPlay
@@ -272,7 +272,7 @@ export function Mail({ }: MailLayoutProps) {
                   className={cn(
                     "relative flex items-center gap-2.5 rounded-xl px-5 py-2 text-[13px] font-semibold transition-all duration-200",
                     tab === item.id
-                      ? "bg-gradient-to-r from-orange-50 to-amber-50 text-orange-600 shadow-sm shadow-orange-500/5 dark:from-orange-950/30 dark:to-amber-950/30 dark:text-orange-400"
+                      ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 shadow-sm shadow-yellow-500/5 dark:from-yellow-950/30 dark:to-yellow-950/30 dark:text-yellow-400"
                       : "text-neutral-600 hover:bg-neutral-100/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900/50 dark:hover:text-neutral-200",
                   )}
                 >
@@ -283,7 +283,7 @@ export function Mail({ }: MailLayoutProps) {
                       className={cn(
                         "rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none",
                         tab === item.id
-                          ? "bg-orange-500 text-white dark:bg-orange-400 dark:text-orange-950"
+                          ? "bg-yellow-500 text-white dark:bg-yellow-400 dark:text-yellow-950"
                           : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
                       )}
                     >
@@ -320,7 +320,7 @@ export function Mail({ }: MailLayoutProps) {
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200",
                     showAIPanel
-                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30"
+                      ? "bg-gradient-to-r from-yellow-600 to-yellow-400 text-white shadow-lg shadow-yellow-500/30"
                       : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200",
                   )}
                 >
@@ -371,7 +371,7 @@ export function Mail({ }: MailLayoutProps) {
             </ResizablePanel>
             <ResizableHandle
               withHandle
-              className="bg-neutral-200/80 hover:bg-orange-500/30 dark:bg-neutral-700/80 dark:hover:bg-orange-500/30"
+              className="bg-neutral-200/80 hover:bg-yellow-500/30 dark:bg-neutral-700/80 dark:hover:bg-yellow-500/30"
             />
             <ResizablePanel defaultSize={72} minSize={30} className="min-w-0">
               <main
@@ -394,7 +394,7 @@ export function Mail({ }: MailLayoutProps) {
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b border-neutral-200/50 px-6 py-4 dark:border-neutral-800/30">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-600 to-yellow-400 shadow-lg shadow-yellow-500/30">
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <span className="text-[14px] font-bold text-neutral-900 dark:text-white">
@@ -454,7 +454,7 @@ function MobileSidebar({
         href="/"
         className="flex items-center gap-3 border-b border-neutral-200 p-5 dark:border-neutral-800"
       >
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 shadow-lg shadow-orange-500/20 ring-1 ring-orange-500/20">
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-yellow-600 via-yellow-500 to-amber-400 shadow-lg shadow-yellow-500/20 ring-1 ring-yellow-500/20">
           <video
             src="/Vectormail-logo.mp4"
             autoPlay
@@ -494,7 +494,7 @@ function MobileSidebar({
             className={cn(
               "flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
               tab === item.id
-                ? "bg-gradient-to-r from-orange-50 to-amber-50 text-orange-600 shadow-sm dark:from-orange-950/30 dark:to-amber-950/30 dark:text-orange-400"
+                ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 shadow-sm dark:from-yellow-950/30 dark:to-yellow-950/30 dark:text-yellow-400"
                 : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200",
             )}
           >
@@ -507,7 +507,7 @@ function MobileSidebar({
                 className={cn(
                   "rounded-md px-2 py-0.5 text-[11px] font-bold",
                   tab === item.id
-                    ? "bg-orange-500 text-white dark:bg-orange-400 dark:text-orange-950"
+                    ? "bg-yellow-500 text-white dark:bg-yellow-400 dark:text-yellow-950"
                     : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
                 )}
               >
@@ -546,7 +546,7 @@ function MobileSidebar({
               router.push("/buddy?fresh=true");
             }
           }}
-          className="group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-400 p-5 text-left shadow-lg shadow-orange-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/40 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+          className="group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-yellow-600 via-yellow-500 to-amber-400 p-5 text-left shadow-lg shadow-yellow-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-yellow-500/40 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
         >
           <div className="relative z-10 flex flex-col">
             <div className="mb-4 flex items-center gap-2">

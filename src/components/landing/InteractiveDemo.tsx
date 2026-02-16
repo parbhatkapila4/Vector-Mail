@@ -19,7 +19,7 @@ const demoFeatures = [
     icon: Zap,
     title: "Lightning Fast",
     description: "Process emails in milliseconds",
-    color: "from-orange-500 to-red-500",
+    color: "from-yellow-500 to-red-500",
     metric: "< 100ms",
     label: "Response Time",
   },

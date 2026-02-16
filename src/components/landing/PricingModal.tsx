@@ -48,7 +48,6 @@ const pricingPlans = [
       "Priority email detection",
       "Custom email templates",
       "Advanced search & filters",
-      "Email analytics dashboard",
       "50GB storage",
       "Priority support (24-48hr)",
       "API access",
@@ -65,7 +64,7 @@ const pricingPlans = [
     description:
       "For large teams and organizations requiring enterprise-grade features",
     icon: Crown,
-    color: "from-amber-500 to-orange-500",
+    color: "from-yellow-600 to-yellow-400",
     features: [
       "Everything in Professional",
       "Unlimited storage",
@@ -75,7 +74,6 @@ const pricingPlans = [
       "White-label options",
       "Dedicated account manager",
       "Custom integrations",
-      "Advanced analytics & reporting",
       "SLA guarantee (99.9% uptime)",
       "24/7 phone support",
       "On-premise deployment option",
@@ -155,7 +153,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
             className="fixed inset-x-4 inset-y-4 z-[95] overflow-hidden sm:inset-x-8 md:inset-x-12 md:inset-y-8 lg:inset-x-20 lg:inset-y-16 xl:inset-x-32 xl:inset-y-20"
           >
             <div className="relative h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
-              
+
               <div className="relative border-b border-gray-200 bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 p-6">
                 <div className="pr-16 text-center">
                   <motion.div
@@ -207,7 +205,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                   }
                 `}</style>
                 <div className="p-8 pb-24">
-                  
+
                   <div className="mb-16">
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                       {pricingPlans.map((plan, index) => (
@@ -216,11 +214,10 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: index * 0.1 }}
-                          className={`relative flex flex-col rounded-2xl border-2 bg-white p-8 transition-all duration-300 hover:shadow-2xl ${
-                            plan.popular
+                          className={`relative flex flex-col rounded-2xl border-2 bg-white p-8 transition-all duration-300 hover:shadow-2xl ${plan.popular
                               ? "scale-105 border-purple-500 shadow-xl"
                               : "border-gray-200 hover:border-gray-300"
-                          }`}
+                            }`}
                         >
                           {plan.badge && (
                             <div className="absolute -top-4 left-1/2 -translate-x-1/2 transform">
@@ -295,13 +292,12 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                             <Link href={isSignedIn ? "/mail" : "/sign-up"}>
                               <button
                                 onClick={() => setSelectedPlan(plan.name)}
-                                className={`w-full rounded-xl px-6 py-3 font-semibold transition-all duration-300 ${
-                                  plan.popular
+                                className={`w-full rounded-xl px-6 py-3 font-semibold transition-all duration-300 ${plan.popular
                                     ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
                                     : plan.name === "Starter"
                                       ? "border-2 border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
                                       : "bg-black text-white hover:bg-gray-800"
-                                }`}
+                                  }`}
                               >
                                 {plan.name === "Starter"
                                   ? "Get Started Free"
@@ -314,7 +310,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     </div>
                   </div>
 
-                  
+
                   <div className="mb-16">
                     <div className="mb-10 text-center">
                       <h3 className="mb-2 text-2xl font-bold text-gray-900">
@@ -384,7 +380,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                     </div>
                   </div>
 
-                  
+
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

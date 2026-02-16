@@ -64,7 +64,6 @@ export default function PricingPage() {
         "Custom Automation Rules",
         "Multi-Account Support (up to 5)",
         "Priority Email Support",
-        "Advanced Analytics Dashboard",
         "Custom Email Categories",
       ],
       cta: "Get Started",
@@ -144,16 +143,16 @@ export default function PricingPage() {
               >
                 <div
                   className={`absolute -inset-1 rounded-2xl transition-opacity duration-300 ${plan.isPopular
-                      ? "bg-gradient-to-r from-orange-600/20 via-amber-600/20 to-yellow-500/20 opacity-60 blur-xl group-hover:opacity-80"
-                      : "opacity-0"
+                    ? "bg-gradient-to-r from-yellow-700/20 via-yellow-500/20 to-amber-400/20 opacity-60 blur-xl group-hover:opacity-80"
+                    : "opacity-0"
                     }`}
                   style={{ willChange: "opacity" }}
                 />
 
                 <div
                   className={`relative flex h-full flex-col rounded-2xl border bg-[#0a0a0a] p-8 transition-all duration-300 ${plan.isPopular
-                      ? "border-orange-500/50 shadow-2xl shadow-orange-500/20"
-                      : "border-slate-800 hover:border-slate-700"
+                    ? "border-yellow-500/50 shadow-2xl shadow-yellow-500/20"
+                    : "border-slate-800 hover:border-slate-700"
                     } group-hover:-translate-y-2`}
                   style={{ willChange: "transform, border-color" }}
                 >
@@ -164,7 +163,7 @@ export default function PricingPage() {
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.8, duration: 0.4 }}
                     >
-                      <div className="rounded-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 px-4 py-1 text-xs font-bold text-white shadow-lg shadow-orange-500/50">
+                      <div className="rounded-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 px-4 py-1 text-xs font-bold text-white shadow-lg shadow-yellow-500/50">
                         MOST POPULAR
                       </div>
                     </motion.div>
@@ -172,8 +171,8 @@ export default function PricingPage() {
 
                   <div
                     className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-110 sm:mx-0 ${plan.isPopular
-                        ? "bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500"
-                        : "bg-slate-900/50"
+                      ? "bg-gradient-to-br from-yellow-700 via-yellow-500 to-amber-400"
+                      : "bg-slate-900/50"
                       }`}
                   >
                     <plan.icon className="h-7 w-7 text-white" />
@@ -190,7 +189,7 @@ export default function PricingPage() {
                   <div className="mb-8">
                     {plan.discount && (
                       <div className="mb-2 flex items-center justify-center gap-2 sm:justify-start">
-                        <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-bold text-green-400">
+                        <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-400">
                           {plan.discount} OFF
                         </span>
                       </div>
@@ -218,12 +217,12 @@ export default function PricingPage() {
                       >
                         <div
                           className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${plan.isPopular
-                              ? "border border-orange-500/50 bg-gradient-to-br from-orange-500/30 to-amber-500/30"
-                              : "bg-slate-800"
+                            ? "border border-yellow-500/50 bg-gradient-to-br from-yellow-600/30 to-amber-400/30"
+                            : "bg-slate-800"
                             }`}
                         >
                           <CheckCircle
-                            className={`h-3 w-3 ${plan.isPopular ? "text-orange-400" : "text-white"}`}
+                            className={`h-3 w-3 ${plan.isPopular ? "text-yellow-400" : "text-white"}`}
                           />
                         </div>
                         <span className="text-center text-sm font-medium text-white sm:text-left">
@@ -237,8 +236,8 @@ export default function PricingPage() {
                     <Link href={plan.ctaLink}>
                       <button
                         className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${plan.isPopular
-                            ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
-                            : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
+                          ? "bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white hover:shadow-lg hover:shadow-yellow-500/50"
+                          : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
                           }`}
                         style={{ willChange: "transform" }}
                       >
@@ -249,8 +248,8 @@ export default function PricingPage() {
                     <button
                       onClick={handleProCheckout}
                       className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${plan.isPopular
-                          ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
-                          : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
+                        ? "bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white hover:shadow-lg hover:shadow-yellow-500/50"
+                        : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
                         }`}
                       style={{ willChange: "transform" }}
                     >
@@ -260,8 +259,8 @@ export default function PricingPage() {
                     <button
                       onClick={handleEnterpriseCheckout}
                       className={`active:scale-98 w-full rounded-lg py-3 text-sm font-semibold transition-all duration-200 hover:scale-105 ${plan.isPopular
-                          ? "bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/50"
-                          : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
+                        ? "bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white hover:shadow-lg hover:shadow-yellow-500/50"
+                        : "border border-slate-800 bg-slate-900/50 text-white hover:border-slate-700 hover:bg-slate-800/50"
                         }`}
                       style={{ willChange: "transform" }}
                     >

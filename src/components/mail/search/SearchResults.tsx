@@ -2,7 +2,12 @@
 import React from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { searchResultsAtom, searchValueAtom, type SearchResult } from "./SearchBar";
+import {
+  searchResultsAtom,
+  searchValueAtom,
+  isSearchingAPIAtom,
+  type SearchResult,
+} from "./SearchBar";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -13,8 +18,47 @@ export function SearchResults({
 }) {
   const [searchResults] = useAtom(searchResultsAtom);
   const [searchValue] = useAtom(searchValueAtom);
+  const [isSearchingAPI] = useAtom(isSearchingAPIAtom);
 
-  if (!searchValue.trim() || searchResults.length === 0) {
+  if (!searchValue.trim()) {
+    return null;
+  }
+
+  const showLoading = searchValue.trim().length > 0 && isSearchingAPI;
+
+  if (showLoading) {
+    return (
+      <div className="border-t border-slate-800 bg-[#0a0a0a] dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-800 dark:border-t-orange-400" />
+            <span className="text-sm font-medium text-slate-400 dark:text-neutral-500">
+              Searching…
+            </span>
+          </div>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex w-full items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/30 p-3 dark:border-neutral-800 dark:bg-neutral-800/30"
+              >
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-24 rounded bg-neutral-200 animate-pulse dark:bg-neutral-700" />
+                    <div className="h-3 w-12 rounded bg-neutral-200 animate-pulse dark:bg-neutral-700" />
+                  </div>
+                  <div className="h-3.5 w-[85%] rounded bg-neutral-200 animate-pulse dark:bg-neutral-700" />
+                  <div className="h-3 w-[60%] rounded bg-neutral-200 animate-pulse dark:bg-neutral-700" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (searchResults.length === 0) {
     return null;
   }
 
@@ -58,7 +102,7 @@ export function SearchResults({
                   )}
                 </div>
                 {result.matchType === "semantic" && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 shrink-0">
+                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0">
                     AI
                   </span>
                 )}

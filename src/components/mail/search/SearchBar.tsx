@@ -110,7 +110,7 @@ const SearchBar = () => {
         ref={ref}
         id="mail-search-input"
         placeholder="Search conversations..."
-        className="h-10 rounded-xl border-neutral-200/60 bg-neutral-50/50 pl-10 pr-9 text-[13px] font-medium text-neutral-900 backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-orange-500/50 focus:bg-white focus-visible:ring-2 focus-visible:ring-orange-500/20 dark:border-neutral-800/60 dark:bg-neutral-950/50 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:border-orange-400/50 dark:focus:bg-neutral-900 dark:focus-visible:ring-orange-400/20"
+        className="h-10 rounded-xl border-neutral-200/60 bg-neutral-50/50 pl-10 pr-9 text-[13px] font-medium text-neutral-900 backdrop-blur-sm transition-all placeholder:text-neutral-400 focus:border-yellow-500/50 focus:bg-white focus-visible:ring-2 focus-visible:ring-yellow-500/20 dark:border-neutral-800/60 dark:bg-neutral-950/50 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:border-yellow-400/50 dark:focus:bg-neutral-900 dark:focus-visible:ring-yellow-400/20"
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         onFocus={() => setIsSearching(true)}

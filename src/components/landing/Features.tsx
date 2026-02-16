@@ -59,7 +59,7 @@ export function Features() {
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="mb-16 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/50 px-4 py-1.5">
-            <Play className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            <Play className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
             <span className="text-sm text-zinc-400">See it in action</span>
           </div>
 
@@ -74,7 +74,7 @@ export function Features() {
         </div>
 
         <div className="relative mx-auto max-w-4xl">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-500/20 opacity-50 blur-xl" />
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-yellow-500/20 via-amber-500/10 to-yellow-500/20 opacity-50 blur-xl" />
 
           <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
             <div className="relative aspect-video bg-black">
@@ -106,7 +106,7 @@ export function Features() {
                 onClick={handleProgressClick}
               >
                 <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all"
+                  className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -181,7 +181,7 @@ export function Features() {
               }}
               className="group rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-800/50"
             >
-              <div className="mb-1 font-mono text-sm text-amber-400">
+              <div className="mb-1 font-mono text-sm text-yellow-400">
                 {chapter.time}
               </div>
               <div className="text-sm text-zinc-400 transition-colors group-hover:text-zinc-300">

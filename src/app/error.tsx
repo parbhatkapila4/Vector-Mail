@@ -17,7 +17,7 @@ export default function Error({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black p-4">
-      <div className="w-full max-w-md rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-amber-900/20 p-8 text-center">
+      <div className="w-full max-w-md rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-yellow-900/20 p-8 text-center">
         <div className="mb-6 flex justify-center">
           <div className="rounded-full bg-red-500/20 p-4">
             <AlertCircle className="h-12 w-12 text-red-400" />

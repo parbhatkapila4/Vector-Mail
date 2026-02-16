@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { SnoozeMenu } from "./SnoozeMenu";
 import { RemindMenu } from "./RemindMenu";
 import { useLocalStorage } from "usehooks-ts";
+import { ThreadViewSkeleton } from "./ThreadViewSkeleton";
 
 type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -44,7 +45,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
       currentTab === "snoozed" ||
       currentTab === "reminders");
 
-  const { data: foundThread } = api.account.getThreadById.useQuery(
+  const { data: foundThread, isFetching: isLoadingThread } = api.account.getThreadById.useQuery(
     { threadId: threadId ?? "" },
     {
       enabled: !!!_thread && !!threadId && threadId.length > 0,
@@ -55,6 +56,10 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
   const thread = (_thread ?? foundThread) as Thread | undefined;
 
   if (isSearching) return null;
+
+  if (threadId && !_thread && isLoadingThread) {
+    return <ThreadViewSkeleton />;
+  }
 
   if (!thread) {
     return (
@@ -155,7 +160,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
             <div className="flex items-center gap-4">
               <Avatar className="h-11 w-11 border border-[#e0e0e0] dark:border-[#1f1f1f]">
                 <AvatarImage alt={senderName} />
-                <AvatarFallback className="bg-gradient-to-br from-[#ff6b35] to-[#f7931e] text-[14px] font-semibold text-white">
+                <AvatarFallback className="bg-gradient-to-br from-[#ca8a04] to-[#eab308] text-[14px] font-semibold text-white">
                   {senderName
                     .split(" ")
                     .map((n: string) => n[0])
@@ -254,7 +259,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2 border-t border-white/[0.06] bg-[#0A0A0A] px-4 py-3 shadow-2xl shadow-black/50 md:hidden">
             <Button
               onClick={() => setReplyDialogOpen(true)}
-              className="flex-1 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white hover:from-orange-700 hover:via-amber-700 hover:to-yellow-600"
+              className="flex-1 bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white hover:from-yellow-700 hover:via-yellow-700 hover:to-amber-600"
             >
               <Reply className="mr-2 h-4 w-4" />
               Reply
@@ -274,8 +279,8 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           <div className="fixed inset-0 z-[60] flex flex-col bg-[#0A0A0A] md:hidden">
             <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-                  <Reply className="h-4 w-4 text-amber-500" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
+                  <Reply className="h-4 w-4 text-yellow-500" />
                 </div>
                 <h2 className="text-lg font-semibold text-white">Reply</h2>
               </div>

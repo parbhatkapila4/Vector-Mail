@@ -35,7 +35,7 @@ const coreFeatures = [
     title: "Smart Auto-Responses",
     description:
       "Generate intelligent, context-aware email responses in seconds with our AI writing assistant.",
-    color: "from-yellow-500 to-orange-500",
+    color: "from-yellow-500 to-amber-500",
     benefits: [
       "Matches your writing style",
       "Context-aware suggestions",
@@ -107,16 +107,16 @@ const additionalFeatures = [
   },
   {
     icon: Clock,
-    title: "Time Tracking & Analytics",
+    title: "Time Tracking & Analytics (planned)",
     description:
-      "Detailed insights into your email patterns and productivity metrics to optimize your workflow.",
+      "Planned: detailed insights into your email patterns and productivity metrics. Not yet available.",
     color: "text-purple-600",
   },
   {
     icon: TrendingUp,
-    title: "Performance Insights",
+    title: "Performance Insights (planned)",
     description:
-      "Track response times, email volume, and engagement metrics with visual dashboards.",
+      "Planned: response times, email volume, and engagement dashboards. Not yet available.",
     color: "text-green-600",
   },
   {
@@ -124,7 +124,7 @@ const additionalFeatures = [
     title: "Multi-Account Support",
     description:
       "Connect and manage multiple email accounts from one unified, intelligent interface.",
-    color: "text-orange-600",
+    color: "text-yellow-600",
   },
 ];
 

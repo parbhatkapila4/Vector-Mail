@@ -20,14 +20,14 @@ export function FeatureHighlight() {
             viewport={{ once: true }}
             className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2"
           >
-            <MessageSquare className="h-4 w-4 text-orange-400" />
+            <MessageSquare className="h-4 w-4 text-yellow-400" />
             <span className="text-sm font-medium text-slate-300">
               AI Email Assistant
             </span>
           </motion.div>
           <h2 className="mb-6 text-4xl font-black text-white sm:text-5xl md:text-6xl">
             Chat with your emails using{" "}
-            <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-yellow-400 via-yellow-400 to-yellow-400 bg-clip-text text-transparent">
               natural language
             </span>
           </h2>
@@ -52,7 +52,7 @@ export function FeatureHighlight() {
                   Recent Emails
                 </span>
               </div>
-              <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-medium text-orange-400">
+              <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-medium text-yellow-400">
                 12 unread
               </span>
             </div>
@@ -68,7 +68,7 @@ export function FeatureHighlight() {
                   unread: true,
                   priority: true,
                   avatar: "DT",
-                  color: "from-orange-500 to-amber-500",
+                  color: "from-yellow-600 to-yellow-400",
                 },
                 {
                   sender: "Finance Team",
@@ -78,7 +78,7 @@ export function FeatureHighlight() {
                   unread: false,
                   priority: false,
                   avatar: "FT",
-                  color: "from-amber-500 to-yellow-500",
+                  color: "from-yellow-500 to-amber-500",
                 },
                 {
                   sender: "Engineering",
@@ -88,7 +88,7 @@ export function FeatureHighlight() {
                   unread: true,
                   priority: true,
                   avatar: "EN",
-                  color: "from-yellow-500 to-orange-500",
+                  color: "from-yellow-500 to-amber-500",
                 },
               ].map((email, i) => (
                 <motion.div
@@ -106,7 +106,7 @@ export function FeatureHighlight() {
                     >
                       {email.avatar}
                       {email.unread && (
-                        <div className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-slate-900" />
+                        <div className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-yellow-500 ring-2 ring-slate-900" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export function FeatureHighlight() {
                           {email.sender}
                         </span>
                         {email.unread && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
                         )}
                         {email.priority && (
                           <span className="rounded bg-yellow-500/20 px-1.5 py-0.5 text-[10px] font-medium text-yellow-400">
@@ -148,7 +148,7 @@ export function FeatureHighlight() {
             className="rounded-xl border border-slate-800 bg-slate-900/50 p-6"
           >
             <div className="mb-6 flex items-center gap-3 border-b border-slate-800 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-600 to-yellow-400">
                 <Mail className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
@@ -201,7 +201,7 @@ export function FeatureHighlight() {
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-orange-600 to-amber-600"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-yellow-600 to-yellow-500"
               >
                 <Send className="h-4 w-4 text-white" />
               </motion.div>

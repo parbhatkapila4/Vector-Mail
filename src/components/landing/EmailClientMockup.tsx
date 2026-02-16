@@ -29,13 +29,13 @@ export function EmailClientMockup() {
     <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#0a0a0a] shadow-2xl">
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/30 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500 text-sm font-bold text-white shadow-lg shadow-orange-500/50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-700 via-yellow-500 to-amber-400 text-sm font-bold text-white shadow-lg shadow-yellow-500/50">
             V
           </div>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-bold text-white">
             W
           </div>
-          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-green-500/30 bg-green-500/20 text-green-400 transition-colors hover:bg-green-500/30">
+          <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/20 text-amber-400 transition-colors hover:bg-amber-500/30">
             <Plus className="h-4 w-4" />
           </button>
         </div>
@@ -53,14 +53,14 @@ export function EmailClientMockup() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/20 text-orange-400 transition-colors hover:bg-orange-500/30">
+          <button className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-yellow-500/30 bg-yellow-500/20 text-yellow-400 transition-colors hover:bg-yellow-500/30">
             <Bell className="h-4 w-4" />
             <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#0a0a0a] bg-red-500" />
           </button>
           <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/20 text-blue-400 transition-colors hover:bg-blue-500/30">
             <HelpCircle className="h-4 w-4" />
           </button>
-          <div className="h-8 w-8 rounded-full border-2 border-slate-800 bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500" />
+          <div className="h-8 w-8 rounded-full border-2 border-slate-800 bg-gradient-to-br from-yellow-700 via-yellow-500 to-amber-400" />
           <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white">
             <Settings className="h-4 w-4" />
           </button>
@@ -71,7 +71,7 @@ export function EmailClientMockup() {
         <div className="flex w-56 flex-col border-r border-slate-800 bg-slate-900/30">
           <div className="p-4">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500 font-bold text-white shadow-lg shadow-orange-500/50">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-700 via-yellow-500 to-amber-400 font-bold text-white shadow-lg shadow-yellow-500/50">
                 V
               </div>
               <div className="min-w-0 flex-1">
@@ -84,7 +84,7 @@ export function EmailClientMockup() {
               </div>
             </div>
 
-            <button className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 px-4 py-3 font-semibold text-white shadow-lg shadow-orange-500/50 transition-colors hover:opacity-90">
+            <button className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 px-4 py-3 font-semibold text-white shadow-lg shadow-yellow-500/50 transition-colors hover:opacity-90">
               <Mail className="h-4 w-4" />
               <span>New email</span>
             </button>
@@ -124,7 +124,7 @@ export function EmailClientMockup() {
           <div className="border-b border-slate-800 p-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-                <span className="h-2 w-2 rounded-full bg-orange-500" />
+                <span className="h-2 w-2 rounded-full bg-yellow-500" />
                 Inbox
               </h2>
               <button className="text-sm font-medium text-slate-400 transition-colors hover:text-white">
@@ -146,7 +146,7 @@ export function EmailClientMockup() {
             </div>
 
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/20 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-500/20">
+              <button className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/20 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-yellow-500/20">
                 <Zap className="h-4 w-4 text-yellow-400" />
                 Primary
               </button>
@@ -156,8 +156,8 @@ export function EmailClientMockup() {
               <button className="rounded-lg border border-blue-500/30 bg-blue-500/20 p-2 transition-colors hover:bg-blue-500/30">
                 <User className="h-4 w-4 text-blue-400" />
               </button>
-              <button className="rounded-lg border border-green-500/30 bg-green-500/20 p-2 transition-colors hover:bg-green-500/30">
-                <Bell className="h-4 w-4 text-green-400" />
+              <button className="rounded-lg border border-amber-500/30 bg-amber-500/20 p-2 transition-colors hover:bg-amber-500/30">
+                <Bell className="h-4 w-4 text-amber-400" />
               </button>
             </div>
           </div>
@@ -179,7 +179,7 @@ export function EmailClientMockup() {
                 subject="New AI features launched"
                 time="Mar 29"
                 count="9"
-                avatarColor="from-purple-600 via-purple-400 to-amber-400"
+                avatarColor="from-purple-600 via-purple-400 to-yellow-400"
                 badges={[
                   { icon: User, color: "text-blue-400", bg: "bg-blue-500/20" },
                   {
@@ -204,8 +204,8 @@ export function EmailClientMockup() {
                   },
                   {
                     icon: User,
-                    color: "text-amber-400",
-                    bg: "bg-amber-500/20",
+                    color: "text-yellow-400",
+                    bg: "bg-yellow-500/20",
                   },
                   {
                     icon: Bell,
@@ -219,7 +219,7 @@ export function EmailClientMockup() {
                 subject="Weekly security digest"
                 time="Mar 28"
                 count="8"
-                avatarColor="from-orange-500 to-red-500"
+                avatarColor="from-yellow-500 to-red-500"
                 badges={[
                   {
                     icon: AlertTriangle,
@@ -261,12 +261,12 @@ export function EmailClientMockup() {
                 sender="Marketing"
                 subject="Q1 campaign performance update"
                 time="Mar 29"
-                avatarColor="from-red-600 to-rose-700"
+                avatarColor="from-red-600 to-yellow-700"
                 badges={[
                   {
                     icon: Bell,
-                    color: "text-amber-400",
-                    bg: "bg-amber-500/20",
+                    color: "text-yellow-400",
+                    bg: "bg-yellow-500/20",
                   },
                 ]}
                 logo="M"
@@ -286,12 +286,12 @@ export function EmailClientMockup() {
                   </span>
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <Clock className="h-4 w-4 text-amber-500" />
+                  <Clock className="h-4 w-4 text-yellow-500" />
                   <span>March 25 - March 29</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/20 px-3 py-2 text-sm text-white transition-colors hover:bg-orange-500/30">
+                <button className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/20 px-3 py-2 text-sm text-white transition-colors hover:bg-yellow-500/30">
                   <Reply className="h-4 w-4" />
                   Reply all
                 </button>
@@ -311,10 +311,10 @@ export function EmailClientMockup() {
               {[
                 {
                   name: "David",
-                  color: "from-purple-600 via-purple-400 to-amber-400",
+                  color: "from-purple-600 via-purple-400 to-yellow-400",
                 },
                 { name: "Emma", color: "from-blue-500 to-cyan-500" },
-                { name: "Mike", color: "from-emerald-500 to-green-500" },
+                { name: "Mike", color: "from-emerald-500 to-amber-500" },
               ].map((person, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div
@@ -333,19 +333,19 @@ export function EmailClientMockup() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 shadow-lg shadow-orange-500/10"
+              className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 shadow-lg shadow-yellow-500/10"
             >
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-orange-400" />
+                  <Mail className="h-4 w-4 text-yellow-400" />
                   <span className="text-sm font-semibold text-white">
                     AI Summary
                   </span>
-                  <span className="rounded-full border border-orange-500/50 bg-orange-500/30 px-2 py-0.5 text-xs text-orange-300">
+                  <span className="rounded-full border border-yellow-500/50 bg-yellow-500/30 px-2 py-0.5 text-xs text-yellow-300">
                     New
                   </span>
                 </div>
-                <ChevronDown className="h-4 w-4 text-orange-400" />
+                <ChevronDown className="h-4 w-4 text-yellow-400" />
               </div>
               <p className="text-sm leading-relaxed text-slate-300">
                 VectorMail v2.0 product roadmap discussion. Team reviewed
@@ -373,7 +373,7 @@ export function EmailClientMockup() {
                   {
                     name: "dashboard-mockup.fig",
                     size: "21 MB",
-                    color: "from-purple-600 via-purple-400 to-amber-400",
+                    color: "from-purple-600 via-purple-400 to-yellow-400",
                   },
                   {
                     name: "product-roadmap.docx",
@@ -383,12 +383,12 @@ export function EmailClientMockup() {
                   {
                     name: "ui-screenshot.png",
                     size: "2.3 MB",
-                    color: "from-emerald-500 to-green-500",
+                    color: "from-emerald-500 to-amber-500",
                   },
                   {
                     name: "tech-specs.pdf",
                     size: "1.5 MB",
-                    color: "from-orange-500 to-red-500",
+                    color: "from-yellow-500 to-red-500",
                   },
                 ].map((file, i) => (
                   <div
@@ -414,7 +414,7 @@ export function EmailClientMockup() {
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
                 <div className="mb-3 flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-500 font-bold text-white shadow-lg shadow-orange-500/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-yellow-700 via-yellow-500 to-amber-400 font-bold text-white shadow-lg shadow-yellow-500/50">
                     D
                   </div>
                   <div className="flex-1">
@@ -438,7 +438,7 @@ export function EmailClientMockup() {
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <button className="flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-orange-500/30">
+                  <button className="flex items-center gap-1 rounded-lg border border-yellow-500/30 bg-yellow-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-yellow-500/30">
                     <Reply className="h-3 w-3" />
                     Reply
                   </button>
@@ -451,7 +451,7 @@ export function EmailClientMockup() {
 
               <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
                 <div className="mb-3 flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500 font-bold text-white shadow-lg shadow-green-500/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-emerald-500 font-bold text-white shadow-lg shadow-amber-500/50">
                     E
                   </div>
                   <div className="flex-1">
@@ -473,7 +473,7 @@ export function EmailClientMockup() {
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <button className="flex items-center gap-1 rounded-lg border border-green-500/30 bg-green-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-green-500/30">
+                  <button className="flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/20 px-3 py-1.5 text-xs text-white transition-colors hover:bg-amber-500/30">
                     <Reply className="h-3 w-3" />
                     Reply
                   </button>
@@ -505,20 +505,20 @@ function NavItem({
   color?: string;
 }) {
   const colorMap: Record<string, string> = {
-    purple: "text-orange-500",
+    purple: "text-yellow-500",
     yellow: "text-yellow-400",
     blue: "text-blue-500",
-    emerald: "text-green-500",
+    emerald: "text-amber-500",
     indigo: "text-indigo-400",
     red: "text-red-400",
     gray: "text-slate-400",
   };
 
   const bgColorMap: Record<string, string> = {
-    purple: "bg-orange-500/20 border border-orange-500/30",
+    purple: "bg-yellow-500/20 border border-yellow-500/30",
     yellow: "bg-yellow-500/20 border border-yellow-500/30",
     blue: "bg-blue-500/20 border border-blue-500/30",
-    emerald: "bg-green-500/20 border border-green-500/30",
+    emerald: "bg-amber-500/20 border border-amber-500/30",
     indigo: "bg-indigo-500/20 border border-indigo-500/30",
     red: "bg-red-500/20 border border-red-500/30",
     gray: "bg-slate-900/50 border border-slate-800",
@@ -575,7 +575,7 @@ function EmailItem({
     <div
       className={`mb-2 flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all ${
         active
-          ? "border border-orange-500/30 bg-orange-500/10 shadow-lg shadow-orange-500/10"
+          ? "border border-yellow-500/30 bg-yellow-500/10 shadow-lg shadow-yellow-500/10"
           : "border border-slate-800 bg-slate-900/50 hover:bg-slate-800"
       }`}
     >

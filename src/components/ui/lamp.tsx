@@ -45,7 +45,7 @@ export const LampContainer = ({
           style={{
             backgroundImage: `conic-gradient(var(--conic-position), var(--tw-gradient-stops))`,
           }}
-          className="bg-gradient-conic absolute inset-auto left-1/2 h-56 w-[30rem] from-transparent via-transparent to-amber-500 text-white [--conic-position:from_290deg_at_center_top]"
+          className="bg-gradient-conic absolute inset-auto left-1/2 h-56 w-[30rem] from-transparent via-transparent to-yellow-500 text-white [--conic-position:from_290deg_at_center_top]"
         >
           <div className="absolute bottom-0 right-0 z-20 h-[100%] w-40 bg-black [mask-image:linear-gradient(to_left,white,transparent)]" />
           <div className="absolute bottom-0 right-0 z-20 h-40 w-[100%] bg-black [mask-image:linear-gradient(to_top,white,transparent)]" />
@@ -61,7 +61,7 @@ export const LampContainer = ({
             duration: 0.8,
             ease: "easeInOut",
           }}
-          className="absolute inset-auto z-30 h-36 w-64 -translate-y-[6rem] rounded-full bg-amber-400 blur-2xl"
+          className="absolute inset-auto z-30 h-36 w-64 -translate-y-[6rem] rounded-full bg-yellow-400 blur-2xl"
         ></motion.div>
         <motion.div
           initial={{ width: "15rem" }}
@@ -71,7 +71,7 @@ export const LampContainer = ({
             duration: 0.8,
             ease: "easeInOut",
           }}
-          className="absolute inset-auto z-50 h-0.5 w-[30rem] -translate-y-[7rem] bg-gradient-to-r from-purple-500 via-purple-400 to-amber-400"
+          className="absolute inset-auto z-50 h-0.5 w-[30rem] -translate-y-[7rem] bg-gradient-to-r from-purple-500 via-purple-400 to-yellow-400"
         ></motion.div>
 
         <div className="absolute inset-auto z-40 h-44 w-full -translate-y-[12.5rem] bg-black"></div>

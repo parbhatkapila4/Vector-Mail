@@ -60,7 +60,7 @@ export function TimeInput24({
         onValueChange={handleHourChange}
         disabled={disabled}
       >
-        <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-amber-500/50">
+        <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-yellow-500/50">
           <SelectValue placeholder="00" />
         </SelectTrigger>
         <SelectContent className="max-h-64 overflow-y-auto border-white/10 bg-[#0a0a0a] text-white">
@@ -81,7 +81,7 @@ export function TimeInput24({
         onValueChange={handleMinuteChange}
         disabled={disabled}
       >
-        <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-amber-500/50">
+        <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-yellow-500/50">
           <SelectValue placeholder="00" />
         </SelectTrigger>
         <SelectContent className="max-h-64 overflow-y-auto border-white/10 bg-[#0a0a0a] text-white">

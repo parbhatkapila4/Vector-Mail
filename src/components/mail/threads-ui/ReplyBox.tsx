@@ -254,8 +254,8 @@ const ReplyBox = ({
       {!isInMobileDialog && (
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-              <Reply className="h-4 w-4 text-amber-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
+              <Reply className="h-4 w-4 text-yellow-500" />
             </div>
             <div>
               <span className="text-sm font-medium text-white">Reply</span>
@@ -274,9 +274,9 @@ const ReplyBox = ({
             aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
           >
             {isCollapsed ? (
-              <ChevronUp className="h-4 w-4 text-amber-500" />
+              <ChevronUp className="h-4 w-4 text-yellow-500" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-amber-500" />
+              <ChevronDown className="h-4 w-4 text-yellow-500" />
             )}
           </Button>
         </div>
@@ -293,7 +293,7 @@ const ReplyBox = ({
                 checked={trackOpens}
                 onCheckedChange={(c) => setTrackOpens(c === true)}
                 disabled={sendEmail.isPending || isPendingSend}
-                className="mt-0.5 border-white/30 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
               />
               <span className="text-zinc-400">
                 Track when this email is opened
@@ -360,7 +360,7 @@ const ReplyBox = ({
                   disabled={
                     scheduleSendMutation.isPending || !authLoaded || !userId
                   }
-                  className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
+                  className="w-full py-2.5 bg-yellow-500 font-medium text-black hover:bg-yellow-600"
                 >
                   {!authLoaded || !userId
                     ? "Loading..."

@@ -82,7 +82,7 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
             className="cursor-pointer rounded-lg text-white focus:bg-white/[0.06] focus:text-white"
           >
             <div className="flex items-center gap-3 py-0.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-xs font-semibold text-white">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600 text-xs font-semibold text-white">
                 {account.emailAddress[0]?.toUpperCase()}
               </span>
               <span className="text-sm">{account.emailAddress}</span>

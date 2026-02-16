@@ -208,7 +208,7 @@ export function ForwardEmailDialog({
               placeholder="Enter email address(es), separated by commas"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="border-white/[0.06] bg-[#030303] text-white placeholder:text-zinc-600 focus:border-amber-500/50"
+              className="border-white/[0.06] bg-[#030303] text-white placeholder:text-zinc-600 focus:border-yellow-500/50"
             />
           </div>
 
@@ -221,7 +221,7 @@ export function ForwardEmailDialog({
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="border-white/[0.06] bg-[#030303] text-white focus:border-amber-500/50"
+              className="border-white/[0.06] bg-[#030303] text-white focus:border-yellow-500/50"
             />
           </div>
 
@@ -233,7 +233,7 @@ export function ForwardEmailDialog({
               id="body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              className="min-h-[300px] resize-none border-white/[0.06] bg-[#030303] text-white focus:border-amber-500/50"
+              className="min-h-[300px] resize-none border-white/[0.06] bg-[#030303] text-white focus:border-yellow-500/50"
               placeholder="Enter your message..."
             />
           </div>
@@ -244,7 +244,7 @@ export function ForwardEmailDialog({
                 checked={trackOpens}
                 onCheckedChange={(c) => setTrackOpens(c === true)}
                 disabled={isSending || isPendingSend}
-                className="mt-0.5 border-white/30 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                className="mt-0.5 border-white/30 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
               />
               <span className="text-zinc-400">
                 Track when this email is opened
@@ -277,7 +277,7 @@ export function ForwardEmailDialog({
             <Button
               onClick={handleForward}
               disabled={isSending || isPendingSend}
-              className="bg-amber-500 font-medium text-black hover:bg-amber-600"
+              className="bg-yellow-500 font-medium text-black hover:bg-yellow-600"
             >
               {isSending || isPendingSend ? (
                 "Forwarding..."
@@ -330,7 +330,7 @@ export function ForwardEmailDialog({
                     !authLoaded ||
                     !userId
                   }
-                  className="w-full py-2.5 bg-amber-500 font-medium text-black hover:bg-amber-600"
+                  className="w-full py-2.5 bg-yellow-500 font-medium text-black hover:bg-yellow-600"
                 >
                   {!authLoaded || !userId
                     ? "Loading..."

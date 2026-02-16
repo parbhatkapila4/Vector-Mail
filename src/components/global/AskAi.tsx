@@ -288,7 +288,7 @@ export default function EmailSearchAssistant({
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
             <span className="text-sm text-zinc-400">Loading...</span>
           </div>
         </motion.div>
@@ -306,7 +306,7 @@ export default function EmailSearchAssistant({
           transition={{ duration: 0.3 }}
         >
           <div className="flex items-center gap-3 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -321,7 +321,7 @@ export default function EmailSearchAssistant({
           <div className="mt-4">
             <button
               onClick={handleAccountConnection}
-              className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-amber-500/20"
+              className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-yellow-500/20"
             >
               Connect Google Account
             </button>
@@ -335,7 +335,7 @@ export default function EmailSearchAssistant({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-amber-500" />
+          <Sparkles className="h-4 w-4 text-yellow-500" />
           <span className="text-xs font-medium text-zinc-400">
             AI Assistant
           </span>
@@ -364,7 +364,7 @@ export default function EmailSearchAssistant({
                   key={message.id}
                   layout="position"
                   className={cn("z-10 mb-3 break-words rounded-xl", {
-                    "ml-auto max-w-[85%] bg-amber-500/10 ring-1 ring-amber-500/20":
+                    "ml-auto max-w-[85%] bg-yellow-500/10 ring-1 ring-yellow-500/20":
                       message.role === "user",
                     "mr-auto max-w-[90%] bg-white/[0.03] ring-1 ring-white/[0.06]":
                       message.role === "assistant",
@@ -375,7 +375,7 @@ export default function EmailSearchAssistant({
                   <div className="px-4 py-3 text-sm leading-relaxed">
                     {message.role === "assistant" ? (
                       <div className="space-y-2">
-                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-400">
+                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-yellow-400">
                           <Sparkles className="h-3 w-3" />
                           Assistant
                         </div>
@@ -398,13 +398,13 @@ export default function EmailSearchAssistant({
               >
                 <div className="rounded-xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06]">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600">
                       <Sparkles className="h-3 w-3 text-white" />
                     </div>
                     <div className="flex items-center gap-1">
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-500 [animation-delay:-0.3s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-500 [animation-delay:-0.15s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-500" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.3s]" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.15s]" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500" />
                     </div>
                   </div>
                 </div>
@@ -425,7 +425,7 @@ export default function EmailSearchAssistant({
                   <button
                     key={label}
                     onClick={() => handleQuerySuggestion(query)}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-xs font-medium text-zinc-300 transition-all hover:border-amber-500/20 hover:bg-amber-500/5 hover:text-white"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-xs font-medium text-zinc-300 transition-all hover:border-yellow-500/20 hover:bg-yellow-500/5 hover:text-white"
                   >
                     <span>{icon}</span>
                     <span>{label}</span>
@@ -436,7 +436,7 @@ export default function EmailSearchAssistant({
               <button
                 onClick={handleProcessEmails}
                 disabled={processEmailsMutation.isPending || !validAccountId}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Bot className="h-4 w-4" />
                 {processEmailsMutation.isPending
@@ -472,7 +472,7 @@ export default function EmailSearchAssistant({
               type="text"
               onChange={handleInputChange}
               value={input}
-              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/20 disabled:opacity-50"
+              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-yellow-500/30 focus:ring-1 focus:ring-yellow-500/20 disabled:opacity-50"
               placeholder={
                 hasValidAccount
                   ? "Ask about your emails..."
@@ -483,7 +483,7 @@ export default function EmailSearchAssistant({
           </div>
           <button
             type="submit"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 transition-all hover:shadow-lg hover:shadow-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 transition-all hover:shadow-lg hover:shadow-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading || !input.trim() || !hasValidAccount}
           >
             {isLoading ? (

@@ -10,7 +10,7 @@ const AppProviders = dynamic(() => import("./AppProviders"), {
       aria-label="Loading…"
     >
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-orange-500 dark:border-neutral-700 dark:border-t-orange-400" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-700 dark:border-t-yellow-400" />
       </div>
     </div>
   ),

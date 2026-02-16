@@ -28,7 +28,7 @@ export function AnimatedEmail3D() {
           style={{ transformStyle: "preserve-3d" }}
         >
           <div
-            className="absolute h-48 w-64 rounded-2xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 via-purple-800/20 to-amber-900/20 backdrop-blur-xl"
+            className="absolute h-48 w-64 rounded-2xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 via-purple-800/20 to-yellow-900/20 backdrop-blur-xl"
             style={{
               transform: "translateZ(-20px)",
               boxShadow:
@@ -38,7 +38,7 @@ export function AnimatedEmail3D() {
           />
 
           <div
-            className="relative h-48 w-64 overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-gray-900 via-purple-900/50 to-amber-900/50 backdrop-blur-xl"
+            className="relative h-48 w-64 overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-gray-900 via-purple-900/50 to-yellow-900/50 backdrop-blur-xl"
             style={{
               borderColor: "rgba(168, 85, 247, 0.5)",
               boxShadow:
@@ -47,7 +47,7 @@ export function AnimatedEmail3D() {
             }}
           >
             <div
-              className="absolute left-0 right-0 top-0 h-24 bg-gradient-to-br from-purple-600/40 via-purple-400/40 to-amber-400/40 opacity-50"
+              className="absolute left-0 right-0 top-0 h-24 bg-gradient-to-br from-purple-600/40 via-purple-400/40 to-yellow-400/40 opacity-50"
               style={{
                 clipPath: "polygon(0 0, 50% 60%, 100% 0)",
                 borderBottom: "1px solid rgba(168, 85, 247, 0.5)",

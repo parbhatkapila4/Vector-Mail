@@ -26,7 +26,7 @@ const steps = [
     description:
       "Get intelligent suggestions, auto-replies, and find any email in seconds with semantic search.",
     icon: Zap,
-    color: "from-orange-500 to-red-500",
+    color: "from-yellow-500 to-red-500",
   },
 ];
 

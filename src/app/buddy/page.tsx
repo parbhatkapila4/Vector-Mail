@@ -85,8 +85,8 @@ const templates = [
     query:
       "Write a professional introduction email to establish a new business relationship",
     icon: MessageSquare,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
+    color: "text-yellow-400",
+    bg: "bg-yellow-500/10",
   },
 ];
 
@@ -370,7 +370,7 @@ function BuddyPageContent() {
       <aside className="hidden w-[260px] flex-col border-r border-zinc-800/60 lg:flex">
         <div className="flex h-14 items-center gap-3 border-b border-zinc-800/60 px-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-amber-400 to-orange-500">
+            <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-yellow-400 to-yellow-500">
               <video
                 src="/Vectormail-logo.mp4"
                 autoPlay
@@ -384,7 +384,7 @@ function BuddyPageContent() {
               VectorMail
             </span>
           </Link>
-          <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+          <span className="ml-auto rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-400">
             AI
           </span>
         </div>
@@ -472,7 +472,7 @@ function BuddyPageContent() {
         <header className="flex h-12 items-center justify-between border-b border-zinc-800/60 px-4 lg:hidden">
           <Link
             href="/"
-            className="flex h-6 w-6 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-amber-400 to-orange-500"
+            className="flex h-6 w-6 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-yellow-400 to-yellow-500"
           >
             <video
               src="/Vectormail-logo.mp4"
@@ -516,7 +516,7 @@ function BuddyPageContent() {
                   >
                     {message.role === "user" ? (
                       <div className="flex justify-end">
-                        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-amber-500 px-4 py-2.5">
+                        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-yellow-500 px-4 py-2.5">
                           <p className="text-[14px] leading-relaxed text-black">
                             {message.content}
                           </p>
@@ -532,8 +532,8 @@ function BuddyPageContent() {
                             <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
                               <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
                                 <div className="flex items-center gap-2">
-                                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10">
-                                    <Mail className="h-3 w-3 text-amber-400" />
+                                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-yellow-500/10">
+                                    <Mail className="h-3 w-3 text-yellow-400" />
                                   </div>
                                   <span className="text-[12px] font-medium text-zinc-400">
                                     Email Draft
@@ -690,7 +690,7 @@ function BuddyPageContent() {
                 <div className="mb-10 text-center">
                   <div className="mb-5 inline-flex items-center justify-center">
                     <div className="relative">
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/25">
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg shadow-yellow-500/25">
                         <video
                           autoPlay
                           loop
@@ -809,7 +809,7 @@ function BuddyPageContent() {
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-black transition-all hover:bg-amber-400 disabled:opacity-30"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-500 text-black transition-all hover:bg-yellow-400 disabled:opacity-30"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

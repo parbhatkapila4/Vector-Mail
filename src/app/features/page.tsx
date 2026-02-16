@@ -252,9 +252,9 @@ export default function FeaturesPage() {
     },
     {
       icon: BarChart,
-      title: "Email Analytics",
+      title: "Email Analytics (planned)",
       description:
-        "Track response times, email volume, and productivity patterns with detailed insights.",
+        "Planned: track response times, email volume, and productivity patterns. Not yet available.",
     },
     {
       icon: Globe,
@@ -420,11 +420,10 @@ export default function FeaturesPage() {
               <button
                 key={feature.id}
                 onClick={() => setActiveTab(feature.id)}
-                className={`rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${
-                  activeTab === feature.id
+                className={`rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${activeTab === feature.id
                     ? "bg-slate-800 text-white shadow-lg border border-slate-700"
                     : "border border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-800/50 hover:text-white"
-                }`}
+                  }`}
               >
                 {feature.title}
               </button>

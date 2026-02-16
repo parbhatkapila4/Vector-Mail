@@ -239,7 +239,7 @@ export function ProductShowcase() {
                             <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-xs font-bold">
                               S
                             </div>
-                            <span className="text-sm font-medium">Stripe</span>
+                            <span className="text-sm font-medium">Dodo Payments</span>
                           </div>
                           <span className="text-xs text-gray-400">Mar 29</span>
                         </div>

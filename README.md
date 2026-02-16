@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/Red Midern Wings Box Delivery Logo.png" alt="VectorMail Logo" width="80" height="80" />
+<img src="public/Vector-Mail-Logo.png" alt="VectorMail Logo" width="80" height="80" />
 
 # VectorMail
 
@@ -24,7 +24,7 @@ One app: connect Gmail (via Aurinko), sync threads, search by meaning (pgvector)
 
 ## Overview
 
-**The average professional spends a large share of their workweek on email**—searching, reading, writing, and organizing. Traditional clients are keyword-bound; AI features are often bolted on. VectorMail is built for how we work today: one stack (Next.js, tRPC, Prisma, PostgreSQL + pgvector), one auth (Clerk), one email gateway (Aurinko for Gmail/M365), and optional AI (OpenRouter/Gemini) for summaries, compose, and semantic search.
+**The average professional spends a large share of their workweek on email**: searching, reading, writing, and organizing. Traditional clients are keyword-bound; AI features are often bolted on. VectorMail is built for how we work today: one stack (Next.js, tRPC, Prisma, PostgreSQL + pgvector), one auth (Clerk), one email gateway (Aurinko for Gmail/M365), and optional AI (OpenRouter/Gemini) for summaries, compose, and semantic search.
 
 We use PostgreSQL with the pgvector extension for embeddings so we don’t run a separate vector store. Sync is delta-token–driven where possible; first sync and empty-inbox cases trigger a full window sync. The app is designed to run as a single deployment (e.g. Vercel) with a Postgres DB; cron is used only for scheduled sends.
 
@@ -45,17 +45,17 @@ Thread list (inbox, sent, archive, trash, snoozed, reminders), infinite scroll, 
 | snoozed   | inboxStatus: true, snoozedUntil > now                  |
 | reminders | remindAt ≤ now, lastMessageDate ≤ remindIfNoReplySince |
 
-**Keyboard shortcuts** — Gmail-style navigation: `j` / `k` or ↑ / ↓ (next/previous thread), `e` (archive), `#` (delete/trash), `c` (compose), `r` (reply), `/` (focus search), `g` then `i` (go to Inbox), `g` then `s` (go to Sent), `?` (show shortcut help), `Esc` (close thread or help). `x` toggles selection for the current thread (bulk actions). `⌘+N` / `Alt+N` opens Buddy (AI chat). Shortcuts are disabled while typing in inputs.
+**Keyboard shortcuts**: Gmail-style navigation: `j` / `k` or ↑ / ↓ (next/previous thread), `e` (archive), `#` (delete/trash), `c` (compose), `r` (reply), `/` (focus search), `g` then `i` (go to Inbox), `g` then `s` (go to Sent), `?` (show shortcut help), `Esc` (close thread or help). `x` toggles selection for the current thread (bulk actions). `⌘+N` / `Alt+N` opens Buddy (AI chat). Shortcuts are disabled while typing in inputs.
 
 ### Compose, reply & forward
 
-- **Compose & reply** — Rich editor with optional **open tracking** (1×1 pixel in HTML body) and **scheduled send** (date + 24h time picker). Send can be delayed with **undo send**: after sending, a toast offers “Undo” for a few seconds to cancel the actual send.
-- **Forward** — Forward emails with optional recipients, subject/body edit, **track opens**, and **schedule send** (same scheduling and tracking as compose).
+- **Compose & reply**: Rich editor with optional **open tracking** (1×1 pixel in HTML body) and **scheduled send** (date + 24h time picker). Send can be delayed with **undo send**: after sending, a toast offers “Undo” for a few seconds to cancel the actual send.
+- **Forward**: Forward emails with optional recipients, subject/body edit, **track opens**, and **schedule send** (same scheduling and tracking as compose).
 
 ### Snooze & reminders
 
-- **Snooze** — Presets: Later today (6 PM), Tomorrow (9 AM), Next week (Monday 9 AM); or custom date and time (24-hour). Threads reappear in inbox at the chosen time.
-- **Remind** — “Remind if no reply” with presets: 1, 3, 5, or 7 days; reminder fires when `remindAt` is reached and there’s been no new message since. Clear reminder from the reminders tab.
+- **Snooze Presets**: Later today (6 PM), Tomorrow (9 AM), Next week (Monday 9 AM); or custom date and time (24-hour). Threads reappear in inbox at the chosen time.
+- **Remind**: “Remind if no reply” with presets: 1, 3, 5, or 7 days; reminder fires when `remindAt` is reached and there’s been no new message since. Clear reminder from the reminders tab.
 
 ### Email open tracking
 
@@ -89,22 +89,22 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
 **Scheduled sends (cron) & background job queue (Inngest)**
 
 - **Features:** Process due `ScheduledSend` rows; send via tRPC or REST payload (supports `trackOpens` in payload). **Background jobs:** Embedding/email analysis and scheduled sends run as Inngest jobs (no separate worker process). Sync and inbox do not depend on the queue; if the queue is down, sync and getThreads still work.
-- **Endpoints:** `GET|POST /api/cron/process-scheduled-sends` — auth: `Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`. Cron fetches due rows and **enqueues** one job per row; the Inngest worker runs the existing send logic. `GET|POST|PUT /api/inngest` — Inngest serve endpoint (register functions and run jobs).
+- **Endpoints:** `GET|POST /api/cron/process-scheduled-sends`: auth: `Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`. Cron fetches due rows and **enqueues** one job per row; the Inngest worker runs the existing send logic. `GET|POST|PUT /api/inngest`: Inngest serve endpoint (register functions and run jobs).
 - **Job types:** `email/analyze` (payload: `emailId` or `emailIds`), `scheduled-send/process` (payload: `scheduledSendId`), optional `email/analyze-account` (payload: `accountId`, `limit`) after sync.
 - **Setup:** Use [Inngest Cloud](https://www.inngest.com) or run `npx inngest-cli@latest dev` locally. Set `INNGEST_EVENT_KEY` (and `INNGEST_SIGNING_KEY` in production) in env.
 
 **Email open tracking**
 
-- **Endpoint:** `GET /api/track/open?id=<trackingId>` — returns 1×1 transparent GIF and records first open (openedAt, userAgent, ip). No auth; ID is unguessable.
+- **Endpoint:** `GET /api/track/open?id=<trackingId>`: returns 1×1 transparent GIF and records first open (openedAt, userAgent, ip). No auth; ID is unguessable.
 
 **Health & search (HTTP)**
 
 - **Health:** `GET /api/health` — returns `{ status, database, version }`; 503 if DB unreachable.
-- **Search:** `GET /api/email/search?q=<query>&accountId=<id>` — Clerk auth; same vector + text search as tRPC, returns results and timing.
+- **Search:** `GET /api/email/search?q=<query>&accountId=<id>`: Clerk auth; same vector + text search as tRPC, returns results and timing.
 
-**Stripe (billing)**
+**Dodo Payments (billing)**
 
-- **Features:** Optional subscriptions via Stripe; `create-checkout` API, Clerk webhook for user sync, `StripeSubscription` and `User.stripeSubscriptionId` in DB.
+- **Features:** Optional subscriptions via Dodo Payments; `create-checkout` API (Dodo checkout), Dodo webhook at `/api/webhook/dodo` for payment/subscription events; subscription status stored in DB. Clerk webhook for user sync is separate. Billing data uses legacy table/field names in the schema (`StripeSubscription`, `User.stripeSubscriptionId`).
 
 ---
 
@@ -168,7 +168,7 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
 
 ## Data Model
 
-Core models (Prisma): `User`, `Account` (per-provider token and delta token), `Thread` (inbox/sent/draft/snooze/remind flags), `Email` (labels, summary, optional `vector(768)` embedding), `EmailAddress`, `EmailAttachment`, `ScheduledSend`, `EmailOpen` (open tracking: trackingId, messageId, openedAt, userAgent, ip). Optional billing: `StripeSubscription`, `User.stripeSubscriptionId`; optional usage: `ChatbotInteraction`.
+Core models (Prisma): `User`, `Account` (per-provider token and delta token), `Thread` (inbox/sent/draft/snooze/remind flags), `Email` (labels, summary, optional `vector(768)` embedding), `EmailAddress`, `EmailAttachment`, `ScheduledSend`, `EmailOpen` (open tracking: trackingId, messageId, openedAt, userAgent, ip). Optional billing (Dodo Payments): `StripeSubscription`, `User.stripeSubscriptionId` (legacy/internal names); optional usage: `ChatbotInteraction`.
 
 ```prisma
 model Account {
@@ -742,9 +742,10 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 
 | Feature                    | Description                                             |
 | -------------------------- | ------------------------------------------------------- |
-| **Email Analytics**        | Track response times, volume patterns, and productivity |
-| **Communication Insights** | Understand who you email most and when                  |
-| **Action Item Tracking**   | Never miss a follow-up or commitment                    |
+| **Communication Insights** | Understand who you email most and when (planned)        |
+| **Action Item Tracking**   | Never miss a follow-up or commitment (planned)          |
+
+_Email analytics (response times, volume patterns) is planned and not yet available._
 
 </details>
 
@@ -808,31 +809,13 @@ This spins up PostgreSQL with pgvector and the VectorMail application with auto-
 | Plan           | Price    | Features                                                    |
 | -------------- | -------- | ----------------------------------------------------------- |
 | **Basic**      | Free     | 5 AI summaries/day, basic search, single account            |
-| **Pro**        | $9.99/mo | Unlimited AI, advanced search, 5 accounts, priority support |
+| **Pro**        | $13/mo | Unlimited AI, advanced search, 5 accounts, priority support |
 | **Enterprise** | $60/mo   | Everything + custom AI training, SSO, dedicated support     |
 
 [View Full Pricing →](https://vectormail.space/pricing)
 
 ---
 
-## Roadmap
-
-- [x] **Semantic Search** - Vector-based email search
-- [x] **AI Summaries** - Automatic email summarization
-- [x] **AI Compose** - Context-aware email writing
-- [x] **Multi-Account** - Support for multiple email accounts
-- [x] **Keyboard shortcuts** - Gmail-style navigation and shortcut help (?)
-- [x] **Undo send** - Cancel send within a few seconds
-- [x] **Snooze & reminders** - Presets and custom date/time
-- [x] **Email open tracking** - Optional pixel and first-open recording
-- [x] **Forward with schedule** - Forward with optional scheduling and tracking
-- [ ] **Mobile App** - iOS & Android native apps
-- [ ] **Calendar Integration** - Smart scheduling from emails
-- [ ] **Team Workspaces** - Shared inboxes & collaboration
-- [ ] **Plugins/Extensions** - CRM, Slack, Notion integrations
-- [ ] **On-Premise** - Self-hosted enterprise deployment
-
----
 
 ## Contributing
 
