@@ -1,85 +1,100 @@
 "use client";
 
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
-import { ArrowRight, Mail, Check } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowRight, Mail, Zap, Shield, Clock, XCircle } from "lucide-react";
+
+const BENEFITS = [
+  { label: "Free forever plan", icon: Zap },
+  { label: "No credit card required", icon: Shield },
+  { label: "2-minute setup", icon: Clock },
+  { label: "Cancel anytime", icon: XCircle },
+];
 
 export function CTA() {
-  const { isSignedIn } = useUser();
-
   return (
-    <section className="relative py-32">
-      <div className="relative mx-auto max-w-5xl px-6">
-        <div className="relative">
-          <div className="absolute -inset-1 rounded-[3rem] bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 opacity-20 blur-2xl" />
+    <section className="relative bg-[#0a0a0a] py-28 md:py-36 overflow-hidden">
 
-          <div className="relative rounded-[2.5rem] border border-white/20 bg-gradient-to-b from-white/10 to-white/5 p-1 backdrop-blur-2xl">
-            <div className="rounded-[2.25rem] bg-gradient-to-b from-[#0a0a0a] to-[#050505] px-8 py-16 text-center md:px-16 md:py-20">
-              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-5 py-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                </span>
-                <span className="text-sm font-medium text-amber-300">
-                  Start free, no credit card
-                </span>
-              </div>
+      <div className="absolute inset-0 bg-[#0a0a0a]" aria-hidden />
 
-              <h2 className="mb-6 text-5xl font-bold tracking-tight md:text-6xl lg:text-7xl">
-                <span className="text-white">Ready to reclaim</span>
-                <br />
-                <span className="bg-gradient-to-r from-amber-200 via-yellow-400 to-yellow-300 bg-clip-text text-transparent">
-                  your time?
-                </span>
-              </h2>
+      <div className="relative mx-auto max-w-6xl px-6">
+        <div className="grid gap-16 lg:grid-cols-[1fr,minmax(400px,0.5fr)] lg:gap-20 items-center">
 
-              <p className="mx-auto mb-10 max-w-2xl text-xl text-zinc-400">
-                Join thousands of professionals who&apos;ve already transformed
-                their inbox. Free forever plan available.
+          <motion.div
+            className="text-center lg:text-left"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="inline-block rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-sm font-medium tracking-wide text-amber-200/90">
+              Start free, no credit card
+            </span>
+            <h2 className="mt-8 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-[3.5rem] xl:leading-[1.1]">
+              Ready to reclaim{" "}
+              <span className="text-amber-400">your time?</span>
+            </h2>
+            <div className="mt-6 h-px w-16 bg-gradient-to-r from-amber-500/60 to-transparent lg:w-24" />
+            <p className="mt-6 max-w-lg text-lg leading-relaxed text-zinc-500">
+              Join thousands of professionals who&apos;ve already transformed
+              their inbox. Free forever plan available.
+            </p>
+            <div className="mt-12 flex flex-wrap gap-3">
+              {BENEFITS.map(({ label, icon: Icon }, i) => (
+                <motion.span
+                  key={label}
+                  className="inline-flex items-center gap-2.5 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm font-medium text-zinc-300"
+                  initial={{ opacity: 0, y: 6 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.08 * i + 0.15, duration: 0.35 }}
+                >
+                  <Icon className="h-4 w-4 text-amber-400/90" strokeWidth={1.75} />
+                  {label}
+                </motion.span>
+              ))}
+            </div>
+          </motion.div>
+
+
+          <motion.div
+            className="relative"
+            initial={{ opacity: 0, scale: 0.98 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+
+            <div
+              className="absolute -inset-px rounded-[1.75rem] bg-gradient-to-br from-amber-400/30 via-yellow-500/20 to-amber-500/30 blur-2xl"
+              aria-hidden
+            />
+            <div className="relative rounded-[1.5rem] border border-amber-400/10 bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 p-8 shadow-[0_0_0_1px_rgba(251,191,36,0.08),0_32px_64px_-12px_rgba(0,0,0,0.5)] md:p-10">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70">
+                Get started in 2 minutes
               </p>
-
-              <div className="mb-12 flex flex-wrap items-center justify-center gap-6">
-                {[
-                  "Free forever plan",
-                  "No credit card required",
-                  "2-minute setup",
-                  "Cancel anytime",
-                ].map((benefit) => (
-                  <div
-                    key={benefit}
-                    className="flex items-center gap-2 text-zinc-400"
-                  >
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-yellow-500/20">
-                      <Check className="h-3 w-3 text-yellow-400" />
-                    </div>
-                    <span className="text-sm">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-
+              <h3 className="mt-3 text-2xl font-bold tracking-tight text-black md:text-3xl">
+                Start free. Upgrade when you’re ready.
+              </h3>
               <Link
-                href={isSignedIn ? "/mail" : "/sign-up"}
-                className="group relative inline-flex"
+                href="/features"
+                className="mt-8 flex w-full items-center justify-center gap-3 rounded-xl bg-black px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-900 active:scale-[0.99]"
               >
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 opacity-70 blur-lg transition-opacity group-hover:opacity-100" />
-                <div className="relative flex items-center gap-3 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 px-10 py-5 text-lg font-semibold text-black transition-all hover:shadow-2xl hover:shadow-yellow-500/30">
-                  <Mail className="h-5 w-5" />
-                  Get Started Free
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </div>
+                <Mail className="h-5 w-5" />
+                Why Vectormail
+                <ArrowRight className="h-5 w-5" />
               </Link>
-
-              <p className="mt-8 text-sm text-zinc-500">
+              <p className="mt-6 text-left text-sm text-amber-900/60">
                 Questions?{" "}
                 <a
                   href="mailto:parbhat@parbhat.dev"
-                  className="text-yellow-400 underline underline-offset-4 hover:text-yellow-300"
+                  className="font-medium text-amber-900 underline underline-offset-2 hover:no-underline"
                 >
                   parbhat@parbhat.dev
                 </a>
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

@@ -29,7 +29,7 @@ export const getAurinkoAuthUrl = async (
     clientId: process.env.AURINKO_CLIENT_ID!,
     serviceType,
     responseType: "code",
-    returnUrl: `${process.env.NEXT_PUBLIC_URL}/api/aurinko/callback`,
+    returnUrl: `${process.env.NEXT_PUBLIC_URL}/oauth/intermediate`,
     prompt: "consent",
     scopes: aurinkoScopes,
   });

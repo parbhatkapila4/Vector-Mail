@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Link from "next/link";
 import { Play, Pause, Maximize2, Volume2, VolumeX } from "lucide-react";
 
 export function Features() {
@@ -189,16 +188,6 @@ export function Features() {
               </div>
             </button>
           ))}
-        </div>
-
-        <div className="mt-16 text-center">
-          <p className="mb-4 text-zinc-500">Ready to try it yourself?</p>
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-zinc-200"
-          >
-            Get Started Free
-          </Link>
         </div>
       </div>
     </section>
