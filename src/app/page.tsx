@@ -14,32 +14,32 @@ import { Footer } from "@/components/landing/Footer";
 
 function EmailMockup() {
   return (
-    <div style={{ perspective: "2400px" }}>
+    <div className="w-full md:w-auto" style={{ perspective: "2400px" }}>
       <div
-        className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0a0a0a] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_80px_-12px_rgba(0,0,0,0.6),0_40px_120px_-24px_rgba(0,0,0,0.4)]"
+        className="relative w-full overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0a0a0a] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_80px_-12px_rgba(0,0,0,0.6),0_40px_120px_-24px_rgba(0,0,0,0.4)] md:w-auto"
         style={{ transform: "rotateX(2deg)", transformOrigin: "center top" }}
       >
 
-        <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0d] px-5 py-3.5">
-          <div className="flex items-center gap-5">
-            <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center justify-between gap-2 border-b border-white/[0.06] bg-[#0d0d0d] px-3 py-3 md:px-5 md:py-3.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-initial md:gap-5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <div className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
               <div className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
               <div className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
             </div>
-            <div className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-[#141414] px-3.5 py-1.5">
-              <svg className="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-white/[0.06] bg-[#141414] px-2.5 py-1.5 md:flex-initial md:px-3.5">
+              <svg className="h-3 w-3 shrink-0 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span className="text-[11px] tracking-wide text-gray-500">app.vectormail.ai</span>
+              <span className="min-w-0 truncate text-[11px] tracking-wide text-gray-500">app.vectormail.ai</span>
             </div>
           </div>
-          <div className="h-5 w-5 overflow-hidden rounded ring-1 ring-white/[0.06]">
+          <div className="h-5 w-5 shrink-0 overflow-hidden rounded ring-1 ring-white/[0.06]">
             <video src="/Vectormail-logo.mp4" autoPlay loop muted playsInline className="h-full w-full scale-150 object-cover" />
           </div>
         </div>
 
-        <div className="flex bg-[#0a0a0a]">
+        <div className="flex min-w-0 bg-[#0a0a0a]">
 
           <div className="hidden w-[200px] flex-shrink-0 border-r border-white/[0.04] bg-[#080808] py-4 pl-3 pr-2 lg:block">
             <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-white/[0.05] bg-[#0d0d0d] px-3 py-2.5">
@@ -72,15 +72,15 @@ function EmailMockup() {
           </div>
 
 
-          <div className="min-h-[480px] flex-1 sm:min-h-[560px] md:min-h-[620px] border-l border-white/[0.03] bg-[#0a0a0a]">
-            <div className="border-b border-white/[0.04] px-5 py-4">
-              <div className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-[#0d0d0d] px-4 py-3 shadow-inner">
-                <Search className="h-4 w-4 shrink-0 text-gray-500" />
-                <span className="min-w-0 flex-1 truncate text-[12px] leading-snug text-gray-300">&ldquo;Show me all emails from Sarah about the Q3 budget&rdquo;</span>
-                <span className="font-mono text-[10px] tabular-nums text-gray-600">47ms</span>
+          <div className="min-h-[480px] min-w-0 flex-1 border-l border-white/[0.03] bg-[#0a0a0a] sm:min-h-[560px] md:min-h-[620px]">
+            <div className="border-b border-white/[0.04] px-3 py-3 md:px-5 md:py-4">
+              <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/[0.05] bg-[#0d0d0d] px-3 py-2.5 shadow-inner md:gap-3 md:px-4 md:py-3">
+                <Search className="h-3.5 w-3.5 shrink-0 text-gray-500 md:h-4 md:w-4" />
+                <span className="min-w-0 flex-1 truncate text-[11px] leading-snug text-gray-300 md:text-[12px]">&ldquo;Show me all emails from Sarah about the Q3 budget&rdquo;</span>
+                <span className="shrink-0 font-mono text-[10px] tabular-nums text-gray-600">47ms</span>
               </div>
             </div>
-            <div className="px-5 py-4">
+            <div className="min-w-0 px-3 py-3 md:px-5 md:py-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="rounded border border-white/[0.05] bg-white/[0.03] px-2.5 py-1 text-[9px] font-medium uppercase tracking-wider text-gray-500">From: Sarah Chen</span>
                 <span className="rounded border border-white/[0.05] bg-white/[0.03] px-2.5 py-1 text-[9px] font-medium uppercase tracking-wider text-gray-500">This week</span>
@@ -91,11 +91,11 @@ function EmailMockup() {
               </div>
               <div className="space-y-0">
 
-                <div className="group flex items-start gap-4 border-l-2 border-sky-500/70 bg-white/[0.03] py-3.5 pl-4 pr-4 transition-colors">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-[#141414] text-[11px] font-semibold tabular-nums text-gray-300 ring-1 ring-white/[0.04]">SC</div>
+                <div className="group flex min-w-0 items-start gap-2 border-l-2 border-sky-500/70 bg-white/[0.03] py-2.5 pl-3 pr-3 transition-colors md:gap-4 md:py-3.5 md:pl-4 md:pr-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-[#141414] text-[10px] font-semibold tabular-nums text-gray-300 ring-1 ring-white/[0.04] md:h-9 md:w-9 md:text-[11px]">SC</div>
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <span className="text-[12px] font-semibold leading-tight text-white">Q3 Budget Contract — Final Version</span>
+                    <div className="mb-0.5 flex flex-wrap items-center gap-1.5 md:mb-1 md:gap-2">
+                      <span className="truncate text-[11px] font-semibold leading-tight text-white md:text-[12px]">Q3 Budget Contract — Final Version</span>
                       <span className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-gray-400">Best Match</span>
                     </div>
                     <p className="text-[11px] leading-relaxed text-gray-500">Sarah Chen · Oct 15 · &ldquo;Attached is the final contract with all revisions...&rdquo;</p>
@@ -113,15 +113,15 @@ function EmailMockup() {
                   { initials: "JL", subject: "Fwd: Q3 budget summary deck", snippet: "Sarah Chen · Oct 11 · &ldquo;Sharing the deck for the meeting...&rdquo;", pct: "58%" },
                   { initials: "SC", subject: "Action required: Q3 Budget sign-off", snippet: "Sarah Chen · Oct 10 · &ldquo;Please review and approve by Friday...&rdquo;", pct: "51%" },
                 ].map((row, i) => (
-                  <div key={i} className="group flex items-start gap-4 border-l-2 border-transparent py-3.5 pl-4 pr-4 hover:bg-white/[0.02]">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.04] bg-[#111111] text-[11px] font-semibold text-gray-400 ring-1 ring-white/[0.02]">{row.initials}</div>
+                  <div key={i} className="group flex min-w-0 items-start gap-2 border-l-2 border-transparent py-2.5 pl-3 pr-3 hover:bg-white/[0.02] md:gap-4 md:py-3.5 md:pl-4 md:pr-4">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.04] bg-[#111111] text-[10px] font-semibold text-gray-400 ring-1 ring-white/[0.02] md:h-9 md:w-9 md:text-[11px]">{row.initials}</div>
                     <div className="min-w-0 flex-1">
-                      <span className="mb-1 block text-[12px] font-medium leading-tight text-gray-300">{row.subject}</span>
-                      <p className="text-[11px] leading-relaxed text-gray-500">{row.snippet}</p>
+                      <span className="mb-0.5 block truncate text-[11px] font-medium leading-tight text-gray-300 md:mb-1 md:text-[12px]">{row.subject}</span>
+                      <p className="truncate text-[10px] leading-relaxed text-gray-500 md:text-[11px]">{row.snippet}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="text-[20px] font-bold tabular-nums leading-none text-gray-500">{row.pct}</div>
-                      <div className="text-[9px] text-gray-600">match</div>
+                      <div className="text-[16px] font-bold tabular-nums leading-none text-gray-500 md:text-[20px]">{row.pct}</div>
+                      <div className="text-[8px] text-gray-600 md:text-[9px]">match</div>
                     </div>
                   </div>
                 ))}
@@ -299,7 +299,7 @@ function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.38 }}
               transition={{ duration: 1.5, ease: "easeOut" }}
-              className="w-[100%] max-w-[100vw] px-2 sm:max-w-[1400px] md:max-w-[1520px] lg:max-w-[1600px]"
+              className="w-full min-w-0 max-w-[100vw] px-1 sm:px-2 sm:max-w-[1400px] md:max-w-[1520px] lg:max-w-[1600px]"
             >
               <EmailMockup />
             </motion.div>
