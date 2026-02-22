@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="public/header.svg" alt="Vector Mail — AI-powered email that searches by meaning and composes with AI" width="920" />
-
-<img src="public/Vector-Mail-Logo.png" alt="VectorMail Logo" width="80" height="80" />
+<img src="./header.svg" alt="Vector Mail: AI-powered email that searches by meaning and composes with AI" width="920" />
 
 # VectorMail
 

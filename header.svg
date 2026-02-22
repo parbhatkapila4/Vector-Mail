@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" width="920" height="320">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c0c0f"/>
+      <stop offset="50%" stop-color="#12121a"/>
+      <stop offset="100%" stop-color="#0f0f14"/>
+    </linearGradient>
+    <linearGradient id="barOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+  </defs>
+  <!-- background -->
+  <rect width="920" height="320" rx="16" fill="url(#bg)"/>
+  <rect width="920" height="320" rx="16" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+  <!-- small label top-left -->
+  <text x="32" y="36" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="13" font-weight="500" letter-spacing="2" fill="#6b7280">vectormail</text>
+
+  <!-- envelope icon top-right -->
+  <g transform="translate(860, 32)" opacity="0.6">
+    <path d="M2 6 L2 20 L22 20 L22 6 L12 14 L2 6 Z" fill="none" stroke="#1a73e8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- decorative circle -->
+  <circle cx="48" cy="268" r="8" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.8"/>
+  <!-- decorative triangle -->
+  <path d="M800 60 L812 76 L788 76 Z" fill="#1a73e8" opacity="0.5"/>
+  <!-- decorative clock -->
+  <g transform="translate(848, 268)" opacity="0.6">
+    <circle cx="12" cy="12" r="10" fill="none" stroke="#8ab4f8" stroke-width="1.5"/>
+    <path d="M12 6 L12 12 L16 14" fill="none" stroke="#8ab4f8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- main title: VECTOR MAIL -->
+  <text x="460" y="148" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="56" font-weight="800" letter-spacing="-2">
+    <tspan fill="#ffffff">VECTOR </tspan><tspan fill="#1a73e8">MAIL</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text x="460" y="188" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="18" fill="#9ca3af">
+    <tspan>AI-powered email that </tspan><tspan font-weight="600" fill="#8ab4f8">searches by meaning</tspan><tspan> and composes with AI.</tspan>
+  </text>
+
+  <!-- slogan -->
+  <text x="460" y="218" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="15" fill="#6b7280">&#8212; One inbox. Semantic search. Compose &amp; reply with AI.</text>
+
+  <!-- bottom bars -->
+  <rect x="0" y="304" width="920" height="16" fill="#1a73e8"/>
+  <rect x="0" y="308" width="920" height="12" fill="url(#barOrange)"/>
+</svg>
