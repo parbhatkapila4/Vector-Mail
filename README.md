@@ -1,5 +1,31 @@
 <div align="center">
 
+<div style="position:relative;background:linear-gradient(165deg,#0c0c0f 0%,#12121a 50%,#0f0f14 100%);border-radius:16px;padding:48px 32px 56px;margin-bottom:32px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
+
+  <div style="position:absolute;top:24px;left:28px;font-size:13px;font-weight:500;letter-spacing:0.12em;text-transform:lowercase;color:#6b7280;">vectormail</div>
+  <div style="position:absolute;top:32px;right:36px;opacity:0.5;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+  </div>
+  <div style="position:absolute;bottom:68px;left:32px;width:12px;height:12px;border:2px solid #f59e0b;border-radius:50%;opacity:0.8;"></div>
+  <div style="position:absolute;top:44px;right:80px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid #1a73e8;opacity:0.6;transform:rotate(15deg);"></div>
+  <div style="position:absolute;bottom:52px;right:40px;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" stroke-width="1.5" opacity="0.7"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:8px;margin-bottom:12px;">
+    <span style="font-size:clamp(2.5rem,8vw,4rem);font-weight:800;letter-spacing:-0.03em;color:#ffffff;line-height:1;">VECTOR</span>
+    <span style="font-size:clamp(2.5rem,8vw,4rem);font-weight:800;letter-spacing:-0.03em;color:#1a73e8;line-height:1;">MAIL</span>
+  </div>
+  <div style="font-size:clamp(1rem,2.5vw,1.2rem);color:#9ca3af;font-weight:400;margin-bottom:6px;">
+    AI-powered email that
+    <span style="color:#8ab4f8;font-weight:600;">searches by meaning</span>
+    and composes with AI.
+  </div>
+  <p style="font-size:0.95rem;color:#6b7280;margin:0;letter-spacing:0.02em;">— One inbox. Semantic search. Compose & reply with AI.</p>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:#f59e0b;border-radius:0 0 16px 16px;"></div>
+  <div style="position:absolute;bottom:4px;left:0;right:0;height:4px;background:#1a73e8;border-radius:0 0 16px 16px;"></div>
+</div>
+
 <img src="public/Vector-Mail-Logo.png" alt="VectorMail Logo" width="80" height="80" />
 
 # VectorMail
@@ -740,10 +766,10 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong>Productivity Dashboard</strong></summary>
 <br />
 
-| Feature                    | Description                                             |
-| -------------------------- | ------------------------------------------------------- |
-| **Communication Insights** | Understand who you email most and when (planned)        |
-| **Action Item Tracking**   | Never miss a follow-up or commitment (planned)          |
+| Feature                    | Description                                      |
+| -------------------------- | ------------------------------------------------ |
+| **Communication Insights** | Understand who you email most and when (planned) |
+| **Action Item Tracking**   | Never miss a follow-up or commitment (planned)   |
 
 _Email analytics (response times, volume patterns) is planned and not yet available._
 
@@ -806,16 +832,15 @@ This spins up PostgreSQL with pgvector and the VectorMail application with auto-
 
 ## Pricing
 
-| Plan           | Price    | Features                                                    |
-| -------------- | -------- | ----------------------------------------------------------- |
-| **Basic**      | Free     | 5 AI summaries/day, basic search, single account            |
+| Plan           | Price  | Features                                                    |
+| -------------- | ------ | ----------------------------------------------------------- |
+| **Basic**      | Free   | 5 AI summaries/day, basic search, single account            |
 | **Pro**        | $13/mo | Unlimited AI, advanced search, 5 accounts, priority support |
-| **Enterprise** | $60/mo   | Everything + custom AI training, SSO, dedicated support     |
+| **Enterprise** | $60/mo | Everything + custom AI training, SSO, dedicated support     |
 
 [View Full Pricing →](https://vectormail.space/pricing)
 
 ---
-
 
 ## Contributing
 
