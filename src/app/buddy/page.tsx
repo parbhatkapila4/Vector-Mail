@@ -11,7 +11,7 @@ import {
   Mail,
   ArrowLeft,
   X,
-  Sparkles,
+  MessageCircle,
   MessageSquare,
   FileText,
   Users,
@@ -702,7 +702,7 @@ function BuddyPageContent() {
                         </video>
                       </div>
                       <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#0C0C0D]">
-                        <Sparkles className="h-2.5 w-2.5 text-white" />
+                        <MessageCircle className="h-2.5 w-2.5 text-white" />
                       </div>
                     </div>
                   </div>

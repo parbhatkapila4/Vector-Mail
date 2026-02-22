@@ -63,16 +63,14 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
 
   if (!thread) {
     return (
-      <div className="flex h-full flex-col items-center justify-center bg-[#fafafa] p-10 dark:bg-[#0a0a0a]">
-        <div className="relative mb-7">
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-[#e0e0e0] bg-[#ffffff] shadow-sm dark:border-[#1f1f1f] dark:bg-[#111111]">
-            <Mail className="h-10 w-10 text-[#d0d0d0] dark:text-[#4a4a4a]" />
-          </div>
+      <div className="flex h-full flex-col items-center justify-center bg-white p-10 dark:bg-[#202124]">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f1f3f4] dark:bg-[#3c4043]">
+          <Mail className="h-8 w-8 text-[#9aa0a6] dark:text-[#5f6368]" />
         </div>
-        <h3 className="mb-2 text-lg font-semibold tracking-tight text-[#1a1a1a] dark:text-[#ffffff]">
+        <h3 className="mb-1.5 text-[22px] font-normal text-[#5f6368] dark:text-[#9aa0a6]">
           Select an email
         </h3>
-        <p className="max-w-sm text-center text-[14px] leading-relaxed text-[#666666] dark:text-[#999999]">
+        <p className="max-w-sm text-center text-[14px] text-[#5f6368] dark:text-[#9aa0a6]">
           Choose a conversation from the list to view its contents
         </p>
       </div>
@@ -109,10 +107,10 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
         originalFrom={originalFrom}
         originalDate={originalDate}
       />
-      <div className="flex h-full flex-col bg-[#ffffff] dark:bg-[#111111]">
+      <div className="flex h-full flex-col bg-white dark:bg-[#202124]">
 
-        <div className="border-b border-[#e0e0e0] bg-[#ffffff] dark:border-[#1f1f1f] dark:bg-[#111111]">
-          <div className="hidden items-center justify-end gap-2 px-4 py-3 md:flex md:px-6">
+        <div className="border-b border-[#f1f3f4] bg-white dark:border-[#3c4043] dark:bg-[#202124]">
+          <div className="hidden items-center justify-end gap-1 px-4 py-2 md:flex md:px-6">
             {showSnooze && (
               <SnoozeMenu
                 threadId={threadId}
@@ -121,7 +119,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
               >
                 <button
                   type="button"
-                  className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
+                  className="flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
                 >
                   <Clock className="h-3.5 w-3.5" />
                   Snooze
@@ -136,7 +134,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
               >
                 <button
                   type="button"
-                  className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
+                  className="flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
                 >
                   <Bell className="h-3.5 w-3.5" />
                   Remind me
@@ -145,7 +143,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
             )}
             <button
               onClick={() => setForwardDialogOpen(true)}
-              className="flex h-8 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium text-[#666666] transition-colors hover:bg-[#f5f5f5] dark:text-[#999999] dark:hover:bg-[#1a1a1a]"
+              className="flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
             >
               <Forward className="h-3.5 w-3.5" />
               Forward
@@ -153,14 +151,14 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           </div>
 
           <div className="px-4 pb-6 pt-4 md:px-6 md:pt-0">
-            <h1 className="mb-6 text-[18px] font-semibold leading-tight tracking-tight text-[#1a1a1a] dark:text-[#ffffff] md:text-[22px]">
+            <h1 className="mb-6 text-[18px] font-normal leading-tight text-[#202124] dark:text-[#e8eaed] md:text-[22px]">
               {firstEmail?.subject || "(No subject)"}
             </h1>
 
             <div className="flex items-center gap-4">
-              <Avatar className="h-11 w-11 border border-[#e0e0e0] dark:border-[#1f1f1f]">
+              <Avatar className="h-11 w-11 border border-[#dadce0] dark:border-[#3c4043]">
                 <AvatarImage alt={senderName} />
-                <AvatarFallback className="bg-gradient-to-br from-[#ca8a04] to-[#eab308] text-[14px] font-semibold text-white">
+                <AvatarFallback className="bg-[#1a73e8] text-[14px] font-medium text-white dark:bg-[#8ab4f8] dark:text-[#202124]">
                   {senderName
                     .split(" ")
                     .map((n: string) => n[0])
@@ -171,14 +169,14 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
 
               <div className="flex-1">
                 <div className="mb-1.5 flex items-center gap-2.5">
-                  <span className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#ffffff]">
+                  <span className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
                     {senderName}
                   </span>
-                  <span className="text-[13px] text-[#666666] dark:text-[#999999]">
+                  <span className="text-[13px] text-[#5f6368] dark:text-[#9aa0a6]">
                     &lt;{senderEmail}&gt;
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[13px] text-[#666666] dark:text-[#999999]">
+                <div className="flex items-center gap-2 text-[13px] text-[#5f6368] dark:text-[#9aa0a6]">
                   <span className="font-medium">to me</span>
                   {firstEmail?.sentAt && (
                     <>
@@ -201,11 +199,11 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
           <div className="px-6 py-8 md:px-6 md:py-8">
             {thread.emails.length > 1 && (
               <div className="mb-8 flex items-center gap-4">
-                <div className="h-px flex-1 bg-[#e0e0e0] dark:bg-[#1f1f1f]" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#999999] dark:text-[#666666]">
+                <div className="h-px flex-1 bg-[#dadce0] dark:bg-[#3c4043]" />
+                <span className="text-[11px] font-medium uppercase tracking-wider text-[#5f6368] dark:text-[#9aa0a6]">
                   {thread.emails.length} messages in thread
                 </span>
-                <div className="h-px flex-1 bg-[#e0e0e0] dark:bg-[#1f1f1f]" />
+                <div className="h-px flex-1 bg-[#dadce0] dark:bg-[#3c4043]" />
               </div>
             )}
 
@@ -215,13 +213,13 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
                   key={email.id}
                   className={cn(
                     index > 0 &&
-                    "border-t border-[#e0e0e0] pt-10 dark:border-[#1f1f1f]",
+                    "border-t border-[#f1f3f4] pt-10 dark:border-[#3c4043]",
                   )}
                 >
                   {index > 0 && (
                     <div className="mb-6 flex items-center gap-4">
-                      <Avatar className="h-9 w-9 border border-[#e0e0e0] dark:border-[#1f1f1f]">
-                        <AvatarFallback className="bg-[#f5f5f5] text-[13px] font-semibold text-[#666666] dark:bg-[#1a1a1a] dark:text-[#999999]">
+                      <Avatar className="h-9 w-9 border border-[#dadce0] dark:border-[#3c4043]">
+                        <AvatarFallback className="bg-[#e8eaed] text-[13px] font-medium text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
                           {(email.from?.name ?? "U")
                             .split(" ")
                             .map((n: string) => n[0])
@@ -256,10 +254,10 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
         </div>
 
         {isMobile && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2 border-t border-white/[0.06] bg-[#0A0A0A] px-4 py-3 shadow-2xl shadow-black/50 md:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2 border-t border-[#3c4043] bg-[#202124] px-4 py-3 md:hidden">
             <Button
               onClick={() => setReplyDialogOpen(true)}
-              className="flex-1 bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-white hover:from-yellow-700 hover:via-yellow-700 hover:to-amber-600"
+              className="flex-1 rounded-full bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
             >
               <Reply className="mr-2 h-4 w-4" />
               Reply
@@ -267,7 +265,7 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
             <Button
               onClick={() => setForwardDialogOpen(true)}
               variant="outline"
-              className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10"
+              className="flex-1 rounded-full border-[#3c4043] bg-transparent text-[#e8eaed] hover:bg-[#3c4043]"
             >
               <Forward className="mr-2 h-4 w-4" />
               Forward
@@ -276,13 +274,13 @@ export function ThreadDisplay({ threadId: propThreadId }: ThreadDisplayProps) {
         )}
 
         {isMobile && replyDialogOpen && (
-          <div className="fixed inset-0 z-[60] flex flex-col bg-[#0A0A0A] md:hidden">
-            <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+          <div className="fixed inset-0 z-[60] flex flex-col bg-[#202124] md:hidden">
+            <div className="flex items-center justify-between border-b border-[#3c4043] px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
-                  <Reply className="h-4 w-4 text-yellow-500" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8]/20 dark:bg-[#8ab4f8]/20">
+                  <Reply className="h-4 w-4 text-[#8ab4f8]" />
                 </div>
-                <h2 className="text-lg font-semibold text-white">Reply</h2>
+                <h2 className="text-lg font-medium text-[#e8eaed]">Reply</h2>
               </div>
               <Button
                 variant="ghost"

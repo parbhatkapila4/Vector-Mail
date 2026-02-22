@@ -57,8 +57,23 @@ export function Footer() {
   ];
 
   return (
-    <footer className="relative">
-      <div className="relative mx-auto max-w-6xl px-6 pb-12 pt-20">
+    <footer className="relative overflow-hidden bg-zinc-950">
+      <div
+        className="pointer-events-none absolute inset-0 flex items-end justify-center pb-48 pt-20"
+        aria-hidden
+      >
+        <span
+          className="select-none font-bold uppercase tracking-[0.06em] text-white/[0.08]"
+          style={{
+            fontSize: "clamp(4rem, 18vw, 14rem)",
+            lineHeight: 0.85,
+          }}
+        >
+          VectorMail
+        </span>
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-12 pt-20">
         <div className="grid gap-12 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2.5">

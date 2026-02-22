@@ -9,8 +9,8 @@ import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
 export const metadata: Metadata = {
   title: "VectorMail AI - Smart Email Management",
   icons: {
-    icon: "/Vector-Mail-Logo.png",
-    apple: "/Vector-Mail-Logo.png",
+    icon: "/VectorMail-New.png",
+    apple: "/VectorMail-New.png",
   },
   description:
     "Transform your email experience with AI-powered insights, smart organization, and intelligent responses. Get AI-powered email composition, smart search, and intelligent email management.",

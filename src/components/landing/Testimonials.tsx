@@ -9,6 +9,8 @@ import {
   Brain,
   Search,
   Server,
+  Shield,
+  Infinity,
 } from "lucide-react";
 
 const techStack = [
@@ -361,33 +363,28 @@ export function Testimonials() {
         </div>
 
         <div className="relative mt-16">
-
-          <blockquote className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white from-[0%] via-stone-200 via-[45%] to-stone-500 to-[100%] px-8 py-12 text-[#1c1917] shadow-[0_4px_24px_rgba(0,0,0,0.12)] sm:px-12 sm:py-16 md:px-16">
-            <div className="absolute left-0 top-0 h-full w-1 rounded-l-2xl bg-[#1c1917]" aria-hidden />
-            <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+          <blockquote className="relative overflow-hidden rounded-2xl border border-stone-200/60 bg-gradient-to-br from-white via-stone-50/20 to-stone-50/35 dark:from-white dark:via-stone-100 dark:to-stone-100 dark:border-stone-600/50 px-8 py-12 shadow-sm sm:px-12 sm:py-16 md:px-16">
+            <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-stone-200 to-stone-300 dark:from-stone-300 dark:to-stone-400" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-700">
               Architecture
             </p>
-            <p className="font-display-serif mb-6 text-2xl font-semibold italic leading-snug text-stone-900 sm:text-3xl md:max-w-2xl">
+            <p className="mt-4 font-display-serif text-2xl font-semibold italic leading-snug text-stone-900 sm:text-3xl md:max-w-2xl">
               Production-Ready from Day One
             </p>
-            <p className="mb-10 max-w-xl text-[15px] leading-relaxed text-stone-600">
+            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-stone-800">
               Type-safe entirely with tRPC. Optimistic updates. Real-time
               subscriptions. Database migrations. CI/CD ready. Everything a
               founder dreams of.
             </p>
-            <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-stone-500">
-              <span className="font-semibold tabular-nums text-stone-800">100%</span>
-              <span>Type-safe</span>
-              <span className="text-stone-300" aria-hidden>·</span>
-              <span className="font-semibold tabular-nums text-stone-800">0</span>
-              <span>Runtime errors</span>
-              <span className="text-stone-300" aria-hidden>·</span>
-              <span className="font-semibold tabular-nums text-stone-800">A+</span>
-              <span>Security</span>
-              <span className="text-stone-300" aria-hidden>·</span>
-              <span className="font-semibold tabular-nums text-stone-800">∞</span>
-              <span>Scalable</span>
-            </p>
+            <div className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-stone-800">
+              <span><span className="font-semibold tabular-nums text-stone-900">100%</span> Type-safe</span>
+              <span className="text-stone-500" aria-hidden>·</span>
+              <span><span className="font-semibold tabular-nums text-stone-900">0</span> Runtime errors</span>
+              <span className="text-stone-500" aria-hidden>·</span>
+              <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-stone-700" /><span className="font-semibold tabular-nums text-stone-900">A+</span> Security</span>
+              <span className="text-stone-500" aria-hidden>·</span>
+              <span className="flex items-center gap-1"><Infinity className="h-3.5 w-3.5 text-stone-700" /> Scalable</span>
+            </div>
           </blockquote>
         </div>
 

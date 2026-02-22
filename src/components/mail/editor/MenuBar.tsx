@@ -17,102 +17,109 @@ import {
   Undo,
 } from "lucide-react";
 
+const menuButtonBase =
+  "flex h-8 w-8 items-center justify-center rounded-md text-[#5f6368] transition-colors hover:bg-[#e8eaed] hover:text-[#202124] disabled:opacity-40 disabled:hover:bg-transparent dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]";
+const menuButtonActive =
+  "bg-[#e8eaed] text-[#1a73e8] dark:bg-[#3c4043] dark:text-[#8ab4f8]";
+
 const TipTapMenuBar = ({ editor }: { editor: Editor }) => {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-0.5">
       <button
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
-        className={editor.isActive("bold") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("bold") ? menuButtonActive : ""}`}
       >
-        <Bold className="size-4 text-secondary-foreground" />
+        <Bold className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={!editor.can().chain().focus().toggleItalic().run()}
-        className={editor.isActive("italic") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("italic") ? menuButtonActive : ""}`}
       >
-        <Italic className="size-4 text-secondary-foreground" />
+        <Italic className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleStrike().run()}
         disabled={!editor.can().chain().focus().toggleStrike().run()}
-        className={editor.isActive("strike") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("strike") ? menuButtonActive : ""}`}
       >
-        <Strikethrough className="size-4 text-secondary-foreground" />
+        <Strikethrough className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleCode().run()}
         disabled={!editor.can().chain().focus().toggleCode().run()}
-        className={editor.isActive("code") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("code") ? menuButtonActive : ""}`}
       >
-        <Code className="size-4 text-secondary-foreground" />
+        <Code className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        className={editor.isActive("heading", { level: 1 }) ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("heading", { level: 1 }) ? menuButtonActive : ""}`}
       >
-        <Heading1 className="size-4 text-secondary-foreground" />
+        <Heading1 className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={editor.isActive("heading", { level: 2 }) ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("heading", { level: 2 }) ? menuButtonActive : ""}`}
       >
-        <Heading2 className="size-4 text-secondary-foreground" />
+        <Heading2 className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        className={editor.isActive("heading", { level: 3 }) ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("heading", { level: 3 }) ? menuButtonActive : ""}`}
       >
-        <Heading3 className="size-4 text-secondary-foreground" />
+        <Heading3 className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
-        className={editor.isActive("heading", { level: 4 }) ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("heading", { level: 4 }) ? menuButtonActive : ""}`}
       >
-        <Heading4 className="size-4 text-secondary-foreground" />
+        <Heading4 className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}
-        className={editor.isActive("heading", { level: 5 }) ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("heading", { level: 5 }) ? menuButtonActive : ""}`}
       >
-        <Heading5 className="size-4 text-secondary-foreground" />
+        <Heading5 className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}
-        className={editor.isActive("heading", { level: 6 }) ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("heading", { level: 6 }) ? menuButtonActive : ""}`}
       >
-        <Heading6 className="size-4 text-secondary-foreground" />
+        <Heading6 className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={editor.isActive("bulletList") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("bulletList") ? menuButtonActive : ""}`}
       >
-        <List className="size-4 text-secondary-foreground" />
+        <List className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={editor.isActive("orderedList") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("orderedList") ? menuButtonActive : ""}`}
       >
-        <ListOrdered className="size-4 text-secondary-foreground" />
+        <ListOrdered className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={editor.isActive("blockquote") ? "is-active" : ""}
+        className={`${menuButtonBase} ${editor.isActive("blockquote") ? menuButtonActive : ""}`}
       >
-        <Quote className="size-4 text-secondary-foreground" />
+        <Quote className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().chain().focus().undo().run()}
+        className={menuButtonBase}
       >
-        <Undo className="size-4 text-secondary-foreground" />
+        <Undo className="size-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().chain().focus().redo().run()}
+        className={menuButtonBase}
       >
-        <Redo className="size-4 text-secondary-foreground" />
+        <Redo className="size-4" />
       </button>
     </div>
   );

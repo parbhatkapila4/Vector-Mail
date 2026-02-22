@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
-import { Send, Bot, Loader2, Sparkles, Plus } from "lucide-react";
+import { Send, Bot, Loader2, MessageCircle, Plus } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -335,7 +335,7 @@ export default function EmailSearchAssistant({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-yellow-500" />
+          <MessageCircle className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
           <span className="text-xs font-medium text-zinc-400">
             AI Assistant
           </span>
@@ -375,8 +375,8 @@ export default function EmailSearchAssistant({
                   <div className="px-4 py-3 text-sm leading-relaxed">
                     {message.role === "assistant" ? (
                       <div className="space-y-2">
-                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-yellow-400">
-                          <Sparkles className="h-3 w-3" />
+                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">
+                          <MessageCircle className="h-3 w-3" />
                           Assistant
                         </div>
                         <div className="whitespace-pre-wrap text-sm text-zinc-300">
@@ -398,13 +398,13 @@ export default function EmailSearchAssistant({
               >
                 <div className="rounded-xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06]">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600">
-                      <Sparkles className="h-3 w-3 text-white" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1a73e8]/80 dark:bg-[#8ab4f8]/80">
+                      <MessageCircle className="h-3 w-3 text-white dark:text-[#202124]" />
                     </div>
                     <div className="flex items-center gap-1">
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.3s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.15s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5f6368] [animation-delay:-0.3s]" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5f6368] [animation-delay:-0.15s]" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5f6368]" />
                     </div>
                   </div>
                 </div>

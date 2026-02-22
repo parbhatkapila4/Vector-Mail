@@ -5,6 +5,8 @@ import type {
   syncUpdateResponse,
 } from "@/types";
 import axios from "axios";
+import pLimit from "p-limit";
+import { refreshAurinkoToken } from "./aurinko";
 import { syncEmailsToDatabase } from "./sync-to-db";
 import { withLock } from "./sync-lock";
 import { db } from "@/server/db";
@@ -14,14 +16,61 @@ const SYNC_LOCK_TTL_MS = 30 * 60 * 1000;
 
 const SYNC_WINDOW_DAYS = 60;
 
-const INITIAL_FIRST_BATCH_SIZE = 20;
-
-const FIRST_BATCH_CONCURRENCY = 10;
+const INITIAL_FIRST_BATCH_SIZE = 250;
+const FIRST_BATCH_CONCURRENCY = 50;
+const INSTANT_SYNC_CONCURRENCY = 200;
+const INSTANT_SYNC_LIST_SIZE = 500;
 
 const aurinkoAxios = axios.create({
   timeout: 30000,
   timeoutErrorMessage: 'Request timed out - please try again',
 });
+
+const AURINKO_401_RETRIES = 3;
+const AURINKO_401_RETRY_DELAY_MS = 1500;
+
+function is401Error(error: unknown): boolean {
+  if (axios.isAxiosError(error)) return error.response?.status === 401;
+  const msg = error instanceof Error ? error.message : String(error);
+  return /401|Authentication failed|UNAUTHORIZED/i.test(msg);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function with401Retry<T>(
+  accountId: string,
+  fn: () => Promise<T>,
+  options?: { tryRefresh?: () => Promise<boolean> },
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= AURINKO_401_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!is401Error(error) || attempt === AURINKO_401_RETRIES) break;
+      if (options?.tryRefresh) {
+        const refreshed = await options.tryRefresh();
+        if (refreshed) {
+          console.warn(`[accounts] Token refreshed for account ${accountId}, retrying request...`);
+          attempt--;
+          continue;
+        }
+      }
+      const delay = AURINKO_401_RETRY_DELAY_MS * (attempt + 1);
+      console.warn(
+        `[accounts] 401 on attempt ${attempt + 1}/${AURINKO_401_RETRIES + 1} for account ${accountId}, retrying in ${delay}ms...`,
+      );
+      await sleep(delay);
+    }
+  }
+  await db.account
+    .update({ where: { id: accountId }, data: { needsReconnection: true } })
+    .catch((err) => console.error(`[accounts] Failed to update needsReconnection:`, err));
+  throw lastError;
+}
 
 export class Account {
   private id: string;
@@ -30,6 +79,30 @@ export class Account {
   constructor(id: string, token: string) {
     this.id = id;
     this.token = token;
+  }
+
+  async refreshTokenIfPossible(): Promise<boolean> {
+    const account = await db.account.findUnique({
+      where: { id: this.id },
+      select: { refreshToken: true },
+    });
+    if (!account?.refreshToken) return false;
+    const result = await refreshAurinkoToken(this.id, account.refreshToken);
+    if (!result) return false;
+    const newToken = result.accountToken ?? result.accessToken;
+    const tokenExpiresAt = result.expiresIn
+      ? new Date(Date.now() + result.expiresIn * 1000)
+      : null;
+    await db.account.update({
+      where: { id: this.id },
+      data: {
+        token: newToken,
+        needsReconnection: false,
+        ...(tokenExpiresAt && { tokenExpiresAt }),
+      },
+    });
+    this.token = newToken;
+    return true;
   }
 
   private get aurinkoHeaders() {
@@ -47,21 +120,26 @@ export class Account {
     try {
       console.log(`[validateToken] Validating token for account ${this.id}...`);
 
-      const response = await aurinkoAxios.get(
-        `https://api.aurinko.io/v1/email/messages`,
-        {
-          headers: this.aurinkoHeaders,
-          params: {
-            maxResults: 1,
-            bodyType: "text",
-          },
-          timeout: 10000,
-        },
+      const response = await with401Retry(
+        this.id,
+        () =>
+          aurinkoAxios.get(
+            `https://api.aurinko.io/v1/email/messages`,
+            {
+              headers: this.aurinkoHeaders,
+              params: {
+                maxResults: 1,
+                bodyType: "text",
+              },
+              timeout: 10000,
+            },
+          ),
+        { tryRefresh: () => this.refreshTokenIfPossible() },
       );
+
       console.log(
         `[validateToken] Token is valid (status: ${response.status})`,
       );
-
 
       await db.account.update({
         where: { id: this.id },
@@ -71,36 +149,23 @@ export class Account {
       return response.status === 200;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          console.error(
-            `[validateToken] Token validation failed (401) for account ${this.id} - token is expired or invalid`,
-          );
-          console.error(`[validateToken] Error response:`, error.response?.data);
-
-
-          await db.account.update({
-            where: { id: this.id },
-            data: { needsReconnection: true },
-          }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
-
-          return false;
-        }
-
         if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
           console.warn(
             `[validateToken] Token validation timed out for account ${this.id} - treating as temporary network issue`,
           );
-
           return true;
         }
       }
-
+      if (is401Error(error)) {
+        console.error(
+          `[validateToken] Token validation failed after retries for account ${this.id}`,
+        );
+        return false;
+      }
       console.warn(
         `[validateToken] Token validation check failed with non-401 error (network/timeout):`,
         error,
       );
-
-
       return true;
     }
   }
@@ -284,45 +349,32 @@ export class Account {
   private async startSync() {
     console.log("[AURINKO AUTH] Using accountToken for account:", this.id);
 
-    try {
-      const response = await aurinkoAxios.post<syncResponse>(
-        `https://api.aurinko.io/v1/email/sync`,
-        {},
-        {
-          headers: this.aurinkoHeaders,
-          params: {
-            daysWithin: SYNC_WINDOW_DAYS,
-            bodyType: "text",
-            awaitReady: true,
-          },
-        },
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        console.error(
-          "[startSync] Authentication failed (401) - token may be expired",
-        );
-
-
-        await db.account.update({
-          where: { id: this.id },
-          data: { needsReconnection: true },
-        }).catch(err => console.error(`[startSync] Failed to update needsReconnection:`, err));
-
-        throw new Error(
-          "Authentication failed. Please reconnect your account.",
-        );
-      }
-      throw error;
-    }
+    const data = await with401Retry(
+      this.id,
+      () =>
+        aurinkoAxios
+          .post<syncResponse>(
+            `https://api.aurinko.io/v1/email/sync`,
+            {},
+            {
+              headers: this.aurinkoHeaders,
+              params: {
+                daysWithin: SYNC_WINDOW_DAYS,
+                bodyType: "text",
+                awaitReady: true,
+              },
+            },
+          )
+          .then((r) => r.data),
+      { tryRefresh: () => this.refreshTokenIfPossible() },
+    );
+    return data;
   }
 
   private async getUpdatedEmails(
     deltaToken?: string,
     pageToken?: string,
     metadataOnly: boolean = false,
-    isRetry = false,
   ): Promise<syncUpdateResponse> {
     const params: Record<string, string> = {};
 
@@ -340,93 +392,32 @@ export class Account {
       accountId: this.id,
       hasDeltaToken: !!deltaToken,
       hasPageToken: !!pageToken,
-      isRetry,
       tokenPreview: this.token
         ? `${this.token.substring(0, 20)}...`
         : "MISSING",
     });
 
-    try {
-      const response = await aurinkoAxios.get<syncUpdateResponse>(
-        `https://api.aurinko.io/v1/email/sync/updated`,
-        {
-          headers: this.aurinkoHeaders,
-          params,
-        },
-      );
+    const response = await with401Retry(
+      this.id,
+      () =>
+        aurinkoAxios.get<syncUpdateResponse>(
+          `https://api.aurinko.io/v1/email/sync/updated`,
+          {
+            headers: this.aurinkoHeaders,
+            params,
+          },
+        ),
+      { tryRefresh: () => this.refreshTokenIfPossible() },
+    );
 
-      console.log(`[getUpdatedEmails] Response:`, {
-        status: response.status,
-        recordCount: response.data.records?.length ?? 0,
-        hasNextPage: !!response.data.nextPageToken,
-        hasNextDelta: !!response.data.nextDeltaToken,
-      });
+    console.log(`[getUpdatedEmails] Response:`, {
+      status: response.status,
+      recordCount: response.data.records?.length ?? 0,
+      hasNextPage: !!response.data.nextPageToken,
+      hasNextDelta: !!response.data.nextDeltaToken,
+    });
 
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-
-        if (status === 401) {
-          if (!isRetry) {
-            console.warn(
-              `[getUpdatedEmails] 401 for account ${this.id} - retrying once in case of transient failure`,
-            );
-            try {
-              return await this.getUpdatedEmails(
-                deltaToken,
-                pageToken,
-                metadataOnly,
-                true,
-              );
-            } catch (retryError) {
-              if (
-                axios.isAxiosError(retryError) &&
-                retryError.response?.status === 401
-              ) {
-                console.error(
-                  `[getUpdatedEmails] Retry also 401 for account ${this.id} - token is invalid`,
-                );
-                await db.account
-                  .update({
-                    where: { id: this.id },
-                    data: { needsReconnection: true },
-                  })
-                  .catch((err) =>
-                    console.error(
-                      `[getUpdatedEmails] Failed to update needsReconnection:`,
-                      err,
-                    ),
-                  );
-                throw new Error(
-                  "Authentication failed. Please reconnect your account.",
-                );
-              }
-              throw retryError;
-            }
-          }
-
-          console.error(
-            `[getUpdatedEmails] Authentication failed (401) for account ${this.id} - token may be expired or invalid`,
-          );
-          await db.account
-            .update({
-              where: { id: this.id },
-              data: { needsReconnection: true },
-            })
-            .catch((err) =>
-              console.error(
-                `[getUpdatedEmails] Failed to update needsReconnection:`,
-                err,
-              ),
-            );
-          throw new Error(
-            "Authentication failed. Please reconnect your account.",
-          );
-        }
-      }
-      throw error;
-    }
+    return response.data;
   }
 
   async sendEmail({
@@ -509,11 +500,12 @@ export class Account {
     }
   }
 
-  async getEmailById(emailId: string): Promise<EmailMessage | null> {
+  async getEmailById(emailId: string, timeoutMs?: number): Promise<EmailMessage | null> {
     try {
       const response = await aurinkoAxios.get<EmailMessage>(
         `https://api.aurinko.io/v1/email/messages/${emailId}`,
         {
+          timeout: timeoutMs ?? 30000,
           headers: this.aurinkoHeaders,
           params: {
             bodyType: "html",
@@ -754,20 +746,10 @@ export class Account {
       } catch (syncApiError) {
         console.error("[syncEmails] ✗ Sync API failed:", syncApiError);
 
-        if (
-          axios.isAxiosError(syncApiError) &&
-          syncApiError.response?.status === 401
-        ) {
+        if (is401Error(syncApiError)) {
           console.error(
-            `[syncEmails] Authentication failed (401) - token may be expired or invalid`,
+            `[syncEmails] Authentication failed (401) after retries for account ${this.id}`,
           );
-
-
-          await db.account.update({
-            where: { id: this.id },
-            data: { needsReconnection: true },
-          }).catch(err => console.error(`[syncEmails] Failed to update needsReconnection:`, err));
-
           throw new Error(
             "Authentication failed. Please reconnect your account to continue syncing emails.",
           );
@@ -1110,25 +1092,8 @@ export class Account {
 
       if (isAuthError) {
         console.error(
-          `[Latest Sync] Authentication failed for account ${account.id} - token may be expired or invalid`,
+          `[Latest Sync] Authentication failed for account ${account.id} after retries`,
         );
-        console.error(
-          `[Latest Sync] Error details:`,
-          axios.isAxiosError(error)
-            ? {
-              status: error.response?.status,
-              statusText: error.response?.statusText,
-              data: error.response?.data,
-            }
-            : errorMessage,
-        );
-
-
-        await db.account.update({
-          where: { id: account.id },
-          data: { needsReconnection: true },
-        }).catch(err => console.error(`[Latest Sync] Failed to update needsReconnection:`, err));
-
         return { success: false, count: 0, authError: true };
       }
 
@@ -1236,42 +1201,94 @@ export class Account {
     }
   }
 
+  async syncAllEmailsInstant(): Promise<{ count: number }> {
+    const start = Date.now();
+    const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
+
+    const listOpts = { timeout: 10_000 };
+    const listInbox = () =>
+      aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+        "https://api.aurinko.io/v1/email/messages",
+        {
+          ...listOpts,
+          headers: this.aurinkoHeaders,
+          params: {
+            maxResults: INSTANT_SYNC_LIST_SIZE,
+            bodyType: "text",
+            q: `label:inbox ${newerThanQuery}`,
+          },
+        },
+      );
+
+    const listSent = () =>
+      aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+        "https://api.aurinko.io/v1/email/messages",
+        {
+          ...listOpts,
+          headers: this.aurinkoHeaders,
+          params: {
+            maxResults: INSTANT_SYNC_LIST_SIZE,
+            bodyType: "text",
+            q: `label:sent ${newerThanQuery}`,
+          },
+        },
+      );
+
+    const [inboxRes, sentRes] = await Promise.all([
+      with401Retry(this.id, listInbox, {
+        tryRefresh: () => this.refreshTokenIfPossible(),
+      }),
+      with401Retry(this.id, listSent, {
+        tryRefresh: () => this.refreshTokenIfPossible(),
+      }),
+    ]);
+
+    const inboxIds = inboxRes.data.messages?.map((m) => m.id) ?? [];
+    const sentIds = sentRes.data.messages?.map((m) => m.id) ?? [];
+    const allIds = [...new Set([...inboxIds, ...sentIds])];
+
+    if (allIds.length === 0) {
+      console.log("[syncAllEmailsInstant] No message IDs from list, skipping fetch");
+      return { count: 0 };
+    }
+
+    console.log(
+      `[syncAllEmailsInstant] Listed ${inboxIds.length} inbox + ${sentIds.length} sent = ${allIds.length} unique IDs, fetching with concurrency ${INSTANT_SYNC_CONCURRENCY}...`,
+    );
+
+    const limit = pLimit(INSTANT_SYNC_CONCURRENCY);
+    const emails = await Promise.all(
+      allIds.map((id) =>
+        limit(() => this.getEmailById(id, 10_000)),
+      ),
+    );
+    const valid = emails.filter((e): e is EmailMessage => e !== null);
+
+    await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 30 });
+    const elapsed = Date.now() - start;
+    console.log(
+      `[syncAllEmailsInstant] ✓ Synced ${valid.length} emails in ${elapsed}ms`,
+    );
+    return { count: valid.length };
+  }
+
   async fetchAllEmailsDirectly(): Promise<EmailMessage[]> {
     try {
       console.log(
         `[fetchAllEmailsDirectly] Starting to fetch all emails (inbox + sent) from last ${SYNC_WINDOW_DAYS} days...`,
       );
 
-      try {
-        const accountInfo = await aurinkoAxios.get(
-          "https://api.aurinko.io/v1/account",
-          {
+      await with401Retry(
+        this.id,
+        () =>
+          aurinkoAxios.get("https://api.aurinko.io/v1/account", {
             headers: this.aurinkoHeaders,
-          },
-        );
-        console.log(
-          `[fetchAllEmailsDirectly] ✓ API connection verified. Account: ${JSON.stringify(accountInfo.data)}`,
-        );
-      } catch (authError) {
-        if (axios.isAxiosError(authError)) {
-          console.error(
-            `[fetchAllEmailsDirectly] ✗ API authentication failed: ${authError.response?.status} - ${JSON.stringify(authError.response?.data)}`,
-          );
-
-
-          if (authError.response?.status === 401) {
-            await db.account.update({
-              where: { id: this.id },
-              data: { needsReconnection: true },
-            }).catch(err => console.error(`[fetchAllEmailsDirectly] Failed to update needsReconnection:`, err));
-          }
-
-          throw new Error(
-            `API authentication failed: ${authError.response?.status}. Please reconnect your account.`,
-          );
-        }
-        throw authError;
-      }
+          }),
+        { tryRefresh: () => this.refreshTokenIfPossible() },
+      );
+      console.log(
+        `[fetchAllEmailsDirectly] ✓ API connection verified for account ${this.id}`,
+      );
 
 
       console.log("[fetchAllEmailsDirectly] Step 1: Fetching INBOX emails...");

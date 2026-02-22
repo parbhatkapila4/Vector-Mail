@@ -121,20 +121,20 @@ const ReplyBox = ({
 
   if (!currentThread && threadId) {
     return (
-      <div className="flex h-[200px] items-center justify-center border-t border-white/[0.06] bg-[#0A0A0A]">
-        <div className="text-sm text-zinc-500">Loading reply box...</div>
+      <div className="flex h-[200px] items-center justify-center border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]">
+        <div className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">Loading reply box...</div>
       </div>
     );
   }
 
   if (!currentThread || !lastEmail) {
     return (
-      <div className="flex h-[200px] items-center justify-center border-t border-white/[0.06] bg-[#0A0A0A]">
+      <div className="flex h-[200px] items-center justify-center border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]">
         <div className="text-center">
-          <div className="mb-2 text-sm text-zinc-500">
+          <div className="mb-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">
             No reply details available
           </div>
-          <div className="text-xs text-zinc-600">
+          <div className="text-xs text-[#5f6368]/80 dark:text-[#9aa0a6]/80">
             Select a thread to reply to
           </div>
         </div>
@@ -250,17 +250,17 @@ const ReplyBox = ({
   const shouldShowCollapsed = isInMobileDialog ? false : isCollapsed;
 
   return (
-    <div className="flex h-full flex-col border-t border-white/[0.06] bg-[#0A0A0A] shadow-2xl shadow-black/50 md:sticky md:bottom-0 md:z-50">
+    <div className="flex h-full flex-col border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124] md:sticky md:bottom-0 md:z-50">
       {!isInMobileDialog && (
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
-              <Reply className="h-4 w-4 text-yellow-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a73e8]/10 dark:bg-[#8ab4f8]/15">
+              <Reply className="h-4 w-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
             </div>
             <div>
-              <span className="text-sm font-medium text-white">Reply</span>
+              <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Reply</span>
               {toValues.length > 0 && (
-                <span className="ml-2 text-xs text-zinc-500">
+                <span className="ml-2 text-xs text-[#5f6368] dark:text-[#9aa0a6]">
                   to {toValues[0]?.value || "..."}
                 </span>
               )}
@@ -270,13 +270,13 @@ const ReplyBox = ({
             variant="ghost"
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="h-8 w-8 rounded-lg p-0 text-white hover:bg-white/[0.06]"
+            className="h-8 w-8 rounded-lg p-0 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]"
             aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
           >
             {isCollapsed ? (
-              <ChevronUp className="h-4 w-4 text-yellow-500" />
+              <ChevronUp className="h-4 w-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-yellow-500" />
+              <ChevronDown className="h-4 w-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
             )}
           </Button>
         </div>
@@ -285,21 +285,21 @@ const ReplyBox = ({
       {!shouldShowCollapsed && (
         <div
           ref={bodyContainerRef}
-          className={`flex flex-1 flex-col ${isInMobileDialog ? "min-h-0" : "max-h-[60vh]"} overflow-hidden border-t border-white/[0.06]`}
+          className={`flex flex-1 flex-col ${isInMobileDialog ? "min-h-0" : "max-h-[60vh]"} overflow-hidden border-t border-[#dadce0] dark:border-[#3c4043]`}
         >
-          <div className="flex flex-col gap-1 border-b border-white/[0.06] px-4 py-2">
+          <div className="flex flex-col gap-1 border-b border-[#dadce0] px-4 py-2.5 dark:border-[#3c4043]">
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <Checkbox
                 checked={trackOpens}
                 onCheckedChange={(c) => setTrackOpens(c === true)}
                 disabled={sendEmail.isPending || isPendingSend}
-                className="mt-0.5 border-white/30 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
+                className="mt-0.5 border-[#dadce0] data-[state=checked]:bg-[#1a73e8] data-[state=checked]:border-[#1a73e8] dark:border-[#3c4043] dark:data-[state=checked]:bg-[#8ab4f8] dark:data-[state=checked]:border-[#8ab4f8]"
               />
-              <span className="text-zinc-400">
+              <span className="text-[#5f6368] dark:text-[#9aa0a6]">
                 Track when this email is opened
               </span>
             </label>
-            <p className="text-xs text-zinc-500 md:ml-7">
+            <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] md:ml-7">
               Adds a small image that loads when the recipient opens the email.
               Some email clients block images.
             </p>
@@ -322,15 +322,15 @@ const ReplyBox = ({
             isScheduling={scheduleSendMutation.isPending}
           />
           <Dialog open={scheduleSendOpen} onOpenChange={setScheduleSendOpen}>
-            <DialogContent className="max-w-sm border-white/10 bg-[#0A0A0A] p-6 text-white">
+            <DialogContent className="max-w-sm border-[#dadce0] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
               <DialogHeader>
-                <DialogTitle className="text-white">
+                <DialogTitle className="text-[#202124] dark:text-[#e8eaed]">
                   Schedule reply
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-6">
                 <div className="flex w-full flex-col items-center">
-                  <Label className="mb-2 block w-full text-center text-sm font-medium text-zinc-300">
+                  <Label className="mb-2 block w-full text-center text-sm font-medium text-[#5f6368] dark:text-[#9aa0a6]">
                     Date
                   </Label>
                   <div className="flex w-full justify-center">
@@ -341,12 +341,12 @@ const ReplyBox = ({
                       disabled={(date) =>
                         date < new Date(new Date().setHours(0, 0, 0, 0))
                       }
-                      className="[--cell-size:1.2rem] text-[11px] rounded-lg border border-white/10 bg-white/5 p-1.5 [&_[data-slot=calendar]]:text-[11px] [&_.rdp-month]:!gap-y-0.5 [&_.rdp-week]:!mt-0.5"
+                      className="[--cell-size:1.2rem] rounded-lg border border-[#dadce0] bg-[#f6f8fc] p-1.5 text-[11px] dark:border-[#3c4043] dark:bg-[#292a2d] [&_[data-slot=calendar]]:text-[11px] [&_.rdp-month]:!gap-y-0.5 [&_.rdp-week]:!mt-0.5"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label className="mb-3 block text-sm font-medium text-zinc-300">
+                  <Label className="mb-3 block text-sm font-medium text-[#5f6368] dark:text-[#9aa0a6]">
                     Time (24-hour)
                   </Label>
                   <TimeInput24
@@ -360,7 +360,7 @@ const ReplyBox = ({
                   disabled={
                     scheduleSendMutation.isPending || !authLoaded || !userId
                   }
-                  className="w-full py-2.5 bg-yellow-500 font-medium text-black hover:bg-yellow-600"
+                  className="w-full bg-[#1a73e8] py-2.5 font-medium text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
                 >
                   {!authLoaded || !userId
                     ? "Loading..."

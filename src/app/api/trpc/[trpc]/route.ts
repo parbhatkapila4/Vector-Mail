@@ -10,6 +10,8 @@ import { env } from "@/env";
 import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
+export const runtime = "nodejs";
+
 const createContext = async (req: NextRequest) => {
   const headers = new Headers();
   req.headers.forEach((value, key) => {
@@ -18,6 +20,7 @@ const createContext = async (req: NextRequest) => {
 
   return createTRPCContext({
     headers,
+    req,
   });
 };
 

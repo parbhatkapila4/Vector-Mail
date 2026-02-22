@@ -13,7 +13,7 @@ import {
   FileCode,
   GitPullRequest,
   Heart,
-  Sparkles,
+  MessageCircle,
   Lightbulb,
   Target,
   Award,
@@ -235,7 +235,7 @@ export default function WePage() {
             <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
               <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
-                  <Sparkles className="h-6 w-6 text-white" />
+                  <MessageCircle className="h-6 w-6 text-white" />
                 </div>
                 <div className="space-y-4 text-sm font-medium leading-relaxed text-white sm:text-base">
                   <h3 className="text-xl font-bold text-white sm:text-2xl">

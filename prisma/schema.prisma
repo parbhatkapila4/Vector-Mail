@@ -51,6 +51,7 @@ model Account {
   userId            String
   binaryIndex       Json?
   token             String          @unique
+  refreshToken      String?
   provider          String
   emailAddress      String
   name              String

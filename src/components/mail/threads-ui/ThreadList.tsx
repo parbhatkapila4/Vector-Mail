@@ -40,22 +40,22 @@ const CATEGORY_BADGE: Record<
   promotions: {
     label: "Promotions",
     className:
-      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+      "bg-[#fef7e0] text-[#b36b00] dark:bg-[#5c3317] dark:text-[#fdd663]",
   },
   social: {
     label: "Social",
     className:
-      "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+      "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#174ea6]/40 dark:text-[#8ab4f8]",
   },
   updates: {
     label: "Updates",
     className:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+      "bg-[#e6f4ea] text-[#137333] dark:bg-[#0d652d]/40 dark:text-[#81c995]",
   },
   forums: {
     label: "Forums",
     className:
-      "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+      "bg-[#f3e8fd] text-[#7c4dff] dark:bg-[#5e35b1]/40 dark:text-[#c4a6ff]",
   },
 };
 
@@ -434,12 +434,10 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (accountsLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-white dark:bg-black">
+      <div className="flex h-full items-center justify-center bg-white dark:bg-[#202124]">
         <div className="text-center">
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-800 dark:border-t-yellow-400" />
-          <p className="mt-4 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-            Loading...
-          </p>
+          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+          <p className="mt-3 text-[13px] text-[#5f6368] dark:text-[#9aa0a6]">Loading...</p>
         </div>
       </div>
     );
@@ -447,14 +445,10 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (currentTab === "scheduled") {
     return (
-      <div className="flex h-full flex-col bg-white dark:bg-black">
-        <div className="flex-shrink-0 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-            Scheduled sends
-          </h2>
-          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-            Emails that will be sent at the chosen time
-          </p>
+      <div className="flex h-full flex-col bg-white dark:bg-[#202124]">
+        <div className="flex-shrink-0 border-b border-[#dadce0] px-4 py-3 dark:border-[#3c4043]">
+          <h2 className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Scheduled sends</h2>
+          <p className="mt-0.5 text-xs text-[#5f6368] dark:text-[#9aa0a6]">Emails that will be sent at the chosen time</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {!scheduledSends || scheduledSends.length === 0 ? (
@@ -468,24 +462,20 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            <ul className="divide-y divide-[#dadce0] dark:divide-[#3c4043]">
               {scheduledSends.map((item: { id: string; subject: string; scheduledAt: Date }) => (
                 <li
                   key={item.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/50"
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#f8f9fa] dark:hover:bg-[#292a2d]"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-neutral-900 dark:text-white">
-                      {item.subject}
-                    </p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {format(item.scheduledAt, "MMM d, yyyy 'at' h:mm a")}
-                    </p>
+                    <p className="truncate text-sm font-medium text-[#202124] dark:text-[#e8eaed]">{item.subject}</p>
+                    <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{format(item.scheduledAt, "MMM d, yyyy 'at' h:mm a")}</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                    className="shrink-0 text-[#d93025] hover:bg-[#fce8e6] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
                     onClick={() => cancelScheduledMutation.mutate({ id: item.id })}
                     disabled={cancelScheduledMutation.isPending}
                   >
@@ -503,20 +493,16 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
 
   if (!accountId || (accounts !== undefined && accounts.length === 0)) {
     return (
-      <div className="flex h-full items-center justify-center bg-white p-10 dark:bg-black">
+      <div className="flex h-full items-center justify-center bg-white p-10 dark:bg-[#202124]">
         <div className="max-w-sm text-center">
-          <div className="mx-auto mb-7 flex h-20 w-20 items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
-            <Mail className="h-10 w-10 text-neutral-300 dark:text-neutral-700" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#f1f3f4] dark:bg-[#3c4043]">
+            <Mail className="h-8 w-8 text-[#5f6368] dark:text-[#9aa0a6]" />
           </div>
-          <h2 className="mb-3 text-xl font-semibold tracking-tight text-neutral-900 dark:text-white">
-            {CONNECTION_ERROR_MESSAGES.NO_ACCOUNT}
-          </h2>
-          <p className="mb-8 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">
-            {CONNECTION_ERROR_MESSAGES.CONNECT_DESCRIPTION}
-          </p>
+          <h2 className="mb-2 text-lg font-medium text-[#202124] dark:text-[#e8eaed]">{CONNECTION_ERROR_MESSAGES.NO_ACCOUNT}</h2>
+          <p className="mb-6 text-[14px] leading-relaxed text-[#5f6368] dark:text-[#9aa0a6]">{CONNECTION_ERROR_MESSAGES.CONNECT_DESCRIPTION}</p>
           <button
             onClick={handleAccountConnection}
-            className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-400 px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-yellow-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-yellow-500/40"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#1a73e8] px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -577,38 +563,36 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
         className={cn(
-          "group relative flex w-full items-start gap-0 border-b border-neutral-100 text-left transition-all duration-150 dark:border-neutral-900",
+          "group relative flex w-full items-start gap-0 border-b border-[#f1f3f4] text-left transition-colors dark:border-[#3c4043]",
           isSelected
-            ? "bg-gradient-to-r from-yellow-50 to-amber-50 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-1 before:bg-yellow-500 dark:from-yellow-950/30 dark:to-yellow-950/30 dark:before:bg-yellow-400"
+            ? "bg-[#e8f0fe] dark:bg-[#174ea6]/20"
             : isUnread && !isSelected
-              ? "bg-white hover:bg-neutral-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
-              : "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50",
+              ? "bg-white hover:bg-[#f8f9fa] dark:bg-[#202124] dark:hover:bg-[#292a2d]"
+              : "hover:bg-[#f8f9fa] dark:hover:bg-[#292a2d]",
         )}
       >
         <div
           className={cn(
-            "flex shrink-0 flex-col overflow-hidden pt-3.5 transition-[width,padding,opacity] duration-150",
+            "flex shrink-0 flex-col overflow-hidden pt-3 transition-[width,padding,opacity] duration-150",
             isRowSelected
-              ? "w-[52px] pl-3 opacity-100 pointer-events-auto"
-              : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[52px] group-hover:min-w-0 group-hover:pl-3 group-hover:opacity-100 group-hover:pointer-events-auto",
+              ? "w-[48px] pl-2 opacity-100 pointer-events-auto"
+              : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[48px] group-hover:min-w-0 group-hover:pl-2 group-hover:opacity-100 group-hover:pointer-events-auto",
           )}
           onClick={(e) => e.stopPropagation()}
           role="presentation"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center">
             <Checkbox
               checked={isRowSelected}
               onCheckedChange={() => toggleSelection(thread.id)}
               aria-label={`Select ${subject}`}
-              className="border-neutral-300 dark:border-neutral-600"
+              className="border-[#5f6368] dark:border-[#9aa0a6] data-[state=checked]:bg-[#1a73e8] data-[state=checked]:border-[#1a73e8] dark:data-[state=checked]:bg-[#8ab4f8] dark:data-[state=checked]:border-[#8ab4f8]"
             />
           </div>
         </div>
         <button
           type="button"
-          className={cn(
-            "relative flex min-w-0 flex-1 gap-4 px-2 py-3.5 pr-5 text-left outline-none",
-          )}
+          className="relative flex min-w-0 flex-1 gap-3 px-2 py-2.5 pr-2 text-left outline-none"
           onClick={() => {
             setThreadId(thread.id);
             onThreadSelect?.(thread.id);
@@ -616,42 +600,42 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         >
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-semibold transition-all duration-150",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-medium",
               isSelected
-                ? "bg-gradient-to-br from-yellow-600 to-yellow-400 text-white shadow-lg shadow-yellow-500/30"
+                ? "bg-[#1a73e8] text-white dark:bg-[#8ab4f8] dark:text-[#202124]"
                 : isUnread
-                  ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                  : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+                  ? "bg-[#1a73e8] text-white dark:bg-[#8ab4f8] dark:text-[#202124]"
+                  : "bg-[#e8eaed] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
             )}
           >
             {fromName.charAt(0).toUpperCase()}
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="flex items-center gap-2 truncate">
                   <span
                     className={cn(
-                      "truncate text-[14px] font-semibold",
+                      "truncate text-[13px]",
                       isUnread || isSelected
-                        ? "text-neutral-900 dark:text-white"
-                        : "text-neutral-700 dark:text-neutral-300",
+                        ? "font-semibold text-[#202124] dark:text-[#e8eaed]"
+                        : "font-normal text-[#5f6368] dark:text-[#9aa0a6]",
                     )}
                   >
                     {fromName}
                   </span>
                   {isUnread && !isSelected && (
-                    <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-500 dark:bg-yellow-400" />
+                    <span className="mt-0.5 flex h-2 w-2 shrink-0 rounded-full bg-[#1a73e8] dark:bg-[#8ab4f8]" />
                   )}
                 </div>
-                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 truncate">
                   <span
                     className={cn(
-                      "truncate text-[14px]",
+                      "truncate text-[13px]",
                       isUnread || isSelected
-                        ? "font-medium text-neutral-900 dark:text-white"
-                        : "font-normal text-neutral-600 dark:text-neutral-400",
+                        ? "font-medium text-[#202124] dark:text-[#e8eaed]"
+                        : "font-normal text-[#5f6368] dark:text-[#9aa0a6]",
                     )}
                   >
                     {subject}
@@ -669,16 +653,16 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
                   ))}
                 </div>
                 {bodySnippet && (
-                  <div className="line-clamp-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-500">
+                  <div className="line-clamp-2 text-[12px] leading-snug text-[#5f6368] dark:text-[#9aa0a6]">
                     {bodySnippet}
                   </div>
                 )}
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+              <div className="flex shrink-0 flex-col items-end gap-0.5 pt-0.5">
                 {isImportant && (
-                  <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500 dark:fill-yellow-400 dark:text-yellow-400" />
+                  <Star className="h-3.5 w-3.5 fill-[#1a73e8] text-[#1a73e8] dark:fill-[#8ab4f8] dark:text-[#8ab4f8]" />
                 )}
-                <span className="whitespace-nowrap text-[11px] font-medium text-neutral-500 dark:text-neutral-500">
+                <span className="whitespace-nowrap text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
                   {formatDistanceToNow(date, { addSuffix: false })}
                 </span>
               </div>
@@ -697,7 +681,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  className="h-8 w-8 shrink-0 rounded-full text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
                   aria-label="Snooze"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -714,7 +698,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  className="h-8 w-8 shrink-0 rounded-full text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
                   aria-label="Remind me if no reply"
                 >
                   <Bell className="h-4 w-4" />
@@ -731,10 +715,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
     if (refreshingAfterSync) {
       return (
         <div className="flex h-64 flex-col items-center justify-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-800 dark:border-t-yellow-400" />
-          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-            Refreshing inbox…
-          </p>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+          <p className="text-[13px] text-[#5f6368] dark:text-[#9aa0a6]">Refreshing inbox…</p>
         </div>
       );
     }
@@ -756,21 +738,15 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
         <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
           {isSyncingInbox ? (
             <>
-              <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-700 dark:border-t-yellow-400" />
-              <p className="text-[13px] font-medium text-neutral-600 dark:text-neutral-300">
-                Syncing…
-              </p>
-              <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                Inbox will update when done.
-              </p>
+              <div className="mb-3 h-6 w-6 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+              <p className="text-[13px] text-[#5f6368] dark:text-[#9aa0a6]">Syncing…</p>
+              <p className="mt-1 text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">Inbox will update when done.</p>
             </>
           ) : syncFailedInbox ? (
             <>
-              <Mail className="mb-4 h-11 w-11 text-red-400/80 dark:text-red-500/80" />
-              <p className="text-[14px] font-medium text-neutral-800 dark:text-neutral-200">
-                Sync failed
-              </p>
-              <p className="mt-1 max-w-sm text-[12px] text-neutral-600 dark:text-neutral-400">
+              <Mail className="mb-4 h-10 w-10 text-[#d93025] dark:text-[#f28b82]" />
+              <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">Sync failed</p>
+              <p className="mt-1 max-w-sm text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
                 {syncEmailsMutation.error?.message?.toLowerCase().includes("sign in") ||
                   syncEmailsMutation.error?.message?.toLowerCase().includes("unauthorized")
                   ? "Your session may have expired. Refresh the page or sign out and back in."
@@ -780,6 +756,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
                   onClick={() => window.location.reload()}
                 >
                   Refresh page
@@ -788,6 +765,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
                     onClick={() =>
                       syncEmailsMutation.mutate({
                         accountId,
@@ -804,25 +782,21 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
             </>
           ) : isRemindersTab ? (
             <>
-              <Bell className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
-              <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
-                No reminders due
-              </p>
+              <Bell className="mb-4 h-10 w-10 text-[#9aa0a6] dark:text-[#5f6368]" />
+              <p className="text-[14px] text-[#5f6368] dark:text-[#9aa0a6]">No reminders due</p>
             </>
           ) : (
             <>
-              <Mail className="mb-4 h-11 w-11 text-neutral-300 dark:text-neutral-700" />
-              <p className="text-[14px] font-medium text-neutral-500 dark:text-neutral-400">
-                No emails found
-              </p>
-              <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+              <Mail className="mb-4 h-10 w-10 text-[#9aa0a6] dark:text-[#5f6368]" />
+              <p className="text-[14px] text-[#5f6368] dark:text-[#9aa0a6]">No emails found</p>
+              <p className="mt-1 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
                 Click <strong>Sync</strong> above to load your emails, or check back later.
               </p>
               {currentTab === "inbox" && accountId && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-4"
+                  className="mt-4 border-[#dadce0] text-[#1a73e8] hover:bg-[#e8f0fe] dark:border-[#3c4043] dark:text-[#8ab4f8] dark:hover:bg-[#174ea6]/20"
                   onClick={() =>
                     syncEmailsMutation.mutate({
                       accountId,
@@ -845,8 +819,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
       <div className="flex flex-col">
         {Object.entries(groupedThreads).map(([date, threads]) => (
           <React.Fragment key={date}>
-            <div className="sticky top-0 z-10 border-b border-neutral-100 bg-white px-5 py-2.5 dark:border-neutral-900 dark:bg-black">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
+            <div className="sticky top-0 z-10 border-b border-[#f1f3f4] bg-white px-4 py-2 dark:border-[#3c4043] dark:bg-[#202124]">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-[#5f6368] dark:text-[#9aa0a6]">
                 {format(new Date(date), "MMM d, yyyy")}
               </span>
             </div>
@@ -856,8 +830,8 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
           </React.Fragment>
         ))}
         {isFetchingNextPage && (
-          <div className="flex justify-center py-8">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-yellow-500 dark:border-neutral-800 dark:border-t-yellow-400" />
+          <div className="flex justify-center py-6">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
           </div>
         )}
       </div>
@@ -881,54 +855,42 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white dark:bg-black">
-      <div className="flex items-center justify-between border-b border-neutral-200/50 px-5 py-2.5 dark:border-neutral-800/30">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
-          {isSearching && searchValue
-            ? "Search Results"
-            : currentTab === "reminders"
-              ? `${threadsToRender.length} reminder${threadsToRender.length === 1 ? "" : "s"}`
-              : `${threadsToRender.length} conversations`}
-        </span>
-        <div className="flex items-center gap-2">
+    <div className="flex h-full flex-col overflow-hidden bg-white dark:bg-[#202124]">
+      <div className="flex items-center justify-end gap-1 border-b border-[#f1f3f4] px-3 py-2 dark:border-[#3c4043]">
+        <div className="flex items-center gap-0.5">
           {threadsToRender.length > 0 && !isSearching && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              type="button"
               onClick={selectAllVisible}
-              className="h-7 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+              className="rounded px-2 py-1.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
             >
               Select all
-            </Button>
+            </button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
             onClick={handleRefresh}
             disabled={syncEmailsMutation.isPending}
-            className="h-7 gap-2 rounded-lg px-2.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+            className="flex items-center gap-1.5 rounded px-2 py-1.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] disabled:opacity-60 dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
           >
             <RefreshCw
-              className={cn(
-                "h-3.5 w-3.5",
-                syncEmailsMutation.isPending && "animate-spin",
-              )}
+              className={cn("h-3.5 w-3.5", syncEmailsMutation.isPending && "animate-spin")}
             />
             {syncEmailsMutation.isPending ? "Syncing" : "Sync"}
-          </Button>
+          </button>
         </div>
       </div>
 
       {showBulkBar && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200/50 bg-neutral-50 px-4 py-2.5 dark:border-neutral-800/30 dark:bg-neutral-900/50">
-          <span className="text-[12px] font-medium text-neutral-700 dark:text-neutral-300">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#f1f3f4] bg-[#f8f9fa] px-3 py-2 dark:border-[#3c4043] dark:bg-[#292a2d]">
+          <span className="text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
             {selectedCount} selected
           </span>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-0.5">
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 text-[12px]"
+              className="h-7 gap-1.5 text-[12px] text-[#5f6368] hover:bg-[#e8eaed] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
               disabled={isBulkPending}
               onClick={() =>
                 accountId &&
@@ -944,7 +906,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 text-[12px]"
+              className="h-7 gap-1.5 text-[12px] text-[#5f6368] hover:bg-[#e8eaed] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
               disabled={isBulkPending}
               onClick={() =>
                 accountId &&
@@ -961,7 +923,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1.5 text-[12px] text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                className="h-7 gap-1.5 text-[12px] text-[#d93025] hover:bg-[#fce8e6] hover:text-[#d93025] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
                 disabled={isBulkPending}
                 onClick={() => setDeleteConfirmOpen(true)}
               >
@@ -972,7 +934,7 @@ export function ThreadList({ onThreadSelect }: ThreadListProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-[12px]"
+              className="h-7 text-[12px] text-[#5f6368] hover:bg-[#e8eaed] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
               disabled={isBulkPending}
               onClick={clearSelection}
             >

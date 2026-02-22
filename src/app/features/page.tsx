@@ -10,7 +10,7 @@ import {
   Shield,
   Clock,
   TrendingUp,
-  Sparkles,
+  MessageCircle,
   Target,
   BarChart,
   Database,
@@ -200,7 +200,7 @@ export default function FeaturesPage() {
         "Intelligent routing across OpenAI, Google Gemini, and Claude with automatic failover.",
     },
     {
-      icon: Sparkles,
+      icon: MessageCircle,
       title: "Custom Voice Training",
       description:
         "Fine-tuned on your sent emails to generate responses that sound authentically like you.",
@@ -753,7 +753,7 @@ export default function FeaturesPage() {
           >
             <div className="mb-8">
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 shadow-lg">
-                <Sparkles className="h-10 w-10 text-white" />
+                <MessageCircle className="h-10 w-10 text-white" />
               </div>
             </div>
             <h2 className="mb-6 text-5xl font-black sm:text-6xl">

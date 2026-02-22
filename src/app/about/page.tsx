@@ -11,7 +11,7 @@ import {
   Heart,
   Target,
   TrendingUp,
-  Sparkles,
+  MessageCircle,
   Clock,
   AlertTriangle,
   CheckCircle,
@@ -56,7 +56,7 @@ export default function AboutPage() {
         "Email is too important to be locked in proprietary silos. We believe in transparency, community contributions, and owning your data.",
     },
     {
-      icon: Sparkles,
+      icon: MessageCircle,
       title: "AI Should Work for You",
       description:
         "AI isn't a gimmick - it's a tool to save hours of manual work. We use it to summarize, search, and draft - not replace human communication.",
@@ -592,7 +592,7 @@ export default function AboutPage() {
                   title: "Mobile Apps",
                   description:
                     "Native iOS & Android with offline-first architecture",
-                  icon: Sparkles,
+                  icon: MessageCircle,
                 },
                 {
                   title: "Team Collaboration",

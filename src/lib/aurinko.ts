@@ -92,17 +92,29 @@ export async function exchangeAurinkoCodeForToken(code: string) {
     }
 
     const accountToken = data.accountToken || data.token || data.account_token;
+    const refreshToken =
+      data.refreshToken ?? data.refresh_token ?? null;
+    const expiresIn =
+      typeof data.expiresIn === "number"
+        ? data.expiresIn
+        : typeof data.expires_in === "number"
+          ? data.expires_in
+          : null;
 
     console.log("[TOKEN] ✓ Success - accessToken and accountId present");
     console.log(
       "[TOKEN] API token:",
       accountToken ? "accountToken" : "accessToken (fallback)",
     );
+    if (refreshToken) console.log("[TOKEN] ✓ Refresh token present (will use for silent renewal)");
+    if (expiresIn) console.log("[TOKEN] ✓ expiresIn:", expiresIn, "seconds");
 
     return {
       accessToken: data.accessToken,
       accountId: String(data.accountId),
       accountToken: accountToken || data.accessToken,
+      refreshToken: refreshToken ?? undefined,
+      expiresIn: expiresIn ?? undefined,
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -122,6 +134,64 @@ export async function exchangeAurinkoCodeForToken(code: string) {
       console.error("[TOKEN] ✗ FAILED - Unknown error:", error);
     }
     throw error;
+  }
+}
+
+/**
+ * Try to get a new access token using the refresh token (Gmail-style: no user re-auth).
+ * Aurinko may support this; if not, the request will fail and we fall back to reconnection.
+ */
+export async function refreshAurinkoToken(
+  accountId: string,
+  refreshToken: string,
+): Promise<{ accessToken: string; accountToken?: string; expiresIn?: number } | null> {
+  try {
+    const response = await axios.post<{
+      accessToken?: string;
+      accountToken?: string;
+      token?: string;
+      account_token?: string;
+      expiresIn?: number;
+      expires_in?: number;
+    }>(
+      "https://api.aurinko.io/v1/auth/refresh",
+      { accountId, refreshToken },
+      {
+        auth: {
+          username: process.env.AURINKO_CLIENT_ID!,
+          password: process.env.AURINKO_CLIENT_SECRET!,
+        },
+        headers: { "Content-Type": "application/json" },
+        timeout: 15000,
+      },
+    );
+    const data = response.data;
+    const accessToken = data?.accessToken ?? data?.token;
+    if (!accessToken) {
+      console.warn("[TOKEN] Refresh response missing accessToken:", Object.keys(data ?? {}));
+      return null;
+    }
+    const accountToken =
+      data?.accountToken ?? data?.token ?? data?.account_token ?? accessToken;
+    const expiresIn =
+      typeof data?.expiresIn === "number"
+        ? data.expiresIn
+        : typeof data?.expires_in === "number"
+          ? data.expires_in
+          : undefined;
+    console.log("[TOKEN] ✓ Refresh successful for account", accountId);
+    return { accessToken, accountToken, expiresIn };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.warn(
+        "[TOKEN] Refresh failed:",
+        error.response?.status,
+        error.response?.data,
+      );
+    } else {
+      console.warn("[TOKEN] Refresh failed:", error);
+    }
+    return null;
   }
 }
 

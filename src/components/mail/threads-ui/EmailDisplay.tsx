@@ -1,10 +1,8 @@
 "use client";
-import Avatar from "react-avatar";
 import type { RouterOutputs } from "@/trpc/react";
 import React from "react";
 import useThreads from "@/hooks/use-threads";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from "date-fns";
 import { api } from "@/trpc/react";
 import { sanitizeEmailHtml } from "@/lib/validation";
 
@@ -42,8 +40,12 @@ const EmailDisplay = ({ email }: Props) => {
   const [loadError, setLoadError] = React.useState(false);
 
   const isPlainTextStored = emailBody && !/<[^>]+>/g.test(emailBody);
+  const hasUnresolvedCid = emailBody && /cid:/i.test(emailBody);
   const needsFullBody =
-    !emailBody || emailBody.length < 100 || isPlainTextStored;
+    !emailBody ||
+    emailBody.length < 100 ||
+    isPlainTextStored ||
+    !!hasUnresolvedCid;
 
   const {
     data: fullBodyData,
@@ -271,42 +273,14 @@ const EmailDisplay = ({ email }: Props) => {
   return (
     <div
       className={cn(
-        "min-h-[600px] cursor-pointer rounded-md border p-4 transition-all hover:translate-x-2",
+        "min-h-0 cursor-pointer rounded-md border p-2 transition-all hover:translate-x-2",
         {
           "border-l-4 border-l-gray-900": isMe,
         },
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {!isMe && (
-            <Avatar
-              name={email.from.name ?? email.from.address}
-              email={email.from.address}
-              size="35"
-              textSizeRatio={2}
-              round={true}
-            />
-          )}
-          <span className="font-medium">
-            {isMe ? "Me" : email.from.address}
-          </span>
-        </div>
-        <p className="hidden text-xs text-muted-foreground md:block">
-          {formatDistanceToNow(email.sentAt ?? new Date(), {
-            addSuffix: true,
-          })}
-        </p>
-      </div>
-      {isMe && openData?.openedAt && (
-        <p className="mt-1 text-xs text-zinc-500">
-          Opened{" "}
-          {format(new Date(openData.openedAt), "MMM d, yyyy 'at' h:mm a")}
-        </p>
-      )}
-      <div className="h-4"></div>
       {showLoading ? (
-        <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
+        <div className="flex min-h-[70vh] items-center justify-center rounded-md bg-white">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-yellow-500"></div>
@@ -325,7 +299,7 @@ const EmailDisplay = ({ email }: Props) => {
           </div>
         </div>
       ) : showError ? (
-        <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
+        <div className="flex min-h-[70vh] items-center justify-center rounded-md bg-white">
           <div className="text-center">
             <div className="mb-2 text-sm font-medium text-gray-700">
               Unable to load full email content
@@ -342,7 +316,7 @@ const EmailDisplay = ({ email }: Props) => {
         </div>
       ) : hasContent ? (
         <div
-          className="min-h-[500px] overflow-y-auto rounded-md bg-white md:min-h-[500px]"
+          className="min-h-[70vh] overflow-y-auto rounded-md bg-white md:min-h-[70vh]"
           ref={letterRef}
         >
           <div
@@ -487,7 +461,7 @@ const EmailDisplay = ({ email }: Props) => {
           />
         </div>
       ) : (
-        <div className="flex min-h-[500px] items-center justify-center rounded-md bg-white">
+        <div className="flex min-h-[70vh] items-center justify-center rounded-md bg-white">
           <div className="text-sm text-muted-foreground">
             No email content available
           </div>

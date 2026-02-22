@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 async function processBatch<T>(
   items: T[],
   processor: (item: T) => Promise<void>,
-  concurrency: number = 5, // Reduced default from 10 to 5 to prevent connection pool exhaustion
+  concurrency: number = 5,
 ): Promise<void> {
   const batches: T[][] = [];
   for (let i = 0; i < items.length; i += concurrency) {
@@ -20,6 +20,7 @@ async function processBatch<T>(
 export async function syncEmailsToDatabase(
   emails: EmailMessage[],
   accountId: string,
+  options?: { writeConcurrency?: number },
 ) {
   if (!emails || emails.length === 0) {
     console.warn(
@@ -28,8 +29,10 @@ export async function syncEmailsToDatabase(
     return;
   }
 
+  const concurrency = options?.writeConcurrency ?? 5;
+
   console.log(
-    `[syncEmailsToDatabase] Starting sync for ${emails.length} emails for account ${accountId}`,
+    `[syncEmailsToDatabase] Starting sync for ${emails.length} emails for account ${accountId} (concurrency: ${concurrency})`,
   );
 
   let successCount = 0;
@@ -50,7 +53,7 @@ export async function syncEmailsToDatabase(
           );
         }
       },
-      5, // Reduced from 10 to 5 to prevent connection pool exhaustion
+      concurrency,
     );
 
     console.log(

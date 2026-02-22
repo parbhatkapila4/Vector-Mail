@@ -7,7 +7,7 @@ import {
   Send,
   Bot,
   X,
-  Sparkles,
+  MessageCircle,
   LogOut,
   Zap,
   Search,
@@ -145,8 +145,8 @@ export function Mail({ }: MailLayoutProps) {
           closeHelp={() => setHelpOpen(false)}
         />
         <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
-        <div className="flex h-full w-full flex-col bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
-          <div className="flex items-center justify-between border-b border-neutral-200/80 bg-white/60 px-4 py-3 backdrop-blur-xl dark:border-neutral-800/50 dark:bg-black/60">
+        <div className="flex h-full w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
+          <div className="flex items-center justify-between border-b border-[#dadce0] bg-white px-4 py-2.5 dark:border-[#3c4043] dark:bg-[#202124]">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -155,7 +155,7 @@ export function Mail({ }: MailLayoutProps) {
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="w-[280px] border-neutral-200 bg-white p-0 dark:border-neutral-800 dark:bg-black"
+                className="w-[280px] border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124]"
               >
                 <MobileSidebar
                   navItems={navItems}
@@ -172,7 +172,7 @@ export function Mail({ }: MailLayoutProps) {
                 handleThreadClose();
                 setTab("inbox");
               }}
-              className="cursor-pointer border-none bg-transparent p-0 text-base font-semibold capitalize text-neutral-900 outline-none transition-opacity hover:opacity-70 dark:text-neutral-100"
+              className="cursor-pointer border-none bg-transparent p-0 text-[15px] font-medium capitalize text-[#202124] outline-none transition-opacity hover:opacity-80 dark:text-[#e8eaed]"
             >
               {tab}
             </button>
@@ -187,35 +187,21 @@ export function Mail({ }: MailLayoutProps) {
           </div>
 
           {isNavigating && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm dark:bg-black/80">
-              <div className="flex flex-col items-center gap-4 rounded-2xl bg-white/95 p-8 shadow-2xl dark:bg-neutral-900/95">
-                <div className="relative">
-                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-yellow-200 border-t-yellow-500 dark:border-yellow-800 dark:border-t-yellow-400"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700"></div>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    Loading...
-                  </p>
-                  <div className="mt-2 flex items-center justify-center gap-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.3s]"></span>
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.15s]"></span>
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500"></span>
-                  </div>
-                </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-4 rounded-lg bg-white p-8 shadow-lg dark:bg-[#292a2d]">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+                <p className="text-sm font-medium text-[#5f6368] dark:text-[#9aa0a6]">Loading...</p>
               </div>
             </div>
           )}
 
           {!selectedThread ? (
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex flex-1 flex-col overflow-hidden bg-[#f6f8fc] dark:bg-[#202124]">
               <SearchBar />
               <ThreadList onThreadSelect={handleThreadSelect} />
             </div>
           ) : (
-            <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-black">
+            <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-[#202124]">
               <ThreadDisplay threadId={selectedThread} />
             </div>
           )}
@@ -238,11 +224,11 @@ export function Mail({ }: MailLayoutProps) {
         closeHelp={() => setHelpOpen(false)}
       />
       <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
-      <div className="flex h-full w-full flex-col bg-gradient-to-br from-neutral-50 via-white to-neutral-50 dark:from-neutral-950 dark:via-black dark:to-neutral-950">
-        <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-neutral-200/50 bg-white/40 px-8 backdrop-blur-2xl dark:border-neutral-800/30 dark:bg-black/40">
-          <div className="flex items-center gap-10">
-            <Link href="/" className="group flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-yellow-600 via-yellow-500 to-amber-400 shadow-lg shadow-yellow-500/20 ring-1 ring-yellow-500/20 transition-transform group-hover:scale-105">
+      <div className="flex h-full w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
+        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-[#dadce0] bg-white px-4 dark:border-[#3c4043] dark:bg-[#202124]">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-[#1a73e8] dark:bg-[#8ab4f8]">
                 <video
                   src="/Vectormail-logo.mp4"
                   autoPlay
@@ -252,63 +238,56 @@ export function Mail({ }: MailLayoutProps) {
                   className="h-full w-full scale-[1.6] object-cover"
                 />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[15px] font-bold leading-none tracking-tight text-neutral-900 dark:text-white">
-                  VectorMail
-                </span>
-                <span className="mt-0.5 text-[10px] leading-none text-neutral-500 dark:text-neutral-400">
-                  AI Email
-                </span>
-              </div>
+              <span className="text-[22px] font-normal tracking-tight text-[#5f6368] dark:text-[#9aa0a6]">
+                VectorMail
+              </span>
             </Link>
 
-            <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-800" />
-
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-0.5">
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setTab(item.id)}
                   className={cn(
-                    "relative flex items-center gap-2.5 rounded-xl px-5 py-2 text-[13px] font-semibold transition-all duration-200",
+                    "relative flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-[14px] font-medium transition-colors",
                     tab === item.id
-                      ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 shadow-sm shadow-yellow-500/5 dark:from-yellow-950/30 dark:to-yellow-950/30 dark:text-yellow-400"
-                      : "text-neutral-600 hover:bg-neutral-100/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900/50 dark:hover:text-neutral-200",
+                      ? "text-[#1a73e8] dark:text-[#8ab4f8]"
+                      : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]",
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-5 w-5 shrink-0" />
                   <span>{item.label}</span>
                   {item.count !== undefined && item.count > 0 && (
                     <span
                       className={cn(
-                        "rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                        "min-w-[20px] rounded-full px-1.5 py-0.5 text-[12px] font-normal tabular-nums",
                         tab === item.id
-                          ? "bg-yellow-500 text-white dark:bg-yellow-400 dark:text-yellow-950"
-                          : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+                          ? "bg-[#1a73e8]/15 text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]"
+                          : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
                       )}
                     >
-                      {item.count > 99 ? "99+" : item.count}
+                      {item.count}
                     </span>
+                  )}
+                  {tab === item.id && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a73e8] dark:bg-[#8ab4f8]" />
                   )}
                 </button>
               ))}
             </nav>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => router.push("/buddy?fresh=true")}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]"
                 >
-                  <Bot className="h-4 w-4" />
+                  <Bot className="h-5 w-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="bg-neutral-900 text-xs text-white"
-              >
+              <TooltipContent side="bottom" className="bg-[#303134] text-xs text-[#e8eaed]">
                 AI Buddy
               </TooltipContent>
             </Tooltip>
@@ -318,19 +297,16 @@ export function Mail({ }: MailLayoutProps) {
                 <button
                   onClick={() => setShowAIPanel(!showAIPanel)}
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200",
+                    "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
                     showAIPanel
-                      ? "bg-gradient-to-r from-yellow-600 to-yellow-400 text-white shadow-lg shadow-yellow-500/30"
-                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200",
+                      ? "bg-[#1a73e8] text-white dark:bg-[#8ab4f8] dark:text-[#202124]"
+                      : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]",
                   )}
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <MessageCircle className="h-5 w-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="bg-neutral-900 text-xs text-white"
-              >
+              <TooltipContent side="bottom" className="bg-[#303134] text-xs text-[#e8eaed]">
                 AI Search
               </TooltipContent>
             </Tooltip>
@@ -342,7 +318,7 @@ export function Mail({ }: MailLayoutProps) {
               }}
             />
 
-            <div className="mx-1 h-6 w-px bg-neutral-200 dark:bg-neutral-800" />
+            <div className="mx-1 h-6 w-px bg-[#dadce0] dark:bg-[#3c4043]" />
 
             <UserButton />
           </div>
@@ -360,8 +336,8 @@ export function Mail({ }: MailLayoutProps) {
               maxSize={50}
               className="flex flex-col"
             >
-              <aside className="flex h-full min-w-0 flex-col border-r border-neutral-200/50 bg-white/60 backdrop-blur-xl dark:border-neutral-800/30 dark:bg-black/60">
-                <div className="border-b border-neutral-200/50 px-6 py-4 dark:border-neutral-800/30">
+              <aside className="flex h-full min-w-0 flex-col border-r border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]">
+                <div className="border-b border-[#dadce0] px-4 py-3 dark:border-[#3c4043]">
                   <SearchBar />
                 </div>
                 <div className="flex-1 overflow-hidden">
@@ -371,12 +347,12 @@ export function Mail({ }: MailLayoutProps) {
             </ResizablePanel>
             <ResizableHandle
               withHandle
-              className="bg-neutral-200/80 hover:bg-yellow-500/30 dark:bg-neutral-700/80 dark:hover:bg-yellow-500/30"
+              className="bg-[#dadce0] hover:bg-[#1a73e8]/20 dark:bg-[#3c4043] dark:hover:bg-[#8ab4f8]/20"
             />
             <ResizablePanel defaultSize={72} minSize={30} className="min-w-0">
               <main
                 className={cn(
-                  "flex h-full flex-1 flex-col bg-gradient-to-br from-neutral-50 to-white dark:from-neutral-950 dark:to-black",
+                  "flex h-full flex-1 flex-col bg-white dark:bg-[#202124]",
                   showAIPanel && "mr-[360px]",
                 )}
               >
@@ -387,23 +363,23 @@ export function Mail({ }: MailLayoutProps) {
 
           <aside
             className={cn(
-              "fixed right-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-[360px] border-l border-neutral-200/50 bg-white/80 shadow-[-8px_0_32px_rgba(0,0,0,0.08)] backdrop-blur-2xl transition-transform duration-300 ease-out dark:border-neutral-800/30 dark:bg-black/80 dark:shadow-[-8px_0_32px_rgba(0,0,0,0.4)]",
+              "fixed right-0 top-12 z-40 h-[calc(100vh-3rem)] w-[360px] border-l border-[#dadce0] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-out dark:border-[#3c4043] dark:bg-[#292a2d] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
               showAIPanel ? "translate-x-0" : "translate-x-full",
             )}
           >
             <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b border-neutral-200/50 px-6 py-4 dark:border-neutral-800/30">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-600 to-yellow-400 shadow-lg shadow-yellow-500/30">
-                    <Sparkles className="h-4 w-4 text-white" />
+              <div className="flex items-center justify-between border-b border-[#dadce0] px-4 py-3 dark:border-[#3c4043]">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8] dark:bg-[#8ab4f8]">
+                    <MessageCircle className="h-4 w-4 text-white dark:text-[#202124]" />
                   </div>
-                  <span className="text-[14px] font-bold text-neutral-900 dark:text-white">
+                  <span className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
                     AI Search
                   </span>
                 </div>
                 <button
                   onClick={() => setShowAIPanel(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -449,12 +425,12 @@ function MobileSidebar({
   }, [signOut, router]);
 
   return (
-    <div className="flex h-full flex-col bg-white dark:bg-black">
+    <div className="flex h-full flex-col bg-white dark:bg-[#202124]">
       <Link
         href="/"
-        className="flex items-center gap-3 border-b border-neutral-200 p-5 dark:border-neutral-800"
+        className="flex items-center gap-3 border-b border-[#dadce0] p-4 dark:border-[#3c4043]"
       >
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-yellow-600 via-yellow-500 to-amber-400 shadow-lg shadow-yellow-500/20 ring-1 ring-yellow-500/20">
+        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-[#1a73e8] dark:bg-[#8ab4f8]">
           <video
             src="/Vectormail-logo.mp4"
             autoPlay
@@ -465,22 +441,18 @@ function MobileSidebar({
           />
         </div>
         <div>
-          <h2 className="text-[17px] font-bold tracking-tight text-neutral-900 dark:text-white">
-            VectorMail
-          </h2>
-          <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-            AI-Powered Email
-          </p>
+          <h2 className="text-[15px] font-medium text-[#202124] dark:text-[#e8eaed]">VectorMail</h2>
+          <p className="mt-0.5 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">AI-Powered Email</p>
         </div>
       </Link>
 
-      <div className="border-neutral-200 dark:border-neutral-800 md:border-b md:p-4">
+      <div className="border-[#dadce0] dark:border-[#3c4043] md:border-b md:p-3">
         <div className="hidden md:block">
           <AccountSwitcher isCollapsed={false} />
         </div>
       </div>
 
-      <div className="space-y-1 p-3">
+      <div className="space-y-0.5 p-2">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -492,32 +464,30 @@ function MobileSidebar({
               }
             }}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition-colors",
               tab === item.id
-                ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-600 shadow-sm dark:from-yellow-950/30 dark:to-yellow-950/30 dark:text-yellow-400"
-                : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200",
+                ? "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]"
+                : "text-[#202124] hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#303134]",
             )}
           >
-            <item.icon className="h-4 w-4" />
-            <span className="flex-1 text-left text-[14px] font-semibold">
-              {item.label}
-            </span>
+            <item.icon className="h-5 w-5 shrink-0" />
+            <span className="flex-1">{item.label}</span>
             {item.count !== undefined && item.count > 0 && (
               <span
                 className={cn(
-                  "rounded-md px-2 py-0.5 text-[11px] font-bold",
+                  "rounded-full px-2 py-0.5 text-[12px] tabular-nums",
                   tab === item.id
-                    ? "bg-yellow-500 text-white dark:bg-yellow-400 dark:text-yellow-950"
-                    : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+                    ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]"
+                    : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
                 )}
               >
-                {item.count > 99 ? "99+" : item.count}
+                {item.count}
               </span>
             )}
           </button>
         ))}
 
-        <div className="my-3 h-px bg-neutral-200 dark:bg-neutral-800" />
+        <div className="my-2 h-px bg-[#dadce0] dark:bg-[#3c4043]" />
 
         <button
           onClick={() => {
@@ -527,16 +497,14 @@ function MobileSidebar({
               router.push("/buddy?fresh=true");
             }
           }}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-neutral-600 transition-all duration-200 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-[#202124] transition-colors hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
         >
-          <Bot className="h-4 w-4" />
-          <span className="flex-1 text-left text-[14px] font-semibold">
-            AI Buddy
-          </span>
+          <Bot className="h-5 w-5 shrink-0" />
+          <span className="flex-1">AI Buddy</span>
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 px-3 pb-3">
+      <div className="flex min-h-0 flex-1 px-2 pb-2">
         <button
           type="button"
           onClick={() => {
@@ -546,45 +514,36 @@ function MobileSidebar({
               router.push("/buddy?fresh=true");
             }
           }}
-          className="group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-yellow-600 via-yellow-500 to-amber-400 p-5 text-left shadow-lg shadow-yellow-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-yellow-500/40 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+          className="group flex w-full flex-col justify-between rounded-lg border border-[#dadce0] bg-[#f8f9fa] p-4 text-left transition-colors hover:border-[#1a73e8]/30 hover:bg-[#e8f0fe]/50 dark:border-[#3c4043] dark:bg-[#292a2d] dark:hover:border-[#8ab4f8]/30 dark:hover:bg-[#174ea6]/10"
         >
-          <div className="relative z-10 flex flex-col">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
-                <Zap className="h-4 w-4 text-white" />
+          <div className="flex flex-col">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8] dark:bg-[#8ab4f8]">
+                <Zap className="h-4 w-4 text-white dark:text-[#202124]" />
               </div>
-              <Search className="h-3.5 w-3.5 text-white/90" />
+              <Search className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
             </div>
-            <h3 className="mb-3 text-[16px] font-bold leading-snug text-white">
-              Want to enjoy an email assistant?
+            <h3 className="mb-2 text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
+              Email assistant
             </h3>
-            <p className="mb-3 text-[13px] leading-relaxed text-white/90">
-              Our AI assistant helps you find emails instantly, summarize
-              conversations, and get smart insights from your inbox.
-            </p>
-            <p className="text-[12px] leading-relaxed text-white/85">
-              For the best experience, try using VectorMail on your laptop to
-              unlock the full power of our AI-powered features.
+            <p className="text-[13px] leading-relaxed text-[#5f6368] dark:text-[#9aa0a6]">
+              Find emails, summarize threads, and get insights. Best on desktop.
             </p>
           </div>
-          <div className="relative z-10 mt-auto flex items-center gap-2 pt-6 text-[13px] font-semibold text-white">
-            <span>Try Using on Your Laptop</span>
+          <div className="mt-4 flex items-center gap-2 text-[13px] font-medium text-[#1a73e8] dark:text-[#8ab4f8]">
+            <span>Try on desktop</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </div>
-          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-xl"></div>
-          <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-white/5 blur-lg"></div>
         </button>
       </div>
 
-      <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+      <div className="border-t border-[#dadce0] p-2 dark:border-[#3c4043]">
         <button
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-red-600 transition-all duration-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#d93025] transition-colors hover:bg-[#fce8e6] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
         >
-          <LogOut className="h-4 w-4" />
-          <span className="flex-1 text-left text-[14px] font-semibold">
-            Sign Out
-          </span>
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">Sign Out</span>
         </button>
       </div>
     </div>

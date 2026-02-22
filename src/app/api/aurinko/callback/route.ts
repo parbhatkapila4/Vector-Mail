@@ -6,6 +6,8 @@ import { Account } from "@/lib/accounts";
 import axios from "axios";
 import { log as auditLog } from "@/lib/audit/audit-log";
 
+const INSTANT_SYNC_TIMEOUT_MS = 15_000;
+
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
@@ -113,28 +115,34 @@ export async function GET(req: NextRequest) {
     console.error("[CALLBACK] ✗ User upsert failed:", error);
   }
 
-  const tokenToStore = token.accessToken;
+  const tokenToStore = token.accountToken ?? token.accessToken;
+  const refreshTokenToStore = token.refreshToken ?? null;
+  const tokenExpiresAt = token.expiresIn
+    ? new Date(Date.now() + token.expiresIn * 1000)
+    : null;
 
   try {
     await db.account.upsert({
       where: { id: accountIdStr },
       update: {
         token: tokenToStore,
+        refreshToken: refreshTokenToStore,
         userId,
         nextDeltaToken: null,
         needsReconnection: false,
-        tokenExpiresAt: null,
+        tokenExpiresAt,
       },
       create: {
         id: accountIdStr,
         token: tokenToStore,
+        refreshToken: refreshTokenToStore,
         emailAddress: accountInfo.email,
         name: accountInfo.name,
         userId,
         provider: "gmail",
         nextDeltaToken: null,
         needsReconnection: false,
-        tokenExpiresAt: null,
+        tokenExpiresAt,
       },
     });
     console.log("[CALLBACK] ✓ Account upserted");
@@ -152,39 +160,53 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  console.log("[CALLBACK] Starting FULL sync after reconnection...");
+  console.log("[CALLBACK] Starting instant sync (fast)...");
   try {
     const account = new Account(accountIdStr, tokenToStore);
 
-    console.log("[CALLBACK] Getting fresh delta token...");
-    const response = await axios.post(
-      `https://api.aurinko.io/v1/email/sync`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${tokenToStore}`,
-          "X-Aurinko-Account-Id": accountIdStr,
-        },
-      },
-    );
+    const getDeltaTokenAndSave = async () => {
+      try {
+        const response = await axios.post(
+          `https://api.aurinko.io/v1/email/sync`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${tokenToStore}`,
+              "X-Aurinko-Account-Id": accountIdStr,
+            },
+            timeout: 8000,
+          },
+        );
+        if (response.data?.deltaToken) {
+          await db.account.update({
+            where: { id: accountIdStr },
+            data: {
+              nextDeltaToken: response.data.deltaToken,
+              needsReconnection: false,
+            },
+          });
+          console.log("[CALLBACK] ✓ Delta token saved (background)");
+        }
+      } catch (e) {
+        console.warn("[CALLBACK] Delta token fetch failed (non-blocking):", e);
+      }
+    };
 
-    if (response.data?.deltaToken) {
-      console.log("[CALLBACK] ✓ Fresh delta token obtained");
-      await db.account.update({
-        where: { id: accountIdStr },
-        data: {
-          nextDeltaToken: response.data.deltaToken,
-          needsReconnection: false,
-        },
-      });
-      console.log("[CALLBACK] ✓ Delta token and reconnection flag updated");
-    }
+    const instantSyncWithTimeout = Promise.race([
+      account.syncAllEmailsInstant(),
+      new Promise<{ count: number }>((_, reject) =>
+        setTimeout(() => reject(new Error("Instant sync timeout")), INSTANT_SYNC_TIMEOUT_MS),
+      ),
+    ]).catch((err) => {
+      console.warn("[CALLBACK] Instant sync timeout or error:", err);
+      return { count: 0 };
+    });
 
-
-    console.log("[CALLBACK] Syncing latest emails...");
-    const latestResult = await account.syncLatestEmails();
-    console.log("[CALLBACK] ✓ Latest sync result:", latestResult);
-
+    const [instantResult] = await Promise.all([
+      instantSyncWithTimeout,
+      getDeltaTokenAndSave(),
+    ]);
+    console.log("[CALLBACK] ✓ Instant sync done:", instantResult.count, "emails");
 
     console.log("[CALLBACK] Recalculating thread statuses...");
     const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");

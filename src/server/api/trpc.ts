@@ -5,17 +5,20 @@ import { ZodError } from "zod";
 import { getRequestId } from "@/lib/correlation";
 import { serverLog } from "@/lib/logging/server-logger";
 import { db } from "@/server/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth, getAuth } from "@clerk/nextjs/server";
 
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const user = await auth();
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  req?: Parameters<typeof getAuth>[0];
+}) => {
+  const user = opts.req ? getAuth(opts.req) : await auth();
   const requestId = getRequestId();
   return {
     db,
     auth: user,
     requestId,
     log: serverLog,
-    ...opts,
+    headers: opts.headers,
   };
 };
 

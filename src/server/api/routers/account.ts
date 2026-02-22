@@ -2038,10 +2038,14 @@ export const accountRouter = createTRPCRouter({
           existingEmail.body.length > 100 &&
           !/<[^>]+>/g.test(existingEmail.body);
 
+        const hasUnresolvedCid =
+          existingEmail.body && /cid:/i.test(existingEmail.body);
+
         if (
           existingEmail.body &&
           existingEmail.body.length > 100 &&
-          !isPlainText
+          !isPlainText &&
+          !hasUnresolvedCid
         ) {
           return {
             body: existingEmail.body,
@@ -2053,11 +2057,41 @@ export const accountRouter = createTRPCRouter({
           const fullEmail = await emailAccount.getEmailById(input.emailId);
 
           if (fullEmail?.body && fullEmail.body.trim().length > 0) {
+            let bodyToReturn = fullEmail.body;
+
+
+            if (
+              fullEmail.attachments?.length > 0 &&
+              typeof bodyToReturn === "string"
+            ) {
+              for (const att of fullEmail.attachments) {
+                if (
+                  att.inline &&
+                  att.contentId &&
+                  att.content &&
+                  att.mimeType
+                ) {
+                  const cidClean = att.contentId.replace(/^<|>$/g, "").trim();
+                  if (!cidClean) continue;
+                  const dataUrl = `data:${att.mimeType};base64,${att.content}`;
+                  const escapedCid = cidClean.replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    "\\$&",
+                  );
+                  const cidRegex = new RegExp(
+                    `cid:<?${escapedCid}>?`,
+                    "gi",
+                  );
+                  bodyToReturn = bodyToReturn.replace(cidRegex, dataUrl);
+                }
+              }
+            }
+
             ctx.db.email
               .update({
                 where: { id: input.emailId },
                 data: {
-                  body: fullEmail.body,
+                  body: bodyToReturn,
                 },
               })
               .catch((updateError) => {
@@ -2068,7 +2102,7 @@ export const accountRouter = createTRPCRouter({
               });
 
             return {
-              body: fullEmail.body,
+              body: bodyToReturn,
               cached: false,
             };
           } else {
