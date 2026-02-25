@@ -360,7 +360,7 @@ export class Account {
               headers: this.aurinkoHeaders,
               params: {
                 daysWithin: SYNC_WINDOW_DAYS,
-                bodyType: "text",
+                bodyType: "html",
                 awaitReady: true,
               },
             },
@@ -386,6 +386,8 @@ export class Account {
 
     if (metadataOnly) {
       params.bodyType = "text";
+    } else {
+      params.bodyType = "html";
     }
 
     console.log(`[getUpdatedEmails] Calling sync/updated with:`, {

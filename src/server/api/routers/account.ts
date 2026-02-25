@@ -971,12 +971,11 @@ export const accountRouter = createTRPCRouter({
 
         if (syncAllFolders) {
           const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
-          const folders: Array<"inbox" | "sent" | "trash"> = ["inbox", "sent", "trash"];
-          for (const f of folders) {
-            const syncFolder = f === "inbox" ? undefined : f;
-            console.log(`[syncEmails mutation] Syncing folder: ${f}`);
-            await emailAccount.syncEmails(true, syncFolder);
-          }
+          // Run inbox, sent, and trash in parallel so sent/trash don't wait for a slow inbox sync
+          const inboxPromise = emailAccount.syncEmails(true, undefined);
+          const sentPromise = emailAccount.syncEmails(true, "sent");
+          const trashPromise = emailAccount.syncEmails(true, "trash");
+          await Promise.all([inboxPromise, sentPromise, trashPromise]);
           await recalculateAllThreadStatuses(account.id);
           const { enqueueEmbeddingJobsForAccount } = await import("@/lib/jobs/enqueue");
           enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
@@ -998,6 +997,7 @@ export const accountRouter = createTRPCRouter({
           return {
             success: true,
             message: "Inbox, Sent, and Trash synced",
+            syncAllFolders: true,
           };
         }
 
@@ -1616,19 +1616,40 @@ export const accountRouter = createTRPCRouter({
             threadsWithInboxEmails.length > inboxThreadCount &&
             threadsWithInboxEmails.length > 0
           ) {
-            const threadIds = threadsWithInboxEmails.map((e) => e.threadId);
-            await ctx.db.thread.updateMany({
+            const candidateThreadIds = threadsWithInboxEmails.map((e) => e.threadId);
+            // Don't set inboxStatus true for threads that have any email in trash.
+            const threadsWithTrash = await ctx.db.email.findMany({
               where: {
-                id: { in: threadIds },
-                accountId: account.id,
+                threadId: { in: candidateThreadIds },
+                sysLabels: { hasSome: ["trash"] },
               },
-              data: { inboxStatus: true },
+              select: { threadId: true },
+              distinct: ["threadId"],
             });
+            const trashThreadIds = new Set(threadsWithTrash.map((e) => e.threadId));
+            const threadIds = candidateThreadIds.filter((id) => !trashThreadIds.has(id));
+            if (threadIds.length > 0) {
+              await ctx.db.thread.updateMany({
+                where: {
+                  id: { in: threadIds },
+                  accountId: account.id,
+                },
+                data: { inboxStatus: true },
+              });
+            }
           }
         } catch (fixErr) {
           console.warn("[getThreads] Inbox status fix failed, continuing:", fixErr);
         }
         whereClause.inboxStatus = true;
+        // Exclude threads that have any email in trash (trash must not appear in inbox).
+        whereClause.emails = {
+          none: {
+            sysLabels: {
+              hasSome: ["trash"],
+            },
+          },
+        };
         whereClause.AND = [
           {
             OR: [
@@ -2187,11 +2208,15 @@ export const accountRouter = createTRPCRouter({
         const hasUnresolvedCid =
           existingEmail.body && /cid:/i.test(existingEmail.body);
 
+        const looksLikeStrippedMetadata =
+          existingEmail.body && /\[image:\s*[^\]]*\]/i.test(existingEmail.body);
+
         if (
           existingEmail.body &&
           existingEmail.body.length > 100 &&
           !isPlainText &&
-          !hasUnresolvedCid
+          !hasUnresolvedCid &&
+          !looksLikeStrippedMetadata
         ) {
           return {
             body: existingEmail.body,

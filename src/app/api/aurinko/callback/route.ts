@@ -1,6 +1,6 @@
 import { exchangeAurinkoCodeForToken, getAccountInfo } from "@/lib/aurinko";
 import { db } from "@/server/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Account } from "@/lib/accounts";
 import axios from "axios";
@@ -9,10 +9,7 @@ import { log as auditLog } from "@/lib/audit/audit-log";
 const INSTANT_SYNC_TIMEOUT_MS = 15_000;
 
 export async function GET(req: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { userId: existingUserId } = await auth();
 
   const params = req.nextUrl.searchParams;
   const status = params.get("status");
@@ -28,7 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "No code provided" }, { status: 401 });
   }
 
-  console.log("[CALLBACK] ========== STARTING OAUTH CALLBACK ==========");
+  console.log("[CALLBACK] ========== STARTING OAUTH CALLBACK ==========", existingUserId ? "(existing session)" : "(one-click sign-in)");
 
   let token;
   try {
@@ -82,16 +79,17 @@ export async function GET(req: NextRequest) {
     accountIdStr,
   );
 
-  let accountInfo;
+  let accountInfo: { email: string; name: string };
   try {
-    accountInfo = await getAccountInfo(token.accessToken, accountIdStr);
-    if (!accountInfo || !accountInfo.email) {
+    const info = await getAccountInfo(token.accessToken, accountIdStr);
+    if (!info || !info.email) {
       console.error("[CALLBACK] ✗ Account verification returned invalid data");
       return NextResponse.json(
         { message: "Failed to verify account" },
         { status: 401 },
       );
     }
+    accountInfo = info;
     console.log("[CALLBACK] ✓ Account verified - email:", accountInfo.email);
   } catch (error) {
     console.error("[CALLBACK] ✗ Account verification failed:", error);
@@ -99,6 +97,54 @@ export async function GET(req: NextRequest) {
       { message: "Failed to verify account" },
       { status: 401 },
     );
+  }
+
+  const gmailEmail = accountInfo.email.trim().toLowerCase();
+  let userId: string;
+
+  if (existingUserId) {
+    // Already signed in: enforce same Google account and one account per user.
+    userId = existingUserId;
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(userId);
+    const primaryEmail = clerkUser.primaryEmailAddress?.emailAddress?.trim().toLowerCase();
+    if (primaryEmail && gmailEmail !== primaryEmail) {
+      console.warn("[CALLBACK] ✗ Account mismatch - Gmail email does not match sign-in Google account");
+      const mailUrl = new URL("/mail", process.env.NEXT_PUBLIC_URL);
+      mailUrl.searchParams.set("error", "account_mismatch");
+      return NextResponse.redirect(mailUrl);
+    }
+    const existingAccount = await db.account.findFirst({
+      where: { userId },
+      select: { id: true, emailAddress: true },
+    });
+    if (existingAccount && existingAccount.emailAddress.trim().toLowerCase() !== gmailEmail) {
+      console.warn("[CALLBACK] ✗ User already has a connected account; cannot connect a different Google account");
+      const mailUrl = new URL("/mail", process.env.NEXT_PUBLIC_URL);
+      mailUrl.searchParams.set("error", "one_account_only");
+      return NextResponse.redirect(mailUrl);
+    }
+  } else {
+    // One-click sign-in: create or find Clerk user by email, then we'll create a sign-in ticket.
+    const client = await clerkClient();
+    const { data: existingUsers } = await client.users.getUserList({
+      emailAddress: [accountInfo.email],
+      limit: 1,
+    });
+    if (existingUsers && existingUsers.length > 0) {
+      userId = existingUsers[0]!.id;
+      console.log("[CALLBACK] ✓ Found existing Clerk user:", userId);
+    } else {
+      const nameParts = (accountInfo.name ?? "").trim().split(/\s+/);
+      const newUser = await client.users.createUser({
+        emailAddress: [accountInfo.email],
+        firstName: nameParts[0] ?? undefined,
+        lastName: nameParts.slice(1).join(" ") || undefined,
+        skipPasswordRequirement: true,
+      });
+      userId = newUser.id;
+      console.log("[CALLBACK] ✓ Created Clerk user:", userId);
+    }
   }
 
   try {
@@ -226,11 +272,27 @@ export async function GET(req: NextRequest) {
         .catch((err) =>
           console.error("[CALLBACK] Failed to set needsReconnection:", err),
         );
-      const mailUrl = new URL("/mail", process.env.NEXT_PUBLIC_URL);
-      mailUrl.searchParams.set("reconnect_failed", "1");
-      console.log("[CALLBACK] Redirecting with reconnect_failed (401 after reconnect)");
-      return NextResponse.redirect(mailUrl);
+      if (existingUserId) {
+        const mailUrl = new URL("/mail", process.env.NEXT_PUBLIC_URL);
+        mailUrl.searchParams.set("reconnect_failed", "1");
+        console.log("[CALLBACK] Redirecting with reconnect_failed (401 after reconnect)");
+        return NextResponse.redirect(mailUrl);
+      }
+      // One-click flow: still sign them in so they can see the app and reconnect.
     }
+  }
+
+  // One-click flow: sign the user in with a Clerk ticket so they have a session.
+  if (!existingUserId) {
+    const client = await clerkClient();
+    const { token: signInToken } = await client.signInTokens.createSignInToken({
+      userId,
+      expiresInSeconds: 60 * 10, // 10 minutes to land on /auth/callback
+    });
+    const callbackUrl = new URL("/auth/callback", process.env.NEXT_PUBLIC_URL);
+    callbackUrl.searchParams.set("ticket", signInToken);
+    console.log("[CALLBACK] ========== REDIRECTING TO AUTH CALLBACK (one-click) ==========");
+    return NextResponse.redirect(callbackUrl);
   }
 
   console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");

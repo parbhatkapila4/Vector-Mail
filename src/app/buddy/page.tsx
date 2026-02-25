@@ -221,17 +221,8 @@ function BuddyPageContent() {
               duration: 3000,
             });
 
-            setTimeout(async () => {
-              try {
-                const { getAurinkoAuthUrl } = await import("@/lib/aurinko");
-                const url = await getAurinkoAuthUrl("Google");
-                window.location.href = url;
-              } catch (error) {
-                console.error("Error reconnecting account:", error);
-                toast.error("Failed to reconnect", {
-                  description: "Please try refreshing the page and reconnecting manually.",
-                });
-              }
+            setTimeout(() => {
+              window.location.href = "/api/auth/google";
             }, 2000);
             return;
           }

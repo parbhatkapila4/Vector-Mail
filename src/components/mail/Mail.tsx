@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Menu,
   Inbox,
@@ -27,18 +27,14 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AccountSwitcher } from "./AccountSwitcher";
-import { ThreadList } from "./threads-ui/ThreadList";
+import { ThreadList, type ThreadListRef } from "./threads-ui/ThreadList";
 import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
 import SearchBar from "./search/SearchBar";
 import ComposeEmailGmail from "./ComposeEmailGmail";
 import { MailKeyboardShortcuts } from "./MailKeyboardShortcuts";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+import { GripVertical, RefreshCw } from "lucide-react";
 import { UserButton, useClerk } from "@clerk/nextjs";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
@@ -58,8 +54,48 @@ export function Mail({ }: MailLayoutProps) {
   const [composeOpen, setComposeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
+  const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage("mail-sidebar-width-pct", 28);
+  const [isResizing, setIsResizing] = useState(false);
+  const [syncPending, setSyncPending] = useState(false);
+  const resizeStartRef = useRef<{ x: number; pct: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const threadListRef = useRef<ThreadListRef>(null);
   const isMobile = useIsMobile();
   const router = useRouter();
+
+  const SIDEBAR_MIN_PCT = 20;
+  const SIDEBAR_MAX_PCT = 55;
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartRef.current = { x: e.clientX, pct: sidebarWidthPct };
+  }, [sidebarWidthPct]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const onMove = (e: MouseEvent) => {
+      const start = resizeStartRef.current;
+      const el = containerRef.current;
+      if (!start || !el) return;
+      const containerWidth = el.getBoundingClientRect().width;
+      if (containerWidth <= 0) return;
+      const deltaPct = ((e.clientX - start.x) / containerWidth) * 100;
+      let next = start.pct + deltaPct;
+      next = Math.max(SIDEBAR_MIN_PCT, Math.min(SIDEBAR_MAX_PCT, next));
+      setSidebarWidthPct(next);
+    };
+    const onUp = () => {
+      setIsResizing(false);
+      resizeStartRef.current = null;
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isResizing, setSidebarWidthPct]);
 
   const focusSearch = useCallback(() => {
     document.getElementById("mail-search-input")?.focus();
@@ -82,18 +118,29 @@ export function Mail({ }: MailLayoutProps) {
 
   const { data: inboxCount } = api.account.getNumThreads.useQuery(
     { accountId: accountId || "placeholder", tab: "inbox" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: false },
+    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: true },
   );
 
   const { data: sentCount } = api.account.getNumThreads.useQuery(
     { accountId: accountId || "placeholder", tab: "sent" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: false },
+    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: true },
   );
 
   const { data: trashCount } = api.account.getNumThreads.useQuery(
     { accountId: accountId || "placeholder", tab: "trash" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: false },
+    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: true },
   );
+
+  const utils = api.useUtils();
+  useEffect(() => {
+    if (!accountId || typeof document === "undefined") return;
+    const onVisible = () => {
+      void utils.account.getNumThreads.invalidate();
+      void utils.account.getThreads.invalidate();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [accountId, utils.account.getNumThreads, utils.account.getThreads]);
 
   const { data: scheduledSends } = api.account.getScheduledSends.useQuery(
     { accountId: accountId || "placeholder" },
@@ -347,43 +394,57 @@ export function Mail({ }: MailLayoutProps) {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
-          <ResizablePanelGroup
-            id="mail-sidebar"
-            direction="horizontal"
-            autoSaveId="mail-sidebar"
-            className="min-w-0 flex-1"
+        <div
+          ref={containerRef}
+          className={cn(
+            "flex flex-1 overflow-hidden",
+            isResizing && "select-none cursor-col-resize",
+          )}
+        >
+          <aside
+            className="flex h-full shrink-0 flex-col border-r border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]"
+            style={{ width: `${sidebarWidthPct}%`, minWidth: 200 }}
           >
-            <ResizablePanel
-              defaultSize={28}
-              minSize={20}
-              maxSize={50}
-              className="flex flex-col"
-            >
-              <aside className="flex h-full min-w-0 flex-col border-r border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]">
-                <div className="border-b border-[#dadce0] px-4 py-3 dark:border-[#3c4043]">
-                  <SearchBar />
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <ThreadList onThreadSelect={handleThreadSelect} />
-                </div>
-              </aside>
-            </ResizablePanel>
-            <ResizableHandle
-              withHandle
-              className="bg-[#dadce0] hover:bg-[#1a73e8]/20 dark:bg-[#3c4043] dark:hover:bg-[#8ab4f8]/20"
-            />
-            <ResizablePanel defaultSize={72} minSize={30} className="min-w-0">
-              <main
-                className={cn(
-                  "flex h-full flex-1 flex-col bg-white dark:bg-[#202124]",
-                  showAIPanel && "mr-[360px]",
-                )}
+            <div className="flex min-w-0 items-center gap-2 border-b border-[#dadce0] px-3 py-2 dark:border-[#3c4043]">
+              <div className="min-w-0 flex-1">
+                <SearchBar />
+              </div>
+              <button
+                type="button"
+                onClick={() => threadListRef.current?.triggerSync()}
+                disabled={syncPending}
+                className="flex shrink-0 items-center justify-center rounded p-1.5 text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] disabled:opacity-60 dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
+                aria-label={syncPending ? "Syncing" : "Sync"}
               >
-                <ThreadDisplay threadId={selectedThread} />
-              </main>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+                <RefreshCw
+                  className={cn("h-3.5 w-3.5", syncPending && "animate-spin")}
+                />
+              </button>
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <ThreadList
+                ref={threadListRef}
+                onThreadSelect={handleThreadSelect}
+                onSyncPendingChange={setSyncPending}
+              />
+            </div>
+          </aside>
+          <div
+            role="separator"
+            aria-label="Resize sidebar"
+            onMouseDown={handleResizeStart}
+            className="flex w-1 shrink-0 cursor-col-resize items-center justify-center bg-[#dadce0] transition-colors hover:bg-[#1a73e8]/20 dark:bg-[#3c4043] dark:hover:bg-[#8ab4f8]/20"
+          >
+            <GripVertical className="h-3 w-3 text-[#5f6368] dark:text-[#9aa0a6]" />
+          </div>
+          <main
+            className={cn(
+              "flex min-w-0 flex-1 flex-col bg-white dark:bg-[#202124]",
+              showAIPanel && "mr-[360px]",
+            )}
+          >
+            <ThreadDisplay threadId={selectedThread} />
+          </main>
 
           <aside
             className={cn(

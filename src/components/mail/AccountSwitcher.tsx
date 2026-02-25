@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
-import { Plus } from "lucide-react";
-import { getAurinkoAuthUrl } from "@/lib/aurinko";
 import { toast } from "sonner";
 
 interface AccountSwitcherProps {
@@ -30,16 +28,11 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
         accounts.some((acc: { id: string }) => acc.id === accountId);
       if (!isCurrentAccountValid) setAccountId(accounts[0]!.id);
     } else if (accounts && accounts.length === 0) {
-      toast("Link an account to continue", {
+      toast("Connect your Google account to continue", {
         action: {
-          label: "Add account",
-          onClick: async () => {
-            try {
-              const url = await getAurinkoAuthUrl("Google");
-              window.location.href = url;
-            } catch (error) {
-              toast.error((error as Error).message);
-            }
+          label: "Connect Google",
+          onClick: () => {
+            window.location.href = "/api/auth/google";
           },
         },
       });
@@ -89,22 +82,6 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
             </div>
           </SelectItem>
         ))}
-        <div
-          onClick={async () => {
-            try {
-              const url = await getAurinkoAuthUrl("Google");
-              window.location.href = url;
-            } catch (error) {
-              toast.error((error as Error).message);
-            }
-          }}
-          className="mt-1 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-white/[0.06] px-2 py-2 text-sm text-zinc-500 transition-all hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-emerald-400"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.03]">
-            <Plus className="h-4 w-4" />
-          </span>
-          Add account
-        </div>
       </SelectContent>
     </Select>
   );

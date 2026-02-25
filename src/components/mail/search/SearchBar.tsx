@@ -104,13 +104,13 @@ const SearchBar = () => {
   }, [setSearchValue, setIsSearching, setSearchResults]);
 
   return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
+    <div className="relative min-w-0 flex-1">
+      <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
       <Input
         ref={ref}
         id="mail-search-input"
         placeholder="Search mail"
-        className="h-9 w-full rounded-full border-0 bg-[#f1f3f4] pl-9 pr-9 text-[14px] text-[#202124] transition-colors placeholder:text-[#5f6368] focus:bg-white focus-visible:ring-1 focus-visible:ring-[#dadce0] dark:bg-[#3c4043] dark:text-[#e8eaed] dark:placeholder:text-[#9aa0a6] dark:focus:bg-[#303134] dark:focus-visible:ring-[#5f6368]"
+        className="h-8 w-full rounded-full border-0 bg-[#f1f3f4] pl-8 pr-8 text-[13px] text-[#202124] transition-colors placeholder:text-[#5f6368] focus:bg-white focus-visible:ring-1 focus-visible:ring-[#dadce0] dark:bg-[#3c4043] dark:text-[#e8eaed] dark:placeholder:text-[#9aa0a6] dark:focus:bg-[#303134] dark:focus-visible:ring-[#5f6368]"
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         onFocus={() => setIsSearching(true)}
@@ -119,10 +119,10 @@ const SearchBar = () => {
       {searchValue && (
         <button
           type="button"
-          className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-[#e8eaed] dark:hover:bg-[#5f6368]"
+          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-[#e8eaed] dark:hover:bg-[#5f6368]"
           onClick={handleClear}
         >
-          <X className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
+          <X className="h-3 w-3 text-[#5f6368] dark:text-[#9aa0a6]" />
         </button>
       )}
     </div>

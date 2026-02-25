@@ -3,6 +3,19 @@
 import { auth } from "@clerk/nextjs/server";
 import axios from "axios";
 
+const AURINKO_SCOPES = "Mail.Read Mail.Send";
+export async function buildAurinkoGoogleAuthUrl(): Promise<string> {
+  const params = new URLSearchParams({
+    clientId: process.env.AURINKO_CLIENT_ID!,
+    serviceType: "Google",
+    responseType: "code",
+    returnUrl: `${process.env.NEXT_PUBLIC_URL}/api/aurinko/callback`,
+    prompt: "consent",
+    scopes: AURINKO_SCOPES,
+  });
+  return `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
+}
+
 export const getAurinkoAuthUrl = async (
   serviceType: "Google" | "Office365",
 ) => {
@@ -11,15 +24,13 @@ export const getAurinkoAuthUrl = async (
     throw new Error("Unauthorized");
   }
 
-  const aurinkoScopes = "Mail.Read Mail.Send";
-
-  if (aurinkoScopes.includes("googleapis.com")) {
+  if (AURINKO_SCOPES.includes("googleapis.com")) {
     throw new Error(
       "INVALID SCOPES: Google OAuth URLs are NOT supported by Aurinko",
     );
   }
 
-  if (aurinkoScopes.includes(",")) {
+  if (AURINKO_SCOPES.includes(",")) {
     throw new Error(
       "INVALID SCOPES: Aurinko requires space-separated scopes, not comma-separated",
     );
@@ -31,13 +42,13 @@ export const getAurinkoAuthUrl = async (
     responseType: "code",
     returnUrl: `${process.env.NEXT_PUBLIC_URL}/api/aurinko/callback`,
     prompt: "consent",
-    scopes: aurinkoScopes,
+    scopes: AURINKO_SCOPES,
   });
 
   const authUrl = `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
 
   console.log("[OAuth] Service:", serviceType);
-  console.log("[OAuth] Scopes:", aurinkoScopes);
+  console.log("[OAuth] Scopes:", AURINKO_SCOPES);
   console.log("[OAuth] URL:", authUrl);
 
   return authUrl;

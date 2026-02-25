@@ -86,14 +86,8 @@ export default function EmailSearchAssistant({
     }
   }, []);
 
-  const handleAccountConnection = useCallback(async () => {
-    try {
-      const { getAurinkoAuthUrl } = await import("@/lib/aurinko");
-      const url = await getAurinkoAuthUrl("Google");
-      window.location.href = url;
-    } catch (error) {
-      toast.error((error as Error).message);
-    }
+  const handleAccountConnection = useCallback(() => {
+    window.location.href = "/api/auth/google";
   }, []);
 
   const sendMessage = useCallback(
@@ -323,7 +317,7 @@ export default function EmailSearchAssistant({
               onClick={handleAccountConnection}
               className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-yellow-500/20"
             >
-              Connect Google Account
+              Connect your Google account
             </button>
           </div>
         </motion.div>

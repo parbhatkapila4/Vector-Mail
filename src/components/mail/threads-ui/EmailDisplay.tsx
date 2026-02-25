@@ -41,11 +41,14 @@ const EmailDisplay = ({ email }: Props) => {
 
   const isPlainTextStored = emailBody && !/<[^>]+>/g.test(emailBody);
   const hasUnresolvedCid = emailBody && /cid:/i.test(emailBody);
+  const looksLikeStrippedMetadata =
+    emailBody && /\[image:\s*[^\]]*\]/i.test(emailBody);
   const needsFullBody =
     !emailBody ||
     emailBody.length < 100 ||
     isPlainTextStored ||
-    !!hasUnresolvedCid;
+    !!hasUnresolvedCid ||
+    !!looksLikeStrippedMetadata;
 
   const {
     data: fullBodyData,
@@ -219,6 +222,8 @@ const EmailDisplay = ({ email }: Props) => {
     } catch {
       processed = text;
     }
+    // Remove [image: ...] placeholders from stripped HTML so plain-text fallback doesn't show metadata
+    processed = processed.replace(/\[image:\s*[^\]]*\]/gi, "").trim();
 
     const lines = processed.split(/\r?\n/);
     const result: string[] = [];

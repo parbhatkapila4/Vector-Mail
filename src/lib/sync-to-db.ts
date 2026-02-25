@@ -169,12 +169,12 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       let threadFolderType: "inbox" | "sent" | "draft" | "trash" = "inbox";
       if (hasDraftEmail) {
         threadFolderType = "draft";
+      } else if (hasTrashEmail) {
+        threadFolderType = "trash";
       } else if (hasInboxEmail) {
         threadFolderType = "inbox";
       } else if (hasSentEmail) {
         threadFolderType = "sent";
-      } else if (hasTrashEmail) {
-        threadFolderType = "trash";
       }
 
       const updateData = {

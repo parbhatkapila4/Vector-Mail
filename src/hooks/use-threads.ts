@@ -1,7 +1,6 @@
 import { api, type RouterOutputs } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { atom, useAtom } from "jotai";
-import { useEffect, useRef } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 
 export const threadIdAtom = atom<string | null>(null);
@@ -10,7 +9,10 @@ type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
 function useThreads() {
   const { data: accounts, isLoading: accountsLoading } =
-    api.account.getAccounts.useQuery();
+    api.account.getAccounts.useQuery(undefined, {
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000,
+    });
   const [tab] = useLocalStorage("vector-mail", "inbox");
   const [storedAccountId] = useLocalStorage("accountId", "");
 
@@ -43,9 +45,6 @@ function useThreads() {
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
   const [threadId, setThreadId] = useAtom(threadIdAtom);
-  const utils = api.useUtils();
-  const lastProcessedSyncRef = useRef<string | null>(null);
-
   const {
     data,
     fetchNextPage,
@@ -72,35 +71,12 @@ function useThreads() {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       refetchOnWindowFocus: false,
       refetchOnMount: true,
-      staleTime: 60 * 60 * 1000,
+      staleTime: 2 * 60 * 1000,
       gcTime: 24 * 60 * 60 * 1000,
       retry: false,
       placeholderData: keepPreviousData,
     },
   );
-
-  useEffect(() => {
-    if (!data?.pages || !accountId) return;
-
-    if (currentTab !== "inbox") {
-      const lastPage = data.pages[data.pages.length - 1];
-      const syncStatus = lastPage?.syncStatus;
-
-      if (syncStatus?.success && syncStatus.count > 0) {
-        const pageHash =
-          data.pages.length > 0
-            ? (data.pages[data.pages.length - 1]?.threads?.length ?? 0)
-            : 0;
-        const syncKey = `${accountId}-${currentTab}-${syncStatus.count}-${pageHash}`;
-
-        if (lastProcessedSyncRef.current !== syncKey) {
-          lastProcessedSyncRef.current = syncKey;
-          void refetch();
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.pages, utils, accountId, currentTab]);
 
   type ThreadPage = { threads: Thread[] };
   const pages = (data?.pages ?? []) as ThreadPage[];
