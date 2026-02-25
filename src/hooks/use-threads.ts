@@ -53,13 +53,14 @@ function useThreads() {
     isFetchingNextPage,
     isFetching,
     refetch,
+    isPlaceholderData,
   } = api.account.getThreads.useInfiniteQuery(
     {
       accountId: hasValidAccount && accountId ? accountId : "placeholder",
       tab: currentTab,
       important,
       unread,
-      limit: currentTab === "inbox" ? 50 : 15,
+      limit: 50,
     },
     {
       enabled:
@@ -69,8 +70,8 @@ function useThreads() {
         accountId.length > 0 &&
         currentTab !== "scheduled",
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchOnWindowFocus: true,
-      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
       staleTime: 60 * 60 * 1000,
       gcTime: 24 * 60 * 60 * 1000,
       retry: false,
@@ -116,6 +117,7 @@ function useThreads() {
     account: myAccount,
     threadId,
     setThreadId,
+    isPlaceholderData: !!isPlaceholderData,
   };
 }
 

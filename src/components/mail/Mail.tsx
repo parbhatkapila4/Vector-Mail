@@ -12,6 +12,8 @@ import {
   Zap,
   Search,
   ArrowRight,
+  CalendarClock,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -80,13 +82,24 @@ export function Mail({ }: MailLayoutProps) {
 
   const { data: inboxCount } = api.account.getNumThreads.useQuery(
     { accountId: accountId || "placeholder", tab: "inbox" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0 },
+    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: false },
   );
 
   const { data: sentCount } = api.account.getNumThreads.useQuery(
     { accountId: accountId || "placeholder", tab: "sent" },
+    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: false },
+  );
+
+  const { data: trashCount } = api.account.getNumThreads.useQuery(
+    { accountId: accountId || "placeholder", tab: "trash" },
+    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: false },
+  );
+
+  const { data: scheduledSends } = api.account.getScheduledSends.useQuery(
+    { accountId: accountId || "placeholder" },
     { enabled: isEnabled && !!accountId && accountId.length > 0 },
   );
+  const scheduledCount = scheduledSends?.length ?? 0;
 
   const handleThreadSelect = useCallback((threadId: string) => {
     setSelectedThread(threadId);
@@ -127,6 +140,18 @@ export function Mail({ }: MailLayoutProps) {
       icon: Send,
       label: "Sent",
       count: sentCount,
+    },
+    {
+      id: "scheduled",
+      icon: CalendarClock,
+      label: "Schedule",
+      count: scheduledCount,
+    },
+    {
+      id: "trash",
+      icon: Trash2,
+      label: "Trash",
+      count: trashCount,
     },
   ];
 
@@ -174,7 +199,7 @@ export function Mail({ }: MailLayoutProps) {
               }}
               className="cursor-pointer border-none bg-transparent p-0 text-[15px] font-medium capitalize text-[#202124] outline-none transition-opacity hover:opacity-80 dark:text-[#e8eaed]"
             >
-              {tab}
+              {navItems.find((i) => i.id === tab)?.label ?? tab}
             </button>
 
             <div className="flex items-center gap-2">
@@ -257,18 +282,16 @@ export function Mail({ }: MailLayoutProps) {
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
                   <span>{item.label}</span>
-                  {item.count !== undefined && item.count > 0 && (
-                    <span
-                      className={cn(
-                        "min-w-[20px] rounded-full px-1.5 py-0.5 text-[12px] font-normal tabular-nums",
-                        tab === item.id
-                          ? "bg-[#1a73e8]/15 text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]"
-                          : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
-                      )}
-                    >
-                      {item.count}
-                    </span>
-                  )}
+                  <span
+                    className={cn(
+                      "min-w-[20px] rounded-full px-1.5 py-0.5 text-center text-[12px] font-medium tabular-nums",
+                      tab === item.id
+                        ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/25 dark:text-[#8ab4f8]"
+                        : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
+                    )}
+                  >
+                    {item.count ?? 0}
+                  </span>
                   {tab === item.id && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a73e8] dark:bg-[#8ab4f8]" />
                   )}
@@ -326,6 +349,7 @@ export function Mail({ }: MailLayoutProps) {
 
         <div className="flex flex-1 overflow-hidden">
           <ResizablePanelGroup
+            id="mail-sidebar"
             direction="horizontal"
             autoSaveId="mail-sidebar"
             className="min-w-0 flex-1"
@@ -472,18 +496,16 @@ function MobileSidebar({
           >
             <item.icon className="h-5 w-5 shrink-0" />
             <span className="flex-1">{item.label}</span>
-            {item.count !== undefined && item.count > 0 && (
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[12px] tabular-nums",
-                  tab === item.id
-                    ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]"
-                    : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
-                )}
-              >
-                {item.count}
-              </span>
-            )}
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[12px] font-medium tabular-nums",
+                tab === item.id
+                  ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/25 dark:text-[#8ab4f8]"
+                  : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
+              )}
+            >
+              {item.count ?? 0}
+            </span>
           </button>
         ))}
 

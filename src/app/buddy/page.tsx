@@ -21,8 +21,11 @@ import {
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
+import { openGmailCompose } from "@/lib/gmail-compose";
+import type { OpenGmailComposeOptions } from "@/lib/gmail-compose";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { GmailRedirectDialog } from "@/components/mail/GmailRedirectDialog";
 import { useAuth, UserButton } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -130,6 +133,8 @@ function BuddyPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
+  const [gmailRedirectOpen, setGmailRedirectOpen] = useState(false);
+  const gmailRedirectPayloadRef = useRef<OpenGmailComposeOptions | null>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -163,6 +168,17 @@ function BuddyPageContent() {
     setCopiedId(id);
     toast.success("Copied to clipboard");
     setTimeout(() => setCopiedId(null), 2000);
+  }, []);
+
+  const handleGmailRedirectOpen = useCallback(() => {
+    const payload = gmailRedirectPayloadRef.current;
+    if (payload) {
+      openGmailCompose(payload);
+      toast.info(
+        "Sending via Gmail compose (sending inside VectorMail will be enabled soon)",
+      );
+    }
+    setGmailRedirectOpen(false);
   }, []);
 
   const sendMessage = useCallback(
@@ -231,6 +247,15 @@ function BuddyPageContent() {
             },
           ]);
           return;
+        }
+
+        if (data.openGmailCompose && data.to != null) {
+          gmailRedirectPayloadRef.current = {
+            to: data.to,
+            subject: data.subject ?? "",
+            body: data.body ?? "",
+          };
+          setGmailRedirectOpen(true);
         }
 
         if (data.emailSent) {
@@ -825,6 +850,11 @@ function BuddyPageContent() {
           </form>
         </div>
       </main>
+      <GmailRedirectDialog
+        open={gmailRedirectOpen}
+        onOpenChange={setGmailRedirectOpen}
+        onOpenGmail={handleGmailRedirectOpen}
+      />
     </div>
   );
 }

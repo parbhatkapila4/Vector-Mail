@@ -20,7 +20,10 @@ import { useLocalStorage } from "usehooks-ts";
 import { useAuth } from "@clerk/nextjs";
 import { api } from "@/trpc/react";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
+import { openGmailCompose } from "@/lib/gmail-compose";
+import type { OpenGmailComposeOptions } from "@/lib/gmail-compose";
 import { usePendingSend } from "@/contexts/PendingSendContext";
+import { GmailRedirectDialog } from "@/components/mail/GmailRedirectDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface ForwardEmailDialogProps {
@@ -53,6 +56,8 @@ export function ForwardEmailDialog({
     return d;
   });
   const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [gmailRedirectOpen, setGmailRedirectOpen] = useState(false);
+  const gmailRedirectPayloadRef = React.useRef<OpenGmailComposeOptions | null>(null);
   const [accountId] = useLocalStorage("accountId", "");
   const { isLoaded: authLoaded, userId } = useAuth();
   const { scheduleSend, isPending: isPendingSend } = usePendingSend();
@@ -117,33 +122,50 @@ export function ForwardEmailDialog({
     const toSend = to.trim();
     const subjectSend = subject.trim();
     const bodySend = body.trim();
-    const accountIdSend = validAccountId;
 
-    const executeSend = async () => {
-      const response = await fetchWithAuthRetry("/api/email/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: accountIdSend,
-          to: toSend.split(",").map((email) => email.trim()),
-          subject: subjectSend,
-          body: bodySend,
-          trackOpens,
-        }),
-      });
-
-      const text = await response.text();
-      const data = text ? JSON.parse(text) : {};
-      if (!response.ok) {
-        toast.error(data.message || data.error || "Failed to forward email");
-        return;
-      }
-      toast.success("Email forwarded successfully");
+    gmailRedirectPayloadRef.current = {
+      to: toSend,
+      subject: subjectSend,
+      body: bodySend,
     };
+    setGmailRedirectOpen(true);
 
-    scheduleSend(executeSend);
+    // Backend send logic kept for re-enable; not executed while gmail.send is disabled
+    // const accountIdSend = validAccountId;
+    // const executeSend = async () => {
+    //   const response = await fetchWithAuthRetry("/api/email/send", {
+    //     method: "POST",
+    //     headers: { "Content-Type": "application/json" },
+    //     body: JSON.stringify({
+    //       accountId: accountIdSend,
+    //       to: toSend.split(",").map((email) => email.trim()),
+    //       subject: subjectSend,
+    //       body: bodySend,
+    //       trackOpens,
+    //     }),
+    //   });
+    //   const text = await response.text();
+    //   const data = text ? JSON.parse(text) : {};
+    //   if (!response.ok) {
+    //     toast.error(data.message || data.error || "Failed to forward email");
+    //     return;
+    //   }
+    //   toast.success("Email forwarded successfully");
+    // };
+    // scheduleSend(executeSend);
+  };
+
+  const handleGmailRedirectOpen = () => {
+    const payload = gmailRedirectPayloadRef.current;
+    if (payload) {
+      openGmailCompose(payload);
+      toast.info(
+        "Sending via Gmail compose (sending inside VectorMail will be enabled soon)",
+      );
+    }
     onOpenChange(false);
     setIsSending(false);
+    setGmailRedirectOpen(false);
   };
 
   const handleScheduleForward = () => {
@@ -341,6 +363,11 @@ export function ForwardEmailDialog({
               </div>
             </DialogContent>
           </Dialog>
+          <GmailRedirectDialog
+            open={gmailRedirectOpen}
+            onOpenChange={setGmailRedirectOpen}
+            onOpenGmail={handleGmailRedirectOpen}
+          />
         </div>
       </DialogContent>
     </Dialog>

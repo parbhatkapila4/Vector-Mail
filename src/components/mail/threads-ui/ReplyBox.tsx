@@ -18,7 +18,10 @@ import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, ChevronUp, Reply } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
+import { openGmailCompose } from "@/lib/gmail-compose";
+import type { OpenGmailComposeOptions } from "@/lib/gmail-compose";
 import { usePendingSend } from "@/contexts/PendingSendContext";
+import { GmailRedirectDialog } from "@/components/mail/GmailRedirectDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -86,6 +89,8 @@ const ReplyBox = ({
   });
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [pendingScheduleBody, setPendingScheduleBody] = useState<string>("");
+  const [gmailRedirectOpen, setGmailRedirectOpen] = useState(false);
+  const gmailRedirectPayloadRef = React.useRef<OpenGmailComposeOptions | null>(null);
 
   const sendEmail = api.account.sendEmail.useMutation();
   const { isLoaded: authLoaded, userId } = useAuth();
@@ -152,40 +157,52 @@ const ReplyBox = ({
       return undefined;
     };
 
-    const payload = {
-      accountId,
-      threadId: threadId ?? undefined,
-      body: value,
-      subject,
-      from: {
-        name: account.name ?? "Me",
-        address: account.emailAddress ?? "me@example.com",
+    // Show Gmail redirect dialog instead of sending via API (CASA / gmail.send scope temporarily disabled)
+    const recipients = [
+      {
+        name: lastEmail.from.name ?? lastEmail.from.address,
+        address: lastEmail.from.address,
       },
-      to: [
-        {
-          name: lastEmail.from.name ?? lastEmail.from.address,
-          address: lastEmail.from.address,
-        },
-      ],
-      cc: [] as { name: string; address: string }[],
-      replyTo: {
-        name: account.name ?? "Me",
-        address: account.emailAddress ?? "me@example.com",
-      },
-      inReplyTo: getInReplyTo(),
-      trackOpens,
-    };
+    ];
+    const toStr = recipients.map((r) => r.address).join(", ");
+    gmailRedirectPayloadRef.current = { to: toStr, subject, body: value };
+    setGmailRedirectOpen(true);
 
-    scheduleSend(async () => {
-      try {
-        await sendEmail.mutateAsync(payload);
-        toast.success("Email sent successfully!");
-        onSendSuccess?.();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to send";
-        toast.error(message);
-      }
-    });
+    // Backend send logic kept for re-enable; not executed while gmail.send is disabled
+    // const payload = {
+    //   accountId,
+    //   threadId: threadId ?? undefined,
+    //   body: value,
+    //   subject,
+    //   from: { name: account.name ?? "Me", address: account.emailAddress ?? "me@example.com" },
+    //   to: recipients,
+    //   cc: [] as { name: string; address: string }[],
+    //   replyTo: { name: account.name ?? "Me", address: account.emailAddress ?? "me@example.com" },
+    //   inReplyTo: getInReplyTo(),
+    //   trackOpens,
+    // };
+    // scheduleSend(async () => {
+    //   try {
+    //     await sendEmail.mutateAsync(payload);
+    //     toast.success("Email sent successfully!");
+    //     onSendSuccess?.();
+    //   } catch (error) {
+    //     const message = error instanceof Error ? error.message : "Failed to send";
+    //     toast.error(message);
+    //   }
+    // });
+  };
+
+  const handleGmailRedirectOpen = () => {
+    const payload = gmailRedirectPayloadRef.current;
+    if (payload) {
+      openGmailCompose(payload);
+      toast.info(
+        "Sending via Gmail compose (sending inside VectorMail will be enabled soon)",
+      );
+    }
+    onSendSuccess?.();
+    setGmailRedirectOpen(false);
   };
 
   const handleScheduleSendClick = (bodyHtml: string) => {
@@ -371,6 +388,11 @@ const ReplyBox = ({
               </div>
             </DialogContent>
           </Dialog>
+          <GmailRedirectDialog
+            open={gmailRedirectOpen}
+            onOpenChange={setGmailRedirectOpen}
+            onOpenGmail={handleGmailRedirectOpen}
+          />
         </div>
       )}
     </div>

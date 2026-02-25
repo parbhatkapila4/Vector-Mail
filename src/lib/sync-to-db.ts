@@ -109,6 +109,7 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       let hasInboxEmail = false;
       let hasDraftEmail = false;
       let hasSentEmail = false;
+      let hasTrashEmail = false;
 
       for (const threadEmail of threadEmails) {
 
@@ -120,6 +121,9 @@ export async function recalculateAllThreadStatuses(accountId: string) {
           break;
         }
 
+        if (threadEmail.sysLabels?.includes("trash")) {
+          hasTrashEmail = true;
+        }
 
         const hasInboxLabel =
           threadEmail.emailLabel === "inbox" ||
@@ -162,13 +166,15 @@ export async function recalculateAllThreadStatuses(accountId: string) {
         }
       }
 
-      let threadFolderType = "inbox";
+      let threadFolderType: "inbox" | "sent" | "draft" | "trash" = "inbox";
       if (hasDraftEmail) {
         threadFolderType = "draft";
       } else if (hasInboxEmail) {
         threadFolderType = "inbox";
       } else if (hasSentEmail) {
         threadFolderType = "sent";
+      } else if (hasTrashEmail) {
+        threadFolderType = "trash";
       }
 
       const updateData = {
@@ -259,19 +265,23 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
   });
 
   try {
-    const sysLabels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
-    const labelsLower = sysLabels.map((l) => String(l).toLowerCase());
+    const sysLabelsRaw = Array.isArray(email.sysLabels) ? email.sysLabels : [];
+    const sysLabels = sysLabelsRaw.map((l) => String(l).toLowerCase()) as EmailMessage["sysLabels"];
+    email.sysLabels = sysLabels;
+    const labelsLower = sysLabels;
     let emailLabelType: "inbox" | "sent" | "draft" = "inbox";
+    const isTrash = labelsLower.includes("trash");
 
     if (labelsLower.includes("draft")) {
       emailLabelType = "draft";
-    } else if (labelsLower.includes("sent")) {
+    } else if (labelsLower.includes("sent") && !isTrash) {
       emailLabelType = "sent";
+    } else if (isTrash) {
+      emailLabelType = "inbox";
     } else {
       emailLabelType = "inbox";
       if (!labelsLower.includes("inbox")) {
-        email.sysLabels = sysLabels;
-        email.sysLabels.push("inbox");
+        email.sysLabels = [...sysLabels, "inbox"] as EmailMessage["sysLabels"];
       }
     }
 
@@ -333,7 +343,12 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         accountId,
         lastMessageDate: new Date(email.sentAt),
         done: false,
-        ...(emailLabelType === "inbox" && {
+        ...(isTrash && {
+          inboxStatus: false,
+          sentStatus: false,
+          draftStatus: false,
+        }),
+        ...(emailLabelType === "inbox" && !isTrash && {
           inboxStatus: true,
           sentStatus: false,
           draftStatus: false,
@@ -364,7 +379,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         done: false,
 
         draftStatus: emailLabelType === "draft",
-        inboxStatus: emailLabelType === "inbox",
+        inboxStatus: !isTrash && emailLabelType === "inbox",
         sentStatus: emailLabelType === "sent",
         lastMessageDate: new Date(email.sentAt),
         participantIds: [

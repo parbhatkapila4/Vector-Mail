@@ -374,19 +374,13 @@ export const accountRouter = createTRPCRouter({
           },
         });
       } else if (input.tab === "trash") {
-        return await ctx.db.thread.count({
-          where: {
-            accountId: account.id,
-            inboxStatus: false,
-            emails: {
-              some: {
-                sysLabels: {
-                  hasSome: ["trash"],
-                },
-              },
-            },
-          },
-        });
+        const result = await ctx.db.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(DISTINCT t.id)::bigint as count FROM "Thread" t
+          INNER JOIN "Email" e ON e."threadId" = t.id
+          WHERE t."accountId" = ${account.id}
+            AND 'trash' = ANY(e."sysLabels")
+        `;
+        return Number(result[0]?.count ?? 0);
       } else if (input.tab === "starred") {
         return await ctx.db.thread.count({
           where: {
@@ -900,8 +894,9 @@ export const accountRouter = createTRPCRouter({
       z.object({
         accountId: z.string().min(1),
         forceFullSync: z.boolean().optional().default(false),
-        folder: z.enum(["inbox", "sent"]).optional().default("inbox"),
+        folder: z.enum(["inbox", "sent", "trash"]).optional().default("inbox"),
         continueToken: z.string().optional(),
+        syncAllFolders: z.boolean().optional().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -951,12 +946,13 @@ export const accountRouter = createTRPCRouter({
       const syncStartTime = Date.now();
 
       const shouldForceFullSync = input.forceFullSync ?? false;
-      const folder: "inbox" | "sent" = input.folder ?? "inbox";
+      const folder: "inbox" | "sent" | "trash" = input.folder ?? "inbox";
+      const syncAllFolders = input.syncAllFolders ?? false;
       auditLog({
         userId: ctx.auth.userId,
         action: "sync_triggered",
         resourceId: input.accountId,
-        metadata: { folder },
+        metadata: syncAllFolders ? { syncAllFolders: true } : { folder },
       });
 
       try {
@@ -965,42 +961,90 @@ export const accountRouter = createTRPCRouter({
             event: "sync_start",
             accountId: account.id,
             forceFullSync: shouldForceFullSync,
-            folder,
+            folder: syncAllFolders ? "all" : folder,
           },
           "sync started",
         );
         console.log(
-          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, folder: ${folder}`,
+          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, syncAllFolders: ${syncAllFolders}, folder: ${syncAllFolders ? "all" : folder}`,
         );
 
-        const decodeContinueToken = (token: string): { pageToken?: string; sentUseLabel?: boolean } => {
+        if (syncAllFolders) {
+          const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+          const folders: Array<"inbox" | "sent" | "trash"> = ["inbox", "sent", "trash"];
+          for (const f of folders) {
+            const syncFolder = f === "inbox" ? undefined : f;
+            console.log(`[syncEmails mutation] Syncing folder: ${f}`);
+            await emailAccount.syncEmails(true, syncFolder);
+          }
+          await recalculateAllThreadStatuses(account.id);
+          const { enqueueEmbeddingJobsForAccount } = await import("@/lib/jobs/enqueue");
+          enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
+            console.error("[syncEmails] Enqueue embedding jobs failed:", err);
+          });
+          ctx.log?.info(
+            {
+              event: "sync_success",
+              accountId: account.id,
+              folder: "all",
+              durationMs: Date.now() - syncStartTime,
+              mode: "full_all_folders",
+            },
+            "sync all folders completed",
+          );
+          console.log(
+            `[syncEmails mutation] Sync all folders completed in ${Date.now() - syncStartTime}ms`,
+          );
+          return {
+            success: true,
+            message: "Inbox, Sent, and Trash synced",
+          };
+        }
+
+        const decodeContinueToken = (token: string): { pageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean } => {
           try {
             const decoded = JSON.parse(Buffer.from(token, "base64url").toString()) as unknown;
-            return typeof decoded === "object" && decoded !== null && "pageToken" in decoded
-              ? { pageToken: (decoded as { pageToken?: string }).pageToken, sentUseLabel: (decoded as { sentUseLabel?: boolean }).sentUseLabel }
-              : {};
+            if (typeof decoded !== "object" || decoded === null || !("pageToken" in decoded)) return {};
+            const d = decoded as { pageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean };
+            return { pageToken: d.pageToken, sentUseLabel: d.sentUseLabel, sentOmitDate: d.sentOmitDate, sentUseIsOperator: d.sentUseIsOperator, sentFromMe: d.sentFromMe, sentUseLabelIds: d.sentUseLabelIds };
           } catch {
             return {};
           }
         };
-        const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean) =>
-          Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false }), "utf8").toString("base64url");
+        const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean, sentOmitDate?: boolean, sentUseIsOperator?: boolean, sentFromMe?: boolean, sentUseLabelIds?: boolean) =>
+          Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false }), "utf8").toString("base64url");
 
-        if ((folder === "inbox" || folder === "sent") && input.continueToken) {
-          const { pageToken, sentUseLabel } = decodeContinueToken(input.continueToken);
-          const result = await emailAccount.fetchEmailsByFolderOnePage(folder, pageToken, sentUseLabel ?? false);
+        if ((folder === "inbox" || folder === "sent" || folder === "trash") && input.continueToken) {
+          const { pageToken, sentUseLabel, sentOmitDate, sentUseIsOperator, sentFromMe, sentUseLabelIds } = decodeContinueToken(input.continueToken);
+          const result = await emailAccount.fetchEmailsByFolderOnePage(
+            folder,
+            pageToken,
+            sentUseLabel ?? false,
+            folder === "sent" ? (sentOmitDate ?? false) : false,
+            folder === "sent" ? (sentUseIsOperator ?? false) : false,
+            folder === "sent" ? (sentFromMe ?? false) : false,
+            folder === "sent" ? (sentUseLabelIds ?? false) : false,
+            false,
+            500,
+          );
           if (result.emails.length > 0) {
             const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
             await syncEmailsToDatabase(result.emails, account.id);
           }
           const threadCount = await ctx.db.thread.count({
-            where: {
-              accountId: account.id,
-              ...(folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
-            },
+            where: folder === "trash"
+              ? {
+                accountId: account.id,
+                emails: { some: { sysLabels: { hasSome: ["trash"] } } },
+              }
+              : {
+                accountId: account.id,
+                ...(folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
+              },
           });
-          const hasMore = !!result.nextPageToken;
-          const continueToken = hasMore ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel) : undefined;
+          const hasMore =
+            folder === "sent" ? result.emails.length > 0 && !!result.nextPageToken : !!result.nextPageToken;
+          const continueToken = hasMore ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel, result.sentOmitDate, result.sentUseIsOperator, result.sentFromMe, result.sentUseLabelIds) : undefined;
           ctx.log?.info(
             {
               event: "sync_success",
@@ -1025,7 +1069,7 @@ export const accountRouter = createTRPCRouter({
           };
         }
 
-        if (!shouldForceFullSync && account.nextDeltaToken) {
+        if (!shouldForceFullSync && account.nextDeltaToken && folder !== "sent" && folder !== "trash") {
           console.log(
             `[syncEmails mutation] Attempting lightweight sync using delta token...`,
           );
@@ -1204,11 +1248,63 @@ export const accountRouter = createTRPCRouter({
           }
         }
 
+        // Inbox: use chunked one-page sync so first batch shows in 1-3s. Never block on full sync.
+        if (folder === "inbox") {
+          const firstPageSize = 100;
+          console.log(
+            `[syncEmails mutation] Inbox fast first page (maxResults: ${firstPageSize}), then chunked via continueToken`,
+          );
+          const result = await emailAccount.fetchEmailsByFolderOnePage(
+            "inbox",
+            undefined,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            firstPageSize,
+          );
+          if (result.emails.length > 0) {
+            const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+            await syncEmailsToDatabase(result.emails, account.id);
+          }
+          const threadCount = await ctx.db.thread.count({
+            where: { accountId: account.id, inboxStatus: true },
+          });
+          const hasMore = !!result.nextPageToken;
+          const continueToken = hasMore
+            ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel, result.sentOmitDate, result.sentUseIsOperator, result.sentFromMe, result.sentUseLabelIds)
+            : undefined;
+          ctx.log?.info(
+            {
+              event: "sync_success",
+              accountId: account.id,
+              folder: "inbox",
+              durationMs: Date.now() - syncStartTime,
+              countSynced: result.emails.length,
+              threadCount,
+              hasMore,
+            },
+            "inbox chunk done",
+          );
+          console.log(
+            `[syncEmails mutation] Inbox first chunk: ${result.emails.length} emails, hasMore: ${hasMore}, threadCount: ${threadCount}`,
+          );
+          return {
+            success: true,
+            message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+            threadCount,
+            hasMore,
+            continueToken,
+          };
+        }
+
         try {
-          const folder = input.folder === "sent" ? "sent" : undefined;
+          const syncFolder = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : undefined;
           await emailAccount.syncEmails(
             shouldForceFullSync || !account.nextDeltaToken,
-            folder,
+            syncFolder,
           );
           const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
           await recalculateAllThreadStatuses(account.id);
@@ -1257,15 +1353,18 @@ export const accountRouter = createTRPCRouter({
 
 
         const threadCount = await ctx.db.thread.count({
-          where: {
-            accountId: account.id,
-            ...(input.folder === "sent"
-              ? { sentStatus: true }
-              : { inboxStatus: true }),
-          },
+          where: input.folder === "trash"
+            ? {
+              accountId: account.id,
+              emails: { some: { sysLabels: { hasSome: ["trash"] } } },
+            }
+            : {
+              accountId: account.id,
+              ...(input.folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
+            },
         });
 
-        const folderName = input.folder === "sent" ? "sent" : "inbox";
+        const folderName = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : "inbox";
         ctx.log?.info(
           {
             event: "sync_success",
@@ -1546,7 +1645,6 @@ export const accountRouter = createTRPCRouter({
         whereClause.inboxStatus = false;
         whereClause.sentStatus = false;
       } else if (input.tab === "trash") {
-        whereClause.inboxStatus = false;
         whereClause.emails = {
           some: {
             sysLabels: {
@@ -1671,14 +1769,62 @@ export const accountRouter = createTRPCRouter({
             (a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
           );
         }
+      } else if (input.tab === "trash") {
+        const idsResult = cursor
+          ? await ctx.db.$queryRaw<
+            Array<{ id: string }>
+          >`SELECT t.id FROM "Thread" t
+  INNER JOIN "Email" e ON e."threadId" = t.id
+  WHERE t."accountId" = ${account.id}
+    AND 'trash' = ANY(e."sysLabels")
+    AND (t."lastMessageDate" < (SELECT "lastMessageDate" FROM "Thread" WHERE "id" = ${cursor})
+         OR (t."lastMessageDate" = (SELECT "lastMessageDate" FROM "Thread" WHERE "id" = ${cursor}) AND t."id" > ${cursor}))
+  GROUP BY t.id, t."lastMessageDate"
+  ORDER BY t."lastMessageDate" DESC, t."id" DESC
+  LIMIT ${limit + 1}`
+          : await ctx.db.$queryRaw<
+            Array<{ id: string }>
+          >`SELECT t.id FROM "Thread" t
+  INNER JOIN "Email" e ON e."threadId" = t.id
+  WHERE t."accountId" = ${account.id}
+    AND 'trash' = ANY(e."sysLabels")
+  GROUP BY t.id, t."lastMessageDate"
+  ORDER BY t."lastMessageDate" DESC, t."id" DESC
+  LIMIT ${limit + 1}`;
+        const ids = idsResult.map((r) => r.id);
+        if (ids.length === 0) {
+          threads = [];
+        } else {
+          const rows = await ctx.db.thread.findMany({
+            where: { id: { in: ids } },
+            include: {
+              emails: {
+                include: {
+                  from: true,
+                  to: true,
+                  cc: true,
+                  bcc: true,
+                  replyTo: true,
+                },
+                orderBy: { sentAt: "desc" },
+                take: 1,
+              },
+            },
+          });
+          const idOrder = new Map(ids.map((id, i) => [id, i]));
+          threads = rows.sort(
+            (a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
+          );
+        }
       } else {
         threads = await ctx.db.thread.findMany({
           take: limit + 1,
           where: whereClause,
           cursor: cursor ? { id: cursor } : undefined,
-          orderBy: {
-            lastMessageDate: "desc",
-          },
+          orderBy: [
+            { lastMessageDate: "desc" },
+            { id: "desc" },
+          ],
           include: {
             emails: {
               include: {

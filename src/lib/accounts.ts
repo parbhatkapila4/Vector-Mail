@@ -527,13 +527,14 @@ export class Account {
     }
   }
 
-  async syncEmails(forceFullSync = false, folder?: "inbox" | "sent") {
-    await withLock(this.id, SYNC_LOCK_TTL_MS, () =>
+  async syncEmails(forceFullSync = false, folder?: "inbox" | "sent" | "trash") {
+    const lockKey = folder ? `${this.id}:${folder}` : this.id;
+    await withLock(lockKey, SYNC_LOCK_TTL_MS, () =>
       this._performSync(forceFullSync, folder),
     );
   }
 
-  private async _performSync(forceFullSync = false, folder?: "inbox" | "sent") {
+  private async _performSync(forceFullSync = false, folder?: "inbox" | "sent" | "trash") {
     const account = await db.account.findUnique({
       where: {
         id: this.id,
@@ -560,7 +561,9 @@ export class Account {
     if (folder) {
       console.log(`[syncEmails] Folder-specific sync requested: ${folder}`);
       try {
-        const folderEmails = await this.fetchEmailsByFolder(folder);
+        const fetchPromise = this.fetchEmailsByFolder(folder);
+        const folderEmails = await fetchPromise;
+
         console.log(`[syncEmails] ✓ Fetched ${folderEmails.length} ${folder} emails`);
 
         if (folderEmails.length > 0) {
@@ -1326,21 +1329,59 @@ export class Account {
 
 
   async fetchEmailsByFolderOnePage(
-    folder: "inbox" | "sent",
+    folder: "inbox" | "sent" | "trash",
     pageToken?: string,
     sentUseLabel = false,
-  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string; sentUseLabel?: boolean }> {
+    sentOmitDate = false,
+    sentUseIsOperator = false,
+    sentFromMe = false,
+    sentUseLabelIds = false,
+    trashUseLabelIds = false,
+    maxResults = 500,
+  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean }> {
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
-    const searchQuery = sentUseLabel
-      ? `label:sent ${newerThanQuery}`
-      : `in:${folder} ${newerThanQuery}`;
+    let searchQuery: string;
+    if (folder === "trash") {
+      searchQuery = trashUseLabelIds ? "labelIds=TRASH" : "in:trash";
+    } else if (folder === "sent") {
+      if (sentUseLabelIds) {
+        searchQuery = "label:sent";
+      } else if (sentFromMe) {
+        searchQuery = "from:me";
+      } else if (sentUseIsOperator) {
+        searchQuery = "is:sent";
+      } else if (sentOmitDate) {
+        searchQuery = sentUseLabel ? "label:sent" : "in:sent";
+      } else {
+        searchQuery = sentUseLabel ? `label:sent ${newerThanQuery}` : `in:${folder} ${newerThanQuery}`;
+      }
+    } else {
+      searchQuery = `in:${folder} ${newerThanQuery}`;
+    }
 
     const params: Record<string, string | number> = {
-      maxResults: 500,
+      maxResults,
       bodyType: "text",
       q: searchQuery,
     };
-    if (pageToken) params.pageToken = pageToken;
+    if (pageToken) params.pageToken = pageToken as string;
+    if (folder === "sent" && sentUseLabelIds) {
+      delete params.q;
+      (params as Record<string, string>)["labelIds"] = "SENT";
+    }
+    if (folder === "trash" && trashUseLabelIds) {
+      delete params.q;
+      (params as Record<string, string>)["labelIds"] = "TRASH";
+    }
+
+    if (folder === "sent" && !pageToken) {
+      console.log(
+        `[fetchEmailsByFolderOnePage:sent] Trying: ${sentUseLabelIds ? "labelIds=SENT" : `q="${searchQuery}"`}`,
+      );
+    }
+    if (folder === "trash" && !pageToken) {
+      console.log(`[fetchEmailsByFolderOnePage:trash] Trying: ${trashUseLabelIds ? "labelIds=TRASH" : "q=in:trash"}`);
+    }
 
     const listResponse = await aurinkoAxios.get<{
       messages?: Array<{ id: string }>;
@@ -1353,8 +1394,36 @@ export class Account {
     const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
     const nextPageToken = listResponse.data.nextPageToken;
 
-    if (messageIds.length === 0 && folder === "sent" && !pageToken && !sentUseLabel) {
-      return this.fetchEmailsByFolderOnePage(folder, undefined, true);
+    if (folder === "sent" && !pageToken) {
+      console.log(
+        `[fetchEmailsByFolderOnePage:sent] Got ${messageIds.length} message IDs for ${sentUseLabelIds ? "labelIds=SENT" : `q="${searchQuery}"`}`,
+      );
+    }
+    if (folder === "trash" && !pageToken) {
+      console.log(`[fetchEmailsByFolderOnePage:trash] Got ${messageIds.length} message IDs for ${trashUseLabelIds ? "labelIds=TRASH" : "q=in:trash"}`);
+    }
+
+    if (messageIds.length === 0 && folder === "trash" && !pageToken && !trashUseLabelIds) {
+      console.log(`[fetchEmailsByFolderOnePage:trash] q=in:trash returned 0, retrying with labelIds=TRASH`);
+      return this.fetchEmailsByFolderOnePage(folder, undefined, false, false, false, false, false, true, maxResults);
+    }
+
+    if (messageIds.length === 0 && folder === "sent" && !pageToken) {
+      if (!sentUseLabel) {
+        return this.fetchEmailsByFolderOnePage(folder, undefined, true, false, false, false, false);
+      }
+      if (!sentOmitDate) {
+        return this.fetchEmailsByFolderOnePage(folder, undefined, true, true, false, false, false);
+      }
+      if (!sentUseIsOperator) {
+        return this.fetchEmailsByFolderOnePage(folder, undefined, true, true, true, false, false);
+      }
+      if (!sentFromMe) {
+        return this.fetchEmailsByFolderOnePage(folder, undefined, true, true, true, true, false);
+      }
+      if (!sentUseLabelIds) {
+        return this.fetchEmailsByFolderOnePage(folder, undefined, true, true, true, true, true);
+      }
     }
 
     const allEmails: EmailMessage[] = [];
@@ -1366,39 +1435,121 @@ export class Account {
       allEmails.push(...valid);
     }
 
+    if (folder === "trash" && allEmails.length > 0) {
+      for (const email of allEmails) {
+        const labels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
+        if (!labels.map((l) => String(l).toLowerCase()).includes("trash")) {
+          email.sysLabels = [...labels, "trash"];
+        }
+      }
+    }
+
     return {
       emails: allEmails,
       nextPageToken,
       sentUseLabel: folder === "sent" ? sentUseLabel : undefined,
+      sentOmitDate: folder === "sent" ? sentOmitDate : undefined,
+      sentUseIsOperator: folder === "sent" ? sentUseIsOperator : undefined,
+      sentFromMe: folder === "sent" ? sentFromMe : undefined,
+      sentUseLabelIds: folder === "sent" ? sentUseLabelIds : undefined,
     };
   }
 
-  private async fetchEmailsByFolder(folder: "inbox" | "sent"): Promise<EmailMessage[]> {
+  /** Fetches the Sent folder ID from Aurinko wellKnown folders. Used for folder-based Sent listing. */
+  private async getWellKnownSentFolderId(): Promise<string | null> {
+    try {
+      const res = await Promise.race([
+        aurinkoAxios.get<{ sent?: string }>(
+          "https://api.aurinko.io/v1/email/folders/wellKnown",
+          { headers: this.aurinkoHeaders, timeout: 5000 },
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("wellKnown folders timeout after 5s")), 5000),
+        ),
+      ]);
+      const id = res.data?.sent ?? null;
+      if (id) {
+        console.log("[getWellKnownSentFolderId] Resolved Sent folder id:", id);
+      } else {
+        console.warn("[getWellKnownSentFolderId] No sent folder in wellKnown response:", res.data);
+      }
+      return id;
+    } catch (err) {
+      console.warn("[getWellKnownSentFolderId] Failed:", err);
+      return null;
+    }
+  }
+
+  private async fetchEmailsByFolder(folder: "inbox" | "sent" | "trash", maxPagesLimit?: number): Promise<EmailMessage[]> {
     const allEmails: EmailMessage[] = [];
     let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const maxPages = 500;
+    const maxPages = maxPagesLimit ?? 500;
+    const pageSize = maxPagesLimit ? 100 : 500;
     let consecutiveEmptyPages = 0;
     const maxConsecutiveEmpty = 3;
 
+    // For Trash: use labelIds=TRASH to fetch all trashed emails (no date limit).
+    if (folder === "trash") {
+      console.log(`[fetchEmailsByFolder:trash] Fetching emails with labelIds=TRASH`);
+    }
+
+    // For Sent: prefer folder-based listing (GET /folders/{sentId}/messages) which is reliable across providers.
+    if (folder === "sent") {
+      const sentFolderId = await this.getWellKnownSentFolderId();
+      if (sentFolderId) {
+        try {
+          const folderEmails = await this.fetchEmailsByFolderId(sentFolderId, maxPages, pageSize);
+          console.log(
+            `[fetchEmailsByFolder:sent] Folder-based fetch complete: ${folderEmails.length} emails`,
+          );
+          return folderEmails;
+        } catch (err) {
+          console.warn("[fetchEmailsByFolder:sent] Folder-based fetch failed, falling back to q/labelIds:", err);
+        }
+      }
+    }
 
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
-    let searchQuery = `label:${folder} ${newerThanQuery}`;
-    let triedLabelFallback = false;
+    const sentQueryOrder: string[] =
+      folder === "sent"
+        ? [
+          `in:sent ${newerThanQuery}`,
+          "in:sent",
+          `label:sent ${newerThanQuery}`,
+          "label:sent",
+          "is:sent",
+        ]
+        : [];
+    let sentQueryIndex = 0;
+    let sentTriedLabelIds = false;
+    let searchQuery =
+      folder === "trash"
+        ? "in:trash"
+        : folder === "sent"
+          ? sentQueryOrder[0]!
+          : `label:${folder} ${newerThanQuery}`;
     let triedNoDateFallback = false;
+    let trashTriedLabelIds = false;
 
-    console.log(`[fetchEmailsByFolder:${folder}] Fetching emails with query: ${searchQuery} (window: ${SYNC_WINDOW_DAYS} days)`);
+    console.log(`[fetchEmailsByFolder:${folder}] Fetching emails with query: ${searchQuery} (window: ${folder === "trash" ? "all" : SYNC_WINDOW_DAYS + " days"})`);
 
     while (pageCount < maxPages) {
       pageCount++;
       console.log(`[fetchEmailsByFolder:${folder}] Fetching page ${pageCount}...`);
 
       const params: Record<string, string | number> = {
-        maxResults: 500,
+        maxResults: pageSize,
         bodyType: "text",
-        q: searchQuery,
+        ...(folder === "trash" && trashTriedLabelIds ? {} : { q: searchQuery }),
       };
-
+      if (folder === "trash" && trashTriedLabelIds) {
+        (params as Record<string, string>)["labelIds"] = "TRASH";
+      }
+      if (folder === "sent" && sentTriedLabelIds) {
+        delete params.q;
+        (params as Record<string, string>)["labelIds"] = "SENT";
+      }
       if (pageToken) {
         params.pageToken = pageToken;
       }
@@ -1406,15 +1557,20 @@ export class Account {
       try {
         const listResponse = await aurinkoAxios.get<{
           messages?: Array<{ id: string }>;
+          records?: Array<{ id: string }>;
           nextPageToken?: string;
         }>("https://api.aurinko.io/v1/email/messages", {
           headers: this.aurinkoHeaders,
           params,
         });
 
-        const messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
+        const messageIds =
+          listResponse.data.messages?.map((m) => m.id) ??
+          listResponse.data.records?.map((r) => r.id) ??
+          [];
+        const paramDesc = folder === "trash" ? (trashTriedLabelIds ? "labelIds=TRASH" : `q="${searchQuery}"`) : folder === "sent" && sentTriedLabelIds ? "labelIds=SENT" : `q="${searchQuery}"`;
         console.log(
-          `[fetchEmailsByFolder:${folder}] Page ${pageCount}: Found ${messageIds.length} message IDs`,
+          `[fetchEmailsByFolder:${folder}] Page ${pageCount}: Found ${messageIds.length} message IDs for ${paramDesc}`,
         );
 
         if (messageIds.length === 0) {
@@ -1423,24 +1579,40 @@ export class Account {
             `[fetchEmailsByFolder:${folder}] Empty page ${pageCount} (consecutive: ${consecutiveEmptyPages})`,
           );
 
-          if (
-            folder === "sent" &&
-            pageCount === 1 &&
-            !triedLabelFallback
-          ) {
-            triedLabelFallback = true;
-            searchQuery = `label:sent ${newerThanQuery}`;
+          if (folder === "sent" && pageCount === 1 && !sentTriedLabelIds && sentQueryIndex >= sentQueryOrder.length - 1) {
+            sentTriedLabelIds = true;
             pageToken = undefined;
-            console.log(
-              `[fetchEmailsByFolder:sent] First page empty with in:sent, retrying with: ${searchQuery}`,
-            );
             pageCount--;
+            consecutiveEmptyPages = 0;
+            console.log(`[fetchEmailsByFolder:sent] All q= queries returned 0, trying labelIds=SENT`);
+            continue;
+          }
+
+          if (folder === "sent" && pageCount === 1 && sentQueryIndex < sentQueryOrder.length - 1) {
+            sentQueryIndex++;
+            searchQuery = sentQueryOrder[sentQueryIndex]!;
+            pageToken = undefined;
+            pageCount--;
+            consecutiveEmptyPages = 0;
+            console.log(`[fetchEmailsByFolder:sent] Retrying with: ${searchQuery}`);
+            continue;
+          }
+
+          if (folder === "trash" && pageCount === 1 && !trashTriedLabelIds) {
+            trashTriedLabelIds = true;
+            pageToken = undefined;
+            pageCount--;
+            consecutiveEmptyPages = 0;
+            searchQuery = "in:trash";
+            console.log(`[fetchEmailsByFolder:trash] q=in:trash returned 0 on first page, trying labelIds=TRASH`);
             continue;
           }
 
           if (
             pageCount === 1 &&
-            !triedNoDateFallback
+            !triedNoDateFallback &&
+            folder !== "sent" &&
+            folder !== "trash"
           ) {
             triedNoDateFallback = true;
             searchQuery = `label:${folder}`;
@@ -1524,6 +1696,70 @@ export class Account {
     console.log(
       `[fetchEmailsByFolder:${folder}] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages`,
     );
+
+    if (folder === "trash" && allEmails.length > 0) {
+      for (const email of allEmails) {
+        const labels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
+        if (!labels.map((l) => String(l).toLowerCase()).includes("trash")) {
+          email.sysLabels = [...labels, "trash"];
+        }
+      }
+    }
+
+    return allEmails;
+  }
+
+  /** Lists and fetches emails from a specific folder by ID (e.g. wellKnown Sent). Uses GET /v1/email/folders/{folderId}/messages. */
+  private async fetchEmailsByFolderId(
+    folderId: string,
+    maxPages: number,
+    pageSize: number,
+  ): Promise<EmailMessage[]> {
+    const allEmails: EmailMessage[] = [];
+    let pageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const url = `https://api.aurinko.io/v1/email/folders/${encodeURIComponent(folderId)}/messages`;
+
+    while (pageCount < maxPages) {
+      pageCount++;
+      const params: Record<string, string | number> = {
+        maxResults: pageSize,
+        bodyType: "text",
+      };
+      if (pageToken) params.pageToken = pageToken;
+
+      const listResponse = await aurinkoAxios.get<{
+        messages?: Array<{ id: string }>;
+        records?: Array<{ id: string }>;
+        nextPageToken?: string;
+      }>(url, {
+        headers: this.aurinkoHeaders,
+        params,
+      });
+
+      const messageIds =
+        listResponse.data.records?.map((r) => r.id) ??
+        listResponse.data.messages?.map((m) => m.id) ??
+        [];
+      console.log(
+        `[fetchEmailsByFolderId] Page ${pageCount}: ${messageIds.length} message IDs (folderId: ${folderId})`,
+      );
+
+      if (messageIds.length > 0) {
+        const batchSize = 50;
+        for (let i = 0; i < messageIds.length; i += batchSize) {
+          const batch = messageIds.slice(i, i + batchSize);
+          const batchEmails = await Promise.all(
+            batch.map((id) => this.getEmailById(id)),
+          );
+          const valid = batchEmails.filter((e): e is EmailMessage => e !== null);
+          allEmails.push(...valid);
+        }
+      }
+
+      pageToken = listResponse.data.nextPageToken;
+      if (!pageToken) break;
+    }
 
     return allEmails;
   }
