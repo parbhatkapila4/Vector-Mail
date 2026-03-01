@@ -9,6 +9,8 @@ import {
   checkUserRateLimit,
   rateLimit429Response,
 } from "@/lib/rate-limit";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+import { getDemoSearchResults } from "@/lib/demo/seed-demo-data";
 
 async function searchHandler(req: NextRequest | Request) {
   try {
@@ -42,6 +44,25 @@ async function searchHandler(req: NextRequest | Request) {
       return NextResponse.json(
         { error: "Account ID is required" },
         { status: 400 },
+      );
+    }
+
+    if (accountId === DEMO_ACCOUNT_ID) {
+      const startTime = Date.now();
+      const results = getDemoSearchResults(query.trim(), 20);
+      const totalTime = Date.now() - startTime;
+      return NextResponse.json(
+        {
+          results,
+          count: results.length,
+          searchTime: totalTime,
+          searchType: "keyword",
+        },
+        {
+          headers: {
+            "Cache-Control": "private, max-age=60",
+          },
+        },
       );
     }
 

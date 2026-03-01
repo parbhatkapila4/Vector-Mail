@@ -14,8 +14,7 @@ const AppProviders = dynamic(() => import("./AppProviders"), {
       </div>
     </div>
   ),
-},
-);
+});
 
 export function ProvidersWrapper({
   children,

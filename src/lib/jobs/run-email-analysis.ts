@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { analyzeEmail } from "@/lib/email-analysis";
 import { arrayToVector } from "@/lib/vector-utils";
 import { serverLog } from "@/lib/logging/server-logger";
+import { applyFilterRulesForThread } from "@/lib/apply-filter-rules";
 import type { EmailMessage } from "@/types";
 
 function dbEmailToEmailMessage(email: {
@@ -148,6 +149,17 @@ export async function runEmailAnalysisForOne(
       SET embedding = ${embeddingVector}::vector
       WHERE id = ${emailId}
     `;
+
+    const thread = await db.thread.findUnique({
+      where: { id: email.threadId },
+      select: { accountId: true },
+    });
+    if (thread) {
+      await applyFilterRulesForThread({
+        threadId: email.threadId,
+        accountId: thread.accountId,
+      });
+    }
 
     serverLog.info(
       {

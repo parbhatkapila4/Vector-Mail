@@ -38,7 +38,6 @@ export function AIBanner() {
         }}
       />
 
-
       <div className="absolute inset-0 overflow-hidden" aria-hidden>
         <div
           className="absolute -left-[5%] top-[-5%] h-[380px] w-[520px] rounded-full"
@@ -96,7 +95,6 @@ export function AIBanner() {
         />
       </div>
 
-
       <div
         className="absolute inset-0 overflow-hidden pointer-events-none"
         style={{ opacity: 0.2 }}
@@ -131,7 +129,6 @@ export function AIBanner() {
         </div>
       </div>
 
-
       <div
         className="absolute inset-0 overflow-hidden pointer-events-none select-none"
         style={{ opacity: 0.08 }}
@@ -145,7 +142,6 @@ export function AIBanner() {
           ))}
         </div>
       </div>
-
 
       <div
         className="absolute inset-0 pointer-events-none z-[1]"

@@ -12,14 +12,39 @@ import { withLock } from "./sync-lock";
 import { db } from "@/server/db";
 
 const SYNC_LOCK_TTL_MS = 30 * 60 * 1000;
-
+const DEBUG_EMAIL = process.env.DEBUG_EMAIL_SYNC === "true";
+function debugLog(...args: unknown[]) {
+  if (DEBUG_EMAIL) debugLog(...args);
+}
 
 const SYNC_WINDOW_DAYS = 60;
 
 const INITIAL_FIRST_BATCH_SIZE = 250;
-const FIRST_BATCH_CONCURRENCY = 50;
+const EMAIL_FETCH_BATCH_SIZE = 25;
+const FIRST_BATCH_CONCURRENCY = EMAIL_FETCH_BATCH_SIZE;
 const INSTANT_SYNC_CONCURRENCY = 200;
+const DELAY_BETWEEN_BATCHES_MS = 150;
 const INSTANT_SYNC_LIST_SIZE = 500;
+
+const FAST_FIRST_BATCH_INBOX = 10;
+const FAST_FIRST_BATCH_SENT = 8;
+const FAST_FIRST_BATCH_TRASH = 5;
+const FAST_FIRST_FETCH_CONCURRENCY = 10;
+const FAST_FIRST_FETCH_TIMEOUT_MS = 6_000;
+const FAST_FIRST_LIST_TIMEOUT_MS = 5_000;
+const RATE_LIMIT_WAIT_MS = 60_000;
+
+function isRateLimitError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const status = error.response?.status;
+  if (status === 429) return true;
+  if (status === 403) {
+    const data = error.response?.data as { message?: string; error?: { message?: string } } | string | undefined;
+    const msg = typeof data === "string" ? data : String(data?.error?.message ?? (data as { message?: string })?.message ?? data ?? "").toLowerCase();
+    return msg.includes("quota exceeded") || msg.includes("ratelimitexceeded") || msg.includes("rate_limit");
+  }
+  return false;
+}
 
 const aurinkoAxios = axios.create({
   timeout: 30000,
@@ -118,7 +143,7 @@ export class Account {
 
   private async validateToken(): Promise<boolean> {
     try {
-      console.log(`[validateToken] Validating token for account ${this.id}...`);
+      debugLog(`[validateToken] Validating token for account ${this.id}...`);
 
       const response = await with401Retry(
         this.id,
@@ -137,7 +162,7 @@ export class Account {
         { tryRefresh: () => this.refreshTokenIfPossible() },
       );
 
-      console.log(
+      debugLog(
         `[validateToken] Token is valid (status: ${response.status})`,
       );
 
@@ -176,14 +201,14 @@ export class Account {
   ) {
     try {
       if (folder) {
-        console.log(
+        debugLog(
           `[Initial Sync] Starting initial sync for ${folder.toUpperCase()} folder only...`,
         );
         const folderEmails = await this.fetchEmailsByFolder(folder);
         await syncEmailsToDatabase(folderEmails, this.id);
 
         const count = folderEmails.length;
-        console.log(
+        debugLog(
           `[Initial Sync] Complete! Fetched ${count} ${folder} emails`,
         );
 
@@ -194,7 +219,7 @@ export class Account {
       }
 
       if (options?.firstBatchOnly) {
-        console.log(
+        debugLog(
           `[Initial Sync] Fast first batch only: listing up to ${INITIAL_FIRST_BATCH_SIZE} inbox messages (last ${SYNC_WINDOW_DAYS} days)...`,
         );
         const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
@@ -212,12 +237,12 @@ export class Account {
         });
 
         let messageIds = listResponse.data.messages?.map((m) => m.id) ?? [];
-        console.log(
+        debugLog(
           `[Initial Sync] First batch list returned ${messageIds.length} message IDs (query: label:inbox newer_than:${SYNC_WINDOW_DAYS}d)`,
         );
 
         if (messageIds.length === 0) {
-          console.log(
+          debugLog(
             `[Initial Sync] No messages with date filter - trying label:inbox without date limit...`,
           );
           const fallbackResponse = await aurinkoAxios.get<{
@@ -232,7 +257,7 @@ export class Account {
             },
           });
           messageIds = fallbackResponse.data.messages?.map((m) => m.id) ?? [];
-          console.log(
+          debugLog(
             `[Initial Sync] Fallback query (label:inbox only) returned ${messageIds.length} message IDs`,
           );
         }
@@ -265,7 +290,7 @@ export class Account {
         }
 
         await syncEmailsToDatabase(firstBatchEmails, this.id);
-        console.log(
+        debugLog(
           `[Initial Sync] First batch: synced ${firstBatchEmails.length} full emails to database`,
         );
 
@@ -274,7 +299,7 @@ export class Account {
           const syncResponse = await this.startSync();
           if (syncResponse.ready && syncResponse.syncUpdatedToken) {
             storedDeltaToken = syncResponse.syncUpdatedToken;
-            console.log(
+            debugLog(
               `[Initial Sync] Delta token obtained for future syncs`,
             );
           }
@@ -291,8 +316,8 @@ export class Account {
         };
       }
 
-      console.log(
-        `[Initial Sync] Starting initial sync - using direct fetch for ALL emails from last ${SYNC_WINDOW_DAYS} days...`,
+      debugLog(
+        `[Initial Sync] Starting initial sync - fetching ALL inbox emails + sent...`,
       );
 
       const allEmails = await this.fetchAllEmailsDirectly();
@@ -308,7 +333,7 @@ export class Account {
         e.sysLabels.includes("draft"),
       ).length;
 
-      console.log(
+      debugLog(
         `[Initial Sync] Complete! Fetched ${allEmails.length} emails (Inbox: ${inboxCount}, Sent: ${sentCount}, Drafts: ${draftCount})`,
       );
 
@@ -317,7 +342,7 @@ export class Account {
         const syncResponse = await this.startSync();
         if (syncResponse.ready && syncResponse.syncUpdatedToken) {
           storedDeltaToken = syncResponse.syncUpdatedToken;
-          console.log(
+          debugLog(
             `[Initial Sync] Delta token obtained: ${storedDeltaToken.substring(0, 20)}...`,
           );
         }
@@ -347,7 +372,7 @@ export class Account {
   }
 
   private async startSync() {
-    console.log("[AURINKO AUTH] Using accountToken for account:", this.id);
+    debugLog("[AURINKO AUTH] Using accountToken for account:", this.id);
 
     const data = await with401Retry(
       this.id,
@@ -390,7 +415,7 @@ export class Account {
       params.bodyType = "html";
     }
 
-    console.log(`[getUpdatedEmails] Calling sync/updated with:`, {
+    debugLog(`[getUpdatedEmails] Calling sync/updated with:`, {
       accountId: this.id,
       hasDeltaToken: !!deltaToken,
       hasPageToken: !!pageToken,
@@ -412,7 +437,7 @@ export class Account {
       { tryRefresh: () => this.refreshTokenIfPossible() },
     );
 
-    console.log(`[getUpdatedEmails] Response:`, {
+    debugLog(`[getUpdatedEmails] Response:`, {
       status: response.status,
       recordCount: response.data.records?.length ?? 0,
       hasNextPage: !!response.data.nextPageToken,
@@ -471,7 +496,7 @@ export class Account {
         },
       );
 
-      console.log("sendmail", response.data);
+      debugLog("sendmail", response.data);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -503,40 +528,66 @@ export class Account {
   }
 
   async getEmailById(emailId: string, timeoutMs?: number): Promise<EmailMessage | null> {
-    try {
-      const response = await aurinkoAxios.get<EmailMessage>(
-        `https://api.aurinko.io/v1/email/messages/${emailId}`,
-        {
-          timeout: timeoutMs ?? 30000,
-          headers: this.aurinkoHeaders,
-          params: {
-            bodyType: "html",
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await aurinkoAxios.get<EmailMessage>(
+          `https://api.aurinko.io/v1/email/messages/${emailId}`,
+          {
+            timeout: timeoutMs ?? 30000,
+            headers: this.aurinkoHeaders,
+            params: {
+              bodyType: "html",
+            },
           },
-        },
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error(
-          `Error fetching email ${emailId}:`,
-          error.response?.status,
-          error.response?.data,
         );
-      } else {
-        console.error(`Error fetching email ${emailId}:`, error);
+        return response.data;
+      } catch (error) {
+        const isRateLimit = isRateLimitError(error);
+        if (isRateLimit && attempt === 0) {
+          await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
+          continue;
+        }
+        if (!isRateLimit) {
+          if (axios.isAxiosError(error)) {
+            console.error(`Error fetching email ${emailId}:`, error.response?.status, error.response?.data);
+          } else {
+            console.error(`Error fetching email ${emailId}:`, error);
+          }
+        }
+        return null;
       }
-      return null;
     }
+    return null;
   }
 
-  async syncEmails(forceFullSync = false, folder?: "inbox" | "sent" | "trash") {
+  async syncEmails(
+    forceFullSync = false,
+    folder?: "inbox" | "sent" | "trash",
+    options?: { skipRecalculate?: boolean },
+  ) {
     const lockKey = folder ? `${this.id}:${folder}` : this.id;
     await withLock(lockKey, SYNC_LOCK_TTL_MS, () =>
-      this._performSync(forceFullSync, folder),
+      this._performSync(forceFullSync, folder, options),
     );
   }
 
-  private async _performSync(forceFullSync = false, folder?: "inbox" | "sent" | "trash") {
+  async syncAllFoldersInParallel(): Promise<void> {
+    const lockKey = `${this.id}:full`;
+    await withLock(lockKey, SYNC_LOCK_TTL_MS, async () => {
+      const skipRecalculate = { skipRecalculate: true };
+      await Promise.all([
+        this._performSync(true, undefined, skipRecalculate),
+        this._performSync(true, "sent", skipRecalculate),
+        this._performSync(true, "trash", skipRecalculate),
+      ]);
+    });
+  }
+
+  private async _performSync(
+    forceFullSync = false,
+    folder?: "inbox" | "sent" | "trash",
+    options?: { skipRecalculate?: boolean },
+  ) {
     const account = await db.account.findUnique({
       where: {
         id: this.id,
@@ -555,30 +606,77 @@ export class Account {
     }
     this.token = account.token;
 
-    console.log(
+    debugLog(
       `[syncEmails] Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync}, folder: ${folder || "all"})`,
     );
 
 
     if (folder) {
-      console.log(`[syncEmails] Folder-specific sync requested: ${folder}`);
+      debugLog(`[syncEmails] Folder-specific sync requested: ${folder}`);
       try {
         const fetchPromise = this.fetchEmailsByFolder(folder);
         const folderEmails = await fetchPromise;
 
-        console.log(`[syncEmails] ✓ Fetched ${folderEmails.length} ${folder} emails`);
+        debugLog(`[syncEmails] ✓ Fetched ${folderEmails.length} ${folder} emails`);
 
         if (folderEmails.length > 0) {
-          await syncEmailsToDatabase(folderEmails, account.id);
-          console.log(`[syncEmails] ✓ Synced ${folderEmails.length} ${folder} emails to database`);
+          await syncEmailsToDatabase(folderEmails, account.id, {
+            skipRecalculate: options?.skipRecalculate,
+          });
+          debugLog(`[syncEmails] ✓ Synced ${folderEmails.length} ${folder} emails to database`);
         } else {
-          console.log(`[syncEmails] No ${folder} emails found to sync`);
+          debugLog(`[syncEmails] No ${folder} emails found to sync`);
         }
 
         return;
       } catch (folderError) {
         console.error(`[syncEmails] Folder-specific sync failed:`, folderError);
         throw folderError;
+      }
+    }
+
+    if (forceFullSync) {
+      debugLog(`[syncEmails] User-triggered full sync - using performInitialSync for full inbox+sent fetch`);
+      try {
+        const initialSyncResult = await this.performInitialSync(undefined, {
+          firstBatchOnly: false,
+        });
+        const allEmails = initialSyncResult?.emails ?? [];
+        const storedDeltaToken = initialSyncResult?.deltaToken ?? "";
+        debugLog(`[syncEmails] ✓ performInitialSync completed: ${allEmails.length} emails`);
+        if (allEmails.length > 0) {
+          await syncEmailsToDatabase(allEmails, account.id, {
+            skipRecalculate: options?.skipRecalculate,
+          });
+          debugLog(`[syncEmails] ✓ Synced ${allEmails.length} emails to database`);
+        }
+        await db.account.update({
+          where: { id: account.id },
+          data: {
+            lastInboxSyncAt: new Date(),
+            ...(storedDeltaToken ? { nextDeltaToken: storedDeltaToken } : {}),
+          },
+        });
+        return;
+      } catch (fullSyncError) {
+        console.error(`[syncEmails] performInitialSync failed, trying direct inbox fetch:`, fullSyncError);
+        try {
+          const inboxOnly = await this.fetchEmailsByFolder("inbox");
+          debugLog(`[syncEmails] ✓ Direct inbox fetch: ${inboxOnly.length} emails`);
+          if (inboxOnly.length > 0) {
+            await syncEmailsToDatabase(inboxOnly, account.id, {
+              skipRecalculate: options?.skipRecalculate,
+            });
+            await db.account.update({
+              where: { id: account.id },
+              data: { lastInboxSyncAt: new Date() },
+            });
+            debugLog(`[syncEmails] ✓ Synced ${inboxOnly.length} inbox emails (fallback path)`);
+          }
+          return;
+        } catch (inboxFallbackError) {
+          console.error(`[syncEmails] Direct inbox fallback also failed:`, inboxFallbackError);
+        }
       }
     }
 
@@ -595,36 +693,36 @@ export class Account {
       (await this.shouldRefresh30DayWindow(account.id));
 
     if (inboxThreadCount === 0 && !forceFullSync) {
-      console.log(
+      debugLog(
         `[syncEmails] Inbox is empty (${inboxThreadCount} threads), forcing full sync regardless of forceFullSync flag`,
       );
     }
 
     if (shouldMaintain30DayWindow) {
       if (inboxThreadCount === 0) {
-        console.log(
+        debugLog(
           `[syncEmails] New user (0 inbox threads) - using Sync API (messages list returns empty)`,
         );
       }
 
-      console.log(
+      debugLog(
         `[syncEmails] Maintaining ${SYNC_WINDOW_DAYS}-day window - using sync API (primary method)`,
       );
 
       try {
-        console.log(`[syncEmails] Starting sync API...`);
+        debugLog(`[syncEmails] Starting sync API...`);
         let syncResponse = await this.startSync();
         let readyAttempts = 0;
         const maxReadyAttempts = 12;
         while (!syncResponse.ready && readyAttempts < maxReadyAttempts) {
           readyAttempts++;
-          console.log(
+          debugLog(
             `[syncEmails] Sync not ready, waiting 5s before retry (${readyAttempts}/${maxReadyAttempts})...`,
           );
           await new Promise((r) => setTimeout(r, 5000));
           syncResponse = await this.startSync();
         }
-        console.log(`[syncEmails] Sync API response:`, {
+        debugLog(`[syncEmails] Sync API response:`, {
           ready: syncResponse.ready,
           hasToken: !!syncResponse.syncUpdatedToken,
           syncUpdatedToken: syncResponse.syncUpdatedToken
@@ -640,7 +738,7 @@ export class Account {
           throw new Error("Sync API did not return syncUpdatedToken");
         }
 
-        console.log(
+        debugLog(
           `[syncEmails] Sync API ready, fetching emails with token...`,
         );
         const syncEmails: EmailMessage[] = [];
@@ -654,7 +752,7 @@ export class Account {
 
         do {
           syncPageCount++;
-          console.log(
+          debugLog(
             `[syncEmails] Fetching sync API page ${syncPageCount}...`,
           );
 
@@ -663,7 +761,7 @@ export class Account {
             syncPageToken,
           );
 
-          console.log(`[syncEmails] Sync API page ${syncPageCount} response:`, {
+          debugLog(`[syncEmails] Sync API page ${syncPageCount} response:`, {
             recordCount: syncUpdateResponse.records?.length ?? 0,
             hasNextPage: !!syncUpdateResponse.nextPageToken,
             hasNextDelta: !!syncUpdateResponse.nextDeltaToken,
@@ -675,7 +773,7 @@ export class Account {
           ) {
             syncEmails.push(...syncUpdateResponse.records);
             consecutiveEmptyPages = 0;
-            console.log(
+            debugLog(
               `[syncEmails] ✓ Sync API page ${syncPageCount}: ${syncUpdateResponse.records.length} emails, total: ${syncEmails.length}`,
             );
           } else {
@@ -688,7 +786,7 @@ export class Account {
           if (syncUpdateResponse.nextDeltaToken) {
             currentDeltaToken = syncUpdateResponse.nextDeltaToken;
             hasNextDeltaToken = true;
-            console.log(
+            debugLog(
               `[syncEmails] Received nextDeltaToken - sync window complete`,
             );
           }
@@ -696,7 +794,7 @@ export class Account {
           syncPageToken = syncUpdateResponse.nextPageToken;
 
           if (hasNextDeltaToken && !syncPageToken) {
-            console.log(
+            debugLog(
               `[syncEmails] Sync complete: has nextDeltaToken and no pageToken`,
             );
             break;
@@ -713,7 +811,7 @@ export class Account {
             syncPageToken || (!hasNextDeltaToken && syncPageCount < 50);
 
           if (!shouldContinue) {
-            console.log(`[syncEmails] No more pages and sync appears complete`);
+            debugLog(`[syncEmails] No more pages and sync appears complete`);
             break;
           }
         } while (syncPageCount < maxSyncPages);
@@ -724,7 +822,7 @@ export class Account {
           );
         }
 
-        console.log(
+        debugLog(
           `[syncEmails] ✓ Fetched ${syncEmails.length} emails from sync API, syncing to database...`,
         );
 
@@ -744,7 +842,7 @@ export class Account {
           },
         });
 
-        console.log(
+        debugLog(
           `[syncEmails] ✓ ${SYNC_WINDOW_DAYS}-day window sync completed using sync API for account ${account.id}. Synced ${syncEmails.length} emails.`,
         );
         return;
@@ -779,16 +877,16 @@ export class Account {
     let storedDeltaToken: string;
 
     if (!updatedAccount.nextDeltaToken) {
-      console.log(
+      debugLog(
         "[syncEmails] Performing full initial sync (no delta token)...",
       );
-      console.log("[syncEmails] Calling performInitialSync() with full 60-day fetch...");
+      debugLog("[syncEmails] Calling performInitialSync() with full 60-day fetch...");
       const initialSyncResult = await this.performInitialSync(undefined, {
         firstBatchOnly: false,
       });
       allEmails = initialSyncResult?.emails ?? [];
       storedDeltaToken = initialSyncResult?.deltaToken ?? "";
-      console.log(
+      debugLog(
         `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
       );
       await db.account.update({
@@ -798,7 +896,7 @@ export class Account {
     } else {
       const deltaToken = updatedAccount.nextDeltaToken;
       if (!deltaToken) {
-        console.log(
+        debugLog(
           "[syncEmails] No delta token found, performing full initial sync...",
         );
         const initialSyncResult = await this.performInitialSync(undefined, {
@@ -806,7 +904,7 @@ export class Account {
         });
         allEmails = initialSyncResult?.emails ?? [];
         storedDeltaToken = initialSyncResult?.deltaToken ?? "";
-        console.log(
+        debugLog(
           `[syncEmails] performInitialSync() completed: ${allEmails.length} emails, deltaToken: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
         );
         await db.account.update({
@@ -814,25 +912,25 @@ export class Account {
           data: { lastInboxSyncAt: new Date() },
         });
       } else {
-        console.log(`Using delta token: ${deltaToken.substring(0, 20)}...`);
+        debugLog(`Using delta token: ${deltaToken.substring(0, 20)}...`);
         let response = await this.getUpdatedEmails(deltaToken);
         allEmails = response.records || [];
         storedDeltaToken = deltaToken;
 
-        console.log(`Delta sync response: ${allEmails.length} emails found`);
+        debugLog(`Delta sync response: ${allEmails.length} emails found`);
 
         if (response.nextDeltaToken) {
           storedDeltaToken = response.nextDeltaToken;
-          console.log(`Updated delta token: ${storedDeltaToken}`);
+          debugLog(`Updated delta token: ${storedDeltaToken}`);
         }
 
         while (response.nextPageToken) {
-          console.log(
+          debugLog(
             `Fetching next page with token: ${response.nextPageToken}`,
           );
           response = await this.getUpdatedEmails("", response.nextPageToken);
           allEmails = allEmails.concat(response.records);
-          console.log(
+          debugLog(
             `Page response: ${response.records.length} emails, total: ${allEmails.length}`,
           );
           if (response.nextDeltaToken) {
@@ -842,7 +940,7 @@ export class Account {
       }
     }
 
-    console.log(`[syncEmails] Total emails to sync: ${allEmails.length}`);
+    debugLog(`[syncEmails] Total emails to sync: ${allEmails.length}`);
 
     if (allEmails.length === 0) {
       console.error(`[syncEmails] ⚠ CRITICAL: No emails to sync for account ${account.id} after all sync methods. This indicates:
@@ -857,11 +955,11 @@ export class Account {
     }
 
     try {
-      console.log(
+      debugLog(
         `[syncEmails] Starting DB insert for ${allEmails.length} emails...`,
       );
       await syncEmailsToDatabase(allEmails, account.id);
-      console.log(
+      debugLog(
         `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
       );
 
@@ -872,7 +970,7 @@ export class Account {
           },
         },
       });
-      console.log(
+      debugLog(
         `[syncEmails] Verification: ${savedEmailCount} total emails in database for account ${account.id}`,
       );
 
@@ -881,7 +979,7 @@ export class Account {
           accountId: account.id,
         },
       });
-      console.log(
+      debugLog(
         `[syncEmails] Verification: ${threadCount} total threads in database for account ${account.id}`,
       );
 
@@ -891,7 +989,7 @@ export class Account {
           inboxStatus: true,
         },
       });
-      console.log(
+      debugLog(
         `[syncEmails] Verification: ${inboxThreadCount} inbox threads in database for account ${account.id}`,
       );
     } catch (error) {
@@ -899,7 +997,7 @@ export class Account {
       throw error;
     }
 
-    console.log(
+    debugLog(
       `[syncEmails] Updating delta token for account ${account.id}...`,
     );
     await db.account.update({
@@ -910,11 +1008,11 @@ export class Account {
         nextDeltaToken: storedDeltaToken,
       },
     });
-    console.log(
+    debugLog(
       `[syncEmails] Delta token updated successfully: ${storedDeltaToken ? storedDeltaToken.substring(0, 20) + "..." : "none"}`,
     );
 
-    console.log(`[syncEmails] Email sync completed for account ${account.id}`);
+    debugLog(`[syncEmails] Email sync completed for account ${account.id}`);
   }
 
   private async shouldRefresh30DayWindow(accountId: string): Promise<boolean> {
@@ -928,7 +1026,7 @@ export class Account {
       });
 
       if (!account?.nextDeltaToken) {
-        console.log(
+        debugLog(
           "[shouldRefresh30DayWindow] No delta token found, will do initial sync instead",
         );
         return false;
@@ -939,14 +1037,14 @@ export class Account {
         sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
 
         if (account.lastInboxSyncAt > sixHoursAgo) {
-          console.log(
+          debugLog(
             "[shouldRefresh30DayWindow] Last sync was recent, using delta sync",
           );
           return false;
         }
       }
 
-      console.log(
+      debugLog(
         `[shouldRefresh30DayWindow] Last sync was more than 6 hours ago, refreshing ${SYNC_WINDOW_DAYS}-day window`,
       );
       return true;
@@ -975,7 +1073,7 @@ export class Account {
 
     if (account.token) {
       this.token = account.token;
-      console.log(
+      debugLog(
         `[syncLatestEmails] Using token from database for account ${this.id}`,
       );
     } else {
@@ -995,7 +1093,7 @@ export class Account {
 
     const shouldRefresh = await this.shouldRefresh30DayWindow(account.id);
     if (shouldRefresh) {
-      console.log(
+      debugLog(
         `[Latest Sync] ${SYNC_WINDOW_DAYS}-day window needs refresh, doing full sync instead`,
       );
       try {
@@ -1010,14 +1108,14 @@ export class Account {
     }
 
     if (!account.nextDeltaToken) {
-      console.log(
+      debugLog(
         `Skipping latest sync - account ${account.id} needs initial sync first`,
       );
       return { success: false, count: 0, authError: false };
     }
 
     try {
-      console.log(
+      debugLog(
         `[Latest Sync] Starting lightweight sync for account ${account.id}`,
       );
       const startTime = Date.now();
@@ -1047,7 +1145,7 @@ export class Account {
           e.sysLabels.includes("draft"),
         ).length;
 
-        console.log(
+        debugLog(
           `[Latest Sync] Found ${newEmails.length} new emails (Inbox: ${inboxCount}, Sent: ${sentCount}, Drafts: ${draftCount}), syncing...`,
         );
 
@@ -1059,7 +1157,7 @@ export class Account {
         });
 
         const duration = Date.now() - startTime;
-        console.log(
+        debugLog(
           `[Latest Sync] Completed in ${duration}ms - synced ${newEmails.length} emails`,
         );
 
@@ -1073,7 +1171,7 @@ export class Account {
         }
 
         const duration = Date.now() - startTime;
-        console.log(`[Latest Sync] No new emails (${duration}ms)`);
+        debugLog(`[Latest Sync] No new emails (${duration}ms)`);
         return { success: true, count: 0, authError: false };
       }
     } catch (error) {
@@ -1122,7 +1220,7 @@ export class Account {
             data: { nextDeltaToken: null },
           });
 
-          console.log(
+          debugLog(
             `[Latest Sync] Delta token reset - will use full sync on next regular sync`,
           );
           return { success: false, count: 0, authError: false };
@@ -1206,6 +1304,118 @@ export class Account {
     }
   }
 
+  async fetchAndSyncLatestInboxPage(): Promise<{ count: number }> {
+    try {
+      const result = await this.fetchEmailsByFolderOnePage(
+        "inbox",
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        100,
+      );
+      if (result.emails.length === 0) return { count: 0 };
+      await syncEmailsToDatabase(result.emails, this.id);
+      debugLog(
+        `[fetchAndSyncLatestInboxPage] Synced ${result.emails.length} latest inbox emails for account ${this.id}`,
+      );
+      return { count: result.emails.length };
+    } catch (error) {
+      console.warn("[fetchAndSyncLatestInboxPage] Failed (inbox will use existing DB):", error);
+      return { count: 0 };
+    }
+  }
+
+  async syncFirstBatchQuick(): Promise<{ count: number }> {
+    const start = Date.now();
+    const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
+    const listOpts = { timeout: FAST_FIRST_LIST_TIMEOUT_MS };
+    const limit = pLimit(FAST_FIRST_FETCH_CONCURRENCY);
+
+    const listInbox = () =>
+      with401Retry(this.id, () =>
+        aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+          "https://api.aurinko.io/v1/email/messages",
+          {
+            ...listOpts,
+            headers: this.aurinkoHeaders,
+            params: {
+              maxResults: FAST_FIRST_BATCH_INBOX,
+              bodyType: "text",
+              q: `label:inbox ${newerThanQuery}`,
+            },
+          },
+        ),
+        { tryRefresh: () => this.refreshTokenIfPossible() },
+      );
+    const listSent = () =>
+      with401Retry(this.id, () =>
+        aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+          "https://api.aurinko.io/v1/email/messages",
+          {
+            ...listOpts,
+            headers: this.aurinkoHeaders,
+            params: {
+              maxResults: FAST_FIRST_BATCH_SENT,
+              bodyType: "text",
+              q: `label:sent ${newerThanQuery}`,
+            },
+          },
+        ),
+        { tryRefresh: () => this.refreshTokenIfPossible() },
+      );
+    const listTrash = () =>
+      with401Retry(this.id, () =>
+        aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+          "https://api.aurinko.io/v1/email/messages",
+          {
+            ...listOpts,
+            headers: this.aurinkoHeaders,
+            params: {
+              maxResults: FAST_FIRST_BATCH_TRASH,
+              bodyType: "text",
+              q: `label:trash ${newerThanQuery}`,
+            },
+          },
+        ),
+        { tryRefresh: () => this.refreshTokenIfPossible() },
+      );
+
+    const [inboxRes, sentRes, trashRes] = await Promise.all([listInbox(), listSent(), listTrash()]);
+    const inboxIds = inboxRes.data.messages?.map((m) => m.id) ?? [];
+    const sentIds = sentRes.data.messages?.map((m) => m.id) ?? [];
+    const trashIds = trashRes.data.messages?.map((m) => m.id) ?? [];
+
+    const fetchAndSync = async (ids: string[]): Promise<number> => {
+      if (ids.length === 0) return 0;
+      const emails = await Promise.all(
+        ids.map((id) => limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS))),
+      );
+      const valid = emails.filter((e): e is EmailMessage => e !== null);
+      if (valid.length > 0) {
+        await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 15, skipRecalculate: false });
+        return valid.length;
+      }
+      return 0;
+    };
+
+    const [inboxCount, sentCount, trashCount] = await Promise.all([
+      fetchAndSync(inboxIds),
+      fetchAndSync(sentIds),
+      fetchAndSync(trashIds),
+    ]);
+
+    const total = inboxCount + sentCount + trashCount;
+    const elapsed = Date.now() - start;
+    console.log(
+      `[syncFirstBatchQuick] ✓ inbox ${inboxCount} sent ${sentCount} trash ${trashCount} (total ${total}) in ${elapsed}ms`,
+    );
+    return { count: total };
+  }
+
   async syncAllEmailsInstant(): Promise<{ count: number }> {
     const start = Date.now();
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
@@ -1253,11 +1463,11 @@ export class Account {
     const allIds = [...new Set([...inboxIds, ...sentIds])];
 
     if (allIds.length === 0) {
-      console.log("[syncAllEmailsInstant] No message IDs from list, skipping fetch");
+      debugLog("[syncAllEmailsInstant] No message IDs from list, skipping fetch");
       return { count: 0 };
     }
 
-    console.log(
+    debugLog(
       `[syncAllEmailsInstant] Listed ${inboxIds.length} inbox + ${sentIds.length} sent = ${allIds.length} unique IDs, fetching with concurrency ${INSTANT_SYNC_CONCURRENCY}...`,
     );
 
@@ -1271,7 +1481,7 @@ export class Account {
 
     await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 30 });
     const elapsed = Date.now() - start;
-    console.log(
+    debugLog(
       `[syncAllEmailsInstant] ✓ Synced ${valid.length} emails in ${elapsed}ms`,
     );
     return { count: valid.length };
@@ -1279,8 +1489,8 @@ export class Account {
 
   async fetchAllEmailsDirectly(): Promise<EmailMessage[]> {
     try {
-      console.log(
-        `[fetchAllEmailsDirectly] Starting to fetch all emails (inbox + sent) from last ${SYNC_WINDOW_DAYS} days...`,
+      debugLog(
+        `[fetchAllEmailsDirectly] Starting to fetch all inbox emails + sent (last ${SYNC_WINDOW_DAYS}d)...`,
       );
 
       await with401Retry(
@@ -1291,18 +1501,18 @@ export class Account {
           }),
         { tryRefresh: () => this.refreshTokenIfPossible() },
       );
-      console.log(
+      debugLog(
         `[fetchAllEmailsDirectly] ✓ API connection verified for account ${this.id}`,
       );
 
 
-      console.log("[fetchAllEmailsDirectly] Step 1: Fetching INBOX emails...");
+      debugLog("[fetchAllEmailsDirectly] Step 1: Fetching INBOX emails...");
       const inboxEmails = await this.fetchEmailsByFolder("inbox");
-      console.log(`[fetchAllEmailsDirectly] ✓ Fetched ${inboxEmails.length} inbox emails`);
+      debugLog(`[fetchAllEmailsDirectly] ✓ Fetched ${inboxEmails.length} inbox emails`);
 
-      console.log("[fetchAllEmailsDirectly] Step 2: Fetching SENT emails...");
+      debugLog("[fetchAllEmailsDirectly] Step 2: Fetching SENT emails...");
       const sentEmails = await this.fetchEmailsByFolder("sent");
-      console.log(`[fetchAllEmailsDirectly] ✓ Fetched ${sentEmails.length} sent emails`);
+      debugLog(`[fetchAllEmailsDirectly] ✓ Fetched ${sentEmails.length} sent emails`);
 
 
       const emailMap = new Map<string, EmailMessage>();
@@ -1312,7 +1522,7 @@ export class Account {
         }
       }
       const allEmails = Array.from(emailMap.values());
-      console.log(`[fetchAllEmailsDirectly] ✓ Total unique emails: ${allEmails.length} (Inbox: ${inboxEmails.length}, Sent: ${sentEmails.length})`);
+      debugLog(`[fetchAllEmailsDirectly] ✓ Total unique emails: ${allEmails.length} (Inbox: ${inboxEmails.length}, Sent: ${sentEmails.length})`);
 
       return allEmails;
     } catch (error) {
@@ -1377,12 +1587,12 @@ export class Account {
     }
 
     if (folder === "sent" && !pageToken) {
-      console.log(
+      debugLog(
         `[fetchEmailsByFolderOnePage:sent] Trying: ${sentUseLabelIds ? "labelIds=SENT" : `q="${searchQuery}"`}`,
       );
     }
     if (folder === "trash" && !pageToken) {
-      console.log(`[fetchEmailsByFolderOnePage:trash] Trying: ${trashUseLabelIds ? "labelIds=TRASH" : "q=in:trash"}`);
+      debugLog(`[fetchEmailsByFolderOnePage:trash] Trying: ${trashUseLabelIds ? "labelIds=TRASH" : "q=in:trash"}`);
     }
 
     const listResponse = await aurinkoAxios.get<{
@@ -1397,16 +1607,16 @@ export class Account {
     const nextPageToken = listResponse.data.nextPageToken;
 
     if (folder === "sent" && !pageToken) {
-      console.log(
+      debugLog(
         `[fetchEmailsByFolderOnePage:sent] Got ${messageIds.length} message IDs for ${sentUseLabelIds ? "labelIds=SENT" : `q="${searchQuery}"`}`,
       );
     }
     if (folder === "trash" && !pageToken) {
-      console.log(`[fetchEmailsByFolderOnePage:trash] Got ${messageIds.length} message IDs for ${trashUseLabelIds ? "labelIds=TRASH" : "q=in:trash"}`);
+      debugLog(`[fetchEmailsByFolderOnePage:trash] Got ${messageIds.length} message IDs for ${trashUseLabelIds ? "labelIds=TRASH" : "q=in:trash"}`);
     }
 
     if (messageIds.length === 0 && folder === "trash" && !pageToken && !trashUseLabelIds) {
-      console.log(`[fetchEmailsByFolderOnePage:trash] q=in:trash returned 0, retrying with labelIds=TRASH`);
+      debugLog(`[fetchEmailsByFolderOnePage:trash] q=in:trash returned 0, retrying with labelIds=TRASH`);
       return this.fetchEmailsByFolderOnePage(folder, undefined, false, false, false, false, false, true, maxResults);
     }
 
@@ -1429,12 +1639,15 @@ export class Account {
     }
 
     const allEmails: EmailMessage[] = [];
-    const batchSize = 50;
+    const batchSize = EMAIL_FETCH_BATCH_SIZE;
     for (let i = 0; i < messageIds.length; i += batchSize) {
       const batch = messageIds.slice(i, i + batchSize);
       const batchEmails = await Promise.all(batch.map((id) => this.getEmailById(id)));
       const valid = batchEmails.filter((e): e is EmailMessage => e !== null);
       allEmails.push(...valid);
+      if (i + batchSize < messageIds.length && DELAY_BETWEEN_BATCHES_MS > 0) {
+        await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
+      }
     }
 
     if (folder === "trash" && allEmails.length > 0) {
@@ -1457,29 +1670,40 @@ export class Account {
     };
   }
 
-  /** Fetches the Sent folder ID from Aurinko wellKnown folders. Used for folder-based Sent listing. */
   private async getWellKnownSentFolderId(): Promise<string | null> {
-    try {
-      const res = await Promise.race([
-        aurinkoAxios.get<{ sent?: string }>(
-          "https://api.aurinko.io/v1/email/folders/wellKnown",
-          { headers: this.aurinkoHeaders, timeout: 5000 },
-        ),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("wellKnown folders timeout after 5s")), 5000),
-        ),
-      ]);
-      const id = res.data?.sent ?? null;
-      if (id) {
-        console.log("[getWellKnownSentFolderId] Resolved Sent folder id:", id);
-      } else {
-        console.warn("[getWellKnownSentFolderId] No sent folder in wellKnown response:", res.data);
+    const maxAttempts = 3;
+    const delayMs = 800;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await Promise.race([
+          aurinkoAxios.get<{ sent?: string }>(
+            "https://api.aurinko.io/v1/email/folders/wellKnown",
+            { headers: this.aurinkoHeaders, timeout: 5000 },
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("wellKnown folders timeout after 5s")), 5000),
+          ),
+        ]);
+        const id = res.data?.sent ?? null;
+        if (id) {
+          debugLog("[getWellKnownSentFolderId] Resolved Sent folder id:", id);
+        } else {
+          debugLog("[getWellKnownSentFolderId] No sent folder in wellKnown response:", res.data);
+        }
+        return id;
+      } catch {
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+        debugLog(
+          "[getWellKnownSentFolderId] Aurinko well-known folders unavailable after retries; Sent sync will use fallback.",
+        );
+        return null;
       }
-      return id;
-    } catch (err) {
-      console.warn("[getWellKnownSentFolderId] Failed:", err);
-      return null;
     }
+    return null;
   }
 
   private async fetchEmailsByFolder(folder: "inbox" | "sent" | "trash", maxPagesLimit?: number): Promise<EmailMessage[]> {
@@ -1491,20 +1715,24 @@ export class Account {
     let consecutiveEmptyPages = 0;
     const maxConsecutiveEmpty = 3;
 
-    // For Trash: use labelIds=TRASH to fetch all trashed emails (no date limit).
     if (folder === "trash") {
-      console.log(`[fetchEmailsByFolder:trash] Fetching emails with labelIds=TRASH`);
+      debugLog(`[fetchEmailsByFolder:trash] Fetching emails with labelIds=TRASH`);
     }
 
-    // For Sent: prefer folder-based listing (GET /folders/{sentId}/messages) which is reliable across providers.
     if (folder === "sent") {
       const sentFolderId = await this.getWellKnownSentFolderId();
       if (sentFolderId) {
         try {
           const folderEmails = await this.fetchEmailsByFolderId(sentFolderId, maxPages, pageSize);
-          console.log(
+          debugLog(
             `[fetchEmailsByFolder:sent] Folder-based fetch complete: ${folderEmails.length} emails`,
           );
+          for (const email of folderEmails) {
+            const labels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
+            if (!labels.map((l) => String(l).toLowerCase()).includes("sent")) {
+              email.sysLabels = [...labels, "sent"];
+            }
+          }
           return folderEmails;
         } catch (err) {
           console.warn("[fetchEmailsByFolder:sent] Folder-based fetch failed, falling back to q/labelIds:", err);
@@ -1516,11 +1744,11 @@ export class Account {
     const sentQueryOrder: string[] =
       folder === "sent"
         ? [
-          `in:sent ${newerThanQuery}`,
           "in:sent",
-          `label:sent ${newerThanQuery}`,
           "label:sent",
           "is:sent",
+          `in:sent ${newerThanQuery}`,
+          `label:sent ${newerThanQuery}`,
         ]
         : [];
     let sentQueryIndex = 0;
@@ -1530,15 +1758,17 @@ export class Account {
         ? "in:trash"
         : folder === "sent"
           ? sentQueryOrder[0]!
-          : `label:${folder} ${newerThanQuery}`;
+          : folder === "inbox"
+            ? "label:inbox"
+            : `label:${folder} ${newerThanQuery}`;
     let triedNoDateFallback = false;
     let trashTriedLabelIds = false;
 
-    console.log(`[fetchEmailsByFolder:${folder}] Fetching emails with query: ${searchQuery} (window: ${folder === "trash" ? "all" : SYNC_WINDOW_DAYS + " days"})`);
+    debugLog(`[fetchEmailsByFolder:${folder}] Fetching emails with query: ${searchQuery} (window: ${folder === "trash" || folder === "sent" ? "all" : folder === "inbox" ? "all" : SYNC_WINDOW_DAYS + " days"})`);
 
     while (pageCount < maxPages) {
       pageCount++;
-      console.log(`[fetchEmailsByFolder:${folder}] Fetching page ${pageCount}...`);
+      debugLog(`[fetchEmailsByFolder:${folder}] Fetching page ${pageCount}...`);
 
       const params: Record<string, string | number> = {
         maxResults: pageSize,
@@ -1556,28 +1786,42 @@ export class Account {
         params.pageToken = pageToken;
       }
 
+      let listResponse: { data: { messages?: Array<{ id: string }>; records?: Array<{ id: string }>; nextPageToken?: string } };
+      const listMaxRetries = 3;
+      for (let listAttempt = 0; listAttempt < listMaxRetries; listAttempt++) {
+        try {
+          listResponse = await aurinkoAxios.get<{
+            messages?: Array<{ id: string }>;
+            records?: Array<{ id: string }>;
+            nextPageToken?: string;
+          }>("https://api.aurinko.io/v1/email/messages", {
+            headers: this.aurinkoHeaders,
+            params,
+          });
+          break;
+        } catch (listErr) {
+          if (isRateLimitError(listErr) && listAttempt < listMaxRetries - 1) {
+            console.warn(`[fetchEmailsByFolder:${folder}] List page ${pageCount} rate limited, waiting ${RATE_LIMIT_WAIT_MS / 1000}s then retry (${listAttempt + 1}/${listMaxRetries})`);
+            await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
+            continue;
+          }
+          throw listErr;
+        }
+      }
+      const listData = listResponse!;
       try {
-        const listResponse = await aurinkoAxios.get<{
-          messages?: Array<{ id: string }>;
-          records?: Array<{ id: string }>;
-          nextPageToken?: string;
-        }>("https://api.aurinko.io/v1/email/messages", {
-          headers: this.aurinkoHeaders,
-          params,
-        });
-
         const messageIds =
-          listResponse.data.messages?.map((m) => m.id) ??
-          listResponse.data.records?.map((r) => r.id) ??
+          listData.data.messages?.map((m) => m.id) ??
+          listData.data.records?.map((r) => r.id) ??
           [];
         const paramDesc = folder === "trash" ? (trashTriedLabelIds ? "labelIds=TRASH" : `q="${searchQuery}"`) : folder === "sent" && sentTriedLabelIds ? "labelIds=SENT" : `q="${searchQuery}"`;
-        console.log(
+        debugLog(
           `[fetchEmailsByFolder:${folder}] Page ${pageCount}: Found ${messageIds.length} message IDs for ${paramDesc}`,
         );
 
         if (messageIds.length === 0) {
           consecutiveEmptyPages++;
-          console.log(
+          debugLog(
             `[fetchEmailsByFolder:${folder}] Empty page ${pageCount} (consecutive: ${consecutiveEmptyPages})`,
           );
 
@@ -1586,7 +1830,7 @@ export class Account {
             pageToken = undefined;
             pageCount--;
             consecutiveEmptyPages = 0;
-            console.log(`[fetchEmailsByFolder:sent] All q= queries returned 0, trying labelIds=SENT`);
+            debugLog(`[fetchEmailsByFolder:sent] All q= queries returned 0, trying labelIds=SENT`);
             continue;
           }
 
@@ -1596,7 +1840,7 @@ export class Account {
             pageToken = undefined;
             pageCount--;
             consecutiveEmptyPages = 0;
-            console.log(`[fetchEmailsByFolder:sent] Retrying with: ${searchQuery}`);
+            debugLog(`[fetchEmailsByFolder:sent] Retrying with: ${searchQuery}`);
             continue;
           }
 
@@ -1606,7 +1850,7 @@ export class Account {
             pageCount--;
             consecutiveEmptyPages = 0;
             searchQuery = "in:trash";
-            console.log(`[fetchEmailsByFolder:trash] q=in:trash returned 0 on first page, trying labelIds=TRASH`);
+            debugLog(`[fetchEmailsByFolder:trash] q=in:trash returned 0 on first page, trying labelIds=TRASH`);
             continue;
           }
 
@@ -1619,72 +1863,82 @@ export class Account {
             triedNoDateFallback = true;
             searchQuery = `label:${folder}`;
             pageToken = undefined;
-            console.log(
+            debugLog(
               `[fetchEmailsByFolder:${folder}] First page empty with date filter, retrying with: ${searchQuery}`,
             );
             pageCount--;
             continue;
           }
 
-          if (consecutiveEmptyPages >= maxConsecutiveEmpty || !listResponse.data.nextPageToken) {
-            console.log(
+          if (consecutiveEmptyPages >= maxConsecutiveEmpty || !listData.data.nextPageToken) {
+            debugLog(
               `[fetchEmailsByFolder:${folder}] Stopping - ${consecutiveEmptyPages >= maxConsecutiveEmpty ? 'too many empty pages' : 'no more pages'}`,
             );
             break;
           }
 
-          pageToken = listResponse.data.nextPageToken;
+          pageToken = listData.data.nextPageToken;
           continue;
         }
 
         consecutiveEmptyPages = 0;
 
-        const batchSize = 50;
+        const batchSize = EMAIL_FETCH_BATCH_SIZE;
         for (let i = 0; i < messageIds.length; i += batchSize) {
           const batch = messageIds.slice(i, i + batchSize);
-          const batchEmails = await Promise.all(
+          let batchEmails = await Promise.all(
             batch.map((id) => this.getEmailById(id)),
           );
 
-          const validEmails = batchEmails.filter(
+          let validEmails = batchEmails.filter(
             (e): e is EmailMessage => e !== null,
           );
+          const failedIds = batch.filter((_, idx) => batchEmails[idx] === null);
+
+          if (failedIds.length > 0 && failedIds.length <= batchSize) {
+            await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
+            const retryEmails = await Promise.all(
+              failedIds.map((id) => this.getEmailById(id)),
+            );
+            validEmails = [...validEmails, ...retryEmails.filter((e): e is EmailMessage => e !== null)];
+          }
 
           allEmails.push(...validEmails);
 
-          console.log(
+          debugLog(
             `[fetchEmailsByFolder:${folder}] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(messageIds.length / batchSize)}, batch size: ${validEmails.length}, total: ${allEmails.length}`,
           );
+          if (i + batchSize < messageIds.length && DELAY_BETWEEN_BATCHES_MS > 0) {
+            await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
+          }
         }
 
-        pageToken = listResponse.data.nextPageToken;
+        pageToken = listData.data.nextPageToken;
 
         if (!pageToken) {
-          console.log(
+          debugLog(
             `[fetchEmailsByFolder:${folder}] No more pages, finished fetching`,
           );
           break;
         }
       } catch (pageError) {
-        console.error(
-          `[fetchEmailsByFolder:${folder}] Error on page ${pageCount}:`,
-          pageError,
-        );
+        if (isRateLimitError(pageError)) {
+          console.warn(`[fetchEmailsByFolder:${folder}] Page ${pageCount} rate limited (Gmail quota), waiting ${RATE_LIMIT_WAIT_MS / 1000}s before retry...`);
+          await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
+          pageCount--;
+          continue;
+        }
+        console.error(`[fetchEmailsByFolder:${folder}] Error on page ${pageCount}:`, axios.isAxiosError(pageError) ? pageError.response?.status : pageError);
 
         if (axios.isAxiosError(pageError)) {
           const status = pageError.response?.status;
-          if (status === 429 || (status && status >= 500 && status < 600)) {
-            console.log(
-              `[fetchEmailsByFolder:${folder}] Rate limit or server error, waiting 2 seconds before retry...`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (status && status >= 500 && status < 600) {
+            await new Promise((r) => setTimeout(r, 2000));
             continue;
           }
         }
 
-        console.warn(
-          `[fetchEmailsByFolder:${folder}] Breaking due to error on page ${pageCount}`,
-        );
+        console.warn(`[fetchEmailsByFolder:${folder}] Breaking due to error on page ${pageCount}`);
         break;
       }
     }
@@ -1695,10 +1949,18 @@ export class Account {
       );
     }
 
-    console.log(
+    debugLog(
       `[fetchEmailsByFolder:${folder}] Complete! Fetched ${allEmails.length} emails across ${pageCount} pages`,
     );
 
+    if (folder === "sent" && allEmails.length > 0) {
+      for (const email of allEmails) {
+        const labels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
+        if (!labels.map((l) => String(l).toLowerCase()).includes("sent")) {
+          email.sysLabels = [...labels, "sent"];
+        }
+      }
+    }
     if (folder === "trash" && allEmails.length > 0) {
       for (const email of allEmails) {
         const labels = Array.isArray(email.sysLabels) ? email.sysLabels : [];
@@ -1711,7 +1973,6 @@ export class Account {
     return allEmails;
   }
 
-  /** Lists and fetches emails from a specific folder by ID (e.g. wellKnown Sent). Uses GET /v1/email/folders/{folderId}/messages. */
   private async fetchEmailsByFolderId(
     folderId: string,
     maxPages: number,
@@ -1743,12 +2004,12 @@ export class Account {
         listResponse.data.records?.map((r) => r.id) ??
         listResponse.data.messages?.map((m) => m.id) ??
         [];
-      console.log(
+      debugLog(
         `[fetchEmailsByFolderId] Page ${pageCount}: ${messageIds.length} message IDs (folderId: ${folderId})`,
       );
 
       if (messageIds.length > 0) {
-        const batchSize = 50;
+        const batchSize = EMAIL_FETCH_BATCH_SIZE;
         for (let i = 0; i < messageIds.length; i += batchSize) {
           const batch = messageIds.slice(i, i + batchSize);
           const batchEmails = await Promise.all(
@@ -1756,6 +2017,9 @@ export class Account {
           );
           const valid = batchEmails.filter((e): e is EmailMessage => e !== null);
           allEmails.push(...valid);
+          if (i + batchSize < messageIds.length && DELAY_BETWEEN_BATCHES_MS > 0) {
+            await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
+          }
         }
       }
 

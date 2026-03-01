@@ -18,11 +18,11 @@ import { TimeInput24 } from "@/components/ui/time-input-24";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, ChevronUp, Reply } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
-import { openGmailCompose } from "@/lib/gmail-compose";
-import type { OpenGmailComposeOptions } from "@/lib/gmail-compose";
+import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { usePendingSend } from "@/contexts/PendingSendContext";
-import { GmailRedirectDialog } from "@/components/mail/GmailRedirectDialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
@@ -40,9 +40,14 @@ const ReplyBox = ({
   onSendSuccess,
   isInMobileDialog = false,
 }: ReplyBoxProps) => {
-  const { threadId, threads: rawThreads, account } = useThreads();
-  const [accountId] = useLocalStorage("accountId", "");
+  const { threadId, threads: rawThreads, account, effectiveAccountId } = useThreads();
   const threads = rawThreads as Thread[] | undefined;
+  const accountId = effectiveAccountId ?? "";
+  const { data: effectiveAccount } = api.account.getMyAccount.useQuery(
+    { accountId: accountId || "placeholder" },
+    { enabled: !!accountId && accountId.length > 0 },
+  );
+  const accountToUse = effectiveAccount ?? account;
 
   const thread = threads?.find((t) => t.id === threadId);
   const { data: foundThread } = api.account.getThreadById.useQuery(
@@ -89,12 +94,10 @@ const ReplyBox = ({
   });
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [pendingScheduleBody, setPendingScheduleBody] = useState<string>("");
-  const [gmailRedirectOpen, setGmailRedirectOpen] = useState(false);
-  const gmailRedirectPayloadRef = React.useRef<OpenGmailComposeOptions | null>(null);
-
   const sendEmail = api.account.sendEmail.useMutation();
+  const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
   const { isLoaded: authLoaded, userId } = useAuth();
-  const { scheduleSend, isPending: isPendingSend } = usePendingSend();
+  const { isPending: isPendingSend } = usePendingSend();
   const scheduleSendMutation = api.account.scheduleSend.useMutation({
     onSuccess: (_, variables) => {
       toast.success("Reply scheduled", {
@@ -147,62 +150,45 @@ const ReplyBox = ({
     );
   }
 
+  const getInReplyTo = (): string | undefined => {
+    if (!lastEmail || !("internetMessageId" in lastEmail)) return undefined;
+    return lastEmail.internetMessageId as string | undefined;
+  };
+
   const handleSend = async (value: string) => {
-    if (!lastEmail || !account) return;
+    if (isDemo) {
+      toast.info("You're exploring with sample data. Request access to connect your Gmail and send replies.");
+      return;
+    }
+    if (!lastEmail || !accountToUse) return;
 
-    const getInReplyTo = (): string | undefined => {
-      if ("internetMessageId" in lastEmail && lastEmail.internetMessageId) {
-        return lastEmail.internetMessageId;
-      }
-      return undefined;
-    };
-
-    // Show Gmail redirect dialog instead of sending via API (CASA / gmail.send scope temporarily disabled)
     const recipients = [
       {
         name: lastEmail.from.name ?? lastEmail.from.address,
         address: lastEmail.from.address,
       },
     ];
-    const toStr = recipients.map((r) => r.address).join(", ");
-    gmailRedirectPayloadRef.current = { to: toStr, subject, body: value };
-    setGmailRedirectOpen(true);
-
-    // Backend send logic kept for re-enable; not executed while gmail.send is disabled
-    // const payload = {
-    //   accountId,
-    //   threadId: threadId ?? undefined,
-    //   body: value,
-    //   subject,
-    //   from: { name: account.name ?? "Me", address: account.emailAddress ?? "me@example.com" },
-    //   to: recipients,
-    //   cc: [] as { name: string; address: string }[],
-    //   replyTo: { name: account.name ?? "Me", address: account.emailAddress ?? "me@example.com" },
-    //   inReplyTo: getInReplyTo(),
-    //   trackOpens,
-    // };
-    // scheduleSend(async () => {
-    //   try {
-    //     await sendEmail.mutateAsync(payload);
-    //     toast.success("Email sent successfully!");
-    //     onSendSuccess?.();
-    //   } catch (error) {
-    //     const message = error instanceof Error ? error.message : "Failed to send";
-    //     toast.error(message);
-    //   }
-    // });
-  };
-
-  const handleGmailRedirectOpen = () => {
-    const payload = gmailRedirectPayloadRef.current;
-    if (payload) {
-      openGmailCompose(payload);
-      toast.info(
-        "Sending via Gmail compose (sending inside VectorMail will be enabled soon)",
-      );
+    const bodyWithSignature = appendVectorMailSignature(value, true);
+    try {
+      await sendEmail.mutateAsync({
+        accountId,
+        from: {
+          name: accountToUse.name ?? "Me",
+          address: accountToUse.emailAddress ?? "me@example.com",
+        },
+        to: recipients,
+        subject,
+        body: bodyWithSignature,
+        threadId: threadId ?? undefined,
+        inReplyTo: getInReplyTo(),
+        trackOpens,
+      });
+      toast.success("Reply sent");
+      onSendSuccess?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send reply";
+      toast.error(message);
     }
-    onSendSuccess?.();
-    setGmailRedirectOpen(false);
   };
 
   const handleScheduleSendClick = (bodyHtml: string) => {
@@ -211,7 +197,7 @@ const ReplyBox = ({
   };
 
   const handleScheduleSendConfirm = () => {
-    if (!lastEmail || !account) return;
+    if (!lastEmail || !accountToUse) return;
     if (!scheduleDate) {
       toast.error("Please pick a date");
       return;
@@ -225,12 +211,6 @@ const ReplyBox = ({
       toast.error("Please pick a future date and time");
       return;
     }
-    const getInReplyTo = (): string | undefined => {
-      if ("internetMessageId" in lastEmail && lastEmail.internetMessageId) {
-        return lastEmail.internetMessageId;
-      }
-      return undefined;
-    };
     const toList = toValues.map((t) => ({
       name: (typeof t.label === "string" ? t.label : t.value) || t.value,
       address: t.value,
@@ -246,17 +226,17 @@ const ReplyBox = ({
       type: "trpc" as const,
       accountId,
       from: {
-        name: account.name ?? "Me",
-        address: account.emailAddress ?? "me@example.com",
+        name: accountToUse.name ?? "Me",
+        address: accountToUse.emailAddress ?? "me@example.com",
       },
       to: toList,
       subject,
-      body: pendingScheduleBody,
+      body: appendVectorMailSignature(pendingScheduleBody, true),
       threadId: threadId ?? undefined,
       inReplyTo: getInReplyTo(),
       replyTo: {
-        name: account.name ?? "Me",
-        address: account.emailAddress ?? "me@example.com",
+        name: accountToUse.name ?? "Me",
+        address: accountToUse.emailAddress ?? "me@example.com",
       },
       cc: ccList,
       trackOpens,
@@ -337,6 +317,7 @@ const ReplyBox = ({
             isSending={sendEmail.isPending || isPendingSend}
             onScheduleSend={handleScheduleSendClick}
             isScheduling={scheduleSendMutation.isPending}
+            sendDisabled={isDemo}
           />
           <Dialog open={scheduleSendOpen} onOpenChange={setScheduleSendOpen}>
             <DialogContent className="max-w-sm border-[#dadce0] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
@@ -388,11 +369,6 @@ const ReplyBox = ({
               </div>
             </DialogContent>
           </Dialog>
-          <GmailRedirectDialog
-            open={gmailRedirectOpen}
-            onOpenChange={setGmailRedirectOpen}
-            onOpenGmail={handleGmailRedirectOpen}
-          />
         </div>
       )}
     </div>

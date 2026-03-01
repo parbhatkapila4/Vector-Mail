@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { env } from "@/env.js";
 import { db } from "@/server/db";
 import { Account } from "@/lib/accounts";
+import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
 import { checkUserRateLimit } from "@/lib/rate-limit";
@@ -788,19 +789,39 @@ async function buddyPostHandler(req: Request) {
       }
 
 
-      const to = emailAddresses.join(", ");
       const subject = lastEmail.subject;
-      const body = lastEmail.body;
+      const bodyWithSignature = appendVectorMailSignature(lastEmail.body, false);
 
+      const emailAccount = new Account(account.id, account.token);
+      try {
+        await emailAccount.sendEmail({
+          from: {
+            address: account.emailAddress,
+            name: account.name ?? undefined,
+          },
+          to: emailAddresses.map((address) => ({ address, name: address })),
+          subject,
+          body: bodyWithSignature,
+        });
+      } catch (sendErr) {
+        const errMessage =
+          sendErr instanceof Error ? sendErr.message : "Failed to send email";
+        return new Response(
+          JSON.stringify({
+            error: "Send failed",
+            message: errMessage,
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      const recipient = emailAddresses[0] ?? "your recipient";
       return new Response(
         JSON.stringify({
           type: "conversation",
-          openGmailCompose: true,
-          to,
-          subject,
-          body,
-          message: `Your draft is ready. I'll open Gmail so you can send it to ${emailAddresses[0] ?? "your recipient"} from there.`,
-          recipient: emailAddresses[0],
+          emailSent: true,
+          message: `Email sent successfully to ${recipient}.`,
+          recipient,
         }),
         {
           headers: {

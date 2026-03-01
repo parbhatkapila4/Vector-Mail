@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
 import { serverLog } from "./logging/server-logger";
+import { applyFilterRulesForThread } from "./apply-filter-rules";
 import type { EmailMessage } from "@/types";
 import { Prisma } from "@prisma/client";
 
@@ -165,6 +166,11 @@ export async function processExistingEmails(
                 "embedding" = ${JSON.stringify(analysis.vectorEmbedding)}::vector
             WHERE id = ${email.id}
           `;
+
+          await applyFilterRulesForThread({
+            threadId: email.threadId,
+            accountId: email.thread.accountId,
+          });
 
           processed++;
           totalProcessed++;

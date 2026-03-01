@@ -1,4 +1,3 @@
-
 import { inngest } from "@/lib/inngest/client";
 import {
   EMAIL_ANALYZE_EVENT,
@@ -6,10 +5,15 @@ import {
   EMAIL_ANALYZE_ACCOUNT_EVENT,
 } from "@/lib/inngest/functions";
 
+function canSendToInngest(): boolean {
+  return Boolean(process.env.INNGEST_EVENT_KEY?.trim());
+}
+
 export async function enqueueEmailAnalysisJobs(
   emailIds: string[],
 ): Promise<void> {
   if (emailIds.length === 0) return;
+  if (!canSendToInngest()) return;
   try {
     if (emailIds.length === 1) {
       await inngest.send({
@@ -31,6 +35,7 @@ export async function enqueueScheduledSendJobs(
   scheduledSendIds: string[],
 ): Promise<void> {
   if (scheduledSendIds.length === 0) return;
+  if (!canSendToInngest()) return;
   try {
     await Promise.all(
       scheduledSendIds.map((scheduledSendId) =>
@@ -50,6 +55,7 @@ export async function enqueueBackfillEmbeddingJobs(
   emailIds: string[],
 ): Promise<number> {
   if (emailIds.length === 0) return 0;
+  if (!canSendToInngest()) return 0;
   let enqueued = 0;
   try {
     for (const emailId of emailIds) {
@@ -71,6 +77,7 @@ export async function enqueueEmbeddingJobsForAccount(
   accountId: string,
   limit: number = 50,
 ): Promise<void> {
+  if (!canSendToInngest()) return;
   try {
     await inngest.send({
       name: EMAIL_ANALYZE_ACCOUNT_EVENT,

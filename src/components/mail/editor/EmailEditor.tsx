@@ -65,6 +65,7 @@ type EmailEditorProps = {
 
   onScheduleSend?: (bodyHtml: string) => void;
   isScheduling?: boolean;
+  sendDisabled?: boolean;
 };
 
 const EmailEditor = ({
@@ -80,6 +81,7 @@ const EmailEditor = ({
   defaultToolbarExpand,
   onScheduleSend,
   isScheduling = false,
+  sendDisabled = false,
 }: EmailEditorProps) => {
   const [ref] = useAutoAnimate();
   const [accountId] = useLocalStorage("accountId", "");
@@ -394,8 +396,8 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-3 py-2 md:px-4 md:py-4">
         <div
           className={`relative h-full w-full rounded-lg border p-3 text-[#202124] transition-all duration-200 dark:text-[#e8eaed] md:min-h-[300px] md:p-4 ${isGenerating
-              ? "border-[#1a73e8] bg-[#1a73e8]/5 ring-2 ring-[#1a73e8]/20 dark:border-[#8ab4f8] dark:bg-[#8ab4f8]/10 dark:ring-[#8ab4f8]/30"
-              : "border-[#dadce0] bg-white focus-within:border-[#1a73e8] focus-within:ring-1 focus-within:ring-[#1a73e8]/30 dark:border-[#3c4043] dark:bg-[#292a2d] dark:focus-within:border-[#8ab4f8] dark:focus-within:ring-[#8ab4f8]/30"
+            ? "border-[#1a73e8] bg-[#1a73e8]/5 ring-2 ring-[#1a73e8]/20 dark:border-[#8ab4f8] dark:bg-[#8ab4f8]/10 dark:ring-[#8ab4f8]/30"
+            : "border-[#dadce0] bg-white focus-within:border-[#1a73e8] focus-within:ring-1 focus-within:ring-[#1a73e8]/30 dark:border-[#3c4043] dark:bg-[#292a2d] dark:focus-within:border-[#8ab4f8] dark:focus-within:ring-[#8ab4f8]/30"
             }`}
           onClick={() => {
             if (editor && !editor.isDestroyed) {
@@ -475,9 +477,10 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             <Button
               type="button"
               variant="outline"
-              disabled={isSending || isScheduling}
+              disabled={isSending || isScheduling || sendDisabled}
+              title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
               onClick={() => onScheduleSend(editor?.getHTML() ?? "")}
-              className="h-11 flex-1 border-[#dadce0] text-[#5f6368] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:bg-[#303134]"
+              className="h-11 flex-1 border-[#dadce0] text-[#5f6368] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:bg-[#303134] disabled:opacity-60"
             >
               {isScheduling ? "Scheduling..." : "Schedule send"}
             </Button>
@@ -488,8 +491,9 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
               await handleSend(content);
               editor?.commands.clearContent();
             }}
-            disabled={isSending}
-            className="h-11 flex-1 bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+            disabled={isSending || sendDisabled}
+            title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
+            className="h-11 flex-1 bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
           >
             {isSending ? "Sending..." : "Send"}
           </Button>
@@ -500,9 +504,10 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             <Button
               type="button"
               variant="outline"
-              disabled={isSending || isScheduling}
+              disabled={isSending || isScheduling || sendDisabled}
+              title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
               onClick={() => onScheduleSend(editor?.getHTML() ?? "")}
-              className="border-[#dadce0] text-[#5f6368] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:bg-[#303134]"
+              className="border-[#dadce0] text-[#5f6368] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:bg-[#303134] disabled:opacity-60"
             >
               {isScheduling ? "Scheduling..." : "Schedule send"}
             </Button>
@@ -513,8 +518,9 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
               await handleSend(content);
               editor?.commands.clearContent();
             }}
-            disabled={isSending}
-            className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+            disabled={isSending || sendDisabled}
+            title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
+            className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
           >
             {isSending ? "Sending..." : "Send"}
           </Button>

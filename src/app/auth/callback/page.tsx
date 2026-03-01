@@ -1,16 +1,19 @@
 "use client";
 
-import { useSignIn } from "@clerk/nextjs";
+import { useAuth, useClerk, useSignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function AuthCallbackPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { isSignedIn, getToken } = useAuth();
+  const { signOut } = useClerk();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const redeemedRef = useRef(false);
 
   useEffect(() => {
     if (!isLoaded || !signIn || !setActive) return;
@@ -22,26 +25,43 @@ export default function AuthCallbackPage() {
       return;
     }
 
+    const ticketVal = ticket;
     const signInFn = signIn;
     const setActiveFn = setActive;
     let cancelled = false;
 
-    async function redeemTicket(ticketVal: string) {
+    async function redeemTicket(val: string) {
       try {
         const res = await signInFn.create({
           strategy: "ticket",
-          ticket: ticketVal,
+          ticket: val,
         });
 
         if (cancelled) return;
 
         if (res.status === "complete" && res.createdSessionId) {
+          if (!cancelled) setStatus("done");
           await setActiveFn({
             session: res.createdSessionId,
           });
-          if (!cancelled) {
-            setStatus("done");
-            router.replace("/mail");
+          if (!cancelled && typeof window !== "undefined") {
+            const isHttpLocalhost =
+              typeof window !== "undefined" &&
+              window.location.protocol === "http:" &&
+              (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+            if (isHttpLocalhost) {
+              let token: string | null = null;
+              for (let i = 0; i < 3 && !token; i++) {
+                await new Promise((r) => setTimeout(r, 200 + i * 300));
+                if (cancelled) return;
+                token = (await getToken?.({ skipCache: true })) ?? null;
+              }
+              if (token) {
+                window.location.replace(`/api/auth/dev-session?token=${encodeURIComponent(token)}`);
+                return;
+              }
+            }
+            window.location.replace("/mail");
           }
         } else {
           setStatus("error");
@@ -55,11 +75,20 @@ export default function AuthCallbackPage() {
       }
     }
 
-    void redeemTicket(ticket);
+    if (isSignedIn && signOut) {
+      void signOut({ redirectUrl: undefined }).catch(() => { });
+      return;
+    }
+
+    if (!isSignedIn && !redeemedRef.current) {
+      redeemedRef.current = true;
+      void redeemTicket(ticketVal);
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, signIn, setActive, searchParams, router]);
+  }, [isLoaded, signIn, setActive, isSignedIn, signOut, searchParams, router, getToken]);
 
   if (status === "error") {
     return (

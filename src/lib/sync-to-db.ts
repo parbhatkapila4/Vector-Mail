@@ -2,6 +2,27 @@ import { db } from "@/server/db";
 import type { EmailAddress, EmailAttachment, EmailMessage } from "@/types";
 import type { Prisma } from "@prisma/client";
 
+function safeDate(value: unknown): Date {
+  if (value == null) return new Date();
+  const d = value instanceof Date ? value : new Date(value as string | number);
+  return Number.isNaN(d.getTime()) ? new Date() : d;
+}
+
+function normalizeEmailAddressString(addr: string, raw?: string | null): string | null {
+  const fromRaw = raw?.trim();
+  if (fromRaw) {
+    const angleMatch = fromRaw.match(/<([^>]+)>/);
+    if (angleMatch?.[1]) {
+      const extracted = angleMatch[1].trim().toLowerCase();
+      if (extracted.includes("@")) return extracted;
+    }
+  }
+  const s = (addr ?? "").trim();
+  if (!s) return null;
+  const fixed = s.replace(/\s+@/, "@").toLowerCase();
+  return fixed.includes("@") ? fixed : null;
+}
+
 async function processBatch<T>(
   items: T[],
   processor: (item: T) => Promise<void>,
@@ -20,7 +41,7 @@ async function processBatch<T>(
 export async function syncEmailsToDatabase(
   emails: EmailMessage[],
   accountId: string,
-  options?: { writeConcurrency?: number },
+  options?: { writeConcurrency?: number; skipRecalculate?: boolean },
 ) {
   if (!emails || emails.length === 0) {
     console.warn(
@@ -29,11 +50,17 @@ export async function syncEmailsToDatabase(
     return;
   }
 
-  const concurrency = options?.writeConcurrency ?? 5;
+  const accountExists = await db.account.findUnique({
+    where: { id: accountId },
+    select: { id: true },
+  });
+  if (!accountExists) {
+    console.error(`[sync] Account ${accountId} not found in DB - skipping sync (foreign key would fail).`);
+    return;
+  }
 
-  console.log(
-    `[syncEmailsToDatabase] Starting sync for ${emails.length} emails for account ${accountId} (concurrency: ${concurrency})`,
-  );
+  const concurrency = options?.writeConcurrency ?? 5;
+  const skipRecalculate = options?.skipRecalculate === true;
 
   let successCount = 0;
   let errorCount = 0;
@@ -47,23 +74,23 @@ export async function syncEmailsToDatabase(
           successCount++;
         } catch (error) {
           errorCount++;
-          console.error(
-            `[syncEmailsToDatabase] Failed to upsert email ${email.id}:`,
-            error,
-          );
+          if (errorCount === 1) {
+            console.error(
+              `[sync] First upsert failure (${emails.length} emails in batch):`,
+              error instanceof Error ? error.message : String(error),
+            );
+          }
         }
       },
       concurrency,
     );
 
-    console.log(
-      `[syncEmailsToDatabase] EMAIL SAVE LOOP FINISHED - Success: ${successCount}, Errors: ${errorCount}`,
-    );
-
-    await recalculateAllThreadStatuses(accountId);
+    if (!skipRecalculate) {
+      await recalculateAllThreadStatuses(accountId);
+    }
 
     console.log(
-      `[syncEmailsToDatabase] Sync completed for account ${accountId}`,
+      `[sync] Account ${accountId}: ${emails.length} emails → saved ${successCount}${errorCount > 0 ? `, ${errorCount} errors` : ""}`,
     );
   } catch (error) {
     console.error(
@@ -76,21 +103,10 @@ export async function syncEmailsToDatabase(
 
 export async function recalculateAllThreadStatuses(accountId: string) {
   try {
-    console.log(
-      `\n========== [recalculateAllThreadStatuses] START ==========`,
-    );
-    console.log(
-      `[recalculateAllThreadStatuses] Recalculating thread statuses for account ${accountId}...`,
-    );
-
     const threads = await db.thread.findMany({
       where: { accountId },
       select: { id: true },
     });
-
-    console.log(
-      `[recalculateAllThreadStatuses] Found ${threads.length} threads to recalculate`,
-    );
 
     let inboxCount = 0;
     let sentCount = 0;
@@ -194,20 +210,7 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       else if (threadFolderType === "draft") draftCount++;
 
 
-      if ((inboxCount + sentCount + draftCount) <= 5) {
-        console.log(
-          `[recalculateAllThreadStatuses] Thread ${thread.id}: ${threadFolderType} (hasInbox: ${hasInboxEmail}, hasSent: ${hasSentEmail}, hasDraft: ${hasDraftEmail})`,
-        );
-      }
     }
-
-    console.log(
-      `[recalculateAllThreadStatuses] COMPLETED recalculating ${threads.length} threads`,
-    );
-    console.log(
-      `[recalculateAllThreadStatuses] COUNTS: Inbox=${inboxCount}, Sent=${sentCount}, Draft=${draftCount}`,
-    );
-
 
     const dbInboxCount = await db.thread.count({
       where: { accountId, inboxStatus: true },
@@ -219,16 +222,11 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       where: { accountId, draftStatus: true },
     });
 
-    console.log(
-      `[recalculateAllThreadStatuses] DB VERIFICATION: Inbox=${dbInboxCount}, Sent=${dbSentCount}, Draft=${dbDraftCount}`,
-    );
-
     if (dbInboxCount === 0 && threads.length > 0) {
       console.error(
-        `[recalculateAllThreadStatuses] WARNING: NO INBOX THREADS FOUND! This is likely the problem!`,
+        `[recalculateAllThreadStatuses] WARNING: NO INBOX THREADS FOUND for account ${accountId}`,
       );
     }
-
 
     await db.account.update({
       where: { id: accountId },
@@ -236,7 +234,7 @@ export async function recalculateAllThreadStatuses(accountId: string) {
     }).catch(err => console.error(`[recalculateAllThreadStatuses] Failed to update lastInboxSyncAt:`, err));
 
     console.log(
-      `========== [recalculateAllThreadStatuses] END ==========\n`,
+      `[sync] Account ${accountId}: threads recalculated (inbox=${dbInboxCount}, sent=${dbSentCount}, draft=${dbDraftCount})`,
     );
 
   } catch (error) {
@@ -256,13 +254,6 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     );
     return;
   }
-
-  console.log(`[upsertEmail] SAVING EMAIL:`, {
-    id: email.id,
-    threadId: email.threadId,
-    subject: email.subject,
-    accountId,
-  });
 
   try {
     const sysLabelsRaw = Array.isArray(email.sysLabels) ? email.sysLabels : [];
@@ -287,15 +278,18 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
 
     const embeddingVector = null;
 
-    const addressToUpsert = new Map();
-    for (const address of [
+    const addressToUpsert = new Map<string, EmailAddress>();
+    const allAddresses = [
       email.from,
-      ...email.to,
-      ...email.cc,
-      ...email.bcc,
-      ...email.replyTo,
-    ]) {
-      addressToUpsert.set(address.address, address);
+      ...(email.to ?? []),
+      ...(email.cc ?? []),
+      ...(email.bcc ?? []),
+      ...(email.replyTo ?? []),
+    ].filter((a): a is EmailAddress => a != null);
+    for (const address of allAddresses) {
+      const rawAddr = address?.address ?? "";
+      const key = normalizeEmailAddressString(rawAddr, address?.raw) ?? rawAddr.trim().toLowerCase();
+      if (key && key.includes("@")) addressToUpsert.set(key, address);
     }
 
     const upsertedAddresses: (Awaited<
@@ -304,7 +298,6 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
 
     for (const address of addressToUpsert.values()) {
       const upsertedAddress = await upsertEmailAddress(address, accountId);
-
       upsertedAddresses.push(upsertedAddress);
     }
 
@@ -314,55 +307,36 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         .map((address) => [address!.address, address]),
     );
 
-    const fromAddress = addressMap.get(email.from.address);
+    const fromAddr = email.from?.address ?? "";
+    const fromNormalized = normalizeEmailAddressString(fromAddr, email.from?.raw);
+    const fromAddress = fromNormalized ? addressMap.get(fromNormalized) : null;
     if (!fromAddress) {
-      console.error(
-        `[upsertEmail] Failed to upsert from address for email ${email.id}:`,
-        email.from.address,
-      );
       return;
     }
 
-    const toAddresses = email.to
-      .map((addr) => addressMap.get(addr.address))
+    const safeAddrKey = (addr: EmailAddress) =>
+      normalizeEmailAddressString(addr?.address ?? "", addr?.raw) ?? (addr?.address ?? "").trim().toLowerCase();
+    const toAddresses = (email.to ?? [])
+      .map((addr) => addressMap.get(safeAddrKey(addr)))
       .filter(Boolean);
-    const ccAddresses = email.cc
-      .map((addr) => addressMap.get(addr.address))
+    const ccAddresses = (email.cc ?? [])
+      .map((addr) => addressMap.get(safeAddrKey(addr)))
       .filter(Boolean);
-    const bccAddresses = email.bcc
-      .map((addr) => addressMap.get(addr.address))
+    const bccAddresses = (email.bcc ?? [])
+      .map((addr) => addressMap.get(safeAddrKey(addr)))
       .filter(Boolean);
-    const replyToAddresses = email.replyTo
-      .map((addr) => addressMap.get(addr.address))
+    const replyToAddresses = (email.replyTo ?? [])
+      .map((addr) => addressMap.get(safeAddrKey(addr)))
       .filter(Boolean);
 
+    const lastMessageDate = safeDate(email.sentAt ?? email.receivedAt ?? email.createdTime);
     const thread = await db.thread.upsert({
       where: { id: email.threadId },
       update: {
         subject: email.subject,
         accountId,
-        lastMessageDate: new Date(email.sentAt),
+        lastMessageDate,
         done: false,
-        ...(isTrash && {
-          inboxStatus: false,
-          sentStatus: false,
-          draftStatus: false,
-        }),
-        ...(emailLabelType === "inbox" && !isTrash && {
-          inboxStatus: true,
-          sentStatus: false,
-          draftStatus: false,
-        }),
-        ...(emailLabelType === "sent" && {
-          sentStatus: true,
-          inboxStatus: false,
-          draftStatus: false,
-        }),
-        ...(emailLabelType === "draft" && {
-          draftStatus: true,
-          inboxStatus: false,
-          sentStatus: false,
-        }),
         participantIds: [
           ...new Set([
             fromAddress.id,
@@ -381,7 +355,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         draftStatus: emailLabelType === "draft",
         inboxStatus: !isTrash && emailLabelType === "inbox",
         sentStatus: emailLabelType === "sent",
-        lastMessageDate: new Date(email.sentAt),
+        lastMessageDate,
         participantIds: [
           ...new Set([
             fromAddress.id,
@@ -397,10 +371,10 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       where: { id: email.id },
       update: {
         threadId: thread.id,
-        createdTime: new Date(email.createdTime),
+        createdTime: safeDate(email.createdTime),
         lastModifiedTime: new Date(),
-        sentAt: new Date(email.sentAt),
-        receivedAt: new Date(email.receivedAt),
+        sentAt: safeDate(email.sentAt),
+        receivedAt: safeDate(email.receivedAt),
         internetMessageId: email.internetMessageId,
         subject: email.subject,
         sysLabels: email.sysLabels,
@@ -432,10 +406,10 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         id: email.id,
         emailLabel: emailLabelType,
         threadId: thread.id,
-        createdTime: new Date(email.createdTime),
+        createdTime: safeDate(email.createdTime),
         lastModifiedTime: new Date(),
-        sentAt: new Date(email.sentAt),
-        receivedAt: new Date(email.receivedAt),
+        sentAt: safeDate(email.sentAt),
+        receivedAt: safeDate(email.receivedAt),
         internetMessageId: email.internetMessageId,
         subject: email.subject,
         sysLabels: email.sysLabels,
@@ -480,6 +454,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     let hasInboxEmail = false;
     let hasDraftEmail = false;
     let hasSentEmail = false;
+    let hasTrashEmail = false;
 
     for (const threadEmail of threadEmails) {
       if (
@@ -489,7 +464,9 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         hasDraftEmail = true;
         break;
       }
-
+      if (threadEmail.sysLabels?.includes("trash")) {
+        hasTrashEmail = true;
+      }
       if (
         threadEmail.emailLabel === "inbox" ||
         threadEmail.sysLabels?.includes("inbox") ||
@@ -502,11 +479,9 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       ) {
         hasInboxEmail = true;
       }
-
       if (!hasInboxEmail && threadEmail.emailLabel !== "sent") {
         hasInboxEmail = true;
       }
-
       if (
         threadEmail.emailLabel === "sent" &&
         !threadEmail.sysLabels?.includes("inbox") &&
@@ -521,16 +496,15 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       }
     }
 
-
-
-    let threadFolderType = "inbox";
+    let threadFolderType: "inbox" | "sent" | "draft" | "trash" = "inbox";
     if (hasDraftEmail) {
       threadFolderType = "draft";
-    } else if (hasSentEmail) {
-
-      threadFolderType = "sent";
+    } else if (hasTrashEmail) {
+      threadFolderType = "trash";
     } else if (hasInboxEmail) {
       threadFolderType = "inbox";
+    } else if (hasSentEmail) {
+      threadFolderType = "sent";
     }
 
     await db.thread.update({
@@ -549,20 +523,8 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     for (const attachment of metadataOnlyAttachments) {
       await upsertAttachment(email.id, attachment);
     }
-
-    console.log(
-      `[upsertEmail] Successfully saved email ${email.id} (thread: ${thread.id})`,
-    );
-  } catch (error) {
-    console.error(`[upsertEmail] Failed to upsert email ${email.id}:`, error);
-    if (error instanceof Error) {
-      console.error(`[upsertEmail] Error details:`, {
-        message: error.message,
-        stack: error.stack,
-        emailId: email.id,
-        threadId: email.threadId,
-      });
-    }
+  } catch (err) {
+    throw err;
   }
 }
 
@@ -597,8 +559,8 @@ async function upsertAttachment(emailId: string, attachment: EmailAttachment) {
 }
 
 async function upsertEmailAddress(address: EmailAddress, accountId: string) {
-  const addr = address.address ?? "";
-  if (!addr) return null;
+  const addr = normalizeEmailAddressString(address?.address ?? "", address?.raw);
+  if (!addr || !addr.includes("@")) return null;
   try {
     return await db.emailAddress.upsert({
       where: {
@@ -609,17 +571,26 @@ async function upsertEmailAddress(address: EmailAddress, accountId: string) {
       },
       create: {
         address: addr,
-        name: address.name,
-        raw: address.raw,
+        name: address.name ?? undefined,
+        raw: address.raw ?? undefined,
         accountId,
       },
       update: {
-        name: address.name,
-        raw: address.raw,
+        name: address.name ?? undefined,
+        raw: address.raw ?? undefined,
       },
     });
-  } catch (error) {
-    console.log(`Failed to upsert address: ${error}`);
+  } catch (error: unknown) {
+    const code = error && typeof error === "object" && "code" in error ? (error as { code: string }).code : "";
+    if (code === "P2002") {
+      const existing = await db.emailAddress.findUnique({
+        where: { accountId_address: { accountId, address: addr } },
+      });
+      return existing ?? null;
+    }
+    if (code === "P2003") {
+      return null;
+    }
     return null;
   }
 }

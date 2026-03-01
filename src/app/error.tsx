@@ -6,12 +6,15 @@ import Link from "next/link";
 
 export default function Error({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const handleTryAgain = () => {
+    window.location.reload();
+  };
 
   useEffect(() => {
     console.error("Application error:", error);
@@ -69,7 +72,8 @@ export default function Error({
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button
-              onClick={() => reset()}
+              type="button"
+              onClick={handleTryAgain}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a73e8] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
             >
               <RefreshCw className="h-4 w-4 shrink-0" />

@@ -5,6 +5,7 @@ import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 
 import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
+import { PwaRegister } from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
   title: "VectorMail AI - Smart Email Management",
@@ -30,12 +31,16 @@ export const metadata: Metadata = {
   verification: {
     google: "nmkq5i-5uWS3ush6WO4uP6t6DitTVQSvNDaFFGoI3f0",
   },
+  manifest: "/manifest.json",
 };
+
 
 export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#1a73e8",
+  viewportFit: "cover" as const,
 };
 
 const geist = Geist({
@@ -49,6 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={geist.variable} suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <PwaRegister />
         <ProvidersWrapper>{children}</ProvidersWrapper>
       </body>
     </html>

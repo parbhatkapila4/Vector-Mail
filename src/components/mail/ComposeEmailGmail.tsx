@@ -37,12 +37,18 @@ import { useAuth } from "@clerk/nextjs";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
-import { openGmailCompose } from "@/lib/gmail-compose";
-import type { OpenGmailComposeOptions } from "@/lib/gmail-compose";
+import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { usePendingSend } from "@/contexts/PendingSendContext";
-import { GmailRedirectDialog } from "@/components/mail/GmailRedirectDialog";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 const AI_GENERATE_TIMEOUT_MS = 60_000;
+
+const DEMO_COMPOSE = {
+  to: "teammate@company.com",
+  subject: "Quick sync on the Q3 roadmap",
+  body: "<p>Hi,</p><p>Wanted to loop you in on the Q3 roadmap draft. Can you review the attached doc and share feedback by Friday?</p><p>Thanks,</p>",
+};
 
 interface ComposeEmailGmailProps {
   open?: boolean;
@@ -107,9 +113,6 @@ export default function ComposeEmailGmail({
   const folderInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isExternalUpdate = useRef(false);
-  const [gmailRedirectOpen, setGmailRedirectOpen] = useState(false);
-  const gmailRedirectPayloadRef = useRef<OpenGmailComposeOptions | null>(null);
-
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
 
@@ -122,8 +125,17 @@ export default function ComposeEmailGmail({
   const hasValidAccount =
     !accountsLoading && !!validAccountId && validAccountId.length > 0;
 
+  const isDemo = useDemoMode() && validAccountId === DEMO_ACCOUNT_ID;
   const { isLoaded: authLoaded, userId } = useAuth();
   const { scheduleSend } = usePendingSend();
+
+  useEffect(() => {
+    if (open && isDemo) {
+      setTo(DEMO_COMPOSE.to);
+      setSubject(DEMO_COMPOSE.subject);
+      setBody(DEMO_COMPOSE.body);
+    }
+  }, [open, isDemo]);
   const scheduleSendMutation = api.account.scheduleSend.useMutation({
     onSuccess: (_, variables) => {
       toast.success("Email scheduled", {
@@ -511,6 +523,10 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
   }, [body, isUserTyping]);
 
   const handleSend = async () => {
+    if (isDemo) {
+      toast.info("You're exploring with sample data. Request access to connect your Gmail and send real emails.");
+      return;
+    }
     if (!to.trim()) {
       toast.error("Please enter at least one recipient");
       return;
@@ -546,80 +562,61 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
 
     const toSend = to.trim();
     const subjectSend = subject.trim();
-    const bodySend = bodyContent.trim();
+    const bodyWithSignature = appendVectorMailSignature(bodyContent.trim(), true);
 
-    // Show Gmail redirect dialog instead of sending via API (CASA / gmail.send scope temporarily disabled)
-    gmailRedirectPayloadRef.current = {
-      to: toSend,
-      subject: subjectSend,
-      body: bodySend,
+    const accountIdSend = validAccountId;
+    const attachmentsToSend = [...validAttachments];
+    const executeSend = async () => {
+      let response: Response;
+      if (attachmentsToSend.length > 0) {
+        const formData = new FormData();
+        formData.append("accountId", accountIdSend);
+        formData.append(
+          "to",
+          JSON.stringify(toSend.split(",").map((email) => email.trim())),
+        );
+        formData.append("subject", subjectSend.trim());
+        formData.append("body", bodyWithSignature);
+        formData.append("trackOpens", String(trackOpens));
+        attachmentsToSend.forEach((file) => formData.append("attachments", file));
+        response = await fetchWithAuthRetry("/api/email/send", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        response = await fetchWithAuthRetry("/api/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accountId: accountIdSend,
+            to: toSend.split(",").map((email) => email.trim()),
+            subject: subjectSend.trim(),
+            body: bodyWithSignature,
+            trackOpens,
+          }),
+        });
+      }
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      if (!response.ok) {
+        toast.error(data.message || data.error || "Failed to send email");
+        if (data.hint) toast.info(data.hint, { duration: 5000 });
+        return;
+      }
+      if (data.warning) toast.warning(data.warning, { duration: 6000 });
+      toast.success("Email sent");
+      setTo("");
+      setSubject("");
+      setBody("");
+      setOriginalUserText("");
+      setHasGenerated(false);
+      setLinkUrl("");
+      setLinkText("");
+      setAttachments([]);
+      setOpen(false);
+      setIsSending(false);
     };
-    setGmailRedirectOpen(true);
-
-    // Backend send logic kept for re-enable; not executed while gmail.send is disabled
-    // const accountIdSend = validAccountId;
-    // const attachmentsToSend = [...validAttachments];
-    // const executeSend = async () => {
-    //   let response: Response;
-    //   if (attachmentsToSend.length > 0) {
-    //     const formData = new FormData();
-    //     formData.append("accountId", accountIdSend);
-    //     formData.append(
-    //       "to",
-    //       JSON.stringify(toSend.split(",").map((email) => email.trim())),
-    //     );
-    //     formData.append("subject", subjectSend.trim());
-    //     formData.append("body", bodySend);
-    //     formData.append("trackOpens", String(trackOpens));
-    //     attachmentsToSend.forEach((file) => formData.append("attachments", file));
-    //     response = await fetchWithAuthRetry("/api/email/send", {
-    //       method: "POST",
-    //       body: formData,
-    //     });
-    //   } else {
-    //     response = await fetchWithAuthRetry("/api/email/send", {
-    //       method: "POST",
-    //       headers: { "Content-Type": "application/json" },
-    //       body: JSON.stringify({
-    //         accountId: accountIdSend,
-    //         to: toSend.split(",").map((email) => email.trim()),
-    //         subject: subjectSend.trim(),
-    //         body: bodySend,
-    //         trackOpens,
-    //       }),
-    //     });
-    //   }
-    //   const text = await response.text();
-    //   const data = text ? JSON.parse(text) : {};
-    //   if (!response.ok) {
-    //     toast.error(data.message || data.error || "Failed to send email");
-    //     if (data.hint) toast.info(data.hint, { duration: 5000 });
-    //     return;
-    //   }
-    //   if (data.warning) toast.warning(data.warning, { duration: 6000 });
-    // };
-    // scheduleSend(executeSend);
-  };
-
-  const handleGmailRedirectOpen = () => {
-    const payload = gmailRedirectPayloadRef.current;
-    if (payload) {
-      openGmailCompose(payload);
-      toast.info(
-        "Sending via Gmail compose (sending inside VectorMail will be enabled soon)",
-      );
-    }
-    setTo("");
-    setSubject("");
-    setBody("");
-    setOriginalUserText("");
-    setHasGenerated(false);
-    setLinkUrl("");
-    setLinkText("");
-    setAttachments([]);
-    setOpen(false);
-    setIsSending(false);
-    setGmailRedirectOpen(false);
+    scheduleSend(executeSend);
   };
 
   const handleScheduleSend = () => {
@@ -662,7 +659,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       accountId: validAccountId,
       to: to.split(",").map((e) => e.trim()),
       subject: subject.trim(),
-      body: bodyContent.trim(),
+      body: appendVectorMailSignature(bodyContent.trim(), true),
       trackOpens,
     };
     scheduleSendMutation.mutate({
@@ -686,7 +683,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           Compose
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] w-[95vw] max-w-7xl overflow-y-auto border-slate-800 bg-[#0a0a0a] p-4 text-white [-ms-overflow-style:none] [scrollbar-width:none] md:p-6 [&::-webkit-scrollbar]:hidden">
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col border-slate-800 bg-[#0a0a0a] p-4 text-white [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:h-auto md:max-h-[90vh] md:w-[95vw] md:max-w-7xl md:overflow-y-auto md:p-6">
         <DialogHeader className="mb-4 md:mb-6">
           <DialogTitle className="text-lg font-bold text-white md:text-xl">
             Compose Email
@@ -1406,7 +1403,8 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             </Popover>
             <Button
               onClick={handleSend}
-              disabled={isSending || isGenerating}
+              disabled={isSending || isGenerating || isDemo}
+              title={isDemo ? "Request access to connect your Gmail and send emails" : undefined}
               className="h-12 w-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-base font-semibold text-white shadow-lg shadow-yellow-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-yellow-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:h-10 md:w-auto md:flex-initial md:text-sm"
             >
               {isSending ? (
@@ -1426,11 +1424,6 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           </div>
         </div>
       </DialogContent>
-      <GmailRedirectDialog
-        open={gmailRedirectOpen}
-        onOpenChange={setGmailRedirectOpen}
-        onOpenGmail={handleGmailRedirectOpen}
-      />
     </Dialog>
   );
 }

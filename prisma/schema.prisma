@@ -63,6 +63,8 @@ model Account {
   emailAddresses    EmailAddress[]
   threads           Thread[]
   scheduledSends    ScheduledSend[]
+  labels            Label[]
+  filterRules       FilterRule[]
 }
 
 model ScheduledSend {
@@ -81,20 +83,21 @@ model ScheduledSend {
 }
 
 model Thread {
-  id                   String    @id @default(cuid())
+  id                   String        @id @default(cuid())
   subject              String
   lastMessageDate      DateTime
   participantIds       String[]
   accountId            String
-  done                 Boolean   @default(false)
-  inboxStatus          Boolean   @default(true)
-  draftStatus          Boolean   @default(false)
-  sentStatus           Boolean   @default(false)
+  done                 Boolean       @default(false)
+  inboxStatus          Boolean       @default(true)
+  draftStatus          Boolean       @default(false)
+  sentStatus           Boolean       @default(false)
   snoozedUntil         DateTime?
   remindAt             DateTime?
   remindIfNoReplySince DateTime?
   emails               Email[]
-  account              Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account              Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  threadLabels         ThreadLabel[]
 
   @@index([accountId])
   @@index([done])
@@ -104,6 +107,45 @@ model Thread {
   @@index([lastMessageDate])
   @@index([snoozedUntil])
   @@index([remindAt])
+}
+
+model Label {
+  id           String        @id @default(cuid())
+  accountId    String
+  name         String
+  color        String?
+  createdAt    DateTime      @default(now())
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  threadLabels ThreadLabel[]
+  filterRules  FilterRule[]
+
+  @@unique([accountId, name])
+  @@index([accountId])
+}
+
+model ThreadLabel {
+  threadId String
+  labelId  String
+  thread   Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  label    Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, labelId])
+  @@index([labelId])
+}
+
+model FilterRule {
+  id             String   @id @default(cuid())
+  accountId      String
+  name           String?
+  conditionType  String
+  conditionValue String
+  labelId        String
+  createdAt      DateTime @default(now())
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  label          Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([labelId])
 }
 
 model Email {
@@ -229,6 +271,20 @@ model AuditLog {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model SavedCalendarEvent {
+  id        String    @id @default(cuid())
+  userId    String
+  accountId String
+  threadId  String
+  title     String
+  startAt   DateTime
+  endAt     DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([accountId])
+  @@index([userId])
 }
 
 enum Role {

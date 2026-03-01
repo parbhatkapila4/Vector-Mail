@@ -121,7 +121,7 @@ export async function GET() {
             },
             diagnostic:
               status === 403
-                ? "403 from Aurinko email API — OAuth Gmail scope missing or app misconfigured"
+                ? "403 from Aurinko email API: OAuth Gmail scope missing or app misconfigured"
                 : `API call failed with status ${status}`,
           },
           { status: status ?? 500 },

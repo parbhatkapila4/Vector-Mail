@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@clerk/nextjs";
 import { api, type RouterOutputs } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
+import { UNIFIED_INBOX_ACCOUNT_ID } from "../AccountSwitcher";
 import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
 import { SearchResults } from "../search/SearchResults";
 import { toast } from "sonner";
@@ -27,6 +28,9 @@ import { SnoozeMenu } from "./SnoozeMenu";
 import type { InfiniteData } from "@tanstack/react-query";
 import { RemindMenu } from "./RemindMenu";
 import { ThreadListSkeleton } from "./ThreadListSkeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
@@ -102,10 +106,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     hasNextPage,
     fetchNextPage,
     accountId,
+    effectiveAccountId,
+    isUnifiedView,
     refetch,
     isPlaceholderData,
+    selectedLabelId,
   } = useThreads();
-  const threads = rawThreads as RouterThread[] | undefined;
+  const threads = rawThreads as (RouterThread & { accountEmail?: string; accountName?: string })[] | undefined;
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
   const { isLoaded: authLoaded, userId: clerkUserId } = useAuth();
@@ -116,6 +123,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
 
   useEffect(() => {
     if (searchParams.get("reconnect_failed") === "1") {
@@ -172,26 +180,32 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       staleTime: 5 * 60 * 1000,
     });
 
-  const { data: inboxThreadCount, isFetched: inboxCountFetched } =
-    api.account.getNumThreads.useQuery(
-      { accountId: accountId ?? "placeholder", tab: "inbox" },
-      { enabled: !!accountId && accountId.length > 0, refetchOnMount: true, refetchOnWindowFocus: false },
-    );
-  const { data: sentThreadCount, isFetched: sentCountFetched } =
-    api.account.getNumThreads.useQuery(
-      { accountId: accountId ?? "placeholder", tab: "sent" },
-      { enabled: !!accountId && accountId.length > 0, refetchOnMount: true, refetchOnWindowFocus: false },
-    );
-  const { data: trashThreadCount, isFetched: trashCountFetched } =
-    api.account.getNumThreads.useQuery(
-      { accountId: accountId ?? "placeholder", tab: "trash" },
-      { enabled: !!accountId && accountId.length > 0, refetchOnMount: true, refetchOnWindowFocus: false },
-    );
-  const initialSyncDoneRef = useRef(false);
-
   const utils = api.useUtils();
+  const syncCancelledRef = useRef(false);
+  const quickSyncTriggeredRef = useRef(false);
+  const accountsInvalidatedOnMountRef = useRef(false);
+  useEffect(() => {
+    if (accountsInvalidatedOnMountRef.current) return;
+    accountsInvalidatedOnMountRef.current = true;
+    void utils.account.getAccounts.invalidate();
+  }, [utils.account.getAccounts]);
+
+  const syncFirstBatchQuickMutation = api.account.syncFirstBatchQuick.useMutation({
+    onSuccess: async () => {
+      void utils.account.getAccounts.invalidate();
+      void utils.account.getThreads.invalidate();
+      void utils.account.getNumThreads.invalidate();
+      void utils.account.getUnifiedThreads.invalidate();
+      await refetch();
+      setTimeout(() => void refetch(), 800);
+    },
+  });
   const syncEmailsMutation = api.account.syncEmails.useMutation({
     onSuccess: async (data) => {
+      if (syncCancelledRef.current) {
+        syncCancelledRef.current = false;
+        return;
+      }
       console.log("[ThreadList] ✅ Sync completed", data);
 
       if (data.needsReconnection) {
@@ -206,13 +220,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       void utils.account.getNumThreads.invalidate();
       void utils.account.getAccounts.invalidate();
       await utils.account.getThreads.invalidate();
-      void refetch();
-
+      void utils.account.getUnifiedThreads.invalidate();
+      await refetch();
+      setTimeout(() => void refetch(), 600);
 
       const didFullSync = "syncAllFolders" in data && data.syncAllFolders === true;
       const hasMore = !didFullSync && "hasMore" in data && data.hasMore;
       const continueToken = "continueToken" in data ? data.continueToken : undefined;
-      if (data.success && hasMore && continueToken && accountId) {
+      if (data.success && hasMore && continueToken && accountId && accountId !== UNIFIED_INBOX_ACCOUNT_ID) {
         const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
         syncEmailsMutation.mutate({
           accountId,
@@ -224,12 +239,18 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
       if (data.success) {
         toast.success("Sync complete", {
-          description: data.message ?? "Emails synced",
+          description: (data as { syncAllFolders?: boolean }).syncAllFolders
+            ? "Inbox, Sent, and Trash synced."
+            : (data.message ?? "Emails synced"),
           duration: 2000,
         });
       }
     },
     onError: (error) => {
+      if (syncCancelledRef.current) {
+        syncCancelledRef.current = false;
+        return;
+      }
       console.error("[ThreadList] ❌ Sync failed:", error);
 
       const errorMessage = error.message || "Unknown error occurred";
@@ -258,76 +279,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
       void utils.account.getNumThreads.invalidate();
       void utils.account.getThreads.invalidate();
+      void utils.account.getUnifiedThreads.invalidate();
       void refetch();
     },
     onSettled: () => {
       void utils.account.getThreads.invalidate();
+      void utils.account.getUnifiedThreads.invalidate();
       void refetch();
     },
   });
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !accountId || !authLoaded || !clerkUserId) return;
-    if (!inboxCountFetched || syncEmailsMutation.isPending) return;
-    const hasInitialSync = window.localStorage.getItem("vector-mail-has-initial-sync") === "true";
-    const inboxEmpty = inboxThreadCount !== undefined && inboxThreadCount === 0;
-    const sentTrashFetched = sentCountFetched && trashCountFetched;
-    const sentAndTrashEmpty = sentThreadCount === 0 && trashThreadCount === 0;
-    const needsFullSync = inboxEmpty || (inboxThreadCount !== undefined && inboxThreadCount > 0 && sentAndTrashEmpty);
-    if (inboxThreadCount !== undefined && inboxThreadCount > 0 && !sentAndTrashEmpty) {
-      window.localStorage.setItem("vector-mail-has-initial-sync", "true");
-      return;
-    }
-    if (hasInitialSync || initialSyncDoneRef.current) return;
-    if (!needsFullSync || (inboxThreadCount !== undefined && inboxThreadCount > 0 && !sentTrashFetched)) return;
-    initialSyncDoneRef.current = true;
-    window.localStorage.setItem("vector-mail-has-initial-sync", "true");
-    console.log("[ThreadList] Auto syncing Inbox, Sent, and Trash once");
-    syncEmailsMutation.mutate({
-      accountId,
-      forceFullSync: true,
-      syncAllFolders: true,
-    });
-  }, [accountId, authLoaded, clerkUserId, inboxCountFetched, inboxThreadCount, sentCountFetched, sentThreadCount, trashCountFetched, trashThreadCount, syncEmailsMutation]);
-
-  const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
-  const SYNC_WINDOW_MS = 5 * 60 * 1000;
-  const SYNC_WINDOW_SECOND_RUN_MS = 2.5 * 60 * 1000;
-  const autoSyncWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !accountId || !authLoaded || !clerkUserId) return;
-
-    const runFullSync = () => {
-      if (syncEmailsMutation.isPending) return;
-      syncEmailsMutation.mutate({
-        accountId,
-        forceFullSync: true,
-        syncAllFolders: true,
-      });
-    };
-
-    const startSyncWindow = () => {
-      runFullSync();
-      if (autoSyncWindowTimeoutRef.current) clearTimeout(autoSyncWindowTimeoutRef.current);
-      autoSyncWindowTimeoutRef.current = setTimeout(() => {
-        runFullSync();
-        autoSyncWindowTimeoutRef.current = null;
-      }, SYNC_WINDOW_SECOND_RUN_MS);
-    };
-
-    const intervalId = setInterval(startSyncWindow, AUTO_SYNC_INTERVAL_MS);
-    const initialDelayId = setTimeout(startSyncWindow, 60 * 1000);
-
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(initialDelayId);
-      if (autoSyncWindowTimeoutRef.current) clearTimeout(autoSyncWindowTimeoutRef.current);
-    };
-  }, [accountId, authLoaded, clerkUserId]);
-
-  const isInboxOrSentSyncPending =
-    (currentTab === "inbox" || currentTab === "sent" || currentTab === "trash") && syncEmailsMutation.isPending;
 
   const getThreadsInput = useMemo(
     () => ({
@@ -335,13 +295,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       tab: currentTab,
       important,
       unread,
-      limit: currentTab === "inbox" ? 50 : 15,
+      limit: currentTab === "inbox" || currentTab === "label" ? 50 : 15,
+      labelId: currentTab === "label" ? selectedLabelId ?? undefined : undefined,
     }),
-    [accountId, currentTab, important, unread],
+    [accountId, currentTab, important, unread, selectedLabelId],
   );
 
   const invalidateAndClearSelection = useCallback(async () => {
     await utils.account.getThreads.invalidate();
+    await utils.account.getUnifiedThreads.invalidate();
     await utils.account.getNumThreads.invalidate();
     setSelectedThreadIds(new Set());
   }, [utils]);
@@ -374,10 +336,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         | InfiniteData<GetThreadsPage>
         | undefined;
       if (previousData?.pages) {
-        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+        const newPages = previousData.pages.map((page) => ({
           ...page,
           threads: page.threads.filter((t: RouterThread) => !input.threadIds.includes(t.id)),
-        }));
+        })) as GetThreadsPage[];
         utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
           old ? { ...old, pages: newPages } : old,
         );
@@ -398,6 +360,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     },
     onSettled: () => {
       void utils.account.getThreads.invalidate();
+      void utils.account.getUnifiedThreads.invalidate();
     },
   });
 
@@ -408,10 +371,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         | InfiniteData<GetThreadsPage>
         | undefined;
       if (previousData?.pages) {
-        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+        const newPages = previousData.pages.map((page) => ({
           ...page,
           threads: page.threads.filter((t: RouterThread) => !input.threadIds.includes(t.id)),
-        }));
+        })) as GetThreadsPage[];
         utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
           old ? { ...old, pages: newPages } : old,
         );
@@ -430,6 +393,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     },
     onSettled: () => {
       void utils.account.getThreads.invalidate();
+      void utils.account.getUnifiedThreads.invalidate();
     },
   });
 
@@ -441,43 +405,91 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-
-  useEffect(() => {
-    if (!syncEmailsMutation.isPending) return;
-    const poll = () => {
-      void utils.account.getThreads.invalidate();
-      void refetch();
-    };
-    poll();
-    const interval = setInterval(poll, 1500);
-    return () => clearInterval(interval);
-  }, [syncEmailsMutation.isPending, utils.account.getThreads, refetch]);
-
   const handleRefresh = useCallback(() => {
-    if (!authLoaded || !clerkUserId) {
-      toast.error("Please wait a moment for the app to load, then try Sync again.");
+    if (syncEmailsMutation.isPending) {
+      syncCancelledRef.current = true;
+      syncEmailsMutation.reset();
+      toast.info("Sync stopped");
       return;
     }
-    if (accountId) {
-      console.log("[ThreadList] Sync button clicked - full sync for Inbox, Sent, and Trash");
-      syncEmailsMutation.mutate({
-        accountId,
-        forceFullSync: true,
-        syncAllFolders: true,
-      });
-    } else {
-      void refetch();
+    if (!accountId) {
+      toast.error("Please wait for your account to load, then try Sync again.");
+      return;
     }
-  }, [refetch, accountId, syncEmailsMutation, authLoaded, clerkUserId]);
+    if (accountId === UNIFIED_INBOX_ACCOUNT_ID) {
+      void utils.account.getUnifiedThreads.invalidate();
+      void refetch();
+      return;
+    }
+    syncCancelledRef.current = false;
+    toast.info("Checking for new emails…");
+
+    syncEmailsMutation.mutate({
+      accountId,
+      forceFullSync: false,
+      syncAllFolders: false,
+      folder: "inbox",
+    });
+  }, [refetch, accountId, syncEmailsMutation, utils.account.getUnifiedThreads]);
 
   useImperativeHandle(ref, () => ({ triggerSync: handleRefresh }), [handleRefresh]);
+
+  const backgroundSyncTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (
+      !accountId ||
+      accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      (currentTab !== "inbox" && currentTab !== "sent")
+    )
+      return;
+    if (!quickSyncTriggeredRef.current) {
+      quickSyncTriggeredRef.current = true;
+      syncFirstBatchQuickMutation.mutate({ accountId });
+    }
+  }, [accountId, currentTab, syncFirstBatchQuickMutation]);
+
+  useEffect(() => {
+    if (
+      !accountId ||
+      accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      backgroundSyncTriggeredRef.current ||
+      (currentTab !== "inbox" && currentTab !== "sent")
+    )
+      return;
+    backgroundSyncTriggeredRef.current = true;
+    const t = setTimeout(() => {
+      syncEmailsMutation.mutate({
+        accountId,
+        forceFullSync: false,
+        syncAllFolders: false,
+        folder: "inbox",
+      });
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [accountId, currentTab, syncEmailsMutation]);
 
   useEffect(() => {
     onSyncPendingChange?.(syncEmailsMutation.isPending);
   }, [syncEmailsMutation.isPending, onSyncPendingChange]);
 
+  useEffect(() => {
+    if (
+      !syncEmailsMutation.isPending ||
+      !accountId ||
+      accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      (currentTab !== "inbox" && currentTab !== "sent" && currentTab !== "trash")
+    )
+      return;
+    const interval = setInterval(() => {
+      void utils.account.getThreads.invalidate();
+      void utils.account.getNumThreads.invalidate();
+      void refetch();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [syncEmailsMutation.isPending, accountId, currentTab, refetch, utils.account.getThreads, utils.account.getNumThreads]);
+
   const handleAccountConnection = useCallback(() => {
-    window.location.href = "/api/auth/google";
+    window.location.href = "/api/connect/google";
   }, []);
 
   const lastThreadElementRef = useCallback(
@@ -548,6 +560,18 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       toast.error(err.message ?? "Failed to cancel");
     },
   });
+
+  const { data: nudgesData } = api.account.getNudges.useQuery(
+    { accountId: accountId || "placeholder" },
+    { enabled: !!accountId && accountId.length > 0 },
+  );
+  const nudgeTypeByThreadId = useMemo(() => {
+    const map = new Map<string, "REMINDER" | "UNREPLIED">();
+    for (const n of nudgesData?.nudges ?? []) {
+      map.set(n.threadId, n.type);
+    }
+    return map;
+  }, [nudgesData?.nudges]);
 
   if (accountsLoading) {
     return (
@@ -665,22 +689,25 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       .filter(
         (b): b is { label: string; className: string } => Boolean(b),
       );
+    const threadLabels = (thread as RouterThread & { threadLabels?: Array<{ label: { id: string; name: string; color: string | null } }> }).threadLabels?.map((tl: { label: { id: string; name: string; color: string | null } }) => tl.label) ?? [];
 
     const showSnooze =
-      accountId &&
+      (effectiveAccountId ?? accountId) &&
       (currentTab === "inbox" || currentTab === "snoozed");
     const showRemind =
-      accountId &&
+      (effectiveAccountId ?? accountId) &&
       (currentTab === "inbox" ||
         currentTab === "snoozed" ||
         currentTab === "reminders");
-
+    const nudgeType = nudgeTypeByThreadId.get(thread.id);
+    const threadAccountId = (thread as { accountId?: string }).accountId ?? accountId ?? "";
+    const accountLabel = isUnifiedView && "accountEmail" in thread ? String((thread as { accountEmail?: string; accountName?: string }).accountEmail ?? (thread as { accountEmail?: string; accountName?: string }).accountName ?? "") : "";
     return (
       <div
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
         className={cn(
-          "group relative flex w-full items-start gap-0 border-b border-[#f1f3f4] text-left transition-colors dark:border-[#3c4043]",
+          "group relative flex w-full min-h-[48px] items-start gap-0 border-b border-[#f1f3f4] text-left transition-colors dark:border-[#3c4043]",
           isSelected
             ? "bg-[#e8f0fe] dark:bg-[#174ea6]/20"
             : isUnread && !isSelected
@@ -709,7 +736,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         </div>
         <button
           type="button"
-          className="relative flex min-w-0 flex-1 gap-3 px-2 py-2.5 pr-2 text-left outline-none"
+          className="relative flex min-h-[48px] min-w-0 flex-1 gap-3 px-2 py-2.5 pr-2 text-left outline-none [touch-action:manipulation]"
           onClick={() => {
             setThreadId(thread.id);
             onThreadSelect?.(thread.id);
@@ -718,6 +745,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           <div
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-medium",
+              (nudgeType || isUnread) && "ring-2 ring-[#1a73e8] dark:ring-[#8ab4f8]",
               isSelected
                 ? "bg-[#1a73e8] text-white dark:bg-[#8ab4f8] dark:text-[#202124]"
                 : isUnread
@@ -757,6 +785,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                   >
                     {subject}
                   </span>
+                  {accountLabel && (
+                    <span className="shrink-0 rounded bg-[#e8eaed] px-1.5 py-0.5 text-[10px] font-medium text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
+                      {accountLabel}
+                    </span>
+                  )}
                   {categoryBadges.map((badge) => (
                     <span
                       key={badge.label}
@@ -768,6 +801,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                       {badge.label}
                     </span>
                   ))}
+                  {threadLabels.slice(0, 3).map((lbl: { id: string; name: string; color: string | null }) => (
+                    <span
+                      key={lbl.id}
+                      className="inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[#e8f0fe] text-[#1967d2] dark:bg-[#174ea6]/40 dark:text-[#8ab4f8]"
+                      style={lbl.color ? { backgroundColor: `${lbl.color}20`, color: lbl.color } : undefined}
+                    >
+                      {lbl.name}
+                    </span>
+                  ))}
                 </div>
                 {bodySnippet && (
                   <div className="line-clamp-2 text-[12px] leading-snug text-[#5f6368] dark:text-[#9aa0a6]">
@@ -776,9 +818,23 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                 )}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-0.5 pt-0.5">
-                {isImportant && (
-                  <Star className="h-3.5 w-3.5 fill-[#1a73e8] text-[#1a73e8] dark:fill-[#8ab4f8] dark:text-[#8ab4f8]" />
-                )}
+                <div className="flex items-center gap-1">
+                  {nudgeType === "REMINDER" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex shrink-0 text-[#5f6368] dark:text-[#9aa0a6]">
+                          <Bell className="h-3 w-3 text-[#b36b00] dark:text-[#fdd663]" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="bg-[#303134] text-xs text-[#e8eaed]">
+                        Reminder
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {isImportant && (
+                    <Star className="h-3.5 w-3.5 fill-[#1a73e8] text-[#1a73e8] dark:fill-[#8ab4f8] dark:text-[#8ab4f8]" />
+                  )}
+                </div>
                 <span className="whitespace-nowrap text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
                   {formatDistanceToNow(date, { addSuffix: false })}
                 </span>
@@ -791,7 +847,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             {showSnooze && (
               <SnoozeMenu
                 threadId={thread.id}
-                accountId={accountId}
+                accountId={threadAccountId}
                 isSnoozedTab={currentTab === "snoozed"}
               >
                 <Button
@@ -808,7 +864,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             {showRemind && (
               <RemindMenu
                 threadId={thread.id}
-                accountId={accountId}
+                accountId={threadAccountId}
                 isRemindersTab={currentTab === "reminders"}
               >
                 <Button
@@ -830,31 +886,76 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const renderThreadsList = () => {
     const noThreads = threadsToRender.length === 0;
-    const showingStaleTabData = isPlaceholderData && isFetching;
-    const showSkeleton =
-      showingStaleTabData ||
-      (noThreads &&
-        (refreshingAfterSync || isFetching || isInboxOrSentSyncPending));
+    const isInboxSentOrTrash =
+      currentTab === "inbox" || currentTab === "sent" || currentTab === "trash";
+    const isSyncPending = isInboxSentOrTrash && syncEmailsMutation.isPending;
+
+    if (noThreads && isSyncPending) {
+      return (
+        <div className="flex h-64 flex-col items-center justify-center gap-3 px-6 text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+          <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">Syncing inbox, sent, and trash…</p>
+          <p className="text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">Emails will appear here when sync finishes.</p>
+        </div>
+      );
+    }
+
+    const showSkeleton = noThreads && (refreshingAfterSync || isFetching);
     if (showSkeleton) {
       return <ThreadListSkeleton />;
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       const isRemindersTab = currentTab === "reminders";
-      const syncFailedInbox =
-        currentTab === "inbox" &&
-        threadsToRender.length === 0 &&
-        syncEmailsMutation.isError;
-      const syncFailedSent =
-        currentTab === "sent" &&
-        threadsToRender.length === 0 &&
-        syncEmailsMutation.isError;
+      const syncFailed =
+        isInboxSentOrTrash && threadsToRender.length === 0 && syncEmailsMutation.isError;
+      if (syncFailed) {
+        return (
+          <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
+            <Mail className="mb-4 h-10 w-10 text-[#d93025] dark:text-[#f28b82]" />
+            <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">Sync failed</p>
+            <p className="mt-1 max-w-sm text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
+              {syncEmailsMutation.error?.message?.toLowerCase().includes("sign in") ||
+                syncEmailsMutation.error?.message?.toLowerCase().includes("unauthorized")
+                ? "Session couldn't be verified. Refresh the page and try Sync again."
+                : syncEmailsMutation.error?.message ?? "Something went wrong. Check your connection and try again."}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
+                onClick={() => window.location.reload()}
+              >
+                Refresh page
+              </Button>
+              {accountId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
+                  onClick={() => {
+                    syncEmailsMutation.mutate({
+                      accountId,
+                      forceFullSync: true,
+                      syncAllFolders: true,
+                    });
+                  }}
+                  disabled={syncEmailsMutation.isPending}
+                >
+                  {syncEmailsMutation.isPending ? "Syncing…" : "Sync again"}
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      }
       return (
         <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
-          {syncFailedInbox ? (
+          {isRemindersTab ? (
             <>
-              <Mail className="mb-4 h-10 w-10 text-[#d93025] dark:text-[#f28b82]" />
-              <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">Sync failed</p>
+              <Bell className="mb-4 h-10 w-10 text-[#9aa0a6] dark:text-[#5f6368]" />
+              <p className="text-[14px] text-[#5f6368] dark:text-[#9aa0a6]">No reminders due</p>
               <p className="mt-1 max-w-sm text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
                 {syncEmailsMutation.error?.message?.toLowerCase().includes("sign in") ||
                   syncEmailsMutation.error?.message?.toLowerCase().includes("unauthorized")
@@ -876,59 +977,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                     size="sm"
                     className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
                     onClick={() => {
-                      if (!authLoaded || !clerkUserId) {
-                        toast.error("Session may have expired. Refresh the page, then try Sync again.");
-                        return;
-                      }
                       syncEmailsMutation.mutate({
                         accountId,
                         forceFullSync: true,
                         syncAllFolders: true,
                       });
                     }}
-                    disabled={syncEmailsMutation.isPending || !authLoaded || !clerkUserId}
-                  >
-                    {syncEmailsMutation.isPending ? "Syncing…" : "Sync again"}
-                  </Button>
-                )}
-              </div>
-            </>
-          ) : syncFailedSent ? (
-            <>
-              <Mail className="mb-4 h-10 w-10 text-[#d93025] dark:text-[#f28b82]" />
-              <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">Sync failed</p>
-              <p className="mt-1 max-w-sm text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
-                {syncEmailsMutation.error?.message?.toLowerCase().includes("sign in") ||
-                  syncEmailsMutation.error?.message?.toLowerCase().includes("unauthorized")
-                  ? "Session couldn't be verified. Refresh the page and try Sync again."
-                  : syncEmailsMutation.error?.message ?? "Something went wrong. Check your connection and try again."}
-              </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
-                  onClick={() => window.location.reload()}
-                >
-                  Refresh page
-                </Button>
-                {accountId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
-                    onClick={() => {
-                      if (!authLoaded || !clerkUserId) {
-                        toast.error("Session may have expired. Refresh the page, then try Sync again.");
-                        return;
-                      }
-                      syncEmailsMutation.mutate({
-                        accountId,
-                        forceFullSync: true,
-                        syncAllFolders: true,
-                      });
-                    }}
-                    disabled={syncEmailsMutation.isPending || !authLoaded || !clerkUserId}
+                    disabled={syncEmailsMutation.isPending}
                   >
                     {syncEmailsMutation.isPending ? "Syncing…" : "Sync again"}
                   </Button>
@@ -991,8 +1046,32 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     currentTab === "snoozed" ||
     currentTab === "archive";
 
-  const handleBulkDelete = () => {
-    if (!accountId) return;
+  const handleBulkDelete = async () => {
+    if (isUnifiedView && threads?.length) {
+      const byAccount = new Map<string, string[]>();
+      for (const id of selectedThreadIds) {
+        const t = threads.find((x) => x.id === id);
+        const aid = t && "accountId" in t ? t.accountId : undefined;
+        if (aid) {
+          const arr = byAccount.get(aid) ?? [];
+          arr.push(id);
+          byAccount.set(aid, arr);
+        }
+      }
+      toast.loading("Deleting…", { id: "bulk-delete" });
+      try {
+        for (const [aid, ids] of byAccount) {
+          await bulkDeleteMutation.mutateAsync({ accountId: aid, threadIds: ids });
+        }
+        setDeleteConfirmOpen(false);
+        toast.success("Deleted", { id: "bulk-delete" });
+        await invalidateAndClearSelection();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to delete", { id: "bulk-delete" });
+      }
+      return;
+    }
+    if (!accountId || accountId === UNIFIED_INBOX_ACCOUNT_ID) return;
     toast.loading("Deleting…", { id: "bulk-delete" });
     bulkDeleteMutation.mutate({
       accountId,
@@ -1041,16 +1120,25 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
               Mark unread
             </Button>
             {showArchiveAndDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-[12px] text-[#d93025] hover:bg-[#fce8e6] hover:text-[#d93025] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
-                disabled={isBulkPending}
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-[12px] text-[#d93025] hover:bg-[#fce8e6] hover:text-[#d93025] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
+                      disabled={isBulkPending || isDemo}
+                      onClick={() => (isDemo ? toast.info("You're exploring with sample data. Request access to connect your Gmail.") : setDeleteConfirmOpen(true))}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-[#303134] text-xs text-[#e8eaed]">
+                  {isDemo ? "Request access to use this" : "Delete selected"}
+                </TooltipContent>
+              </Tooltip>
             )}
             <Button
               variant="ghost"
@@ -1090,7 +1178,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         tabIndex={0}
         role="listbox"
         aria-label="Thread list"
-        className="flex-1 overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden outline-none"
+        className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden outline-none"
         onKeyDown={handleKeyDown}
       >
         {isSearching && searchValue ? (

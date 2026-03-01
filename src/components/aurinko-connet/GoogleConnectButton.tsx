@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 
 function GoogleConnectButton() {
   return (
-    <Button onClick={() => { window.location.href = "/api/auth/google"; }}>
+    <Button onClick={() => { window.location.href = "/api/connect/google"; }}>
       Google
     </Button>
   );

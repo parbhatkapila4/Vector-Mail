@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import React, { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { ArrowRight, Search, Zap } from "lucide-react";
@@ -95,7 +95,7 @@ function EmailMockup() {
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-[#141414] text-[10px] font-semibold tabular-nums text-gray-300 ring-1 ring-white/[0.04] md:h-9 md:w-9 md:text-[11px]">SC</div>
                   <div className="min-w-0 flex-1">
                     <div className="mb-0.5 flex flex-wrap items-center gap-1.5 md:mb-1 md:gap-2">
-                      <span className="truncate text-[11px] font-semibold leading-tight text-white md:text-[12px]">Q3 Budget Contract — Final Version</span>
+                      <span className="truncate text-[11px] font-semibold leading-tight text-white md:text-[12px]">Q3 Budget Contract - Final Version</span>
                       <span className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-gray-400">Best Match</span>
                     </div>
                     <p className="text-[11px] leading-relaxed text-gray-500">Sarah Chen · Oct 15 · &ldquo;Attached is the final contract with all revisions...&rdquo;</p>
@@ -109,7 +109,7 @@ function EmailMockup() {
                 {[
                   { initials: "SC", subject: "Re: Budget revision notes", snippet: "Sarah Chen · Oct 14 · &ldquo;Here are my notes on the Q3 budget changes...&rdquo;", pct: "84%" },
                   { initials: "SC", subject: "Q3 Planning Discussion", snippet: "Sarah Chen · Oct 12 · &ldquo;Let's schedule a call to discuss the budget...&rdquo;", pct: "71%" },
-                  { initials: "MK", subject: "Re: Q3 Budget Contract — Final Version", snippet: "Mike Kim · Oct 15 · &ldquo;Thanks Sarah, reviewing now...&rdquo;", pct: "62%" },
+                  { initials: "MK", subject: "Re: Q3 Budget Contract - Final Version", snippet: "Mike Kim · Oct 15 · &ldquo;Thanks Sarah, reviewing now...&rdquo;", pct: "62%" },
                   { initials: "JL", subject: "Fwd: Q3 budget summary deck", snippet: "Sarah Chen · Oct 11 · &ldquo;Sharing the deck for the meeting...&rdquo;", pct: "58%" },
                   { initials: "SC", subject: "Action required: Q3 Budget sign-off", snippet: "Sarah Chen · Oct 10 · &ldquo;Please review and approve by Friday...&rdquo;", pct: "51%" },
                 ].map((row, i) => (
@@ -170,8 +170,6 @@ function EmailMockup() {
 }
 
 function HeroSection() {
-  const { isSignedIn } = useUser();
-
   return (
     <section className="relative min-h-screen flex flex-col overflow-hidden">
       <div className="absolute inset-0 bg-[#0a0a0a]" />
@@ -339,15 +337,17 @@ function HeroSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.35 }}
-              className="mt-9"
+              className="mt-9 flex flex-wrap items-center justify-center gap-3"
             >
-              <Link
-                href={isSignedIn ? "/mail" : "/sign-up"}
+              <a
+                href={`mailto:parbhat@parbhat.dev?subject=${encodeURIComponent("Request for VectorMail access")}&body=${encodeURIComponent(
+                  `Hi,\n\nI'm reaching out to request access to VectorMail for my project.\n\nI'm interested in using VectorMail for inbox, search, and AI in my workflow. I would appreciate access for this project on my email so I can evaluate the product and integrate it into my stack.\n\nHappy to provide more context, share use cases, or jump on a short call if that would be helpful.\n\nBest,`
+                )}`}
                 className="group flex items-center gap-2.5 rounded-full bg-white px-7 py-3.5 text-[15px] font-semibold text-[#0c0a12] shadow-lg shadow-black/20 transition-all duration-300 hover:shadow-[0_20px_40px_-12px_rgba(189,191,9,0.35)]"
               >
                 Get VectorMail
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </Link>
+              </a>
             </motion.div>
           </div>
         </div>
@@ -358,9 +358,23 @@ function HeroSection() {
   );
 }
 
+function RedirectIfSignedIn() {
+  const { isSignedIn, isLoaded } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!isLoaded || !pathname) return;
+    if (isSignedIn && pathname === "/") {
+      router.replace("/mail");
+    }
+  }, [isLoaded, isSignedIn, pathname, router]);
+  return null;
+}
+
 export default function Page() {
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
+      <RedirectIfSignedIn />
       <div className="fixed inset-0 -z-10">
         <div className="absolute left-1/4 top-0 h-[600px] w-[600px] rounded-full blur-[150px] opacity-0" aria-hidden />
         <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full blur-[120px] opacity-0" aria-hidden />

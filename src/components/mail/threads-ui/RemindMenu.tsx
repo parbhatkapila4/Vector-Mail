@@ -34,6 +34,7 @@ export function RemindMenu({
     onSuccess: (_, variables) => {
       void utils.account.getThreads.invalidate();
       void utils.account.getNumThreads.invalidate();
+      void utils.account.getNudges.invalidate();
       const date = new Date();
       date.setDate(date.getDate() + variables.days);
       date.setHours(9, 0, 0, 0);
@@ -50,6 +51,7 @@ export function RemindMenu({
     onSuccess: () => {
       void utils.account.getThreads.invalidate();
       void utils.account.getNumThreads.invalidate();
+      void utils.account.getNudges.invalidate();
       toast.success("Reminder cleared");
       onReminderSet?.();
     },

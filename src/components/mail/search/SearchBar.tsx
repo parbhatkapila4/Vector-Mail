@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import React from "react";
 import useThreads from "@/hooks/use-threads";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 import { atom, useAtom } from "jotai";
 
 export const isSearchingAtom = atom(false);
@@ -26,6 +28,8 @@ export interface SearchResult {
 
 const SearchBar = () => {
   const { accountId } = useThreads();
+  const isDemo = useDemoMode();
+  const effectiveAccountId = isDemo ? DEMO_ACCOUNT_ID : accountId;
   const [searchValue, setSearchValue] = useAtom(searchValueAtom);
   const [, setIsSearching] = useAtom(isSearchingAtom);
   const [, setSearchResults] = useAtom(searchResultsAtom);
@@ -50,14 +54,14 @@ const SearchBar = () => {
     setIsSearchingAPI(true);
 
     debounceTimerRef.current = setTimeout(async () => {
-      if (!accountId || !searchValue.trim()) {
+      if (!effectiveAccountId || !searchValue.trim()) {
         setIsSearchingAPI(false);
         return;
       }
 
       try {
         const response = await fetch(
-          `/api/email/search?q=${encodeURIComponent(searchValue.trim())}&accountId=${accountId}`,
+          `/api/email/search?q=${encodeURIComponent(searchValue.trim())}&accountId=${effectiveAccountId}`,
         );
         if (!response.ok) throw new Error(`Search failed: ${response.status}`);
         const data = await response.json();
@@ -73,7 +77,7 @@ const SearchBar = () => {
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [searchValue, accountId, setSearchResults, setIsSearchingAPI]);
+  }, [searchValue, effectiveAccountId, setSearchResults, setIsSearchingAPI]);
 
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

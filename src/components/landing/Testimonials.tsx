@@ -131,8 +131,8 @@ function CardPreview({ type }: { type: string }) {
         </div>
         <div className="mb-1.5 text-[8px] font-medium text-gray-600">4 results found</div>
         {[
-          { name: "Notion", sub: "Meeting notes — Q1 planning", ai: true, logo: "/logos/Notion.webp" },
-          { name: "Google", sub: "Calendar invite — team sync", ai: false, logo: "/logos/google.svg" },
+          { name: "Notion", sub: "Meeting notes - Q1 planning", ai: true, logo: "/logos/Notion.webp" },
+          { name: "Google", sub: "Calendar invite - team sync", ai: false, logo: "/logos/google.svg" },
           { name: "Slack", sub: "Thread: design review", ai: true, logo: "/logos/slack.svg" },
           { name: "Asana", sub: "Task: follow-up on deliverables", ai: false, logo: "/logos/asana.svg" },
         ].map((item, i) => (
@@ -187,12 +187,12 @@ function CardPreview({ type }: { type: string }) {
           </div>
         </div>
         <div className="mb-2 rounded-md border border-emerald-600/20 bg-emerald-600/5 px-2 py-2">
-          <div className="text-[8px] font-semibold text-emerald-400">Q3 budget contract — approval needed</div>
+          <div className="text-[8px] font-semibold text-emerald-400">Q3 budget contract - approval needed</div>
           <div className="mt-0.5 text-[7px] text-gray-500">Sarah Chen. Time-sensitive. Requires your approval.</div>
         </div>
         <div className="mt-1.5 text-[8px] text-gray-600">Pinned [2]</div>
         {[
-          { name: "Sarah Chen", sub: "Q3 budget contract — approval needed", date: "2h ago" },
+          { name: "Sarah Chen", sub: "Q3 budget contract - approval needed", date: "2h ago" },
           { name: "Stripe", sub: "Payment confirmation #2847", date: "Yesterday" },
         ].map((e, i) => (
           <div key={i} className="flex items-center justify-between border-b border-white/[0.03] py-1.5">
@@ -255,10 +255,10 @@ function CardPreview({ type }: { type: string }) {
           <span className="text-[9px] font-medium text-gray-400">Aurinko delta sync</span>
         </div>
         {[
-          "Inbox — 12 new threads",
-          "Sent folder — up to date",
-          "Drafts — 2 pending",
-          "Labels — 3 updated",
+          "Inbox - 12 new threads",
+          "Sent folder - up to date",
+          "Drafts - 2 pending",
+          "Labels - 3 updated",
         ].map((msg, i) => (
           <div key={i} className="flex items-center gap-2.5 border-b border-white/[0.03] py-1.5">
             <div className={`h-1.5 w-1.5 rounded-full ${i === 0 ? "bg-sky-500" : "bg-gray-600"}`} />
@@ -306,7 +306,7 @@ const stack = [
 
 export function Testimonials() {
   return (
-    <section className="relative py-32">
+    <section className="relative py-32 bg-[#0a0a0a]">
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-20 text-center">
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-5 py-2">

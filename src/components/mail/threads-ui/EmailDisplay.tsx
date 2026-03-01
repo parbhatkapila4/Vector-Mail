@@ -321,18 +321,19 @@ const EmailDisplay = ({ email }: Props) => {
         </div>
       ) : hasContent ? (
         <div
-          className="min-h-[70vh] overflow-y-auto rounded-md bg-white md:min-h-[70vh]"
+          className="min-h-[70vh] overflow-y-auto rounded-md bg-white md:min-h-[70vh] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           ref={letterRef}
         >
           <div
             className="email-body-wrapper"
             style={{
-              padding: "16px",
+              padding: "24px 20px",
               wordWrap: "break-word",
               overflowWrap: "break-word",
               wordBreak: "break-word",
               maxWidth: "100%",
               overflow: "hidden",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
             }}
             dangerouslySetInnerHTML={{
               __html: sanitizeEmailHtml(displayBody),

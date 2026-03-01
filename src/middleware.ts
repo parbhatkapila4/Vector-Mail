@@ -1,26 +1,21 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { isDemoMode } from "@/lib/demo/is-demo-mode";
+import { DEMO_COOKIE } from "@/lib/demo/constants";
+
 const REQUEST_ID_HEADER = "x-request-id";
+const SESSION_COOKIE = "vectormail_session_user";
+const DEMO_SESSION_USER = "demo-user";
 
 const isProtectedRoute = createRouteMatcher(["/mail(.*)", "/buddy(.*)"]);
 const isWebhookRoute = createRouteMatcher(["/api/webhook(.*)"]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isWebhookRoute(req)) {
-    return NextResponse.next();
-  }
+function hasSessionCookie(req: NextRequest): boolean {
+  const cookie = req.cookies.get(SESSION_COOKIE)?.value;
+  return Boolean(cookie?.trim());
+}
 
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-
-  const response = NextResponse.next();
-
-  const requestId = req.headers.get(REQUEST_ID_HEADER);
-  if (requestId?.trim()) {
-    response.headers.set(REQUEST_ID_HEADER, requestId.trim());
-  }
-
+function applySecurityHeaders(response: NextResponse) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -32,8 +27,6 @@ export default clerkMiddleware(async (auth, req) => {
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains",
   );
-
-
   response.headers.set(
     "Content-Security-Policy",
     [
@@ -47,6 +40,37 @@ export default clerkMiddleware(async (auth, req) => {
       "frame-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space https://accounts.vectormail.space",
     ].join("; "),
   );
+}
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isWebhookRoute(req)) {
+    return NextResponse.next();
+  }
+
+  if (isProtectedRoute(req)) {
+    if (isDemoMode(req)) {
+      const response = NextResponse.next();
+      response.cookies.set(DEMO_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 });
+      response.cookies.set(SESSION_COOKIE, DEMO_SESSION_USER, { path: "/", maxAge: 60 * 60 * 24 });
+      const requestId = req.headers.get(REQUEST_ID_HEADER);
+      if (requestId?.trim()) response.headers.set(REQUEST_ID_HEADER, requestId.trim());
+      applySecurityHeaders(response);
+      return response;
+    }
+    if (!hasSessionCookie(req)) {
+      const signInUrl = new URL("/sign-in", req.url).toString();
+      await auth.protect({ unauthenticatedUrl: signInUrl });
+    }
+  }
+
+  const response = NextResponse.next();
+
+  const requestId = req.headers.get(REQUEST_ID_HEADER);
+  if (requestId?.trim()) {
+    response.headers.set(REQUEST_ID_HEADER, requestId.trim());
+  }
+
+  applySecurityHeaders(response);
 
   return response;
 });

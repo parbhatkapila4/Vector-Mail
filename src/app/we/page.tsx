@@ -367,7 +367,7 @@ export default function WePage() {
                   "{story.quote}"
                 </blockquote>
                 <div className="text-center text-xs font-semibold text-white sm:text-left">
-                  — {story.author}
+                  - {story.author}
                 </div>
               </motion.div>
             ))}

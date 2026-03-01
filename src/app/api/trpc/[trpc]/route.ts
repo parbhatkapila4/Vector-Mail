@@ -17,11 +17,7 @@ const createContext = async (req: NextRequest) => {
   req.headers.forEach((value, key) => {
     headers.set(key, value);
   });
-
-  return createTRPCContext({
-    headers,
-    req,
-  });
+  return createTRPCContext({ headers, req });
 };
 
 const handler = async (req: NextRequest) => {

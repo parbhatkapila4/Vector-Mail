@@ -12,6 +12,7 @@ import {
   Zap,
   Search,
   ArrowRight,
+  ArrowLeft,
   CalendarClock,
   Trash2,
 } from "lucide-react";
@@ -39,6 +40,11 @@ import { UserButton, useClerk } from "@clerk/nextjs";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
+import { LabelsList } from "./labels/LabelsList";
+import { NudgesBlock } from "./NudgesBlock";
+import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 interface MailLayoutProps {
   defaultLayout?: number[] | readonly number[] | undefined;
@@ -54,46 +60,73 @@ export function Mail({ }: MailLayoutProps) {
   const [composeOpen, setComposeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
+  const [selectedLabelId, setSelectedLabelId] = useLocalStorage("vector-mail-label-id", "");
   const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage("mail-sidebar-width-pct", 28);
   const [isResizing, setIsResizing] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
-  const resizeStartRef = useRef<{ x: number; pct: number } | null>(null);
+  const resizeStartRef = useRef<{ x: number; pct: number; finalPct: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
   const threadListRef = useRef<ThreadListRef>(null);
+  const rafRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
   const router = useRouter();
 
   const SIDEBAR_MIN_PCT = 20;
   const SIDEBAR_MAX_PCT = 55;
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    resizeStartRef.current = { x: e.clientX, pct: sidebarWidthPct };
-  }, [sidebarWidthPct]);
+  const handleResizeStart = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      setIsResizing(true);
+      resizeStartRef.current = { x: e.clientX, pct: sidebarWidthPct, finalPct: sidebarWidthPct };
+    },
+    [sidebarWidthPct],
+  );
 
   useEffect(() => {
     if (!isResizing) return;
-    const onMove = (e: MouseEvent) => {
+    const pendingRef = { current: null as number | null };
+    const flush = () => {
+      rafRef.current = null;
+      const x = pendingRef.current;
+      pendingRef.current = null;
+      if (x === null) return;
       const start = resizeStartRef.current;
       const el = containerRef.current;
-      if (!start || !el) return;
+      const sidebar = sidebarRef.current;
+      if (!start || !el || !sidebar) return;
       const containerWidth = el.getBoundingClientRect().width;
       if (containerWidth <= 0) return;
-      const deltaPct = ((e.clientX - start.x) / containerWidth) * 100;
+      const deltaPct = ((x - start.x) / containerWidth) * 100;
       let next = start.pct + deltaPct;
       next = Math.max(SIDEBAR_MIN_PCT, Math.min(SIDEBAR_MAX_PCT, next));
-      setSidebarWidthPct(next);
+      resizeStartRef.current = { ...start, finalPct: next };
+      sidebar.style.width = `${next}%`;
+    };
+    const onMove = (e: PointerEvent) => {
+      pendingRef.current = e.clientX;
+      if (rafRef.current === null) rafRef.current = requestAnimationFrame(flush);
     };
     const onUp = () => {
-      setIsResizing(false);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      const start = resizeStartRef.current;
+      if (start) setSidebarWidthPct(start.finalPct);
       resizeStartRef.current = null;
+      setIsResizing(false);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, [isResizing, setSidebarWidthPct]);
 
@@ -105,8 +138,10 @@ export function Mail({ }: MailLayoutProps) {
     window.dispatchEvent(new CustomEvent("focus-reply"));
   }, []);
 
-  const { data: accounts } = api.account.getAccounts.useQuery();
+  const isDemo = useDemoMode();
+  const { data: accounts, isLoading: accountsLoading } = api.account.getAccounts.useQuery();
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
+  const showConnectCard = !isDemo && !accountsLoading && !!accounts && accounts.length === 0;
 
   const { data: myAccount } = api.account.getMyAccount.useQuery(
     { accountId: firstAccountId || "placeholder" },
@@ -115,33 +150,24 @@ export function Mail({ }: MailLayoutProps) {
 
   const accountId = myAccount?.id ?? "";
   const isEnabled = !!accountId;
+  const countAccountId = isDemo ? DEMO_ACCOUNT_ID : (accountId || "placeholder");
 
   const { data: inboxCount } = api.account.getNumThreads.useQuery(
-    { accountId: accountId || "placeholder", tab: "inbox" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: true },
+    { accountId: countAccountId, tab: "inbox" },
+    { enabled: (isEnabled || isDemo) && (!!accountId || isDemo), refetchOnWindowFocus: false, refetchOnMount: true },
   );
 
-  const { data: sentCount } = api.account.getNumThreads.useQuery(
-    { accountId: accountId || "placeholder", tab: "sent" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: true },
+  const { data: sentCount, isFetched: sentCountFetched } = api.account.getNumThreads.useQuery(
+    { accountId: countAccountId, tab: "sent" },
+    { enabled: (isEnabled || isDemo) && (!!accountId || isDemo), refetchOnWindowFocus: false, refetchOnMount: true },
   );
 
-  const { data: trashCount } = api.account.getNumThreads.useQuery(
-    { accountId: accountId || "placeholder", tab: "trash" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0, refetchOnWindowFocus: false, refetchOnMount: true },
+  const { data: trashCount, isFetched: trashCountFetched } = api.account.getNumThreads.useQuery(
+    { accountId: countAccountId, tab: "trash" },
+    { enabled: (isEnabled || isDemo) && (!!accountId || isDemo), refetchOnWindowFocus: false, refetchOnMount: true },
   );
 
   const utils = api.useUtils();
-  useEffect(() => {
-    if (!accountId || typeof document === "undefined") return;
-    const onVisible = () => {
-      void utils.account.getNumThreads.invalidate();
-      void utils.account.getThreads.invalidate();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [accountId, utils.account.getNumThreads, utils.account.getThreads]);
-
   const { data: scheduledSends } = api.account.getScheduledSends.useQuery(
     { accountId: accountId || "placeholder" },
     { enabled: isEnabled && !!accountId && accountId.length > 0 },
@@ -202,6 +228,25 @@ export function Mail({ }: MailLayoutProps) {
     },
   ];
 
+  if (showConnectCard) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#f6f8fc] px-4 dark:bg-[#202124]">
+        <div className="max-w-md rounded-2xl border border-[#dadce0] bg-white p-8 text-center shadow-sm dark:border-[#3c4043] dark:bg-[#292a2d]">
+          <h1 className="text-xl font-semibold text-[#202124] dark:text-[#e8eaed]">Connect your Gmail</h1>
+          <p className="mt-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">
+            You&apos;re signed in. Connect your Gmail account to access your inbox.
+          </p>
+          <a
+            href="/api/connect/google"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+          >
+            Connect Gmail
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (isMobile) {
     return (
       <TooltipProvider delayDuration={0}>
@@ -218,38 +263,86 @@ export function Mail({ }: MailLayoutProps) {
         />
         <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
         <div className="flex h-full w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
-          <div className="flex items-center justify-between border-b border-[#dadce0] bg-white px-4 py-2.5 dark:border-[#3c4043] dark:bg-[#202124]">
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[280px] border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124]"
+          <div className="flex items-center justify-between border-b border-[#dadce0] bg-white px-4 py-2.5 dark:border-[#3c4043] dark:bg-[#202124] [padding-top:max(0.625rem,env(safe-area-inset-top))]">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {selectedThread ? (
+                <button
+                  type="button"
+                  onClick={handleThreadClose}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed] [touch-action:manipulation]"
+                  aria-label="Back to list"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+              ) : (
+                <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 [touch-action:manipulation]">
+                      <Menu className="h-5 w-5" aria-label="Menu" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent
+                    side="left"
+                    className="flex w-[280px] flex-col border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124]"
+                  >
+                    <MobileSidebar
+                      navItems={navItems}
+                      tab={tab}
+                      setTab={setTab}
+                      router={router}
+                      onNavigate={handleMobileNavigation}
+                    />
+                    <div className="border-t border-[#dadce0] px-2 py-2 dark:border-[#3c4043]">
+                      <LabelsList
+                        accountId={accountId}
+                        currentTab={tab}
+                        selectedLabelId={tab === "label" ? selectedLabelId : null}
+                        onLabelSelect={(id) => {
+                          setTab("label");
+                          setSelectedLabelId(id);
+                          setSheetOpen(false);
+                        }}
+                        onLabelUnselect={() => {
+                          setSelectedLabelId("");
+                          setTab("inbox");
+                        }}
+                      />
+                    </div>
+                    <div className="border-t border-[#dadce0] dark:border-[#3c4043]">
+                      <NudgesBlock
+                        accountId={accountId}
+                        onThreadSelect={(threadId) => {
+                          handleThreadSelect(threadId);
+                          setSheetOpen(false);
+                        }}
+                      />
+                      <UpcomingFromEmailBlock
+                        accountId={accountId}
+                        onThreadSelect={(threadId) => {
+                          handleThreadSelect(threadId);
+                          setSheetOpen(false);
+                        }}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              )}
+              <span className="min-w-0 truncate text-[15px] font-medium capitalize text-[#202124] dark:text-[#e8eaed]">
+                {selectedThread ? "Message" : (navItems.find((i) => i.id === tab)?.label ?? tab)}
+              </span>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => threadListRef.current?.triggerSync()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
+                aria-label={syncPending ? "Stop sync" : "Sync Inbox, Sent, and Trash"}
               >
-                <MobileSidebar
-                  navItems={navItems}
-                  tab={tab}
-                  setTab={setTab}
-                  router={router}
-                  onNavigate={handleMobileNavigation}
+                <RefreshCw
+                  className={cn("h-5 w-5", syncPending && "animate-spin")}
                 />
-              </SheetContent>
-            </Sheet>
-
-            <button
-              onClick={() => {
-                handleThreadClose();
-                setTab("inbox");
-              }}
-              className="cursor-pointer border-none bg-transparent p-0 text-[15px] font-medium capitalize text-[#202124] outline-none transition-opacity hover:opacity-80 dark:text-[#e8eaed]"
-            >
-              {navItems.find((i) => i.id === tab)?.label ?? tab}
-            </button>
-
-            <div className="flex items-center gap-2">
+              </button>
               <ComposeEmailGmail
                 open={composeOpen}
                 onOpenChange={setComposeOpen}
@@ -257,6 +350,23 @@ export function Mail({ }: MailLayoutProps) {
               <UserButton />
             </div>
           </div>
+
+          {isDemo && (
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-[#e8eaed] bg-[#f8f9fa] px-3 py-1.5 dark:border-[#3c4043] dark:bg-[#252628]">
+              <span className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
+                You’re exploring VectorMail with sample data so you can see how everything works. Ready for your own inbox?
+              </span>
+              <a
+                href="mailto:parbhat@parbhat.dev?subject=VectorMail%20%E2%80%93%20Request%20access&body=Hi%2C%0A%0AI'd%20like%20to%20request%20access%20to%20connect%20my%20Gmail%20and%20use%20VectorMail%20with%20my%20own%20inbox.%20Please%20let%20me%20know%20when%20access%20is%20available.%0A%0AThank%20you."
+                className="shrink-0 rounded-md bg-[#1a73e8] px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+              >
+                Request access
+              </a>
+              <span className="w-full text-center text-[10px] text-[#5f6368] dark:text-[#9aa0a6]">
+                We’ll reply once your account is enabled.
+              </span>
+            </div>
+          )}
 
           {isNavigating && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -270,13 +380,48 @@ export function Mail({ }: MailLayoutProps) {
           {!selectedThread ? (
             <div className="flex flex-1 flex-col overflow-hidden bg-[#f6f8fc] dark:bg-[#202124]">
               <SearchBar />
-              <ThreadList onThreadSelect={handleThreadSelect} />
+              <ThreadList
+                ref={threadListRef}
+                onThreadSelect={handleThreadSelect}
+                onSyncPendingChange={setSyncPending}
+              />
             </div>
           ) : (
             <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-[#202124]">
               <ThreadDisplay threadId={selectedThread} />
             </div>
           )}
+
+          <nav
+            className="flex shrink-0 border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124] [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))] [touch-action:manipulation]"
+            aria-label="Primary"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                handleThreadClose();
+                setTab("inbox");
+                setSheetOpen(false);
+              }}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium transition-colors",
+                !selectedThread && tab === "inbox"
+                  ? "text-[#1a73e8] dark:text-[#8ab4f8]"
+                  : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]",
+              )}
+            >
+              <Inbox className="h-5 w-5" />
+              Inbox
+            </button>
+            <button
+              type="button"
+              onClick={() => setComposeOpen(true)}
+              className="flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
+            >
+              <Send className="h-5 w-5" />
+              New email
+            </button>
+          </nav>
         </div>
       </TooltipProvider>
     );
@@ -394,6 +539,20 @@ export function Mail({ }: MailLayoutProps) {
           </div>
         </header>
 
+        {isDemo && (
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-b border-[#e8eaed] bg-[#f8f9fa] px-4 py-2 dark:border-[#3c4043] dark:bg-[#252628]">
+            <span className="text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
+              You’re exploring VectorMail with sample data so you can see how inbox, AI search, compose, and more work together. Ready to use your own Gmail?
+            </span>
+            <a
+              href="mailto:parbhat@parbhat.dev?subject=VectorMail%20%E2%80%93%20Request%20access&body=Hi%2C%0A%0AI'd%20like%20to%20request%20access%20to%20connect%20my%20Gmail%20and%20use%20VectorMail%20with%20my%20own%20inbox.%20Please%20let%20me%20know%20when%20access%20is%20available.%0A%0AThank%20you."
+              className="shrink-0 rounded-md bg-[#1a73e8] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+            >
+              Request access
+            </a>
+          </div>
+        )}
+
         <div
           ref={containerRef}
           className={cn(
@@ -402,8 +561,13 @@ export function Mail({ }: MailLayoutProps) {
           )}
         >
           <aside
+            ref={sidebarRef}
             className="flex h-full shrink-0 flex-col border-r border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]"
-            style={{ width: `${sidebarWidthPct}%`, minWidth: 200 }}
+            style={{
+              width: `${sidebarWidthPct}%`,
+              minWidth: 200,
+              ...(isResizing && { willChange: "width" }),
+            }}
           >
             <div className="flex min-w-0 items-center gap-2 border-b border-[#dadce0] px-3 py-2 dark:border-[#3c4043]">
               <div className="min-w-0 flex-1">
@@ -412,15 +576,37 @@ export function Mail({ }: MailLayoutProps) {
               <button
                 type="button"
                 onClick={() => threadListRef.current?.triggerSync()}
-                disabled={syncPending}
-                className="flex shrink-0 items-center justify-center rounded p-1.5 text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] disabled:opacity-60 dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
-                aria-label={syncPending ? "Syncing" : "Sync"}
+                className="flex shrink-0 items-center justify-center rounded p-1.5 text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
+                aria-label={syncPending ? "Stop sync" : "Sync Inbox, Sent, and Trash"}
               >
                 <RefreshCw
                   className={cn("h-3.5 w-3.5", syncPending && "animate-spin")}
                 />
               </button>
             </div>
+            <div className="shrink-0 border-b border-[#dadce0] dark:border-[#3c4043]">
+              <LabelsList
+                accountId={accountId}
+                currentTab={tab}
+                selectedLabelId={tab === "label" ? selectedLabelId : null}
+                onLabelSelect={(id) => {
+                  setTab("label");
+                  setSelectedLabelId(id);
+                }}
+                onLabelUnselect={() => {
+                  setSelectedLabelId("");
+                  setTab("inbox");
+                }}
+              />
+            </div>
+            <NudgesBlock
+              accountId={accountId}
+              onThreadSelect={handleThreadSelect}
+            />
+            <UpcomingFromEmailBlock
+              accountId={accountId}
+              onThreadSelect={handleThreadSelect}
+            />
             <div className="min-w-0 flex-1 overflow-hidden">
               <ThreadList
                 ref={threadListRef}
@@ -432,10 +618,15 @@ export function Mail({ }: MailLayoutProps) {
           <div
             role="separator"
             aria-label="Resize sidebar"
-            onMouseDown={handleResizeStart}
-            className="flex w-1 shrink-0 cursor-col-resize items-center justify-center bg-[#dadce0] transition-colors hover:bg-[#1a73e8]/20 dark:bg-[#3c4043] dark:hover:bg-[#8ab4f8]/20"
+            onPointerDown={handleResizeStart}
+            className={cn(
+              "relative z-10 flex w-2 shrink-0 cursor-col-resize items-center justify-center self-stretch bg-[#dadce0] transition-colors dark:bg-[#3c4043]",
+              "hover:bg-[#1a73e8]/25 dark:hover:bg-[#8ab4f8]/25",
+              isResizing && "bg-[#1a73e8]/30 dark:bg-[#8ab4f8]/30",
+            )}
+            style={{ touchAction: "none", minHeight: 120 }}
           >
-            <GripVertical className="h-3 w-3 text-[#5f6368] dark:text-[#9aa0a6]" />
+            <GripVertical className="h-4 w-4 shrink-0 text-[#5f6368] pointer-events-none dark:text-[#9aa0a6]" />
           </div>
           <main
             className={cn(
@@ -448,7 +639,8 @@ export function Mail({ }: MailLayoutProps) {
 
           <aside
             className={cn(
-              "fixed right-0 top-12 z-40 h-[calc(100vh-3rem)] w-[360px] border-l border-[#dadce0] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-out dark:border-[#3c4043] dark:bg-[#292a2d] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
+              "fixed right-0 z-40 w-[360px] border-l border-[#dadce0] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-out dark:border-[#3c4043] dark:bg-[#292a2d] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
+              isDemo ? "top-[5.5rem] h-[calc(100vh-5.5rem)]" : "top-12 h-[calc(100vh-3rem)]",
               showAIPanel ? "translate-x-0" : "translate-x-full",
             )}
           >
@@ -461,6 +653,11 @@ export function Mail({ }: MailLayoutProps) {
                   <span className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
                     AI Search
                   </span>
+                  {isDemo && (
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
+                      Demo
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowAIPanel(false)}

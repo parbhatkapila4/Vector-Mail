@@ -57,7 +57,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="relative overflow-hidden bg-zinc-950">
+    <footer className="relative overflow-hidden bg-[#0a0a0a]">
       <div
         className="pointer-events-none absolute inset-0 flex items-end justify-center pb-48 pt-20"
         aria-hidden

@@ -75,10 +75,10 @@ export function MailKeyboardShortcuts({
         | InfiniteData<GetThreadsPage>
         | undefined;
       if (previousData?.pages) {
-        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+        const newPages = previousData.pages.map((page) => ({
           ...page,
           threads: page.threads.filter((t) => !input.threadIds.includes(t.id)),
-        }));
+        })) as GetThreadsPage[];
         utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
           old ? { ...old, pages: newPages } : old,
         );
@@ -107,10 +107,10 @@ export function MailKeyboardShortcuts({
         | InfiniteData<GetThreadsPage>
         | undefined;
       if (previousData?.pages) {
-        const newPages: GetThreadsPage[] = previousData.pages.map((page) => ({
+        const newPages = previousData.pages.map((page) => ({
           ...page,
           threads: page.threads.filter((t) => !input.threadIds.includes(t.id)),
-        }));
+        })) as GetThreadsPage[];
         utils.account.getThreads.setInfiniteData(getThreadsInput, (old) =>
           old ? { ...old, pages: newPages } : old,
         );

@@ -1,19 +1,25 @@
-"use server";
-
 import { auth } from "@clerk/nextjs/server";
 import axios from "axios";
 
 const AURINKO_SCOPES = "Mail.Read Mail.Send";
-export async function buildAurinkoGoogleAuthUrl(): Promise<string> {
+
+export function buildAurinkoAuthUrlForService(
+  serviceType: "Google" | "Office365",
+): string {
+  const baseUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
   const params = new URLSearchParams({
     clientId: process.env.AURINKO_CLIENT_ID!,
-    serviceType: "Google",
+    serviceType,
     responseType: "code",
-    returnUrl: `${process.env.NEXT_PUBLIC_URL}/api/aurinko/callback`,
+    returnUrl: `${baseUrl}/api/aurinko/callback`,
     prompt: "consent",
     scopes: AURINKO_SCOPES,
   });
   return `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
+}
+
+export async function buildAurinkoGoogleAuthUrl(): Promise<string> {
+  return buildAurinkoAuthUrlForService("Google");
 }
 
 export const getAurinkoAuthUrl = async (
@@ -36,22 +42,7 @@ export const getAurinkoAuthUrl = async (
     );
   }
 
-  const params = new URLSearchParams({
-    clientId: process.env.AURINKO_CLIENT_ID!,
-    serviceType,
-    responseType: "code",
-    returnUrl: `${process.env.NEXT_PUBLIC_URL}/api/aurinko/callback`,
-    prompt: "consent",
-    scopes: AURINKO_SCOPES,
-  });
-
-  const authUrl = `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
-
-  console.log("[OAuth] Service:", serviceType);
-  console.log("[OAuth] Scopes:", AURINKO_SCOPES);
-  console.log("[OAuth] URL:", authUrl);
-
-  return authUrl;
+  return buildAurinkoAuthUrlForService(serviceType);
 };
 
 export async function exchangeAurinkoCodeForToken(code: string) {
@@ -148,10 +139,6 @@ export async function exchangeAurinkoCodeForToken(code: string) {
   }
 }
 
-/**
- * Try to get a new access token using the refresh token (Gmail-style: no user re-auth).
- * Aurinko may support this; if not, the request will fail and we fall back to reconnection.
- */
 export async function refreshAurinkoToken(
   accountId: string,
   refreshToken: string,

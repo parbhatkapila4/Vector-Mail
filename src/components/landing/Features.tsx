@@ -114,7 +114,7 @@ export function Features() {
   const activeIndex = currentChapterIndex >= 0 ? currentChapterIndex : 0;
 
   return (
-    <section className="relative overflow-hidden py-32">
+    <section className="relative overflow-hidden py-32 bg-[#0a0a0a]">
 
       <div
         className="pointer-events-none absolute inset-0"
@@ -140,7 +140,7 @@ export function Features() {
             Watch how it works
           </h2>
           <p className="mx-auto max-w-lg text-lg leading-relaxed text-zinc-400">
-            Two minutes to see why VectorMail is different — AI search, smart
+            Two minutes to see why VectorMail is different: AI search, smart
             summaries, and instant replies.
           </p>
         </motion.div>
@@ -293,8 +293,8 @@ export function Features() {
                   type="button"
                   onClick={() => seekToChapter(chapter.time)}
                   className={`group relative flex flex-col rounded-2xl p-5 text-left transition-all duration-300 ${isActive
-                      ? "bg-gradient-to-b from-violet-500/20 to-violet-500/5 shadow-lg shadow-violet-500/10 ring-1 ring-violet-400/30"
-                      : "bg-white/[0.02] ring-1 ring-white/5 hover:bg-white/[0.06] hover:ring-white/10"
+                    ? "bg-gradient-to-b from-violet-500/20 to-violet-500/5 shadow-lg shadow-violet-500/10 ring-1 ring-violet-400/30"
+                    : "bg-white/[0.02] ring-1 ring-white/5 hover:bg-white/[0.06] hover:ring-white/10"
                     }`}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
@@ -315,8 +315,8 @@ export function Features() {
                     </span>
                     <span
                       className={`flex h-8 w-8 items-center justify-center rounded-lg ${isActive
-                          ? "bg-violet-500/20 text-violet-300"
-                          : "bg-white/5 text-zinc-500 group-hover:text-zinc-300"
+                        ? "bg-violet-500/20 text-violet-300"
+                        : "bg-white/5 text-zinc-500 group-hover:text-zinc-300"
                         }`}
                     >
                       <Icon className="h-4 w-4" />

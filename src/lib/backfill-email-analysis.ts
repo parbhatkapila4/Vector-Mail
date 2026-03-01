@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
 import { serverLog } from "./logging/server-logger";
+import { applyFilterRulesForThread } from "./apply-filter-rules";
 import type { EmailMessage } from "@/types";
 import { arrayToVector } from "./vector-utils";
 
@@ -19,6 +20,7 @@ export async function backfillEmailAnalysis(
         summary: null,
       },
       include: {
+        thread: { select: { accountId: true } },
         from: true,
         to: true,
         cc: true,
@@ -151,6 +153,7 @@ export async function backfillEmailAnalysis(
           where: { id: email.id },
           data: {
             summary: analysis.summary,
+            keywords: analysis.tags,
           },
         });
 
@@ -159,6 +162,11 @@ export async function backfillEmailAnalysis(
                     SET embedding = ${embeddingVector}::vector
                     WHERE id = ${email.id}
                 `;
+
+        await applyFilterRulesForThread({
+          threadId: email.threadId,
+          accountId: email.thread.accountId,
+        });
 
         processed++;
         console.log(`✓ Processed: ${email.subject.substring(0, 50)}...`);

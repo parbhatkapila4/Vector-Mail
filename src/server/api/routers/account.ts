@@ -1,9 +1,6 @@
 import { Account } from "@/lib/accounts";
-import { checkDailyCap } from "@/lib/ai-usage";
 import { log as auditLog } from "@/lib/audit/audit-log";
-import { checkUserRateLimit } from "@/lib/rate-limit";
 import { incrementSyncFailure } from "@/lib/metrics/store";
-import { env } from "@/env.js";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db, withDbRetry } from "@/server/db";
 import { emailAddressSchema } from "@/types";
@@ -11,6 +8,9 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import axios from "axios";
+import pLimit from "p-limit";
+import { DEMO_ACCOUNT_ID, DEMO_USER_ID, DEMO_EMAIL, DEMO_DISPLAY_NAME } from "@/lib/demo/constants";
+import { getDemoThreads, getDemoThreadById, getDemoEmailBody, getDemoScheduledSends, getDemoNudges, getDemoUpcomingEvents, getDemoLabelsWithCounts } from "@/lib/demo/seed-demo-data";
 
 interface AccountAccess {
   id: string;
@@ -53,6 +53,11 @@ export const authoriseAccountAccess = async (
 
 export const accountRouter = createTRPCRouter({
   getAccounts: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.auth.userId === DEMO_USER_ID) {
+      return [
+        { id: DEMO_ACCOUNT_ID, emailAddress: DEMO_EMAIL, name: DEMO_DISPLAY_NAME },
+      ];
+    }
     const accounts = await withDbRetry(() =>
       ctx.db.account.findMany({
         where: {
@@ -83,6 +88,17 @@ export const accountRouter = createTRPCRouter({
       if (!input.accountId || input.accountId.trim().length === 0) {
         throw new Error("Account ID is required");
       }
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return {
+          id: DEMO_ACCOUNT_ID,
+          emailAddress: DEMO_EMAIL,
+          name: DEMO_DISPLAY_NAME,
+          token: "",
+          nextDeltaToken: null,
+          needsReconnection: false,
+          tokenExpiresAt: null,
+        };
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -108,6 +124,12 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Request access to connect your Gmail to use this feature.",
+        });
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -199,6 +221,12 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Request access to connect your Gmail to use this feature.",
+        });
+      }
       if (input.scheduledAt.getTime() <= Date.now()) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -246,6 +274,18 @@ export const accountRouter = createTRPCRouter({
   getScheduledSends: protectedProcedure
     .input(z.object({ accountId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        const demo = getDemoScheduledSends();
+        return demo.map((r) => ({
+          id: r.id,
+          scheduledAt: r.scheduledAt,
+          subject:
+            (r.payload && typeof r.payload === "object" && "subject" in r.payload
+              ? (r.payload as { subject?: string }).subject
+              : undefined) ?? "(no subject)",
+          createdAt: r.createdAt,
+        }));
+      }
       await authoriseAccountAccess(input.accountId, ctx.auth.userId);
       const rows = await ctx.db.scheduledSend.findMany({
         where: {
@@ -298,16 +338,36 @@ export const accountRouter = createTRPCRouter({
       z.object({
         accountId: z.string().min(1),
         tab: z.string(),
+        labelId: z.string().min(1).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       if (!input.accountId || input.accountId.trim().length === 0) {
         return 0;
       }
+      if (ctx.auth.userId === DEMO_USER_ID && (input.accountId === DEMO_ACCOUNT_ID || input.accountId === "placeholder")) {
+        if (input.tab === "inbox") return 25;
+        if (input.tab === "sent") return 5;
+        if (input.tab === "trash") return 3;
+        if (input.tab === "label" && input.labelId) {
+          const { threads } = getDemoThreads({ tab: "label", limit: 100, labelId: input.labelId });
+          return threads.length;
+        }
+        return 0;
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
       );
+
+      if (input.tab === "label" && input.labelId) {
+        return await ctx.db.threadLabel.count({
+          where: {
+            labelId: input.labelId,
+            thread: { accountId: account.id },
+          },
+        });
+      }
 
       if (input.tab === "inbox") {
         const threadCount = await ctx.db.thread.count({
@@ -374,13 +434,14 @@ export const accountRouter = createTRPCRouter({
           },
         });
       } else if (input.tab === "trash") {
-        const result = await ctx.db.$queryRaw<Array<{ count: bigint }>>`
-          SELECT COUNT(DISTINCT t.id)::bigint as count FROM "Thread" t
-          INNER JOIN "Email" e ON e."threadId" = t.id
-          WHERE t."accountId" = ${account.id}
-            AND 'trash' = ANY(e."sysLabels")
-        `;
-        return Number(result[0]?.count ?? 0);
+        return await ctx.db.thread.count({
+          where: {
+            accountId: account.id,
+            emails: {
+              some: { sysLabels: { hasSome: ["trash"] } },
+            },
+          },
+        });
       } else if (input.tab === "starred") {
         return await ctx.db.thread.count({
           where: {
@@ -411,7 +472,7 @@ export const accountRouter = createTRPCRouter({
           },
         });
       } else {
-        return await ctx.db.thread.count({
+        const sentThreadCount = await ctx.db.thread.count({
           where: {
             accountId: account.id,
             sentStatus: true,
@@ -419,6 +480,16 @@ export const accountRouter = createTRPCRouter({
             draftStatus: false,
           },
         });
+        const threadsWithSentEmails = await ctx.db.email.findMany({
+          where: {
+            thread: { accountId: account.id },
+            emailLabel: "sent",
+          },
+          select: { threadId: true },
+          distinct: ["threadId"],
+        });
+        const emailBasedSentCount = threadsWithSentEmails.length;
+        return Math.max(sentThreadCount, emailBasedSentCount);
       }
     }),
 
@@ -430,6 +501,12 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Request access to connect your Gmail to use this feature.",
+        });
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -497,6 +574,12 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Request access to connect your Gmail to use this feature.",
+        });
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -623,6 +706,12 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Request access to connect your Gmail to use this feature.",
+        });
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -664,6 +753,12 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Request access to connect your Gmail to use this feature.",
+        });
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
@@ -889,6 +984,148 @@ export const accountRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  getNudges: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { nudges: getDemoNudges() };
+      }
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      const now = new Date();
+      const NUDGE_CAP = 15;
+      const UNREPLIED_DAYS = 14;
+      const unrepliedCutoff = new Date(now);
+      unrepliedCutoff.setDate(unrepliedCutoff.getDate() - UNREPLIED_DAYS);
+
+      const nudges: Array<{
+        threadId: string;
+        type: "REMINDER" | "UNREPLIED";
+        reason: string;
+        thread?: {
+          subject: string;
+          lastMessageDate: Date;
+          snippet?: string | null;
+          remindAt?: Date | null;
+        };
+      }> = [];
+
+      const dueReminderThreads = await ctx.db.thread.findMany({
+        where: {
+          accountId: account.id,
+          remindAt: { not: null, lte: now },
+          emails: {
+            none: { sysLabels: { hasSome: ["trash"] } },
+          },
+        },
+        orderBy: { remindAt: "asc" },
+        take: NUDGE_CAP,
+        select: {
+          id: true,
+          subject: true,
+          lastMessageDate: true,
+          remindAt: true,
+          emails: {
+            orderBy: { sentAt: "desc" },
+            take: 1,
+            select: { bodySnippet: true },
+          },
+        },
+      });
+      for (const t of dueReminderThreads) {
+        nudges.push({
+          threadId: t.id,
+          type: "REMINDER",
+          reason: "Reminder",
+          thread: {
+            subject: t.subject,
+            lastMessageDate: t.lastMessageDate,
+            snippet: t.emails[0]?.bodySnippet ?? null,
+            remindAt: t.remindAt,
+          },
+        });
+      }
+
+      const candidateUnreplied = await ctx.db.thread.findMany({
+        where: {
+          accountId: account.id,
+          inboxStatus: true,
+          lastMessageDate: { gte: unrepliedCutoff },
+          OR: [
+            { snoozedUntil: null },
+            { snoozedUntil: { lte: now } },
+          ],
+          emails: {
+            none: { sysLabels: { hasSome: ["trash"] } },
+          },
+        },
+        orderBy: { lastMessageDate: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          subject: true,
+          lastMessageDate: true,
+          emails: {
+            orderBy: { sentAt: "desc" },
+            take: 1,
+            select: {
+              bodySnippet: true,
+              from: { select: { address: true } },
+            },
+          },
+        },
+      });
+      const accountEmailLower = account.emailAddress.toLowerCase();
+      const unrepliedThreads = candidateUnreplied.filter((t) => {
+        const latestEmail = t.emails[0];
+        if (!latestEmail?.from?.address) return false;
+        return latestEmail.from.address.toLowerCase() !== accountEmailLower;
+      });
+      const existingReminderIds = new Set(dueReminderThreads.map((t) => t.id));
+      let unrepliedAdded = 0;
+      for (const t of unrepliedThreads) {
+        if (existingReminderIds.has(t.id) || unrepliedAdded >= NUDGE_CAP) break;
+        nudges.push({
+          threadId: t.id,
+          type: "UNREPLIED",
+          reason: "You haven't replied",
+          thread: {
+            subject: t.subject,
+            lastMessageDate: t.lastMessageDate,
+            snippet: t.emails[0]?.bodySnippet ?? null,
+          },
+        });
+        unrepliedAdded++;
+      }
+
+      return { nudges };
+    }),
+
+  syncFirstBatchQuick: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { count: 0 };
+      }
+      if (!ctx.auth.userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "You must be logged in to sync emails" });
+      }
+      let account: AccountAccess;
+      try {
+        account = await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      } catch {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Account not found or you don't have access to it" });
+      }
+      if (!account.token?.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Account token is missing. Please reconnect your account." });
+      }
+      const emailAccount = new Account(account.id, account.token);
+      const result = await emailAccount.syncFirstBatchQuick();
+      return { count: result.count };
+    }),
+
   syncEmails: protectedProcedure
     .input(
       z.object({
@@ -900,6 +1137,9 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { success: true, message: "Demo mode - no sync", needsReconnection: false };
+      }
       if (!ctx.auth.userId) {
         console.error("[syncEmails mutation] User not authenticated");
         throw new TRPCError({
@@ -965,17 +1205,9 @@ export const accountRouter = createTRPCRouter({
           },
           "sync started",
         );
-        console.log(
-          `[syncEmails mutation] Starting sync for account ${account.id}, forceFullSync: ${shouldForceFullSync}, syncAllFolders: ${syncAllFolders}, folder: ${syncAllFolders ? "all" : folder}`,
-        );
-
         if (syncAllFolders) {
           const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
-          // Run inbox, sent, and trash in parallel so sent/trash don't wait for a slow inbox sync
-          const inboxPromise = emailAccount.syncEmails(true, undefined);
-          const sentPromise = emailAccount.syncEmails(true, "sent");
-          const trashPromise = emailAccount.syncEmails(true, "trash");
-          await Promise.all([inboxPromise, sentPromise, trashPromise]);
+          await emailAccount.syncAllFoldersInParallel();
           await recalculateAllThreadStatuses(account.id);
           const { enqueueEmbeddingJobsForAccount } = await import("@/lib/jobs/enqueue");
           enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
@@ -990,9 +1222,6 @@ export const accountRouter = createTRPCRouter({
               mode: "full_all_folders",
             },
             "sync all folders completed",
-          );
-          console.log(
-            `[syncEmails mutation] Sync all folders completed in ${Date.now() - syncStartTime}ms`,
           );
           return {
             success: true,
@@ -1057,9 +1286,6 @@ export const accountRouter = createTRPCRouter({
             },
             "sync chunk done",
           );
-          console.log(
-            `[syncEmails mutation] Chunk done: ${result.emails.length} emails synced, hasMore: ${hasMore}, total ${folder} threads: ${threadCount}`,
-          );
           return {
             success: true,
             message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
@@ -1074,15 +1300,7 @@ export const accountRouter = createTRPCRouter({
             `[syncEmails mutation] Attempting lightweight sync using delta token...`,
           );
           try {
-            console.log(
-              `[syncEmails mutation] Calling syncLatestEmails for account ${account.id}...`,
-            );
             const latestSyncResult = await emailAccount.syncLatestEmails();
-
-            console.log(
-              `[syncEmails mutation] syncLatestEmails returned:`,
-              JSON.stringify(latestSyncResult, null, 2),
-            );
 
             if (latestSyncResult.authError) {
               console.error(
@@ -1138,10 +1356,6 @@ export const accountRouter = createTRPCRouter({
                 },
                 "sync success (lightweight)",
               );
-              console.log(
-                `[syncEmails mutation] Lightweight sync successful - synced ${latestSyncResult.count} new emails`,
-              );
-
               const { enqueueEmbeddingJobsForAccount } = await import(
                 "@/lib/jobs/enqueue"
               );
@@ -1177,19 +1391,11 @@ export const accountRouter = createTRPCRouter({
                 },
                 "sync success (no new emails)",
               );
-              console.log(
-                `[syncEmails mutation] Lightweight sync completed but no new emails found`,
-              );
-
               return {
                 success: true,
                 message: "No new emails to sync",
                 threadCount,
               };
-            } else {
-              console.log(
-                `[syncEmails mutation] Lightweight sync failed (success: false), falling back to full sync...`,
-              );
             }
           } catch (lightweightError) {
             if (lightweightError instanceof TRPCError) {
@@ -1242,18 +1448,11 @@ export const accountRouter = createTRPCRouter({
               };
             }
 
-            console.log(
-              `[syncEmails mutation] Lightweight sync error (non-auth), falling back to full sync: ${errorMessage}`,
-            );
           }
         }
 
-        // Inbox: use chunked one-page sync so first batch shows in 1-3s. Never block on full sync.
         if (folder === "inbox") {
           const firstPageSize = 100;
-          console.log(
-            `[syncEmails mutation] Inbox fast first page (maxResults: ${firstPageSize}), then chunked via continueToken`,
-          );
           const result = await emailAccount.fetchEmailsByFolderOnePage(
             "inbox",
             undefined,
@@ -1287,9 +1486,6 @@ export const accountRouter = createTRPCRouter({
               hasMore,
             },
             "inbox chunk done",
-          );
-          console.log(
-            `[syncEmails mutation] Inbox first chunk: ${result.emails.length} emails, hasMore: ${hasMore}, threadCount: ${threadCount}`,
           );
           return {
             success: true,
@@ -1376,10 +1572,6 @@ export const accountRouter = createTRPCRouter({
           },
           "sync completed",
         );
-        console.log(
-          `[syncEmails mutation] Sync completed. Found ${threadCount} ${folderName} threads.`,
-        );
-
         const { enqueueEmbeddingJobsForAccount } = await import(
           "@/lib/jobs/enqueue"
         );
@@ -1563,6 +1755,7 @@ export const accountRouter = createTRPCRouter({
         unread: z.boolean(),
         limit: z.number().min(1).max(50).default(15),
         cursor: z.string().nullish(),
+        labelId: z.string().min(1).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -1574,13 +1767,26 @@ export const accountRouter = createTRPCRouter({
           source: "database" as const,
         };
       }
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        const { threads, nextCursor } = getDemoThreads({
+          tab: input.tab,
+          limit: input.limit,
+          cursor: input.cursor ?? undefined,
+          labelId: input.labelId ?? undefined,
+        });
+        return {
+          threads,
+          nextCursor,
+          syncStatus: { success: true, count: 0 },
+          source: "database" as const,
+        };
+      }
       const account = await authoriseAccountAccess(
         input.accountId,
         ctx.auth.userId,
       );
 
       const { cursor } = input;
-
       const syncResult = { success: true, count: 0 };
 
       const limit = Math.min(
@@ -1592,7 +1798,13 @@ export const accountRouter = createTRPCRouter({
         accountId: account.id,
       };
 
-      if (input.tab === "inbox") {
+      if (input.labelId) {
+        whereClause.threadLabels = {
+          some: { labelId: input.labelId },
+        };
+      }
+
+      if (input.tab === "inbox" || (input.tab === "label" && input.labelId)) {
         try {
           const threadsWithInboxEmails = await ctx.db.email.findMany({
             where: {
@@ -1617,7 +1829,6 @@ export const accountRouter = createTRPCRouter({
             threadsWithInboxEmails.length > 0
           ) {
             const candidateThreadIds = threadsWithInboxEmails.map((e) => e.threadId);
-            // Don't set inboxStatus true for threads that have any email in trash.
             const threadsWithTrash = await ctx.db.email.findMany({
               where: {
                 threadId: { in: candidateThreadIds },
@@ -1642,7 +1853,6 @@ export const accountRouter = createTRPCRouter({
           console.warn("[getThreads] Inbox status fix failed, continuing:", fixErr);
         }
         whereClause.inboxStatus = true;
-        // Exclude threads that have any email in trash (trash must not appear in inbox).
         whereClause.emails = {
           none: {
             sysLabels: {
@@ -1713,15 +1923,6 @@ export const accountRouter = createTRPCRouter({
         delete (whereClause as Record<string, unknown>).draftStatus;
       }
 
-      console.log(
-        `[getThreads] Query filters:`,
-        JSON.stringify(
-          { accountId: account.id, tab: input.tab, whereClause },
-          null,
-          2,
-        ),
-      );
-
       let threads: Awaited<
         ReturnType<typeof ctx.db.thread.findMany<{
           include: {
@@ -1783,6 +1984,7 @@ export const accountRouter = createTRPCRouter({
                 orderBy: { sentAt: "desc" },
                 take: 1,
               },
+              threadLabels: { include: { label: true } },
             },
           });
           const idOrder = new Map(ids.map((id, i) => [id, i]));
@@ -1830,6 +2032,59 @@ export const accountRouter = createTRPCRouter({
                 orderBy: { sentAt: "desc" },
                 take: 1,
               },
+              threadLabels: { include: { label: true } },
+            },
+          });
+          const idOrder = new Map(ids.map((id, i) => [id, i]));
+          threads = rows.sort(
+            (a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
+          );
+        }
+      } else if (input.tab === "sent") {
+        const sentWhere: Prisma.ThreadWhereInput = {
+          accountId: account.id,
+          OR: [
+            {
+              sentStatus: true,
+              inboxStatus: false,
+              draftStatus: false,
+            },
+            {
+              inboxStatus: false,
+              draftStatus: false,
+              emails: { some: { emailLabel: "sent" } },
+            },
+          ],
+        };
+        const sentRows = await ctx.db.thread.findMany({
+          where: sentWhere,
+          select: { id: true },
+          orderBy: [
+            { lastMessageDate: "desc" },
+            { id: "desc" },
+          ],
+          take: limit + 1,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+        const ids = sentRows.map((r) => r.id);
+        if (ids.length === 0) {
+          threads = [];
+        } else {
+          const rows = await ctx.db.thread.findMany({
+            where: { id: { in: ids } },
+            include: {
+              emails: {
+                include: {
+                  from: true,
+                  to: true,
+                  cc: true,
+                  bcc: true,
+                  replyTo: true,
+                },
+                orderBy: { sentAt: "desc" },
+                take: 1,
+              },
+              threadLabels: { include: { label: true } },
             },
           });
           const idOrder = new Map(ids.map((id, i) => [id, i]));
@@ -1860,13 +2115,10 @@ export const accountRouter = createTRPCRouter({
               },
               take: 1,
             },
+            threadLabels: { include: { label: true } },
           },
         });
       }
-
-      console.log(
-        `[getThreads] Initial query returned ${threads.length} threads`,
-      );
 
       let nextCursor: typeof cursor | undefined = undefined;
       if (threads.length > limit) {
@@ -1879,13 +2131,6 @@ export const accountRouter = createTRPCRouter({
         totalThreadCount = await ctx.db.thread.count({
           where: { accountId: account.id },
         });
-        console.log(
-          `[getThreads] Tab: ${input.tab}, AccountId: ${account.id}, Threads found: ${threads.length}, Total threads: ${totalThreadCount}, Sync: ${syncResult.success ? "success" : "failed"}`,
-        );
-      } else {
-        console.log(
-          `[getThreads] Tab: ${input.tab}, AccountId: ${account.id}, Threads found: ${threads.length}, Sync: ${syncResult.success ? "success" : "failed"}`,
-        );
       }
 
       if (
@@ -1894,20 +2139,12 @@ export const accountRouter = createTRPCRouter({
         !cursor &&
         totalThreadCount > 0
       ) {
-        console.log(
-          `[getThreads] ⚠ CRITICAL: No threads with inboxStatus=true found, but ${totalThreadCount} total threads exist. Fixing ALL threads...`,
-        );
-
         try {
-          console.log(`[getThreads] Setting ALL threads to inboxStatus=true`);
-          const result = await withDbRetry(() =>
+          await withDbRetry(() =>
             ctx.db.thread.updateMany({
               where: { accountId: account.id },
               data: { inboxStatus: true },
             }),
-          );
-          console.log(
-            `[getThreads] Updated ${result.count} threads to have inboxStatus=true`,
           );
 
           const retryThreads = await withDbRetry(() =>
@@ -1932,12 +2169,9 @@ export const accountRouter = createTRPCRouter({
                   },
                   take: 1,
                 },
+                threadLabels: { include: { label: true } },
               },
             }),
-          );
-
-          console.log(
-            `[getThreads] ✓ Retry found ${retryThreads.length} threads after fix`,
           );
 
           if (retryThreads.length > 0) {
@@ -1951,9 +2185,6 @@ export const accountRouter = createTRPCRouter({
             };
           }
 
-          console.log(
-            `[getThreads] Step 3: Last resort - returning ALL threads without filter`,
-          );
           const allThreads = await withDbRetry(() =>
             ctx.db.thread.findMany({
               take: limit + 1,
@@ -1971,6 +2202,7 @@ export const accountRouter = createTRPCRouter({
                   orderBy: { sentAt: "desc" },
                   take: 1,
                 },
+                threadLabels: { include: { label: true } },
               },
             }),
           );
@@ -1985,9 +2217,6 @@ export const accountRouter = createTRPCRouter({
 
             const allThreadsNextCursor =
               allThreads.length > limit ? allThreads.pop()?.id : undefined;
-            console.log(
-              `[getThreads] Step 3: Returning ${allThreads.length} threads (last resort)`,
-            );
             return {
               threads: allThreads.slice(0, limit),
               nextCursor: allThreadsNextCursor,
@@ -1999,9 +2228,6 @@ export const accountRouter = createTRPCRouter({
           console.error(
             `[getThreads] ✗ Error fixing thread status flags:`,
             fixError,
-          );
-          console.log(
-            `[getThreads] Fix failed, trying emergency fallback - returning ALL threads`,
           );
           try {
             const emergencyThreads = await withDbRetry(() =>
@@ -2021,6 +2247,7 @@ export const accountRouter = createTRPCRouter({
                     orderBy: { sentAt: "desc" },
                     take: 1,
                   },
+                  threadLabels: { include: { label: true } },
                 },
               }),
             );
@@ -2037,9 +2264,6 @@ export const accountRouter = createTRPCRouter({
                 emergencyThreads.length > limit
                   ? emergencyThreads.pop()?.id
                   : undefined;
-              console.log(
-                `[getThreads] Emergency fallback returning ${emergencyThreads.length} threads`,
-              );
               return {
                 threads: emergencyThreads.slice(0, limit),
                 nextCursor: emergencyNextCursor,
@@ -2062,9 +2286,6 @@ export const accountRouter = createTRPCRouter({
         input.tab === "inbox" &&
         !cursor
       ) {
-        console.log(
-          `[getThreads] FINAL FALLBACK: Returning ALL ${totalThreadCount} threads without filter`,
-        );
         const allThreadsNoFilter = await withDbRetry(() =>
           ctx.db.thread.findMany({
             take: limit + 1,
@@ -2082,6 +2303,7 @@ export const accountRouter = createTRPCRouter({
                 orderBy: { sentAt: "desc" },
                 take: 1,
               },
+              threadLabels: { include: { label: true } },
             },
           }),
         );
@@ -2098,9 +2320,6 @@ export const accountRouter = createTRPCRouter({
             allThreadsNoFilter.length > limit
               ? allThreadsNoFilter.pop()?.id
               : undefined;
-          console.log(
-            `[getThreads] FINAL FALLBACK: Returning ${allThreadsNoFilter.length} threads`,
-          );
           return {
             threads: allThreadsNoFilter.slice(0, limit),
             nextCursor: finalNextCursor,
@@ -2118,6 +2337,94 @@ export const accountRouter = createTRPCRouter({
       };
     }),
 
+  getUnifiedThreads: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(15),
+        cursor: z.string().nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userAccounts = await withDbRetry(() =>
+        ctx.db.account.findMany({
+          where: { userId: ctx.auth.userId },
+          select: { id: true, emailAddress: true, name: true },
+        }),
+      );
+      const accountIds = userAccounts.map((a) => a.id);
+      if (accountIds.length === 0) {
+        return {
+          threads: [],
+          nextCursor: undefined as string | undefined,
+        };
+      }
+
+      const limit = Math.min(input.limit ?? 50, 100);
+      const whereClause: Prisma.ThreadWhereInput = {
+        accountId: { in: accountIds },
+        inboxStatus: true,
+        emails: {
+          none: {
+            sysLabels: { hasSome: ["trash"] },
+          },
+        },
+        AND: [
+          {
+            OR: [
+              { snoozedUntil: null },
+              { snoozedUntil: { lte: new Date() } },
+            ],
+          },
+        ],
+      };
+
+      const threads = await ctx.db.thread.findMany({
+        take: limit + 1,
+        where: whereClause,
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        orderBy: [
+          { lastMessageDate: "desc" },
+          { id: "desc" },
+        ],
+        include: {
+          account: {
+            select: { id: true, emailAddress: true, name: true },
+          },
+          emails: {
+            include: {
+              from: true,
+              to: true,
+              cc: true,
+              bcc: true,
+              replyTo: true,
+            },
+            orderBy: { sentAt: "desc" },
+            take: 1,
+          },
+          threadLabels: { include: { label: true } },
+        },
+      });
+
+      let nextCursor: string | undefined;
+      if (threads.length > limit) {
+        const last = threads.pop();
+        nextCursor = last?.id;
+      }
+
+      return {
+        threads: threads.map((t) => {
+          const { account, ...rest } = t;
+          return {
+            ...rest,
+            accountId: t.accountId,
+            accountEmail: account.emailAddress,
+            accountName: account.name,
+          };
+        }),
+        nextCursor,
+      };
+    }),
+
   getThreadById: protectedProcedure
     .input(
       z.object({
@@ -2125,9 +2432,27 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        const demoThread = getDemoThreadById(input.threadId);
+        if (!demoThread) throw new Error("Thread not found");
+        const delayMs = 500 + Math.floor(Math.random() * 300);
+        await new Promise((r) => setTimeout(r, delayMs));
+        return {
+          ...demoThread,
+          account: {
+            id: DEMO_ACCOUNT_ID,
+            emailAddress: DEMO_EMAIL,
+            name: DEMO_DISPLAY_NAME,
+          },
+        };
+      }
+
       const thread = await ctx.db.thread.findUnique({
         where: { id: input.threadId },
         include: {
+          account: {
+            select: { id: true, emailAddress: true, name: true },
+          },
           emails: {
             include: {
               from: true,
@@ -2141,10 +2466,23 @@ export const accountRouter = createTRPCRouter({
               sentAt: "asc",
             },
           },
+          threadLabels: {
+            include: { label: true },
+          },
         },
       });
 
       if (!thread) {
+        throw new Error("Thread not found");
+      }
+
+      const userAccountIds = await ctx.db.account
+        .findMany({
+          where: { userId: ctx.auth.userId },
+          select: { id: true },
+        })
+        .then((rows) => new Set(rows.map((r) => r.id)));
+      if (!userAccountIds.has(thread.accountId)) {
         throw new Error("Thread not found");
       }
 
@@ -2163,6 +2501,189 @@ export const accountRouter = createTRPCRouter({
       return thread;
     }),
 
+  getEventForThread: protectedProcedure
+    .input(z.object({ threadId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.threadId.startsWith("demo-")) {
+        return null;
+      }
+      const thread = await ctx.db.thread.findUnique({
+        where: { id: input.threadId },
+        include: {
+          emails: {
+            orderBy: { sentAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              subject: true,
+              body: true,
+              bodySnippet: true,
+            },
+          },
+        },
+      });
+      if (!thread) throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+
+      const userAccountIds = await ctx.db.account
+        .findMany({
+          where: { userId: ctx.auth.userId },
+          select: { id: true },
+        })
+        .then((rows) => new Set(rows.map((r) => r.id)));
+      if (!userAccountIds.has(thread.accountId)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
+
+      const email = thread.emails[0];
+      if (!email) return null;
+
+      const body = email.body ?? email.bodySnippet ?? "";
+      const { extractEventFromEmail } = await import("@/lib/event-extraction");
+      const event = await extractEventFromEmail(
+        { subject: email.subject, body },
+        { userId: ctx.auth.userId, accountId: thread.accountId },
+      );
+      if (!event) return null;
+
+      return {
+        ...event,
+        sourceEmailId: email.id,
+        sourceThreadId: thread.id,
+      };
+    }),
+
+  getUpcomingEventsFromEmails: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { events: getDemoUpcomingEvents() };
+      }
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      const now = new Date();
+      const DAYS = 14;
+      const limitThreads = 20;
+      const EXTRACTION_CONCURRENCY = 5;
+      const cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - DAYS);
+
+      const threads = await ctx.db.thread.findMany({
+        where: {
+          accountId: account.id,
+          lastMessageDate: { gte: cutoff },
+          emails: {
+            none: { sysLabels: { hasSome: ["trash"] } },
+          },
+        },
+        orderBy: { lastMessageDate: "desc" },
+        take: limitThreads,
+        include: {
+          emails: {
+            orderBy: { sentAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              subject: true,
+              body: true,
+              bodySnippet: true,
+              sentAt: true,
+            },
+          },
+        },
+      });
+
+      const { extractEventFromEmail } = await import("@/lib/event-extraction");
+      const limit = pLimit(EXTRACTION_CONCURRENCY);
+      const pairs: Array<{ threadId: string; email: { id: string; subject: string; body: string | null; bodySnippet: string | null } }> = [];
+      for (const thread of threads) {
+        const email = thread.emails[0];
+        if (!email) continue;
+        const body = email.body ?? email.bodySnippet ?? "";
+        if (!body && !email.subject) continue;
+        pairs.push({ threadId: thread.id, email: { id: email.id, subject: email.subject, body: email.body, bodySnippet: email.bodySnippet } });
+      }
+      const results = await Promise.all(
+        pairs.map(({ threadId, email }) =>
+          limit(async () => {
+            const event = await extractEventFromEmail(
+              { subject: email.subject, body: email.body ?? email.bodySnippet ?? "" },
+              { userId: ctx.auth.userId, accountId: account.id },
+            );
+            if (!event) return null;
+            return { ...event, sourceEmailId: email.id, sourceThreadId: threadId };
+          }),
+        ),
+      );
+      const events = results.filter((r): r is NonNullable<typeof r> => r !== null);
+      const upcoming = events.filter((e) => new Date(e.startAt).getTime() >= now.getTime());
+      const past = events.filter((e) => new Date(e.startAt).getTime() < now.getTime());
+      upcoming.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+      past.sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
+      const sorted = [...upcoming, ...past];
+      const seen = new Set<string>();
+      const deduped = sorted.filter((e) => {
+        const key = `${e.title.slice(0, 40)}|${new Date(e.startAt).getTime()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      type EventItem = { title: string; startAt: string; endAt?: string; sourceEmailId: string; sourceThreadId: string };
+      const saved = await ctx.db.savedCalendarEvent.findMany({
+        where: { accountId: account.id, userId: ctx.auth.userId },
+        orderBy: { startAt: "desc" },
+        take: 30,
+      });
+      const savedMapped: EventItem[] = saved.map((s: { title: string; startAt: Date; endAt: Date | null; threadId: string }) => ({
+        title: s.title,
+        startAt: s.startAt.toISOString(),
+        endAt: s.endAt?.toISOString(),
+        sourceEmailId: "",
+        sourceThreadId: s.threadId,
+      }));
+      const byThread = new Map<string, EventItem>();
+      savedMapped.forEach((e) => {
+        if (!byThread.has(e.sourceThreadId)) byThread.set(e.sourceThreadId, e);
+      });
+      deduped.forEach((e) => byThread.set(e.sourceThreadId, { ...e, sourceEmailId: e.sourceEmailId }));
+      const combined = Array.from(byThread.values());
+      combined.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+      return { events: combined.slice(0, 20) };
+    }),
+
+  saveEventToCalendarList: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        threadId: z.string().min(1),
+        title: z.string().min(1),
+        startAt: z.string(),
+        endAt: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { ok: true };
+      }
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const startAt = new Date(input.startAt);
+      const endAt = input.endAt ? new Date(input.endAt) : null;
+      if (Number.isNaN(startAt.getTime())) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid startAt" });
+      await ctx.db.savedCalendarEvent.create({
+        data: {
+          userId: ctx.auth.userId,
+          accountId: input.accountId,
+          threadId: input.threadId,
+          title: input.title,
+          startAt,
+          endAt,
+        },
+      });
+      return { ok: true };
+    }),
+
   getEmailBody: protectedProcedure
     .input(
       z.object({
@@ -2171,6 +2692,11 @@ export const accountRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        const demo = getDemoEmailBody(input.emailId);
+        if (!demo) return { body: null, cached: false };
+        return { body: demo.body ?? demo.bodySnippet, cached: true };
+      }
       try {
         const account = await authoriseAccountAccess(
           input.accountId,
@@ -2320,5 +2846,253 @@ export const accountRouter = createTRPCRouter({
       });
       if (!open?.openedAt) return null;
       return { openedAt: open.openedAt };
+    }),
+
+
+  createLabel: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        name: z.string().min(1).max(100),
+        color: z.string().max(20).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      return ctx.db.label.create({
+        data: {
+          accountId: input.accountId,
+          name: input.name.trim(),
+          color: input.color ?? undefined,
+        },
+      });
+    }),
+
+  getLabels: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        const withCounts = getDemoLabelsWithCounts();
+        return withCounts.map((l) => ({
+          id: l.id,
+          name: l.name,
+          color: l.color,
+          accountId: DEMO_ACCOUNT_ID,
+          createdAt: l.createdAt,
+        }));
+      }
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      return ctx.db.label.findMany({
+        where: { accountId: input.accountId },
+        orderBy: { name: "asc" },
+      });
+    }),
+
+  getLabelsWithCounts: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return getDemoLabelsWithCounts();
+      }
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const labels = await ctx.db.label.findMany({
+        where: { accountId: input.accountId },
+        orderBy: { name: "asc" },
+        include: {
+          _count: { select: { threadLabels: true } },
+        },
+      });
+      return labels.map((l) => ({
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        createdAt: l.createdAt,
+        threadCount: l._count.threadLabels,
+      }));
+    }),
+
+  updateLabel: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1).max(100).optional(),
+        color: z.string().max(20).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const label = await ctx.db.label.findUnique({
+        where: { id: input.id },
+        select: { accountId: true },
+      });
+      if (!label) throw new TRPCError({ code: "NOT_FOUND", message: "Label not found" });
+      await authoriseAccountAccess(label.accountId, ctx.auth.userId);
+      return ctx.db.label.update({
+        where: { id: input.id },
+        data: {
+          ...(input.name !== undefined && { name: input.name.trim() }),
+          ...(input.color !== undefined && { color: input.color }),
+        },
+      });
+    }),
+
+  deleteLabel: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const label = await ctx.db.label.findUnique({
+        where: { id: input.id },
+        select: { accountId: true },
+      });
+      if (!label) throw new TRPCError({ code: "NOT_FOUND", message: "Label not found" });
+      await authoriseAccountAccess(label.accountId, ctx.auth.userId);
+      return ctx.db.label.delete({ where: { id: input.id } });
+    }),
+
+  setThreadLabels: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        labelIds: z.array(z.string().min(1)),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const thread = await ctx.db.thread.findUnique({
+        where: { id: input.threadId },
+        select: { accountId: true },
+      });
+      if (!thread) throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      await authoriseAccountAccess(thread.accountId, ctx.auth.userId);
+      const labels = await ctx.db.label.findMany({
+        where: { id: { in: input.labelIds }, accountId: thread.accountId },
+        select: { id: true },
+      });
+      const validIds = new Set(labels.map((l) => l.id));
+      await ctx.db.threadLabel.deleteMany({ where: { threadId: input.threadId } });
+      if (validIds.size > 0) {
+        await ctx.db.threadLabel.createMany({
+          data: Array.from(validIds).map((labelId) => ({
+            threadId: input.threadId,
+            labelId,
+          })),
+        });
+      }
+      return { ok: true };
+    }),
+
+  addLabelToThread: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        labelId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const thread = await ctx.db.thread.findUnique({
+        where: { id: input.threadId },
+        select: { accountId: true },
+      });
+      if (!thread) throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      await authoriseAccountAccess(thread.accountId, ctx.auth.userId);
+      const label = await ctx.db.label.findFirst({
+        where: { id: input.labelId, accountId: thread.accountId },
+      });
+      if (!label) throw new TRPCError({ code: "NOT_FOUND", message: "Label not found" });
+      await ctx.db.threadLabel.upsert({
+        where: {
+          threadId_labelId: { threadId: input.threadId, labelId: input.labelId },
+        },
+        create: { threadId: input.threadId, labelId: input.labelId },
+        update: {},
+      });
+      return { ok: true };
+    }),
+
+  removeLabelFromThread: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        labelId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const thread = await ctx.db.thread.findUnique({
+        where: { id: input.threadId },
+        select: { accountId: true },
+      });
+      if (!thread) throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      await authoriseAccountAccess(thread.accountId, ctx.auth.userId);
+      await ctx.db.threadLabel.deleteMany({
+        where: {
+          threadId: input.threadId,
+          labelId: input.labelId,
+        },
+      });
+      return { ok: true };
+    }),
+
+  createFilterRule: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        conditionType: z.literal("TAG_MATCH"),
+        conditionValue: z.string().min(1),
+        labelId: z.string().min(1),
+        name: z.string().max(100).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const label = await ctx.db.label.findFirst({
+        where: { id: input.labelId, accountId: input.accountId },
+      });
+      if (!label) throw new TRPCError({ code: "NOT_FOUND", message: "Label not found" });
+      return ctx.db.filterRule.create({
+        data: {
+          accountId: input.accountId,
+          conditionType: input.conditionType,
+          conditionValue: input.conditionValue.trim().toLowerCase(),
+          labelId: input.labelId,
+          name: input.name?.trim() ?? undefined,
+        },
+      });
+    }),
+
+  getFilterRules: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      return ctx.db.filterRule.findMany({
+        where: { accountId: input.accountId },
+        include: { label: true },
+        orderBy: { createdAt: "desc" },
+      });
+    }),
+
+  deleteFilterRule: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const rule = await ctx.db.filterRule.findUnique({
+        where: { id: input.id },
+        select: { accountId: true },
+      });
+      if (!rule) throw new TRPCError({ code: "NOT_FOUND", message: "Filter rule not found" });
+      await authoriseAccountAccess(rule.accountId, ctx.auth.userId);
+      return ctx.db.filterRule.delete({ where: { id: input.id } });
+    }),
+
+  getDistinctEmailTags: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const rows = await ctx.db.email.findMany({
+        where: { thread: { accountId: input.accountId } },
+        select: { keywords: true },
+      });
+      const set = new Set<string>();
+      for (const r of rows) {
+        for (const k of r.keywords ?? []) {
+          if (k && typeof k === "string") set.add(String(k).toLowerCase().trim());
+        }
+      }
+      return Array.from(set).sort();
     }),
 });

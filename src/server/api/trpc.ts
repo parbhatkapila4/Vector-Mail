@@ -6,16 +6,41 @@ import { getRequestId } from "@/lib/correlation";
 import { serverLog } from "@/lib/logging/server-logger";
 import { db } from "@/server/db";
 import { auth, getAuth } from "@clerk/nextjs/server";
+import type { NextRequest } from "next/server";
+import { getDemoCookie } from "@/lib/demo/is-demo-mode";
+import { DEMO_USER_ID } from "@/lib/demo/constants";
+
+const SESSION_COOKIE = "vectormail_session_user";
+
+function getSessionCookieUserId(req: Request | undefined): string | null {
+  if (!req) return null;
+  const nextReq = req as NextRequest;
+  const cookie = nextReq.cookies?.get?.(SESSION_COOKIE)?.value;
+  return cookie?.trim() ?? null;
+}
 
 export const createTRPCContext = async (opts: {
   headers: Headers;
-  req?: Parameters<typeof getAuth>[0];
+  req?: Request;
 }) => {
-  const user = opts.req ? getAuth(opts.req) : await auth();
+  const user = opts.req
+    ? await getAuth(opts.req as Parameters<typeof getAuth>[0])
+    : await auth();
+  const cookieUserId = getSessionCookieUserId(opts.req);
+  const demoCookie = getDemoCookie(opts.req);
+  const isDemo = demoCookie === "1" || cookieUserId === DEMO_USER_ID;
+  const effectiveAuth =
+    isDemo
+      ? { ...user, userId: DEMO_USER_ID }
+      : user.userId
+        ? user
+        : cookieUserId
+          ? { ...user, userId: cookieUserId }
+          : user;
   const requestId = getRequestId();
   return {
     db,
-    auth: user,
+    auth: effectiveAuth,
     requestId,
     log: serverLog,
     headers: opts.headers,

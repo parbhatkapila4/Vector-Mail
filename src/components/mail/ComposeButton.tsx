@@ -14,10 +14,8 @@ import EmailEditor from "./editor/EmailEditor";
 import { api } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { toast } from "sonner";
-import { openGmailCompose } from "@/lib/gmail-compose";
-import type { OpenGmailComposeOptions } from "@/lib/gmail-compose";
+import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { usePendingSend } from "@/contexts/PendingSendContext";
-import { GmailRedirectDialog } from "@/components/mail/GmailRedirectDialog";
 
 type OptionType = {
   label: string | React.ReactNode;
@@ -26,8 +24,6 @@ type OptionType = {
 
 const ComposeButton = () => {
   const [open, setOpen] = React.useState(false);
-  const [gmailRedirectOpen, setGmailRedirectOpen] = React.useState(false);
-  const gmailRedirectPayloadRef = React.useRef<OpenGmailComposeOptions | null>(null);
   const [accountId] = useLocalStorage("accountId", "");
   const [toValues, setToValues] = React.useState<OptionType[]>([]);
   const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
@@ -76,49 +72,33 @@ const ComposeButton = () => {
 
   const handleSend = async (value: string) => {
     if (!account) return;
-    const toStr = toValues.map((t) => t.value).join(", ");
-    const ccStr = ccValues.map((c) => c.value).join(", ");
-    gmailRedirectPayloadRef.current = {
-      to: toStr,
-      cc: ccStr,
+    const bodyWithSignature = appendVectorMailSignature(value, true);
+    const payload = {
+      accountId: account.id,
+      threadId: undefined as string | undefined,
+      body: bodyWithSignature,
       subject,
-      body: value,
+      from: {
+        name: account.name ?? "Me",
+        address: account.emailAddress ?? "me@example.com",
+      },
+      to: toValues.map((t) => ({ name: t.value, address: t.value })),
+      cc:
+        ccValues.length > 0
+          ? ccValues.map((c) => ({ name: c.value, address: c.value }))
+          : undefined,
+      trackOpens: false,
     };
-    setGmailRedirectOpen(true);
-
-    // Backend send logic kept for re-enable; not executed while gmail.send is disabled
-    // const payload = {
-    //   accountId,
-    //   threadId: undefined as string | undefined,
-    //   body: value,
-    //   subject,
-    //   from: { name: account.name ?? "Me", address: account.emailAddress ?? "me@example.com" },
-    //   to: toValues.map((t) => ({ name: t.value, address: t.value })),
-    //   cc: ccValues.map((c) => ({ name: c.value, address: c.value })),
-    //   replyTo: { name: account.name ?? "Me", address: account.emailAddress ?? "me@example.com" },
-    //   inReplyTo: undefined as string | undefined,
-    // };
-    // scheduleSend(async () => {
-    //   try {
-    //     await sendEmail.mutateAsync(payload);
-    //     toast.success("Email sent");
-    //   } catch (error) {
-    //     const message = error instanceof Error ? error.message : "Failed to send";
-    //     toast.error(message);
-    //   }
-    // });
-  };
-
-  const handleGmailRedirectOpen = () => {
-    const payload = gmailRedirectPayloadRef.current;
-    if (payload) {
-      openGmailCompose(payload);
-      toast.info(
-        "Sending via Gmail compose (sending inside VectorMail will be enabled soon)",
-      );
-    }
-    setOpen(false);
-    setGmailRedirectOpen(false);
+    scheduleSend(async () => {
+      try {
+        await sendEmail.mutateAsync(payload);
+        toast.success("Email sent");
+        setOpen(false);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to send";
+        toast.error(message);
+      }
+    });
   };
 
   return (
@@ -152,11 +132,6 @@ const ComposeButton = () => {
           />
         </div>
       </DrawerContent>
-      <GmailRedirectDialog
-        open={gmailRedirectOpen}
-        onOpenChange={setGmailRedirectOpen}
-        onOpenGmail={handleGmailRedirectOpen}
-      />
     </Drawer>
   );
 };

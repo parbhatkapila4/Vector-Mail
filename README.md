@@ -129,10 +129,72 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
    ```
 
 4. **Run**
+
    ```bash
    npm run dev
    ```
+
    App runs at [http://localhost:3000](http://localhost:3000). Sign in with Clerk, connect Gmail via Aurinko, then open Inbox (first sync runs automatically when thread list is empty).
+
+5. **Local login and session (HTTP)**  
+   Clerk sets session cookies with the `Secure` flag, so browsers do not send them over `http://localhost`. If sign-in succeeds but you are immediately redirected back to the landing page (not logged in), use one of these:
+   - **HTTPS locally:** `npm run dev:https` and open **https://localhost:3000** (add `https://localhost:3000` to redirect URIs in Google, Aurinko, and Clerk).
+   - **Tunnel (no config change to existing URIs):** Run `npx ngrok http 3000`, then add the generated **https** URL (e.g. `https://abc123.ngrok.io`) as a redirect/callback URL in Google Cloud Console, Aurinko, and Clerk. Use that URL in the browser to sign in; session will persist.
+
+---
+
+## Demo mode
+
+We built the demo so you can experience VectorMail before connecting an account: explore the inbox, AI search, compose, labels, and scheduling with realistic sample data. When you’re ready to use your own Gmail, request access from the banner in the app; we’ll get back to you once your account is enabled.
+
+When a user clicks **Try Demo** on the landing page they are redirected to `/mail?demo=1` with demo cookies set. Every section of the mail app is wired with sample data so the flow is clear and nothing crashes.
+
+**Entry**
+
+- **Try Demo** (landing): `GET /api/demo/enter` sets `vectormail_demo=1` and session cookie, redirects to `/mail?demo=1`.
+- **Middleware**: For `/mail` and `/buddy`, if `demo=1` or cookie is set, the request is allowed without Clerk sign-in and demo cookies are (re)set.
+- **tRPC context**: If demo cookie or session user is demo, `ctx.auth.userId` is set to `DEMO_USER_ID` so all account procedures can return demo data.
+
+**Mail app sections (all have demo data)**
+
+| Section                   | Demo data source                                                                                                                 | Notes                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Header / nav**          | `getAccounts` → demo account; `getNumThreads` (inbox 25, sent 5, trash 3, label counts); `getScheduledSends` → 3 scheduled items | Counts and Schedule tab work in demo.                                              |
+| **Inbox**                 | `getThreads(tab: "inbox")` → `getDemoThreads()` from `seed-demo-data` (25 threads)                                               | Full list with subjects, snippets, summaries.                                      |
+| **Sent**                  | `getThreads(tab: "sent")` → demo sent threads (5)                                                                                | Same seed module.                                                                  |
+| **Trash**                 | `getThreads(tab: "trash")` → demo trash threads (3)                                                                              | Same seed module.                                                                  |
+| **Schedule**              | `getScheduledSends` → `getDemoScheduledSends()` (3 items)                                                                        | Shown in nav count; schedule UI uses same data.                                    |
+| **Labels**                | `getLabels` / `getLabelsWithCounts` → `getDemoLabelsWithCounts()` (Important, Promotions, Updates with counts)                   | Labels list and label tab work in demo.                                            |
+| **Label tab**             | `getThreads(tab: "label", labelId)` → demo inbox threads filtered by selected label                                              | `getDemoThreads` supports `labelId`; `getNumThreads` returns count for that label. |
+| **Thread list**           | Same `getThreads` as above; click opens thread                                                                                   | Pagination and cursor work.                                                        |
+| **Thread detail**         | `getThreadById(threadId)` → `getDemoThreadById()`; `getEmailBody` → `getDemoEmailBody()`                                         | Single thread view and body fetch use demo seed.                                   |
+| **Nudges block**          | `getNudges` → `getDemoNudges()` (5 items from demo threads)                                                                      | Reminders / unreplied in sidebar.                                                  |
+| **Upcoming from email**   | `getUpcomingEventsFromEmails` → `getDemoUpcomingEvents()` (5 events)                                                             | Sidebar “upcoming” block.                                                          |
+| **AI Search panel**       | Demo conversation pre-filled; sending in demo shows toast + canned reply                                                         | AskAi uses `showDemoUI` and `DEMO_CHAT_MESSAGES`; no real API calls.               |
+| **Compose**               | On open in demo, To/Subject/Body pre-filled with `DEMO_COMPOSE`                                                                  | Send disabled in demo (toast).                                                     |
+| **Reply**                 | Disabled in demo (`ReplyBox` uses `isDemo`); no send                                                                             | Prevents errors.                                                                   |
+| **Bulk delete / actions** | Disabled in demo (toast “request access to connect Gmail”)                                                                       | ThreadList and ReplyBox guard mutations.                                           |
+
+**Demo account and IDs**
+
+- **User**: `DEMO_USER_ID` (from session cookie in demo).
+- **Account**: `DEMO_ACCOUNT_ID`; `getAccounts` and `getMyAccount` return it for demo user so the app always has a valid account in demo.
+- **Data**: All demo data lives in `src/lib/demo/seed-demo-data.ts` (threads, labels, scheduled sends, nudges, upcoming events). No DB writes for demo.
+
+**What does not run in demo**
+
+- Real Gmail sync, send, schedule, or any mutation that would hit the DB or external APIs for the demo account.
+- AI search/chat and compose send: replaced by demo UI and toasts so the flow is clear and nothing crashes.
+
+**Quick check**
+
+1. Open `/` and click **Try Demo**.
+2. You should land on `/mail` with the demo banner (you’re exploring with sample data; “Request access” to connect your Gmail; we’ll reply once your account is enabled).
+3. Inbox (25), Sent (5), Schedule (3), Trash (3) show counts; opening each tab shows the corresponding demo threads.
+4. Labels list shows Important, Promotions, Updates; selecting a label shows filtered demo threads and count.
+5. Opening a thread shows full demo content; AI Search shows the pre-filled demo chat; Compose opens with demo To/Subject/Body and Send disabled.
+
+All of the above use only demo data and safe guards so the app does not crash in demo mode.
 
 ---
 
