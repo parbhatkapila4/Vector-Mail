@@ -183,6 +183,7 @@ export interface RestSendPayload {
     content: string;
     contentType: string;
   }>;
+  from?: { address: string; name: string };
 }
 
 export interface AccountForSend {
@@ -196,8 +197,8 @@ export async function sendEmailRest(
   account: AccountForSend,
   payload: RestSendPayload,
 ): Promise<{ id?: string }> {
-  const fromEmail = account.emailAddress;
-  const fromName = account.name || account.emailAddress;
+  const fromEmail = payload.from?.address ?? account.emailAddress;
+  const fromName = payload.from?.name ?? account.name ?? account.emailAddress;
   const formattedBody = formatEmailBody(payload.body);
   let emailBodyWithWatermark = formattedBody + WATERMARK;
 

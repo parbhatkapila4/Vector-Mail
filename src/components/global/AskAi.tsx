@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
-import { Send, Bot, Loader2, MessageCircle, Plus } from "lucide-react";
+import { Send, Bot, Loader2, MessageCircle } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ interface ChatMessage {
 
 interface EmailSearchProps {
   isCollapsed: boolean;
+  resetTrigger?: number;
 }
 
 const animationConfig: Transition = {
@@ -84,6 +85,7 @@ In the full version, I’ll search your connected inbox and surface the exact th
 
 export default function EmailSearchAssistant({
   isCollapsed,
+  resetTrigger = 0,
 }: EmailSearchProps) {
   const isDemo = useDemoMode();
   const [accountId] = useLocalStorage("accountId", "");
@@ -92,6 +94,13 @@ export default function EmailSearchAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const demoSeededRef = useRef(false);
+
+  useEffect(() => {
+    if (resetTrigger === 0) return;
+    setMessages([]);
+    setInput("");
+    demoSeededRef.current = false;
+  }, [resetTrigger]);
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery();
 
@@ -298,6 +307,9 @@ export default function EmailSearchAssistant({
             userFriendlyMessage =
               "Network error. Please check your internet connection and try again.";
             toast.error("Network error. Please check your connection.");
+          } else if (error.message && error.message.length > 0 && error.message.length < 300) {
+            userFriendlyMessage = error.message;
+            toast.error(error.message);
           } else {
             toast.error(`Failed to send message: ${error.message}`);
           }
@@ -363,7 +375,7 @@ export default function EmailSearchAssistant({
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
             <span className="text-sm text-zinc-400">Loading...</span>
           </div>
         </motion.div>
@@ -381,7 +393,7 @@ export default function EmailSearchAssistant({
           transition={{ duration: 0.3 }}
         >
           <div className="flex items-center gap-3 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -408,30 +420,6 @@ export default function EmailSearchAssistant({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
-          <span className="text-xs font-medium text-zinc-400">
-            AI Assistant
-          </span>
-          {showDemoUI && (
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-              Demo
-            </span>
-          )}
-        </div>
-        <button
-          onClick={() => {
-            setMessages([]);
-            setInput("");
-          }}
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.04] transition-all hover:bg-white/[0.08]"
-          title="New chat"
-        >
-          <Plus className="h-4 w-4 text-zinc-400" />
-        </button>
-      </div>
-
       <div className="flex flex-1 flex-col overflow-hidden">
         {messages.length > 0 ? (
           <div
@@ -444,7 +432,7 @@ export default function EmailSearchAssistant({
                   key={message.id}
                   layout="position"
                   className={cn("z-10 mb-3 break-words rounded-xl", {
-                    "ml-auto max-w-[85%] bg-yellow-500/10 ring-1 ring-yellow-500/20":
+                    "ml-auto max-w-[85%] bg-amber-400 px-4 py-2.5 rounded-2xl rounded-br-sm shadow-lg":
                       message.role === "user",
                     "mr-auto max-w-[90%] bg-white/[0.03] ring-1 ring-white/[0.06]":
                       message.role === "assistant",
@@ -464,7 +452,7 @@ export default function EmailSearchAssistant({
                         </div>
                       </div>
                     ) : (
-                      <span className="text-white">{message.content}</span>
+                      <span className="text-black">{message.content}</span>
                     )}
                   </div>
                 </motion.div>
@@ -507,7 +495,7 @@ export default function EmailSearchAssistant({
                   <button
                     key={label}
                     onClick={() => handleQuerySuggestion(query)}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-xs font-medium text-zinc-300 transition-all hover:border-yellow-500/20 hover:bg-yellow-500/5 hover:text-white"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-xs font-medium text-zinc-300 transition-all hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-white"
                   >
                     <span>{icon}</span>
                     <span>{label}</span>
@@ -519,9 +507,9 @@ export default function EmailSearchAssistant({
                 <button
                   onClick={handleProcessEmails}
                   disabled={processEmailsMutation.isPending || !validAccountId}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-medium text-black transition-all hover:bg-amber-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Bot className="h-4 w-4" />
+                  <Bot className="h-4 w-4 text-black" />
                   {processEmailsMutation.isPending
                     ? "Processing..."
                     : "Process Emails for AI"}
@@ -556,7 +544,7 @@ export default function EmailSearchAssistant({
               type="text"
               onChange={handleInputChange}
               value={input}
-              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-yellow-500/30 focus:ring-1 focus:ring-yellow-500/20 disabled:opacity-50"
+              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-amber-400/40 focus:ring-1 focus:ring-amber-400/30 disabled:opacity-50"
               placeholder={
                 showDemoUI
                   ? "Try a question to see how it works. Request access to search your real inbox."
@@ -569,13 +557,13 @@ export default function EmailSearchAssistant({
           </div>
           <button
             type="submit"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 transition-all hover:shadow-lg hover:shadow-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-black transition-all hover:bg-amber-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading || !input.trim() || (!hasValidAccount && !showDemoUI)}
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4 text-white" />
+              <Send className="h-4 w-4" />
             )}
           </button>
         </form>

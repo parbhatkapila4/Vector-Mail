@@ -47,7 +47,18 @@ const ReplyBox = ({
     { accountId: accountId || "placeholder" },
     { enabled: !!accountId && accountId.length > 0 },
   );
+  const { data: sendingIdentity } = api.account.getSendingIdentity.useQuery(
+    { accountId: accountId || "placeholder" },
+    { enabled: !!accountId && accountId.length > 0 },
+  );
   const accountToUse = effectiveAccount ?? account;
+  const effectiveFrom = sendingIdentity
+    ? sendingIdentity.customFromAddress
+      ? { name: sendingIdentity.customFromName ?? sendingIdentity.providerFromName, address: sendingIdentity.customFromAddress }
+      : { name: sendingIdentity.providerFromName, address: sendingIdentity.providerFromAddress }
+    : accountToUse
+      ? { name: accountToUse.name ?? "Me", address: accountToUse.emailAddress ?? "me@example.com" }
+      : null;
 
   const thread = threads?.find((t) => t.id === threadId);
   const { data: foundThread } = api.account.getThreadById.useQuery(
@@ -160,7 +171,7 @@ const ReplyBox = ({
       toast.info("You're exploring with sample data. Request access to connect your Gmail and send replies.");
       return;
     }
-    if (!lastEmail || !accountToUse) return;
+    if (!lastEmail || !effectiveFrom) return;
 
     const recipients = [
       {
@@ -172,10 +183,7 @@ const ReplyBox = ({
     try {
       await sendEmail.mutateAsync({
         accountId,
-        from: {
-          name: accountToUse.name ?? "Me",
-          address: accountToUse.emailAddress ?? "me@example.com",
-        },
+        from: effectiveFrom,
         to: recipients,
         subject,
         body: bodyWithSignature,
@@ -197,7 +205,7 @@ const ReplyBox = ({
   };
 
   const handleScheduleSendConfirm = () => {
-    if (!lastEmail || !accountToUse) return;
+    if (!lastEmail || !effectiveFrom) return;
     if (!scheduleDate) {
       toast.error("Please pick a date");
       return;
@@ -225,19 +233,13 @@ const ReplyBox = ({
     const payload = {
       type: "trpc" as const,
       accountId,
-      from: {
-        name: accountToUse.name ?? "Me",
-        address: accountToUse.emailAddress ?? "me@example.com",
-      },
+      from: effectiveFrom,
       to: toList,
       subject,
       body: appendVectorMailSignature(pendingScheduleBody, true),
       threadId: threadId ?? undefined,
       inReplyTo: getInReplyTo(),
-      replyTo: {
-        name: accountToUse.name ?? "Me",
-        address: accountToUse.emailAddress ?? "me@example.com",
-      },
+      replyTo: effectiveFrom,
       cc: ccList,
       trackOpens,
     };

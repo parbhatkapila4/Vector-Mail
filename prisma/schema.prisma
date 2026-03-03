@@ -47,24 +47,28 @@ model StripeSubscription {
 }
 
 model Account {
-  id                String          @id @default(cuid())
-  userId            String
-  binaryIndex       Json?
-  token             String          @unique
-  refreshToken      String?
-  provider          String
-  emailAddress      String
-  name              String
-  nextDeltaToken    String?
-  lastInboxSyncAt   DateTime?
-  needsReconnection Boolean         @default(false)
-  tokenExpiresAt    DateTime?
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailAddresses    EmailAddress[]
-  threads           Thread[]
-  scheduledSends    ScheduledSend[]
-  labels            Label[]
-  filterRules       FilterRule[]
+  id                      String          @id @default(cuid())
+  userId                  String
+  binaryIndex             Json?
+  token                   String          @unique
+  refreshToken            String?
+  provider                String
+  emailAddress            String
+  name                    String
+  nextDeltaToken          String?
+  lastInboxSyncAt         DateTime?
+  needsReconnection       Boolean         @default(false)
+  tokenExpiresAt          DateTime?
+  customFromName          String?
+  customFromAddress       String?
+  customDomain            String?
+  deliverabilityChecklist Json?
+  user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailAddresses          EmailAddress[]
+  threads                 Thread[]
+  scheduledSends          ScheduledSend[]
+  labels                  Label[]
+  filterRules             FilterRule[]
 }
 
 model ScheduledSend {

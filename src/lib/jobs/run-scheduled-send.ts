@@ -76,15 +76,26 @@ export async function runScheduledSend(
     return { ok: false, error: "invalid_payload" };
   }
 
-  const account = await db.account.findFirst({
+  type AccountForSend = {
+    id: string;
+    token: string;
+    emailAddress: string;
+    name: string;
+    customFromName?: string | null;
+    customFromAddress?: string | null;
+  };
+
+  const account = (await db.account.findFirst({
     where: { id: row.accountId },
     select: {
       id: true,
       token: true,
       emailAddress: true,
       name: true,
-    },
-  });
+      customFromName: true,
+      customFromAddress: true,
+    } as Record<string, boolean>,
+  })) as AccountForSend | null;
 
   if (!account) {
     serverLog.error(
@@ -154,6 +165,13 @@ export async function runScheduledSend(
         }
       }
     } else {
+      const fromOverride =
+        account.customFromAddress != null
+          ? {
+            address: account.customFromAddress,
+            name: (account.customFromName ?? account.name ?? account.emailAddress) || account.customFromAddress,
+          }
+          : undefined;
       await sendEmailRest(account, {
         accountId: payload.accountId,
         to: payload.to,
@@ -163,6 +181,7 @@ export async function runScheduledSend(
         bcc: payload.bcc,
         trackOpens: payload.trackOpens,
         attachments: payload.attachments,
+        from: fromOverride,
       });
     }
 

@@ -367,15 +367,14 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       },
     });
 
-    await db.email.upsert({
-      where: { id: email.id },
+    const upsertedEmail = await db.email.upsert({
+      where: { internetMessageId: email.internetMessageId },
       update: {
         threadId: thread.id,
         createdTime: safeDate(email.createdTime),
         lastModifiedTime: new Date(),
         sentAt: safeDate(email.sentAt),
         receivedAt: safeDate(email.receivedAt),
-        internetMessageId: email.internetMessageId,
         subject: email.subject,
         sysLabels: email.sysLabels,
         keywords: email.keywords,
@@ -404,13 +403,13 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       },
       create: {
         id: email.id,
+        internetMessageId: email.internetMessageId,
         emailLabel: emailLabelType,
         threadId: thread.id,
         createdTime: safeDate(email.createdTime),
         lastModifiedTime: new Date(),
         sentAt: safeDate(email.sentAt),
         receivedAt: safeDate(email.receivedAt),
-        internetMessageId: email.internetMessageId,
         subject: email.subject,
         sysLabels: email.sysLabels,
         internetHeaders:
@@ -442,7 +441,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       await db.$executeRaw`
             UPDATE "Email" 
             SET embedding = ${embeddingVector}::vector
-            WHERE id = ${email.id}
+            WHERE id = ${upsertedEmail.id}
         `;
     }
 
@@ -521,7 +520,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       content: undefined,
     }));
     for (const attachment of metadataOnlyAttachments) {
-      await upsertAttachment(email.id, attachment);
+      await upsertAttachment(upsertedEmail.id, attachment);
     }
   } catch (err) {
     throw err;

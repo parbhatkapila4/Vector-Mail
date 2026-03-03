@@ -9,15 +9,11 @@ import {
   Copy,
   Check,
   Mail,
-  ArrowLeft,
-  X,
-  MessageCircle,
   MessageSquare,
   FileText,
   Users,
   Calendar,
-  Send,
-  Clock,
+  ArrowLeft,
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
@@ -25,7 +21,11 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth, UserButton } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import RuixenMoonChat from "@/components/ui/ruixen-moon-chat";
+import { BuddyChatInput } from "./BuddyChatInput";
+
+const BUDDY_BG_IMAGE =
+  "https://pub-940ccf6255b54fa799a9b01050e6c227.r2.dev/ruixen_moon_2.png";
 
 interface ChatMessage {
   id: string;
@@ -131,7 +131,6 @@ function BuddyPageContent() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) router.push("/sign-in");
@@ -262,17 +261,12 @@ function BuddyPageContent() {
     [messages, setMessages],
   );
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (input.trim() && !isLoading) {
-        sendMessage(input);
-        setInput("");
-        if (textareaRef.current) textareaRef.current.style.height = "auto";
-      }
-    },
-    [input, sendMessage, isLoading],
-  );
+  const handleSubmit = useCallback(() => {
+    if (input.trim() && !isLoading) {
+      sendMessage(input);
+      setInput("");
+    }
+  }, [input, sendMessage, isLoading]);
 
   const handleNewChat = useCallback(() => {
     if (messages.length > 0) {
@@ -343,477 +337,278 @@ function BuddyPageContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNewChat]);
 
-  if (!isLoaded) {
+  if (!isLoaded || !isSignedIn) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0C0C0D]">
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
-          <span className="text-sm text-zinc-500">Loading...</span>
+          <span className="text-sm text-zinc-500">
+            {!isLoaded ? "Loading..." : "Redirecting..."}
+          </span>
         </div>
       </div>
     );
   }
 
-  if (!isSignedIn) return null;
-
   return (
     <div className="flex h-screen bg-[#0C0C0D]">
-      <aside className="hidden w-[260px] flex-col border-r border-zinc-800/60 lg:flex">
-        <div className="flex h-14 items-center gap-3 border-b border-zinc-800/60 px-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-yellow-400 to-yellow-500">
-              <video
-                src="/Vectormail-logo.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="h-full w-full scale-[1.8] object-cover"
-              />
-            </div>
-            <span className="text-sm font-semibold text-zinc-100">
-              VectorMail
-            </span>
-          </Link>
-          <span className="ml-auto rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-400">
-            AI
-          </span>
-        </div>
-
-        <div className="p-2">
-          <button
-            onClick={handleNewChat}
-            className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2.5 text-sm text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
-          >
-            <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              <span>New chat</span>
-            </div>
-            <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
-              {typeof window !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "Command + N" : "Alt + N"}
-            </kbd>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {savedChats.length > 0 ? (
-            <div className="space-y-0.5 py-2">
-              <div className="mb-2 flex items-center justify-between px-2">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">
-                  Recent
-                </span>
-                <Clock className="h-3 w-3 text-zinc-700" />
-              </div>
-              {savedChats.map((chat) => (
-                <div
-                  key={chat.id}
-                  onClick={() => loadChat(chat)}
-                  className={cn(
-                    "group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition-colors",
-                    activeChat === chat.id
-                      ? "bg-zinc-800/70 text-zinc-100"
-                      : "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200",
-                  )}
-                >
-                  <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-50" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px]">{chat.heading}</p>
-                    <p className="truncate text-[11px] text-zinc-600">
-                      {formatTime(chat.timestamp)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => deleteChat(chat.id, e)}
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <X className="h-3.5 w-3.5 text-zinc-600 hover:text-zinc-400" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 rounded-xl bg-zinc-800/50 p-3">
-                <MessageSquare className="h-5 w-5 text-zinc-600" />
-              </div>
-              <p className="text-[13px] text-zinc-500">No conversations yet</p>
-              <p className="text-[12px] text-zinc-600">
-                Start a new chat above
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-zinc-800/60 px-4 pb-4 pt-[22px]">
+      <main className="relative flex flex-1 flex-col min-h-0">
+        <header className="relative z-10 flex min-h-14 items-center justify-between border-b border-white/5 bg-transparent backdrop-blur-sm px-4 pt-5 pb-2">
           <button
             onClick={() => router.push("/mail")}
-            className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-300"
+            className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Inbox
+            Back to inbox
           </button>
-          <div className="flex items-center gap-2 px-2">
-            <UserButton afterSignOutUrl="/" />
-            <span className="text-[13px] text-zinc-600">Account</span>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex flex-1 flex-col">
-        <header className="flex h-12 items-center justify-between border-b border-zinc-800/60 px-4 lg:hidden">
-          <Link
-            href="/"
-            className="flex h-6 w-6 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-yellow-400 to-yellow-500"
-          >
-            <video
-              src="/Vectormail-logo.mp4"
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-full w-full scale-[1.8] object-cover"
-            />
-          </Link>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleNewChat}
               className="rounded-md p-2 text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
+              aria-label="New chat"
             >
               <Plus className="h-5 w-5" />
             </button>
-            <button
-              onClick={() => router.push("/mail")}
-              className="rounded-md p-2 text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
-            >
-              <Mail className="h-5 w-5" />
-            </button>
+            <UserButton afterSignOutUrl="/" />
           </div>
         </header>
 
-        <div
-          ref={messageContainerRef}
-          className="flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {messages.length > 0 ? (
-            <div className="mx-auto max-w-2xl px-4 py-6">
-              <AnimatePresence mode="popLayout">
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="mb-6"
-                  >
-                    {message.role === "user" ? (
-                      <div className="flex justify-end">
-                        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-yellow-500 px-4 py-2.5">
-                          <p className="text-[14px] leading-relaxed text-black">
-                            {message.content}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800">
-                          <Bot className="h-4 w-4 text-zinc-400" />
-                        </div>
-                        <div className="min-w-0 flex-1 pt-1">
-                          {message.emailData ? (
-                            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
-                              <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-yellow-500/10">
-                                    <Mail className="h-3 w-3 text-yellow-400" />
-                                  </div>
-                                  <span className="text-[12px] font-medium text-zinc-400">
-                                    Email Draft
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() =>
-                                    copyToClipboard(
-                                      `Subject: ${message.emailData!.subject}\n\n${message.emailData!.body}`,
-                                      message.id,
-                                    )
-                                  }
-                                  className="flex items-center gap-1.5 rounded-md bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
-                                >
-                                  {copiedId === message.id ? (
-                                    <>
-                                      <Check className="h-3 w-3 text-emerald-400" />
-                                      <span className="text-emerald-400">
-                                        Copied
+            <>
+
+              <div
+                className="absolute inset-0 z-0 bg-cover bg-center scale-110 blur-lg grayscale contrast-[1.05] brightness-90"
+                style={{ backgroundImage: `url('${BUDDY_BG_IMAGE}')` }}
+                aria-hidden
+              />
+              <div
+                ref={messageContainerRef}
+                className="relative z-10 flex-1 min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="mx-auto max-w-4xl w-full px-4 py-6 pb-4">
+                  <AnimatePresence mode="popLayout">
+                    {messages.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="mb-6"
+                      >
+                        {message.role === "user" ? (
+                          <div className="flex justify-end">
+                            <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-amber-400 px-4 py-3 shadow-lg">
+                              <p className="text-[14px] leading-relaxed text-black">
+                                {message.content}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800">
+                              <Bot className="h-4 w-4 text-zinc-400" />
+                            </div>
+                            <div className="min-w-0 flex-1 pt-1">
+                              {message.emailData ? (
+                                <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
+                                  <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-yellow-500/10">
+                                        <Mail className="h-3 w-3 text-yellow-400" />
+                                      </div>
+                                      <span className="text-[12px] font-medium text-zinc-400">
+                                        Email Draft
                                       </span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="h-3 w-3" />
-                                      <span>Copy</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
-                              <div className="border-b border-zinc-800/60 px-4 py-3">
-                                <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
-                                  Subject
-                                </label>
-                                <p className="text-[14px] font-medium text-zinc-100">
-                                  {message.emailData.subject}
-                                </p>
-                              </div>
-
-                              <div className="px-4 py-4">
-                                <label className="mb-2 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
-                                  Body
-                                </label>
-                                <div className="space-y-2.5 text-[13px] leading-[1.7] text-zinc-300">
-                                  {message.emailData.body
-                                    .split(/\n\n+/)
-                                    .filter((para) => para.trim())
-                                    .map((paragraph, i) => {
-                                      const lines = paragraph.split("\n");
-                                      return (
-                                        <p key={i} className="mb-2.5 last:mb-0">
-                                          {lines.map((line, lineIdx) => {
-                                            const parts =
-                                              line.split(/(\*\*.*?\*\*)/g);
-                                            return (
-                                              <span key={lineIdx}>
-                                                {parts.map((part, j) =>
-                                                  part.startsWith("**") &&
-                                                    part.endsWith("**") ? (
-                                                    <strong
-                                                      key={j}
-                                                      className="font-semibold text-zinc-100"
-                                                    >
-                                                      {part.slice(2, -2)}
-                                                    </strong>
-                                                  ) : (
-                                                    <span key={j}>{part}</span>
-                                                  ),
-                                                )}
-                                                {lineIdx < lines.length - 1 && (
-                                                  <br />
-                                                )}
-                                              </span>
-                                            );
-                                          })}
-                                        </p>
-                                      );
-                                    })}
-                                </div>
-                              </div>
-
-                              {message.emailData.suggestions &&
-                                message.emailData.suggestions.length > 0 && (
-                                  <div className="border-t border-zinc-800/60 bg-zinc-900/50 px-4 py-3">
-                                    <label className="mb-2 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
-                                      Alternatives
-                                    </label>
-                                    <div className="space-y-2">
-                                      {message.emailData.suggestions.map(
-                                        (s, idx) => (
-                                          <div
-                                            key={idx}
-                                            className="group flex items-start justify-between rounded-lg bg-zinc-800/50 p-3 transition-colors hover:bg-zinc-800"
-                                          >
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-[13px] font-medium text-zinc-200">
-                                                {s.subject}
-                                              </p>
-                                              <p className="mt-0.5 line-clamp-1 text-[12px] text-zinc-500">
-                                                {s.body}
-                                              </p>
-                                            </div>
-                                            <button
-                                              onClick={() =>
-                                                copyToClipboard(
-                                                  `Subject: ${s.subject}\n\n${s.body}`,
-                                                  `${message.id}-${idx}`,
-                                                )
-                                              }
-                                              className="ml-2 shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-zinc-700 group-hover:opacity-100"
-                                            >
-                                              {copiedId ===
-                                                `${message.id}-${idx}` ? (
-                                                <Check className="h-3.5 w-3.5 text-emerald-400" />
-                                              ) : (
-                                                <Copy className="h-3.5 w-3.5 text-zinc-500" />
-                                              )}
-                                            </button>
-                                          </div>
-                                        ),
+                                    </div>
+                                    <button
+                                      onClick={() =>
+                                        copyToClipboard(
+                                          `Subject: ${message.emailData!.subject}\n\n${message.emailData!.body}`,
+                                          message.id,
+                                        )
+                                      }
+                                      className="flex items-center gap-1.5 rounded-md bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+                                    >
+                                      {copiedId === message.id ? (
+                                        <>
+                                          <Check className="h-3 w-3 text-emerald-400" />
+                                          <span className="text-emerald-400">
+                                            Copied
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          <span>Copy</span>
+                                        </>
                                       )}
+                                    </button>
+                                  </div>
+
+                                  <div className="border-b border-zinc-800/60 px-4 py-3">
+                                    <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                                      Subject
+                                    </label>
+                                    <p className="text-[14px] font-medium text-zinc-100">
+                                      {message.emailData.subject}
+                                    </p>
+                                  </div>
+
+                                  <div className="px-4 py-4">
+                                    <label className="mb-2 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                                      Body
+                                    </label>
+                                    <div className="space-y-2.5 text-[13px] leading-[1.7] text-zinc-300">
+                                      {message.emailData.body
+                                        .split(/\n\n+/)
+                                        .filter((para) => para.trim())
+                                        .map((paragraph, i) => {
+                                          const lines = paragraph.split("\n");
+                                          return (
+                                            <p key={i} className="mb-2.5 last:mb-0">
+                                              {lines.map((line, lineIdx) => {
+                                                const parts =
+                                                  line.split(/(\*\*.*?\*\*)/g);
+                                                return (
+                                                  <span key={lineIdx}>
+                                                    {parts.map((part, j) =>
+                                                      part.startsWith("**") &&
+                                                        part.endsWith("**") ? (
+                                                        <strong
+                                                          key={j}
+                                                          className="font-semibold text-zinc-100"
+                                                        >
+                                                          {part.slice(2, -2)}
+                                                        </strong>
+                                                      ) : (
+                                                        <span key={j}>{part}</span>
+                                                      ),
+                                                    )}
+                                                    {lineIdx < lines.length - 1 && (
+                                                      <br />
+                                                    )}
+                                                  </span>
+                                                );
+                                              })}
+                                            </p>
+                                          );
+                                        })}
                                     </div>
                                   </div>
-                                )}
-                            </div>
-                          ) : (
-                            <p className="text-[14px] leading-relaxed text-zinc-300">
-                              {message.content}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
 
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800">
-                    <Bot className="h-4 w-4 text-zinc-400" />
-                  </div>
-                  <div className="flex items-center gap-1 pt-2">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500 [animation-delay:-0.3s]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500 [animation-delay:-0.15s]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500" />
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center px-4">
-              <div className="w-full max-w-lg">
-                <div className="mb-10 text-center">
-                  <div className="mb-5 inline-flex items-center justify-center">
-                    <div className="relative">
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg shadow-yellow-500/25">
-                        <video
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          className="h-full w-full scale-[1.7] object-cover"
-                        >
-                          <source src="/Vectormail-logo.mp4" type="video/mp4" />
-                        </video>
+                                  {message.emailData.suggestions &&
+                                    message.emailData.suggestions.length > 0 && (
+                                      <div className="border-t border-zinc-800/60 bg-zinc-900/50 px-4 py-3">
+                                        <label className="mb-2 block text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                                          Alternatives
+                                        </label>
+                                        <div className="space-y-2">
+                                          {message.emailData.suggestions.map(
+                                            (s, idx) => (
+                                              <div
+                                                key={idx}
+                                                className="group flex items-start justify-between rounded-lg bg-zinc-800/50 p-3 transition-colors hover:bg-zinc-800"
+                                              >
+                                                <div className="min-w-0 flex-1">
+                                                  <p className="text-[13px] font-medium text-zinc-200">
+                                                    {s.subject}
+                                                  </p>
+                                                  <p className="mt-0.5 line-clamp-1 text-[12px] text-zinc-500">
+                                                    {s.body}
+                                                  </p>
+                                                </div>
+                                                <button
+                                                  onClick={() =>
+                                                    copyToClipboard(
+                                                      `Subject: ${s.subject}\n\n${s.body}`,
+                                                      `${message.id}-${idx}`,
+                                                    )
+                                                  }
+                                                  className="ml-2 shrink-0 rounded p-1.5 opacity-0 transition-all hover:bg-zinc-700 group-hover:opacity-100"
+                                                >
+                                                  {copiedId ===
+                                                    `${message.id}-${idx}` ? (
+                                                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                                  ) : (
+                                                    <Copy className="h-3.5 w-3.5 text-zinc-500" />
+                                                  )}
+                                                </button>
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              ) : (
+                                <p className="text-[14px] leading-relaxed text-zinc-300">
+                                  {message.content}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  {isLoading && (
+                    <div className="flex gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800">
+                        <Bot className="h-4 w-4 text-zinc-400" />
                       </div>
-                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#0C0C0D]">
-                        <MessageCircle className="h-2.5 w-2.5 text-white" />
+                      <div className="flex items-center gap-1 pt-2">
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500 [animation-delay:-0.3s]" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500 [animation-delay:-0.15s]" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-500" />
                       </div>
                     </div>
-                  </div>
-                  <h1 className="mb-1.5 text-xl font-semibold tracking-tight text-white">
-                    Email Assistant
-                  </h1>
-                  <p className="text-sm text-zinc-500">
-                    Draft professional emails in seconds with AI
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">
-                      Quick Start
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {templates.map(
-                      ({
-                        id,
-                        title,
-                        subtitle,
-                        query,
-                        icon: Icon,
-                        color,
-                        bg,
-                      }) => (
-                        <button
-                          key={id}
-                          onClick={() => sendMessage(query)}
-                          className="group flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3 text-left transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
-                        >
-                          <div
-                            className={cn(
-                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
-                              bg,
-                            )}
-                          >
-                            <Icon className={cn("h-4 w-4", color)} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-medium text-zinc-200 group-hover:text-white">
-                              {title}
-                            </p>
-                            <p className="text-[11px] text-zinc-600">
-                              {subtitle}
-                            </p>
-                          </div>
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
-                    Tips for best results
-                  </p>
-                  <ul className="space-y-1.5 text-[12px] text-zinc-500">
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-600" />
-                      Be specific about the context and tone you want
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-600" />
-                      Include key points you want to convey
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-600" />
-                      Mention the relationship (colleague, client, etc.)
-                    </li>
-                  </ul>
+                  )}
                 </div>
               </div>
+              <footer className="relative z-10 shrink-0 bg-black/25 backdrop-blur-md px-4 py-4">
+                <div className="mx-auto max-w-4xl w-full pl-6 md:pl-10">
+                  <BuddyChatInput
+                    value={input}
+                    onChange={setInput}
+                    onSubmit={handleSubmit}
+                    isLoading={isLoading}
+                    placeholder="Describe the email you want to write..."
+                  />
+                </div>
+              </footer>
+            </>
+          ) : (
+            <div className="fixed inset-0 z-0 flex min-h-screen w-full flex-col items-stretch">
+              <RuixenMoonChat
+                title="VectorMail AI"
+                subtitle="Build something amazing, just start typing below."
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+                placeholder="Describe the email you want to write..."
+                quickActions={templates.map(({ title, query, icon: Icon }) => ({
+                  icon: <Icon className="h-4 w-4" />,
+                  label: title,
+                  onClick: () => sendMessage(query),
+                }))}
+                recentChats={savedChats.map((c) => ({
+                  id: c.id,
+                  heading: c.heading,
+                  timestamp: c.timestamp,
+                  preview: c.preview,
+                }))}
+                onSelectChat={(chat) => {
+                  const saved = savedChats.find((c) => c.id === chat.id);
+                  if (saved) loadChat(saved);
+                }}
+                onDeleteChat={deleteChat}
+                formatTime={formatTime}
+              />
             </div>
           )}
-        </div>
-
-        <div className="border-t border-zinc-800/60 bg-[#0C0C0D] p-4">
-          <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
-            <div className="relative flex items-end gap-2 rounded-xl border border-zinc-800 bg-zinc-900/70 p-1.5 transition-colors focus-within:border-zinc-700">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                onInput={(e) => {
-                  const t = e.target as HTMLTextAreaElement;
-                  t.style.height = "auto";
-                  t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
-                }}
-                placeholder="Describe the email you want to write..."
-                disabled={isLoading}
-                rows={1}
-                className="flex-1 resize-none bg-transparent px-3 py-2 text-[14px] text-zinc-100 [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-zinc-600 focus:outline-none disabled:opacity-50 [&::-webkit-scrollbar]:hidden"
-                style={{ minHeight: "40px" }}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-500 text-black transition-all hover:bg-yellow-400 disabled:opacity-30"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-4 text-[11px] text-zinc-600">
-              <span>↵ Send</span>
-              <span>⇧↵ New line</span>
-            </div>
-          </form>
         </div>
       </main>
     </div>

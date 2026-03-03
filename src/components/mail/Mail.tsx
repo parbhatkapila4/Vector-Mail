@@ -7,14 +7,18 @@ import {
   Send,
   Bot,
   X,
+  Plus,
   MessageCircle,
   LogOut,
+  Loader2,
   Zap,
   Search,
   ArrowRight,
   ArrowLeft,
   CalendarClock,
   Trash2,
+  Settings,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -36,7 +40,13 @@ import ComposeEmailGmail from "./ComposeEmailGmail";
 import { MailKeyboardShortcuts } from "./MailKeyboardShortcuts";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
 import { GripVertical, RefreshCw } from "lucide-react";
-import { UserButton, useClerk } from "@clerk/nextjs";
+import { UserProfile, useClerk, useUser } from "@clerk/nextjs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
@@ -45,7 +55,6 @@ import { NudgesBlock } from "./NudgesBlock";
 import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
-
 interface MailLayoutProps {
   defaultLayout?: number[] | readonly number[] | undefined;
   defaultCollapsed?: boolean;
@@ -55,22 +64,43 @@ interface MailLayoutProps {
 export function Mail({ }: MailLayoutProps) {
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiSearchResetKey, setAiSearchResetKey] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
   const [selectedLabelId, setSelectedLabelId] = useLocalStorage("vector-mail-label-id", "");
-  const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage("mail-sidebar-width-pct", 28);
+  const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage("mail-sidebar-width-pct", 38);
   const [isResizing, setIsResizing] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const signOutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resizeStartRef = useRef<{ x: number; pct: number; finalPct: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const threadListRef = useRef<ThreadListRef>(null);
   const rafRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
+  const { user } = useUser();
+  const userName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Account";
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
   const router = useRouter();
+  const { signOut } = useClerk();
+
+  useEffect(() => () => {
+    if (signOutTimeoutRef.current) clearTimeout(signOutTimeoutRef.current);
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    setIsSigningOut(true);
+    void signOut().catch(() => { });
+    const forceRedirectMs = 1200;
+    signOutTimeoutRef.current = setTimeout(() => {
+      signOutTimeoutRef.current = null;
+      window.location.href = "/";
+    }, forceRedirectMs);
+  }, [signOut]);
 
   const SIDEBAR_MIN_PCT = 20;
   const SIDEBAR_MAX_PCT = 55;
@@ -230,15 +260,15 @@ export function Mail({ }: MailLayoutProps) {
 
   if (showConnectCard) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#f6f8fc] px-4 dark:bg-[#202124]">
-        <div className="max-w-md rounded-2xl border border-[#dadce0] bg-white p-8 text-center shadow-sm dark:border-[#3c4043] dark:bg-[#292a2d]">
-          <h1 className="text-xl font-semibold text-[#202124] dark:text-[#e8eaed]">Connect your Gmail</h1>
-          <p className="mt-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-4 dark:bg-[#09090b]">
+        <div className="max-w-md rounded-2xl border border-[#e5e7eb] bg-white p-8 text-center shadow-sm dark:border-[#1a1a23] dark:bg-[#111113]">
+          <h1 className="text-xl font-semibold text-[#111118] dark:text-[#f4f4f5]">Connect your Gmail</h1>
+          <p className="mt-2 text-sm text-[#6b7280] dark:text-[#a1a1aa]">
             You&apos;re signed in. Connect your Gmail account to access your inbox.
           </p>
           <a
             href="/api/connect/google"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#3b82f6] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2563eb]"
           >
             Connect Gmail
           </a>
@@ -262,8 +292,8 @@ export function Mail({ }: MailLayoutProps) {
           closeHelp={() => setHelpOpen(false)}
         />
         <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
-        <div className="flex h-full w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
-          <div className="flex items-center justify-between border-b border-[#dadce0] bg-white px-4 py-2.5 dark:border-[#3c4043] dark:bg-[#202124] [padding-top:max(0.625rem,env(safe-area-inset-top))]">
+        <div className="flex h-full min-h-0 w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
+          <div className="flex shrink-0 items-center justify-between border-b border-[#dadce0] bg-white px-4 py-2.5 dark:border-[#3c4043] dark:bg-[#202124] [padding-top:max(0.625rem,env(safe-area-inset-top))]">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {selectedThread ? (
                 <button
@@ -291,6 +321,8 @@ export function Mail({ }: MailLayoutProps) {
                       setTab={setTab}
                       router={router}
                       onNavigate={handleMobileNavigation}
+                      onSignOut={handleSignOut}
+                      isSigningOut={isSigningOut}
                     />
                     <div className="border-t border-[#dadce0] px-2 py-2 dark:border-[#3c4043]">
                       <LabelsList
@@ -347,7 +379,7 @@ export function Mail({ }: MailLayoutProps) {
                 open={composeOpen}
                 onOpenChange={setComposeOpen}
               />
-              <UserButton />
+              <ProfileMenu onSignOut={handleSignOut} isSigningOut={isSigningOut} />
             </div>
           </div>
 
@@ -378,7 +410,7 @@ export function Mail({ }: MailLayoutProps) {
           )}
 
           {!selectedThread ? (
-            <div className="flex flex-1 flex-col overflow-hidden bg-[#f6f8fc] dark:bg-[#202124]">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f6f8fc] dark:bg-[#202124]">
               <SearchBar />
               <ThreadList
                 ref={threadListRef}
@@ -387,8 +419,8 @@ export function Mail({ }: MailLayoutProps) {
               />
             </div>
           ) : (
-            <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-[#202124]">
-              <ThreadDisplay threadId={selectedThread} />
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-[#202124]">
+              <ThreadDisplay threadId={selectedThread} onClose={handleThreadClose} />
             </div>
           )}
 
@@ -404,7 +436,7 @@ export function Mail({ }: MailLayoutProps) {
                 setSheetOpen(false);
               }}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium transition-colors",
+                "flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium transition-colors [touch-action:manipulation]",
                 !selectedThread && tab === "inbox"
                   ? "text-[#1a73e8] dark:text-[#8ab4f8]"
                   : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]",
@@ -416,7 +448,7 @@ export function Mail({ }: MailLayoutProps) {
             <button
               type="button"
               onClick={() => setComposeOpen(true)}
-              className="flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
+              className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed] [touch-action:manipulation]"
             >
               <Send className="h-5 w-5" />
               New email
@@ -429,6 +461,17 @@ export function Mail({ }: MailLayoutProps) {
 
   return (
     <TooltipProvider delayDuration={0}>
+      {isSigningOut && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-white/95 backdrop-blur-sm dark:bg-[#09090b]/95"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Loader2 className="h-10 w-10 animate-spin text-[#3b82f6]" />
+          <p className="text-[15px] font-medium text-[#111118] dark:text-[#f4f4f5]">Logging out…</p>
+          <p className="text-[13px] text-[#6b7280] dark:text-[#71717a]">Taking you to the home page</p>
+        </div>
+      )}
       <MailKeyboardShortcuts
         selectedThread={selectedThread}
         setSelectedThread={setSelectedThread}
@@ -441,150 +484,72 @@ export function Mail({ }: MailLayoutProps) {
         closeHelp={() => setHelpOpen(false)}
       />
       <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
-      <div className="flex h-full w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
-        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-[#dadce0] bg-white px-4 dark:border-[#3c4043] dark:bg-[#202124]">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-[#1a73e8] dark:bg-[#8ab4f8]">
-                <video
-                  src="/Vectormail-logo.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="h-full w-full scale-[1.6] object-cover"
-                />
-              </div>
-              <span className="text-[22px] font-normal tracking-tight text-[#5f6368] dark:text-[#9aa0a6]">
-                VectorMail
-              </span>
-            </Link>
+      <div className="flex h-full min-h-0 w-full bg-white dark:bg-[#09090b]">
+        <aside className="flex w-[260px] shrink-0 flex-col border-r border-[#e5e7eb] bg-[#fafbfc] dark:border-[#1a1a23] dark:bg-[#09090b]">
+          <Link href="/" className="flex items-center gap-2.5 px-5 py-4">
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-[#3b82f6]">
+              <video
+                src="/Vectormail-logo.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="h-full w-full scale-[1.6] object-cover"
+              />
+            </div>
+            <span className="text-[17px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
+              VectorMail
+            </span>
+          </Link>
 
-            <nav className="flex items-center gap-0.5">
+          <div className="px-3 pb-3">
+            <button
+              type="button"
+              onClick={() => setComposeOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3b82f6] px-4 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all hover:bg-[#2563eb] hover:shadow-md active:scale-[0.98]"
+            >
+              <Pencil className="h-4 w-4" />
+              New email
+            </button>
+          </div>
+
+          <nav className="flex flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="space-y-0.5 px-2 pb-1">
               {navItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setTab(item.id)}
+                  onClick={() => {
+                    setTab(item.id);
+                    if (item.id !== tab) setSelectedThread(null);
+                  }}
                   className={cn(
-                    "relative flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-[14px] font-medium transition-colors",
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all",
                     tab === item.id
-                      ? "text-[#1a73e8] dark:text-[#8ab4f8]"
-                      : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]",
+                      ? "bg-[#eff6ff] text-[#2563eb] dark:bg-[#3b82f6]/[0.12] dark:text-[#60a5fa]"
+                      : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]",
                   )}
                 >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  <span>{item.label}</span>
-                  <span
-                    className={cn(
-                      "min-w-[20px] rounded-full px-1.5 py-0.5 text-center text-[12px] font-medium tabular-nums",
-                      tab === item.id
-                        ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/25 dark:text-[#8ab4f8]"
-                        : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
-                    )}
-                  >
-                    {item.count ?? 0}
-                  </span>
-                  {tab === item.id && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a73e8] dark:bg-[#8ab4f8]" />
+                  <item.icon className="h-[18px] w-[18px] shrink-0" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {(item.count ?? 0) > 0 && (
+                    <span
+                      className={cn(
+                        "min-w-[22px] rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums",
+                        tab === item.id
+                          ? "bg-[#2563eb]/10 text-[#2563eb] dark:bg-[#60a5fa]/15 dark:text-[#60a5fa]"
+                          : "text-[#9ca3af] dark:text-[#71717a]",
+                      )}
+                    >
+                      {item.count}
+                    </span>
                   )}
                 </button>
               ))}
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push("/buddy?fresh=true")}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]"
-                >
-                  <Bot className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-[#303134] text-xs text-[#e8eaed]">
-                AI Buddy
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowAIPanel(!showAIPanel)}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-                    showAIPanel
-                      ? "bg-[#1a73e8] text-white dark:bg-[#8ab4f8] dark:text-[#202124]"
-                      : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#303134] dark:hover:text-[#e8eaed]",
-                  )}
-                >
-                  <MessageCircle className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-[#303134] text-xs text-[#e8eaed]">
-                AI Search
-              </TooltipContent>
-            </Tooltip>
-
-            <ComposeEmailGmail
-              open={composeOpen}
-              onOpenChange={(open) => {
-                setComposeOpen(open);
-              }}
-            />
-
-            <div className="mx-1 h-6 w-px bg-[#dadce0] dark:bg-[#3c4043]" />
-
-            <UserButton />
-          </div>
-        </header>
-
-        {isDemo && (
-          <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-b border-[#e8eaed] bg-[#f8f9fa] px-4 py-2 dark:border-[#3c4043] dark:bg-[#252628]">
-            <span className="text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
-              You’re exploring VectorMail with sample data so you can see how inbox, AI search, compose, and more work together. Ready to use your own Gmail?
-            </span>
-            <a
-              href="mailto:parbhat@parbhat.dev?subject=VectorMail%20%E2%80%93%20Request%20access&body=Hi%2C%0A%0AI'd%20like%20to%20request%20access%20to%20connect%20my%20Gmail%20and%20use%20VectorMail%20with%20my%20own%20inbox.%20Please%20let%20me%20know%20when%20access%20is%20available.%0A%0AThank%20you."
-              className="shrink-0 rounded-md bg-[#1a73e8] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
-            >
-              Request access
-            </a>
-          </div>
-        )}
-
-        <div
-          ref={containerRef}
-          className={cn(
-            "flex flex-1 overflow-hidden",
-            isResizing && "select-none cursor-col-resize",
-          )}
-        >
-          <aside
-            ref={sidebarRef}
-            className="flex h-full shrink-0 flex-col border-r border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124]"
-            style={{
-              width: `${sidebarWidthPct}%`,
-              minWidth: 200,
-              ...(isResizing && { willChange: "width" }),
-            }}
-          >
-            <div className="flex min-w-0 items-center gap-2 border-b border-[#dadce0] px-3 py-2 dark:border-[#3c4043]">
-              <div className="min-w-0 flex-1">
-                <SearchBar />
-              </div>
-              <button
-                type="button"
-                onClick={() => threadListRef.current?.triggerSync()}
-                className="flex shrink-0 items-center justify-center rounded p-1.5 text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]"
-                aria-label={syncPending ? "Stop sync" : "Sync Inbox, Sent, and Trash"}
-              >
-                <RefreshCw
-                  className={cn("h-3.5 w-3.5", syncPending && "animate-spin")}
-                />
-              </button>
             </div>
-            <div className="shrink-0 border-b border-[#dadce0] dark:border-[#3c4043]">
+
+            <div className="mx-3 my-2 h-px bg-[#e5e7eb] dark:bg-[#1a1a23]" />
+
+            <div className="px-2">
               <LabelsList
                 accountId={accountId}
                 currentTab={tab}
@@ -599,6 +564,41 @@ export function Mail({ }: MailLayoutProps) {
                 }}
               />
             </div>
+
+            <div className="mx-3 my-2 h-px bg-[#e5e7eb] dark:bg-[#1a1a23]" />
+
+            <div className="space-y-0.5 px-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/buddy?fresh=true";
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]"
+              >
+                <Bot className="h-[18px] w-[18px] shrink-0" />
+                <span className="flex-1 text-left">AI Buddy</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAIPanel(!showAIPanel)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all",
+                  showAIPanel
+                    ? "bg-[#eff6ff] text-[#2563eb] dark:bg-[#3b82f6]/[0.12] dark:text-[#60a5fa]"
+                    : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]",
+                )}
+              >
+                <MessageCircle className="h-[18px] w-[18px] shrink-0" />
+                <span className="flex-1 text-left">AI Search</span>
+                {isDemo && (
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
+                    Demo
+                  </span>
+                )}
+              </button>
+            </div>
+
             <NudgesBlock
               accountId={accountId}
               onThreadSelect={handleThreadSelect}
@@ -607,73 +607,263 @@ export function Mail({ }: MailLayoutProps) {
               accountId={accountId}
               onThreadSelect={handleThreadSelect}
             />
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <ThreadList
-                ref={threadListRef}
-                onThreadSelect={handleThreadSelect}
-                onSyncPendingChange={setSyncPending}
-              />
-            </div>
-          </aside>
-          <div
-            role="separator"
-            aria-label="Resize sidebar"
-            onPointerDown={handleResizeStart}
-            className={cn(
-              "relative z-10 flex w-2 shrink-0 cursor-col-resize items-center justify-center self-stretch bg-[#dadce0] transition-colors dark:bg-[#3c4043]",
-              "hover:bg-[#1a73e8]/25 dark:hover:bg-[#8ab4f8]/25",
-              isResizing && "bg-[#1a73e8]/30 dark:bg-[#8ab4f8]/30",
-            )}
-            style={{ touchAction: "none", minHeight: 120 }}
-          >
-            <GripVertical className="h-4 w-4 shrink-0 text-[#5f6368] pointer-events-none dark:text-[#9aa0a6]" />
-          </div>
-          <main
-            className={cn(
-              "flex min-w-0 flex-1 flex-col bg-white dark:bg-[#202124]",
-              showAIPanel && "mr-[360px]",
-            )}
-          >
-            <ThreadDisplay threadId={selectedThread} />
-          </main>
+          </nav>
 
-          <aside
-            className={cn(
-              "fixed right-0 z-40 w-[360px] border-l border-[#dadce0] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-out dark:border-[#3c4043] dark:bg-[#292a2d] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
-              isDemo ? "top-[5.5rem] h-[calc(100vh-5.5rem)]" : "top-12 h-[calc(100vh-3rem)]",
-              showAIPanel ? "translate-x-0" : "translate-x-full",
-            )}
-          >
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b border-[#dadce0] px-4 py-3 dark:border-[#3c4043]">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8] dark:bg-[#8ab4f8]">
-                    <MessageCircle className="h-4 w-4 text-white dark:text-[#202124]" />
-                  </div>
-                  <span className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
-                    AI Search
-                  </span>
-                  {isDemo && (
-                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
-                      Demo
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowAIPanel(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <EmailSearchAssistant isCollapsed={false} />
+          <div className="border-t border-[#e5e7eb] p-2 dark:border-[#1a1a23]">
+            <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+              <ProfileMenu onSignOut={handleSignOut} isSigningOut={isSigningOut} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium text-[#111118] dark:text-[#f4f4f5]">
+                  {userName}
+                </p>
+                {userEmail && (
+                  <p className="truncate text-[11px] text-[#9ca3af] dark:text-[#71717a]">
+                    {userEmail}
+                  </p>
+                )}
               </div>
             </div>
-          </aside>
+          </div>
+        </aside>
+
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {isDemo && (
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-b border-[#e5e7eb] bg-[#f9fafb] px-4 py-1.5 dark:border-[#1a1a23] dark:bg-[#111113]">
+              <span className="text-[12px] text-[#6b7280] dark:text-[#a1a1aa]">
+                Exploring VectorMail with sample data.
+              </span>
+              <a
+                href="mailto:parbhat@parbhat.dev?subject=VectorMail%20%E2%80%93%20Request%20access&body=Hi%2C%0A%0AI'd%20like%20to%20request%20access%20to%20connect%20my%20Gmail%20and%20use%20VectorMail%20with%20my%20own%20inbox.%20Please%20let%20me%20know%20when%20access%20is%20available.%0A%0AThank%20you."
+                className="shrink-0 rounded-md bg-[#3b82f6] px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#2563eb]"
+              >
+                Request access
+              </a>
+            </div>
+          )}
+
+          <div
+            ref={containerRef}
+            className={cn(
+              "flex flex-1 overflow-hidden",
+              isResizing && "select-none cursor-col-resize",
+            )}
+          >
+            <aside
+              ref={sidebarRef}
+              className="flex h-full shrink-0 flex-col border-r border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]"
+              style={{
+                width: `${sidebarWidthPct}%`,
+                minWidth: 280,
+                ...(isResizing && { willChange: "width" }),
+              }}
+            >
+              <div className="flex min-w-0 items-center gap-2 border-b border-[#e5e7eb] px-3 py-2 dark:border-[#1a1a23]">
+                <div className="min-w-0 flex-1">
+                  <SearchBar />
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => threadListRef.current?.triggerSync()}
+                      className="flex shrink-0 items-center justify-center rounded-lg p-2 text-[#9ca3af] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#71717a] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]"
+                      aria-label={syncPending ? "Stop sync" : "Sync emails"}
+                    >
+                      <RefreshCw
+                        className={cn("h-4 w-4", syncPending && "animate-spin")}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-[#18181b] text-xs text-[#f4f4f5]">
+                    {syncPending ? "Syncing…" : "Sync emails"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <ThreadList
+                  ref={threadListRef}
+                  onThreadSelect={handleThreadSelect}
+                  onSyncPendingChange={setSyncPending}
+                />
+              </div>
+            </aside>
+
+
+            <div
+              role="separator"
+              aria-label="Resize panels"
+              onPointerDown={handleResizeStart}
+              className={cn(
+                "relative z-10 flex w-[5px] shrink-0 cursor-col-resize items-center justify-center self-stretch transition-colors",
+                "bg-transparent hover:bg-[#3b82f6]/20 dark:hover:bg-[#3b82f6]/20",
+                isResizing && "bg-[#3b82f6]/30 dark:bg-[#3b82f6]/30",
+              )}
+              style={{ touchAction: "none", minHeight: 120 }}
+            />
+
+            <main
+              className={cn(
+                "flex min-w-0 flex-1 flex-col bg-white dark:bg-[#111113]",
+                showAIPanel && "mr-[360px]",
+              )}
+            >
+              <ThreadDisplay threadId={selectedThread} onClose={handleThreadClose} />
+            </main>
+
+
+            <aside
+              className={cn(
+                "fixed right-0 z-40 w-[360px] border-l border-[#e5e7eb] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.04)] transition-transform duration-300 ease-out dark:border-[#1a1a23] dark:bg-[#111113] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
+                isDemo ? "top-[2.25rem] h-[calc(100vh-2.25rem)]" : "top-0 h-screen",
+                showAIPanel ? "translate-x-0" : "translate-x-full",
+              )}
+            >
+              <div className="flex h-full flex-col">
+                <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3 dark:border-[#1a1a23]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3b82f6]">
+                      <MessageCircle className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="text-[14px] font-medium text-[#111118] dark:text-[#f4f4f5]">
+                      AI Search
+                    </span>
+                    {isDemo && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
+                        Demo
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowAIPanel(true);
+                            setAiSearchResetKey((k) => k + 1);
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
+                          aria-label="New chat (AI Search)"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>New chat (AI Search)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <button
+                      onClick={() => setShowAIPanel(false)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
+                      aria-label="Close"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <EmailSearchAssistant isCollapsed={false} resetTrigger={aiSearchResetKey} />
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
+      <div className="hidden">
+        <ComposeEmailGmail
+          open={composeOpen}
+          onOpenChange={setComposeOpen}
+        />
+      </div>
     </TooltipProvider>
+  );
+}
+
+function ProfileMenu({
+  onSignOut,
+  isSigningOut,
+}: {
+  onSignOut: () => void;
+  isSigningOut: boolean;
+}) {
+  const { user } = useUser();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const imageUrl = user?.imageUrl ?? "";
+  const name =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    (user?.emailAddresses?.[0]?.emailAddress ?? "Account");
+  const email = user?.primaryEmailAddress?.emailAddress ?? "";
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e5e7eb] bg-[#f3f4f6] dark:border-[#1a1a23] dark:bg-[#18181b] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            aria-label="Account menu"
+          >
+            {imageUrl ? (
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-sm font-medium text-[#6b7280] dark:text-[#a1a1aa]">
+                {name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="min-w-[220px] rounded-lg border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]"
+        >
+          <div className="flex items-center gap-3 border-b border-[#f3f4f6] px-2 py-3 dark:border-[#1a1a23]">
+            {imageUrl ? (
+              <img src={imageUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e5e7eb] text-[15px] font-medium text-[#6b7280] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                {name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-medium text-[#111118] dark:text-[#f4f4f5]">{name}</p>
+              {email && (
+                <p className="truncate text-[12px] text-[#6b7280] dark:text-[#a1a1aa]">{email}</p>
+              )}
+            </div>
+          </div>
+          <DropdownMenuItem
+            onClick={() => setProfileOpen(true)}
+            className="cursor-pointer text-[#111118] focus:bg-[#f3f4f6] dark:text-[#f4f4f5] dark:focus:bg-[#ffffff]/[0.04]"
+          >
+            <Settings className="h-4 w-4" />
+            Manage account
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={onSignOut}
+            disabled={isSigningOut}
+            variant="destructive"
+            className="cursor-pointer text-[#ef4444] focus:bg-[#fef2f2] dark:text-[#f87171] dark:focus:bg-[#7f1d1d]/30"
+          >
+            {isSigningOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+        <SheetContent
+          side="right"
+          className="w-full max-w-[400px] overflow-y-auto border-[#e5e7eb] bg-white p-0 dark:border-[#1a1a23] dark:bg-[#111113]"
+        >
+          <UserProfile />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
@@ -683,6 +873,8 @@ function MobileSidebar({
   setTab,
   router,
   onNavigate,
+  onSignOut,
+  isSigningOut,
 }: {
   navItems: Array<{
     id: string;
@@ -694,20 +886,11 @@ function MobileSidebar({
   setTab: (tab: string) => void;
   router: ReturnType<typeof useRouter>;
   onNavigate?: (newTab: string, isBuddy?: boolean) => void;
+  onSignOut: () => void;
+  isSigningOut: boolean;
 }) {
-  const { signOut } = useClerk();
-
-  const handleSignOut = useCallback(async () => {
-    try {
-      await signOut({ redirectUrl: "/" });
-      router.push("/");
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  }, [signOut, router]);
-
   return (
-    <div className="flex h-full flex-col bg-white dark:bg-[#202124]">
+    <div className="relative flex h-full flex-col bg-white dark:bg-[#202124]">
       <Link
         href="/"
         className="flex items-center gap-3 border-b border-[#dadce0] p-4 dark:border-[#3c4043]"
@@ -770,12 +953,10 @@ function MobileSidebar({
         <div className="my-2 h-px bg-[#dadce0] dark:bg-[#3c4043]" />
 
         <button
+          type="button"
           onClick={() => {
-            if (onNavigate) {
-              onNavigate("", true);
-            } else {
-              router.push("/buddy?fresh=true");
-            }
+            onNavigate?.("", true);
+            window.location.href = "/buddy?fresh=true";
           }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-[#202124] transition-colors hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
         >
@@ -788,11 +969,8 @@ function MobileSidebar({
         <button
           type="button"
           onClick={() => {
-            if (onNavigate) {
-              onNavigate("", true);
-            } else {
-              router.push("/buddy?fresh=true");
-            }
+            onNavigate?.("", true);
+            window.location.href = "/buddy?fresh=true";
           }}
           className="group flex w-full flex-col justify-between rounded-lg border border-[#dadce0] bg-[#f8f9fa] p-4 text-left transition-colors hover:border-[#1a73e8]/30 hover:bg-[#e8f0fe]/50 dark:border-[#3c4043] dark:bg-[#292a2d] dark:hover:border-[#8ab4f8]/30 dark:hover:bg-[#174ea6]/10"
         >
@@ -819,11 +997,17 @@ function MobileSidebar({
 
       <div className="border-t border-[#dadce0] p-2 dark:border-[#3c4043]">
         <button
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#d93025] transition-colors hover:bg-[#fce8e6] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
+          type="button"
+          onClick={onSignOut}
+          disabled={isSigningOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#d93025] transition-colors hover:bg-[#fce8e6] disabled:opacity-70 dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">Sign Out</span>
+          {isSigningOut ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          ) : (
+            <LogOut className="h-4 w-4 shrink-0" />
+          )}
+          <span className="flex-1 text-left">{isSigningOut ? "Signing out…" : "Sign Out"}</span>
         </button>
       </div>
     </div>

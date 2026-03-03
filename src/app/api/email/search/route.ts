@@ -2,6 +2,10 @@ import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { searchEmailsByVector } from "@/lib/vector-search";
+import {
+  getMatchedKeywords,
+  buildHighlightedSnippet,
+} from "@/lib/search-explainability";
 import { serverLog } from "@/lib/logging/server-logger";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { recordSearchLatency } from "@/lib/metrics/store";
@@ -111,20 +115,29 @@ async function searchHandler(req: NextRequest | Request) {
 
         finalResults = [
           ...keywordResults,
-          ...additionalSemantic.map((r) => ({
-            id: r.email.id,
-            subject: r.email.subject,
-            snippet:
-              r.email.bodySnippet || r.email.body?.substring(0, 200) || "",
-            from: {
-              name: r.email.from.name,
-              address: r.email.from.address,
-            },
-            sentAt: r.email.sentAt.toISOString(),
-            threadId: r.email.threadId,
-            relevanceScore: r.relevanceScore,
-            matchType: "semantic" as const,
-          })),
+          ...additionalSemantic.map((r) => {
+            const snippet =
+              r.email.bodySnippet || r.email.body?.substring(0, 200) || "";
+            return {
+              id: r.email.id,
+              subject: r.email.subject,
+              snippet,
+              from: {
+                name: r.email.from.name,
+                address: r.email.from.address,
+              },
+              sentAt: r.email.sentAt.toISOString(),
+              threadId: r.email.threadId,
+              relevanceScore: r.relevanceScore,
+              relevanceScorePercent: Math.min(
+                100,
+                Math.round((r.similarity ?? r.relevanceScore) * 100),
+              ),
+              matchType: "semantic" as const,
+              matchedKeywords: [] as string[],
+              snippetHighlighted: undefined as string | undefined,
+            };
+          }),
         ];
       } catch (semanticError) {
         console.error(
@@ -374,19 +387,37 @@ async function performKeywordSearch(
       );
     })
     .slice(0, limit)
-    .map((r) => ({
-      id: r.email.id,
-      subject: r.email.subject,
-      snippet: r.email.bodySnippet || r.email.body?.substring(0, 200) || "",
-      from: {
-        name: r.email.from.name,
-        address: r.email.from.address,
-      },
-      sentAt: r.email.sentAt.toISOString(),
-      threadId: r.email.threadId,
-      relevanceScore: r.relevanceScore,
-      matchType: "keyword" as const,
-    }));
+    .map((r) => {
+      const snippet =
+        r.email.bodySnippet || r.email.body?.substring(0, 200) || "";
+      const subject = r.email.subject ?? "";
+      const body = r.email.body ?? "";
+      const matchedKeywords = getMatchedKeywords(
+        query,
+        subject,
+        snippet,
+        body,
+      );
+      const snippetHighlighted = buildHighlightedSnippet(
+        snippet,
+        matchedKeywords,
+      );
+      return {
+        id: r.email.id,
+        subject: r.email.subject,
+        snippet,
+        from: {
+          name: r.email.from.name,
+          address: r.email.from.address,
+        },
+        sentAt: r.email.sentAt.toISOString(),
+        threadId: r.email.threadId,
+        relevanceScore: r.relevanceScore,
+        matchType: "keyword" as const,
+        matchedKeywords,
+        snippetHighlighted,
+      };
+    });
 }
 
 interface SearchResult {
@@ -401,4 +432,7 @@ interface SearchResult {
   threadId: string;
   relevanceScore: number;
   matchType: "keyword" | "semantic";
+  matchedKeywords?: string[];
+  snippetHighlighted?: string;
+  relevanceScorePercent?: number;
 }

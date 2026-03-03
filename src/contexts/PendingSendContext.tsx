@@ -76,7 +76,9 @@ export function PendingSendProvider({ children }: { children: React.ReactNode })
         if (fn) {
           try {
             await fn();
-          } catch {
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "Failed to send";
+            toast.error(msg, { duration: 6000 });
           }
         }
       }, UNDO_SEND_DELAY_MS);

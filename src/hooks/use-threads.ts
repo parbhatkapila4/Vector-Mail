@@ -73,7 +73,7 @@ function useThreads() {
       refetchOnWindowFocus: false,
       refetchOnMount: currentTab === "inbox",
       refetchInterval: false,
-      staleTime: currentTab === "label" ? 0 : currentTab === "inbox" ? 10 * 60 * 1000 : STALE_TIME_OTHER_MS,
+      staleTime: currentTab === "label" ? 0 : currentTab === "inbox" ? 0 : STALE_TIME_OTHER_MS,
       gcTime: 7 * 24 * 60 * 60 * 1000,
       retry: 3,
       placeholderData:

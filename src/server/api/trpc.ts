@@ -28,11 +28,13 @@ export const createTRPCContext = async (opts: {
     : await auth();
   const cookieUserId = getSessionCookieUserId(opts.req);
   const demoCookie = getDemoCookie(opts.req);
-  const isDemo = demoCookie === "1" || cookieUserId === DEMO_USER_ID;
+  const clerkSignedIn = Boolean(user?.userId && user.userId !== DEMO_USER_ID);
+  const isDemo =
+    !clerkSignedIn && (demoCookie === "1" || cookieUserId === DEMO_USER_ID);
   const effectiveAuth =
     isDemo
       ? { ...user, userId: DEMO_USER_ID }
-      : user.userId
+      : user?.userId
         ? user
         : cookieUserId
           ? { ...user, userId: cookieUserId }

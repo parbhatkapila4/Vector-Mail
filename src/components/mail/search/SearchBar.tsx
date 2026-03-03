@@ -24,6 +24,9 @@ export interface SearchResult {
   threadId: string;
   relevanceScore: number;
   matchType: "keyword" | "semantic";
+  matchedKeywords?: string[];
+  snippetHighlighted?: string;
+  relevanceScorePercent?: number;
 }
 
 const SearchBar = () => {
@@ -109,24 +112,29 @@ const SearchBar = () => {
 
   return (
     <div className="relative min-w-0 flex-1">
-      <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#9aa0a6]" />
+      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9ca3af] dark:text-[#71717a]" />
       <Input
         ref={ref}
         id="mail-search-input"
-        placeholder="Search mail"
-        className="h-8 w-full rounded-full border-0 bg-[#f1f3f4] pl-8 pr-8 text-[13px] text-[#202124] transition-colors placeholder:text-[#5f6368] focus:bg-white focus-visible:ring-1 focus-visible:ring-[#dadce0] dark:bg-[#3c4043] dark:text-[#e8eaed] dark:placeholder:text-[#9aa0a6] dark:focus:bg-[#303134] dark:focus-visible:ring-[#5f6368]"
+        placeholder="Search"
+        className="h-8 min-h-[44px] w-full rounded-lg border-0 bg-[#f3f4f6] pl-9 pr-16 text-[13px] text-[#111118] transition-colors placeholder:text-[#9ca3af] focus:bg-white focus-visible:ring-1 focus-visible:ring-[#3b82f6]/30 dark:bg-[#ffffff]/[0.04] dark:text-[#f4f4f5] dark:placeholder:text-[#71717a] dark:focus:bg-[#ffffff]/[0.06] dark:focus-visible:ring-[#3b82f6]/30 sm:min-h-0 [touch-action:manipulation]"
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         onFocus={() => setIsSearching(true)}
         onBlur={handleBlur}
       />
+      {!searchValue && (
+        <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded-md border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[10px] font-medium text-[#9ca3af] dark:border-[#1a1a23] dark:bg-[#18181b] dark:text-[#71717a] sm:flex">
+          Ctrl K
+        </kbd>
+      )}
       {searchValue && (
         <button
           type="button"
-          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-[#e8eaed] dark:hover:bg-[#5f6368]"
+          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-[#e5e7eb] dark:hover:bg-[#ffffff]/[0.06]"
           onClick={handleClear}
         >
-          <X className="h-3 w-3 text-[#5f6368] dark:text-[#9aa0a6]" />
+          <X className="h-3 w-3 text-[#6b7280] dark:text-[#a1a1aa]" />
         </button>
       )}
     </div>

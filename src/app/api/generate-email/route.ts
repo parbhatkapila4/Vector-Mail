@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prompt, context = "", mode = "complete" } = body;
+    const { prompt, context = "", mode = "complete", stream: useStream = true } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -152,6 +152,54 @@ export async function POST(req: NextRequest) {
       : `Complete this email draft. Start with the text I've written: "${prompt}". 
 
 Format the response as a complete email with proper paragraphs. Use \\n\\n between paragraphs. Do not include subject lines or headers.`;
+
+    if (useStream && isCompose) {
+      const stream = await openai.chat.completions.create({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemContent },
+          { role: "user", content: userContent },
+        ],
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      let fullContent = "";
+
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of stream) {
+              const text = chunk.choices[0]?.delta?.content ?? "";
+              if (text) {
+                fullContent += text;
+                controller.enqueue(encoder.encode(text));
+              }
+            }
+            controller.close();
+            const inputEst = Math.ceil((systemContent.length + userContent.length) / 4);
+            const outputEst = Math.ceil(fullContent.length / 4);
+            recordUsage({
+              userId,
+              operation: "compose",
+              inputTokens: inputEst,
+              outputTokens: outputEst,
+              model: "google/gemini-2.5-flash",
+            });
+          } catch (e) {
+            controller.error(e);
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "google/gemini-2.5-flash",

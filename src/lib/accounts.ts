@@ -447,6 +447,111 @@ export class Account {
     return response.data;
   }
 
+
+  async tryGetFirstPageViaSyncApi(
+    timeoutMs: number = 18_000,
+  ): Promise<{ records: EmailMessage[]; nextPageToken?: string; nextDeltaToken?: string } | null> {
+    try {
+      const syncResponse = await Promise.race([
+        this.startSync(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Sync API start timeout")), timeoutMs),
+        ),
+      ]);
+      if (!syncResponse.ready || !syncResponse.syncUpdatedToken) {
+        debugLog("[tryGetFirstPageViaSyncApi] Sync not ready or no token");
+        return null;
+      }
+      const page = await this.getUpdatedEmails(
+        syncResponse.syncUpdatedToken,
+        undefined,
+        false,
+      );
+      const records = page.records ?? [];
+      if (records.length === 0) {
+        return {
+          records: [],
+          nextPageToken: page.nextPageToken,
+          nextDeltaToken: page.nextDeltaToken,
+        };
+      }
+      for (const email of records) {
+        if (!email.sysLabels.includes("inbox")) {
+          email.sysLabels.push("inbox");
+        }
+      }
+      return {
+        records,
+        nextPageToken: page.nextPageToken,
+        nextDeltaToken: page.nextDeltaToken,
+      };
+    } catch (err) {
+      debugLog("[tryGetFirstPageViaSyncApi] Failed:", err);
+      return null;
+    }
+  }
+
+  async getNextPageViaSyncApi(
+    pageToken: string,
+  ): Promise<{ records: EmailMessage[]; nextPageToken?: string; nextDeltaToken?: string }> {
+    const page = await this.getUpdatedEmails(undefined, pageToken, false);
+    const records = page.records ?? [];
+    for (const email of records) {
+      if (!email.sysLabels.includes("inbox")) {
+        email.sysLabels.push("inbox");
+      }
+    }
+    return {
+      records,
+      nextPageToken: page.nextPageToken,
+      nextDeltaToken: page.nextDeltaToken,
+    };
+  }
+
+  async fetchInboxFirstPageInChunks(
+    maxIds: number = 20,
+    chunkSize: number = 5,
+    listTimeoutMs: number = 12_000,
+    getTimeoutMs: number = 8_000,
+  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string }> {
+    const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
+    const listResponse = await with401Retry(
+      this.id,
+      () =>
+        aurinkoAxios.get<{ messages?: Array<{ id: string }>; records?: Array<{ id: string }>; nextPageToken?: string }>(
+          "https://api.aurinko.io/v1/email/messages",
+          {
+            headers: this.aurinkoHeaders,
+            params: {
+              maxResults: maxIds,
+              bodyType: "text",
+              q: `label:inbox ${newerThanQuery}`,
+            },
+            timeout: listTimeoutMs,
+          },
+        ),
+      { tryRefresh: () => this.refreshTokenIfPossible() },
+    );
+    const messageIds =
+      listResponse.data.messages?.map((m) => m.id) ??
+      listResponse.data.records?.map((r) => r.id) ??
+      [];
+    const nextPageToken = listResponse.data.nextPageToken;
+    const allEmails: EmailMessage[] = [];
+    for (let i = 0; i < messageIds.length; i += chunkSize) {
+      const chunk = messageIds.slice(i, i + chunkSize);
+      const batchEmails = await Promise.all(
+        chunk.map((id) => this.getEmailById(id, getTimeoutMs)),
+      );
+      const valid = batchEmails.filter((e): e is EmailMessage => e !== null);
+      allEmails.push(...valid);
+      if (valid.length > 0) {
+        await syncEmailsToDatabase(valid, this.id);
+      }
+    }
+    return { emails: allEmails, nextPageToken };
+  }
+
   async sendEmail({
     from,
     subject,
@@ -771,10 +876,17 @@ export class Account {
             syncUpdateResponse.records &&
             syncUpdateResponse.records.length > 0
           ) {
-            syncEmails.push(...syncUpdateResponse.records);
+            const records = syncUpdateResponse.records;
+            syncEmails.push(...records);
+            for (const email of records) {
+              if (!email.sysLabels.includes("inbox")) {
+                email.sysLabels.push("inbox");
+              }
+            }
+            await syncEmailsToDatabase(records, account.id);
             consecutiveEmptyPages = 0;
             debugLog(
-              `[syncEmails] ✓ Sync API page ${syncPageCount}: ${syncUpdateResponse.records.length} emails, total: ${syncEmails.length}`,
+              `[syncEmails] ✓ Sync API page ${syncPageCount}: ${records.length} emails synced to DB, total: ${syncEmails.length}`,
             );
           } else {
             consecutiveEmptyPages++;
@@ -823,16 +935,8 @@ export class Account {
         }
 
         debugLog(
-          `[syncEmails] ✓ Fetched ${syncEmails.length} emails from sync API, syncing to database...`,
+          `[syncEmails] ✓ Fetched ${syncEmails.length} emails from sync API (already synced per page)`,
         );
-
-        for (const email of syncEmails) {
-          if (!email.sysLabels.includes("inbox")) {
-            email.sysLabels.push("inbox");
-          }
-        }
-
-        await syncEmailsToDatabase(syncEmails, account.id);
 
         await db.account.update({
           where: { id: account.id },
@@ -875,6 +979,7 @@ export class Account {
 
     let allEmails: EmailMessage[] = [];
     let storedDeltaToken: string;
+    let syncedIncrementally = false;
 
     if (!updatedAccount.nextDeltaToken) {
       debugLog(
@@ -924,14 +1029,23 @@ export class Account {
           debugLog(`Updated delta token: ${storedDeltaToken}`);
         }
 
+        if (allEmails.length > 0) {
+          await syncEmailsToDatabase(allEmails, account.id);
+          syncedIncrementally = true;
+        }
         while (response.nextPageToken) {
           debugLog(
             `Fetching next page with token: ${response.nextPageToken}`,
           );
           response = await this.getUpdatedEmails("", response.nextPageToken);
-          allEmails = allEmails.concat(response.records);
+          const records = response.records || [];
+          allEmails = allEmails.concat(records);
+          if (records.length > 0) {
+            await syncEmailsToDatabase(records, account.id);
+            syncedIncrementally = true;
+          }
           debugLog(
-            `Page response: ${response.records.length} emails, total: ${allEmails.length}`,
+            `Page response: ${records.length} emails synced, total: ${allEmails.length}`,
           );
           if (response.nextDeltaToken) {
             storedDeltaToken = response.nextDeltaToken;
@@ -955,13 +1069,19 @@ export class Account {
     }
 
     try {
-      debugLog(
-        `[syncEmails] Starting DB insert for ${allEmails.length} emails...`,
-      );
-      await syncEmailsToDatabase(allEmails, account.id);
-      debugLog(
-        `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
-      );
+      if (!syncedIncrementally) {
+        debugLog(
+          `[syncEmails] Starting DB insert for ${allEmails.length} emails...`,
+        );
+        await syncEmailsToDatabase(allEmails, account.id);
+        debugLog(
+          `[syncEmails] Successfully synced ${allEmails.length} emails to database`,
+        );
+      } else {
+        debugLog(
+          `[syncEmails] Emails already synced incrementally (${allEmails.length} total)`,
+        );
+      }
 
       const savedEmailCount = await db.email.count({
         where: {
@@ -1389,23 +1509,27 @@ export class Account {
     const sentIds = sentRes.data.messages?.map((m) => m.id) ?? [];
     const trashIds = trashRes.data.messages?.map((m) => m.id) ?? [];
 
-    const fetchAndSync = async (ids: string[]): Promise<number> => {
-      if (ids.length === 0) return 0;
-      const emails = await Promise.all(
-        ids.map((id) => limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS))),
-      );
-      const valid = emails.filter((e): e is EmailMessage => e !== null);
-      if (valid.length > 0) {
-        await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 15, skipRecalculate: false });
-        return valid.length;
+    const CHUNK_SIZE = 5;
+    const fetchAndSyncInChunks = async (ids: string[]): Promise<number> => {
+      let total = 0;
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
+        const emails = await Promise.all(
+          chunk.map((id) => limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS))),
+        );
+        const valid = emails.filter((e): e is EmailMessage => e !== null);
+        if (valid.length > 0) {
+          await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 15, skipRecalculate: false });
+          total += valid.length;
+        }
       }
-      return 0;
+      return total;
     };
 
-    const [inboxCount, sentCount, trashCount] = await Promise.all([
-      fetchAndSync(inboxIds),
-      fetchAndSync(sentIds),
-      fetchAndSync(trashIds),
+    const inboxCount = await fetchAndSyncInChunks(inboxIds);
+    const [sentCount, trashCount] = await Promise.all([
+      fetchAndSyncInChunks(sentIds),
+      fetchAndSyncInChunks(trashIds),
     ]);
 
     const total = inboxCount + sentCount + trashCount;
@@ -1550,6 +1674,7 @@ export class Account {
     sentUseLabelIds = false,
     trashUseLabelIds = false,
     maxResults = 500,
+    timeoutPerEmailMs?: number,
   ): Promise<{ emails: EmailMessage[]; nextPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean }> {
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
     let searchQuery: string;
@@ -1642,7 +1767,9 @@ export class Account {
     const batchSize = EMAIL_FETCH_BATCH_SIZE;
     for (let i = 0; i < messageIds.length; i += batchSize) {
       const batch = messageIds.slice(i, i + batchSize);
-      const batchEmails = await Promise.all(batch.map((id) => this.getEmailById(id)));
+      const batchEmails = await Promise.all(
+        batch.map((id) => this.getEmailById(id, timeoutPerEmailMs)),
+      );
       const valid = batchEmails.filter((e): e is EmailMessage => e !== null);
       allEmails.push(...valid);
       if (i + batchSize < messageIds.length && DELAY_BETWEEN_BATCHES_MS > 0) {

@@ -17,16 +17,23 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Pencil,
   Send,
   Link,
-  Smile,
   FileSignature,
   Paperclip,
   X,
   Folder,
-  MessageCircle,
+  ChevronDown,
   Clock,
+  Wand2,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -59,11 +66,12 @@ async function generateEmailViaApi(
   context: string,
   prompt: string,
   signal?: AbortSignal,
+  onChunk?: (text: string) => void,
 ): Promise<{ content: string }> {
   const res = await fetch("/api/generate-email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ context, prompt, mode: "compose" }),
+    body: JSON.stringify({ context, prompt, mode: "compose", stream: !!onChunk }),
     signal,
     credentials: "include",
   });
@@ -73,6 +81,25 @@ async function generateEmailViaApi(
       (data.error as string) || `Request failed: ${res.status}`,
     );
   }
+
+  if (onChunk && res.body) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let content = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        content += text;
+        onChunk(text);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return { content };
+  }
+
   return res.json() as Promise<{ content: string }>;
 }
 
@@ -85,6 +112,9 @@ export default function ComposeEmailGmail({
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [accountId] = useLocalStorage("accountId", "");
   const [to, setTo] = useState("");
+  const [cc, setCc] = useState("");
+  const [bcc, setBcc] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -295,16 +325,28 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         () => controller.abort(),
         AI_GENERATE_TIMEOUT_MS,
       );
-      let result: { content: string };
-      try {
-        result = await generateEmailViaApi(
-          context,
-          prompt,
-          controller.signal,
-        );
-      } finally {
-        clearTimeout(timeoutId);
-      }
+
+      let accumulated = "";
+
+      const result = await generateEmailViaApi(
+        context,
+        prompt,
+        controller.signal,
+        (chunk) => {
+          accumulated += chunk;
+          const interimHtml = accumulated
+            .replace(/\n\n/g, "</p><p style=\"margin: 0 0 12px 0; line-height: 1.6;\">")
+            .replace(/\n/g, "<br>");
+          const wrapped = `<p style="margin: 0 0 12px 0; line-height: 1.6;">${interimHtml || "&nbsp;"}</p>`;
+          setBody(wrapped);
+          if (bodyEditableRef.current) {
+            isExternalUpdate.current = true;
+            bodyEditableRef.current.innerHTML = wrapped;
+          }
+        },
+      );
+
+      clearTimeout(timeoutId);
 
       if (result.content && result.content.trim()) {
         let content = result.content.trim();
@@ -578,6 +620,8 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         formData.append("subject", subjectSend.trim());
         formData.append("body", bodyWithSignature);
         formData.append("trackOpens", String(trackOpens));
+        if (cc.trim()) formData.append("cc", JSON.stringify(cc.split(",").map((e) => e.trim()).filter(Boolean)));
+        if (bcc.trim()) formData.append("bcc", JSON.stringify(bcc.split(",").map((e) => e.trim()).filter(Boolean)));
         attachmentsToSend.forEach((file) => formData.append("attachments", file));
         response = await fetchWithAuthRetry("/api/email/send", {
           method: "POST",
@@ -590,6 +634,8 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           body: JSON.stringify({
             accountId: accountIdSend,
             to: toSend.split(",").map((email) => email.trim()),
+            cc: cc.trim() ? cc.split(",").map((e) => e.trim()).filter(Boolean) : undefined,
+            bcc: bcc.trim() ? bcc.split(",").map((e) => e.trim()).filter(Boolean) : undefined,
             subject: subjectSend.trim(),
             body: bodyWithSignature,
             trackOpens,
@@ -606,6 +652,8 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       if (data.warning) toast.warning(data.warning, { duration: 6000 });
       toast.success("Email sent");
       setTo("");
+      setCc("");
+      setBcc("");
       setSubject("");
       setBody("");
       setOriginalUserText("");
@@ -617,6 +665,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
       setIsSending(false);
     };
     scheduleSend(executeSend);
+    setOpen(false);
   };
 
   const handleScheduleSend = () => {
@@ -683,746 +732,516 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
           Compose
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col border-slate-800 bg-[#0a0a0a] p-4 text-white [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:h-auto md:max-h-[90vh] md:w-[95vw] md:max-w-7xl md:overflow-y-auto md:p-6">
-        <DialogHeader className="mb-4 md:mb-6">
-          <DialogTitle className="text-lg font-bold text-white md:text-xl">
-            Compose Email
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 md:space-y-6">
-          <div className="space-y-2">
-            <Label
-              htmlFor="to"
-              className="text-sm font-medium text-white md:text-base"
-            >
-              To
-            </Label>
-            <Input
-              id="to"
-              placeholder="recipient@example.com"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              disabled={isSending}
-              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-yellow-500 focus:ring-yellow-500 md:h-10 md:text-sm"
-            />
-          </div>
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0c0e] p-0 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_32px_64px_-12px_rgba(0,0,0,0.5)] [-ms-overflow-style:none] [scrollbar-width:none] md:h-auto md:max-h-[85vh] md:max-w-[600px] [&::-webkit-scrollbar]:hidden [&>button]:hidden">
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="subject"
-              className="text-sm font-medium text-white md:text-base"
-            >
-              Subject
-            </Label>
-            <Input
-              id="subject"
-              placeholder="Email subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              disabled={isSending}
-              className="h-11 border-white/10 bg-white/5 text-base text-white placeholder:text-gray-400 focus:border-yellow-500 focus:ring-yellow-500 md:h-10 md:text-sm"
-            />
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="body"
-                className="text-sm font-medium text-white md:text-base"
-              >
-                Body
-              </Label>
-              <span className="hidden text-xs text-muted-foreground md:inline">
-                Press{" "}
-                {typeof navigator !== "undefined" &&
-                  navigator.platform.toUpperCase().indexOf("MAC") >= 0
-                  ? "Cmd+J"
-                  : "Alt+J"}{" "}
-                to auto-generate
-              </span>
+        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
+          <span className="text-[15px] font-semibold tracking-tight text-white">New message</span>
+          <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-[#8e8e93] transition-colors hover:bg-white/[0.06] hover:text-white" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] px-5 py-3">
+          <span className="w-6 shrink-0 text-[13px] text-[#8e8e93]">To</span>
+          <Input
+            id="to"
+            placeholder="Enter email"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            disabled={isSending}
+            className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0"
+          />
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => setShowCcBcc(!showCcBcc)} className="text-[13px] font-medium text-[#8e8e93] transition-colors hover:text-[#afafb3]">Cc</button>
+            <button type="button" onClick={() => setShowCcBcc(!showCcBcc)} className="text-[13px] font-medium text-[#8e8e93] transition-colors hover:text-[#afafb3]">Bcc</button>
+          </div>
+        </div>
+        {showCcBcc && (
+          <>
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-3">
+              <span className="w-12 shrink-0 text-[13px] text-[#8e8e93]">Cc</span>
+              <Input placeholder="Cc" value={cc} onChange={(e) => setCc(e.target.value)} disabled={isSending} className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0" />
             </div>
-            <div className="relative">
-              <div
-                ref={bodyEditableRef}
-                contentEditable={!isSending && !isGenerating}
-                suppressContentEditableWarning
-                onInput={(e) => {
-                  setIsUserTyping(true);
-                  const html = e.currentTarget.innerHTML;
-                  setBody(html);
-                  if (typingTimeoutRef.current) {
-                    clearTimeout(typingTimeoutRef.current);
-                  }
-                  typingTimeoutRef.current = setTimeout(() => {
-                    setIsUserTyping(false);
-                  }, 500);
-                }}
-                onBlur={() => {
-                  setIsUserTyping(false);
-                }}
-                onFocus={() => {
-                  setIsUserTyping(true);
-                }}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const text = e.clipboardData.getData("text/plain");
-                  const selection = window.getSelection();
-                  if (selection && selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    range.deleteContents();
-                    const textNode = document.createTextNode(text);
-                    range.insertNode(textNode);
-                    range.setStartAfter(textNode);
-                    range.collapse(true);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                  }
-                  const html = e.currentTarget.innerHTML;
-                  setBody(html);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    const selection = window.getSelection();
-                    if (selection && selection.rangeCount > 0) {
-                      const range = selection.getRangeAt(0);
-                      const br = document.createElement("br");
-                      range.deleteContents();
-                      range.insertNode(br);
-                      range.setStartAfter(br);
-                      range.collapse(true);
-                      selection.removeAllRanges();
-                      selection.addRange(range);
-                      const html = e.currentTarget.innerHTML;
-                      setBody(html);
-                    }
-                  }
-                }}
-                className="min-h-[250px] w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-base text-white ring-offset-background [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-gray-400 focus-visible:border-yellow-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[200px] md:px-3 md:py-2 md:text-sm [&::-webkit-scrollbar]:hidden [&_a:hover]:text-[#0052a3] [&_a]:cursor-pointer [&_a]:text-[#0066cc] [&_a]:underline"
-                style={{
-                  whiteSpace: "pre-wrap",
-                  wordWrap: "break-word",
-                }}
-                data-placeholder="Email body (HTML supported). Press Alt+J (Windows) or Cmd+J (Mac) to auto-generate based on subject and your text."
-              />
-              {!body && !isGenerating && (
-                <div
-                  className="pointer-events-none absolute left-4 top-3 text-sm text-gray-400 md:left-3 md:top-2"
-                  style={{ whiteSpace: "pre-wrap" }}
-                >
-                  <span className="md:hidden">Tap to write your email...</span>
-                  <span className="hidden md:inline">
-                    Email body (HTML supported). Press Alt+J (Windows) or Cmd+J
-                    (Mac) to auto-generate based on subject and your text.
-                  </span>
-                </div>
-              )}
-              {isGenerating && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md border border-input bg-background/80 backdrop-blur-sm">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="relative">
-                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-200 border-t-yellow-500"></div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="h-5 w-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600"></div>
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-foreground">
-                        {isRegenerating
-                          ? "Generating a new version..."
-                          : "AI is crafting your email..."}
-                      </p>
-                      <div className="mt-1.5 flex items-center justify-center gap-1">
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.3s]"></span>
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500 [animation-delay:-0.15s]"></span>
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-500"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-3">
+              <span className="w-12 shrink-0 text-[13px] text-[#8e8e93]">Bcc</span>
+              <Input placeholder="Bcc" value={bcc} onChange={(e) => setBcc(e.target.value)} disabled={isSending} className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0" />
             </div>
-            {hasGenerated && !isGenerating && (
-              <p className="hidden text-xs text-muted-foreground md:block">
-                💡 Press{" "}
-                {typeof navigator !== "undefined" &&
-                  navigator.platform.toUpperCase().indexOf("MAC") >= 0
-                  ? "Cmd+J"
-                  : "Alt+J"}{" "}
-                again to generate a different version
-              </p>
-            )}
-          </div>
+          </>
+        )}
 
-          {attachments.length > 0 && (
-            <div className="mt-4 space-y-3 border-t border-white/10 pt-4 md:mt-2 md:space-y-2 md:pt-3">
-              <div className="text-sm font-semibold text-white md:text-xs md:font-medium md:text-muted-foreground">
-                Attached Files ({attachments.length})
-              </div>
-              <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:gap-2">
-                {attachments.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm md:gap-2 md:rounded-md md:bg-muted/50 md:px-3 md:py-2"
-                  >
-                    <Paperclip className="size-5 text-amber-500 md:size-4 md:text-muted-foreground" />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm font-medium text-white md:text-foreground">
-                        {file.name}
-                      </span>
-                      <span className="text-xs text-gray-400 md:text-muted-foreground">
-                        {formatFileSize(file.size)}
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 flex-shrink-0 p-0 hover:bg-red-500/10 md:h-6 md:w-6"
-                      onClick={() => handleRemoveAttachment(index)}
-                      disabled={isSending}
-                    >
-                      <X className="size-4 text-gray-400 hover:text-red-400 md:size-3 md:text-muted-foreground md:hover:text-destructive" />
-                    </Button>
-                  </div>
-                ))}
+
+        <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-3">
+          <span className="w-12 shrink-0 text-[13px] text-[#8e8e93]">Subject</span>
+          <Input
+            id="subject"
+            placeholder="Re: Design review feedback"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            disabled={isSending}
+            className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0"
+          />
+        </div>
+
+
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={bodyEditableRef}
+            contentEditable={!isSending && !isGenerating}
+            suppressContentEditableWarning
+            onInput={(e) => {
+              setIsUserTyping(true);
+              const html = e.currentTarget.innerHTML;
+              setBody(html);
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+              typingTimeoutRef.current = setTimeout(() => setIsUserTyping(false), 500);
+            }}
+            onBlur={() => setIsUserTyping(false)}
+            onFocus={() => setIsUserTyping(true)}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = e.clipboardData.getData("text/plain");
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const textNode = document.createTextNode(text);
+                range.insertNode(textNode);
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+              }
+              setBody(e.currentTarget.innerHTML);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0) {
+                  const range = selection.getRangeAt(0);
+                  const br = document.createElement("br");
+                  range.deleteContents();
+                  range.insertNode(br);
+                  range.setStartAfter(br);
+                  range.collapse(true);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                  setBody(e.currentTarget.innerHTML);
+                }
+              }
+            }}
+            className="min-h-[280px] flex-1 overflow-y-auto bg-[#0c0c0e] px-5 py-5 text-[15px] leading-[1.6] text-[#e5e5e7] [-ms-overflow-style:none] [scrollbar-width:none] focus:outline-none [&::-webkit-scrollbar]:hidden [&_a]:text-[#5c9eff] [&_a]:underline [&_a]:decoration-[#5c9eff]/40"
+            style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
+          />
+          {!body && !isGenerating && (
+            <div className="pointer-events-none absolute left-5 top-5 text-[15px] text-[#6e6e73]">
+              Write your message…
+            </div>
+          )}
+          {isGenerating && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0c0c0e]/98 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/[0.1] border-t-[#5c9eff]" />
+                <span className="text-[14px] font-medium text-[#afafb3]">{isRegenerating ? "Regenerating…" : "Generating…"}</span>
               </div>
             </div>
           )}
+        </div>
 
-          <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-4 md:flex md:flex-wrap md:items-center md:gap-2 md:border-t md:pt-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
 
-            <input
-              ref={folderInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFolderSelect}
-              // @ts-expect-error - webkitdirectory is a valid HTML attribute for folder selection
-              webkitdirectory=""
-            />
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSending || isGenerating}
-              className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="size-4 text-amber-500" />
-              <span className="text-sm font-medium md:text-xs">
-                Attach Files
-              </span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSending || isGenerating}
-              className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
-              onClick={() => folderInputRef.current?.click()}
-            >
-              <Folder className="size-4 text-blue-500" />
-              <span className="text-sm font-medium md:text-xs">
-                Attach Folder
-              </span>
-            </Button>
-
-            <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isSending || isGenerating}
-                  className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
-                >
-                  <Link className="size-4 text-blue-500" />
-                  <span className="text-sm font-medium md:text-xs">
-                    Insert Link
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="border-slate-800 bg-[#0a0a0a] text-white">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Insert Link</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="link-text">Link Text</Label>
-                    <Input
-                      id="link-text"
-                      placeholder="Click here"
-                      value={linkText}
-                      onChange={(e) => setLinkText(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="link-url">URL</Label>
-                    <Input
-                      id="link-url"
-                      placeholder="https://example.com"
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setLinkDialogOpen(false);
-                        setLinkUrl("");
-                        setLinkText("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (linkUrl && linkText) {
-                          const formattedUrl =
-                            linkUrl.startsWith("http://") ||
-                              linkUrl.startsWith("https://")
-                              ? linkUrl
-                              : `https://${linkUrl}`;
-
-                          const linkHtml = `<a href="${formattedUrl}" style="color: #0066cc; text-decoration: underline; cursor: pointer;">${linkText}</a>`;
-                          const cursorPos =
-                            bodyTextareaRef.current?.selectionStart ||
-                            body.length;
-
-                          if (bodyEditableRef.current) {
-                            bodyEditableRef.current.focus();
-
-                            const selection = window.getSelection();
-                            let range: Range;
-
-                            if (
-                              selection &&
-                              selection.rangeCount > 0 &&
-                              bodyEditableRef.current.contains(
-                                selection.anchorNode,
-                              )
-                            ) {
-                              range = selection.getRangeAt(0);
-                            } else {
-                              range = document.createRange();
-                              range.selectNodeContents(bodyEditableRef.current);
-                              range.collapse(false);
-                            }
-
-                            const hasContentBefore =
-                              range.startOffset > 0 ||
-                              (range.startContainer.nodeType ===
-                                Node.TEXT_NODE &&
-                                range.startContainer.textContent &&
-                                range.startContainer.textContent.trim().length >
-                                0);
-
-                            if (
-                              hasContentBefore &&
-                              range.startContainer.nodeType === Node.TEXT_NODE
-                            ) {
-                              const textBefore =
-                                range.startContainer.textContent || "";
-                              const charBefore =
-                                textBefore[range.startOffset - 1];
-                              if (
-                                charBefore &&
-                                charBefore !== " " &&
-                                charBefore !== "\n"
-                              ) {
-                                const spaceNode = document.createTextNode(" ");
-                                range.insertNode(spaceNode);
-                                range.setStartAfter(spaceNode);
-                              }
-                            }
-
-                            range.deleteContents();
-
-                            const linkElement = document.createElement("a");
-                            linkElement.href = formattedUrl;
-                            linkElement.style.color = "#0066cc";
-                            linkElement.style.textDecoration = "underline";
-                            linkElement.style.cursor = "pointer";
-                            linkElement.textContent = linkText;
-
-                            range.insertNode(linkElement);
-
-                            range.setStartAfter(linkElement);
-                            range.collapse(true);
-
-                            if (selection) {
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                            }
-
-                            setBody(bodyEditableRef.current.innerHTML);
-                          } else {
-                            const newBody =
-                              body.slice(0, cursorPos) +
-                              linkHtml +
-                              body.slice(cursorPos);
-                            setBody(newBody);
-                          }
-                          setLinkDialogOpen(false);
-                          setLinkUrl("");
-                          setLinkText("");
-                          toast.success("Link inserted");
-
-                          setTimeout(() => {
-                            bodyEditableRef.current?.focus();
-                          }, 0);
-                        } else {
-                          toast.error("Please enter both link text and URL");
-                        }
-                      }}
-                    >
-                      Insert
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isSending || isGenerating}
-                  className="hidden items-center gap-1.5 md:flex"
-                >
-                  <Smile className="size-4 text-yellow-500" />
-                  <span className="text-xs">Emoji</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="start">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Common Emojis</Label>
-                  <div className="grid grid-cols-8 gap-2">
-                    {[
-                      "😀",
-                      "😊",
-                      "👍",
-                      "❤️",
-                      "🎉",
-                      "✅",
-                      "🔥",
-                      "💯",
-                      "🚀",
-                      "⭐",
-                      "💡",
-                      "🎯",
-                      "🙏",
-                      "👏",
-                      "🎊",
-                      "✨",
-                      "💪",
-                      "🌟",
-                      "😎",
-                      "🤝",
-                      "📧",
-                      "📝",
-                      "📅",
-                      "⏰",
-                    ].map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => {
-                          if (bodyEditableRef.current) {
-                            bodyEditableRef.current.focus();
-
-                            const selection = window.getSelection();
-                            let range: Range;
-
-                            if (
-                              selection &&
-                              selection.rangeCount > 0 &&
-                              bodyEditableRef.current.contains(
-                                selection.anchorNode,
-                              )
-                            ) {
-                              range = selection.getRangeAt(0);
-                            } else {
-                              range = document.createRange();
-                              range.selectNodeContents(bodyEditableRef.current);
-                              range.collapse(false);
-                            }
-
-                            range.deleteContents();
-                            const textNode = document.createTextNode(
-                              emoji + " ",
-                            );
-                            range.insertNode(textNode);
-                            range.setStartAfter(textNode);
-                            range.collapse(true);
-
-                            if (selection) {
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                            }
-
-                            setBody(bodyEditableRef.current.innerHTML);
-                          } else {
-                            const cursorPos =
-                              bodyTextareaRef.current?.selectionStart ||
-                              body.length;
-                            const newBody =
-                              body.slice(0, cursorPos) +
-                              emoji +
-                              " " +
-                              body.slice(cursorPos);
-                            setBody(newBody);
-                          }
-                          setEmojiPopoverOpen(false);
-
-                          setTimeout(() => {
-                            bodyEditableRef.current?.focus();
-                          }, 0);
-                        }}
-                        className="flex h-10 w-10 items-center justify-center rounded-md border text-lg hover:bg-accent hover:text-accent-foreground"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSending || isGenerating}
-              onClick={() => {
-                const signatureName =
-                  account?.name || account?.emailAddress || "User";
-
-                if (bodyEditableRef.current) {
-                  bodyEditableRef.current.focus();
-
-                  const selection = window.getSelection();
-                  let range: Range;
-
-                  if (
-                    selection &&
-                    selection.rangeCount > 0 &&
-                    bodyEditableRef.current.contains(selection.anchorNode)
-                  ) {
-                    range = selection.getRangeAt(0);
-                  } else {
-                    range = document.createRange();
-                    range.selectNodeContents(bodyEditableRef.current);
-                    range.collapse(false);
-                  }
-
-                  const currentContent =
-                    bodyEditableRef.current.innerHTML.trim();
-                  if (
-                    currentContent &&
-                    !currentContent.endsWith("<br>") &&
-                    !currentContent.endsWith("</p>") &&
-                    !currentContent.endsWith("</div>")
-                  ) {
-                    const br = document.createElement("br");
-                    range.insertNode(br);
-                    range.setStartAfter(br);
-                  }
-
-                  const br1 = document.createElement("br");
-                  const br2 = document.createElement("br");
-                  const text1 = document.createTextNode("Best regards,");
-                  const br3 = document.createElement("br");
-                  const text2 = document.createTextNode(signatureName);
-
-                  range.insertNode(br1);
-                  range.setStartAfter(br1);
-                  range.insertNode(br2);
-                  range.setStartAfter(br2);
-                  range.insertNode(text1);
-                  range.setStartAfter(text1);
-                  range.insertNode(br3);
-                  range.setStartAfter(br3);
-                  range.insertNode(text2);
-
-                  range.setStartAfter(text2);
-                  range.collapse(true);
-
-                  if (selection) {
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                  }
-
-                  setBody(bodyEditableRef.current.innerHTML);
-                } else {
-                  const signature = `<br><br>Best regards,<br>${signatureName}`;
-                  const cursorPos =
-                    bodyTextareaRef.current?.selectionStart || body.length;
-                  const newBody =
-                    body.slice(0, cursorPos) +
-                    signature +
-                    body.slice(cursorPos);
-                  setBody(newBody);
-                }
-                toast.success("Signature inserted");
-                setTimeout(() => {
-                  bodyEditableRef.current?.focus();
-                }, 0);
-              }}
-              className="flex h-12 items-center justify-center gap-2 border-white/20 bg-white/5 text-white transition-all hover:border-white/30 hover:bg-white/10 md:h-9 md:justify-start md:gap-1.5"
-            >
-              <FileSignature className="size-4 text-white" />
-              <span className="text-sm font-medium md:text-xs">
-                Insert Signature
-              </span>
-            </Button>
+        {attachments.length > 0 && (
+          <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-5 py-3">
+            {attachments.map((file, index) => (
+              <div key={index} className="flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-3 py-2 text-[13px]">
+                <Paperclip className="h-3.5 w-3.5 text-[#8e8e93]" />
+                <span className="max-w-[120px] truncate text-[#e5e5e7]">{file.name}</span>
+                <span className="text-[13px] text-[#6e6e73]">{formatFileSize(file.size)}</span>
+                <button type="button" onClick={() => handleRemoveAttachment(index)} disabled={isSending} className="rounded p-0.5 text-[#6e6e73] transition-colors hover:bg-white/[0.06] hover:text-[#e5e5e7]">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
           </div>
+        )}
 
-          <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3 md:pt-2">
-            <label className="flex cursor-pointer items-start gap-3 text-sm">
-              <Checkbox
-                checked={trackOpens}
-                onCheckedChange={(c) => setTrackOpens(c === true)}
-                disabled={isSending || isGenerating}
-                className="mt-0.5 border-white/30 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
-              />
-              <span className="text-zinc-300">
-                Track when this email is opened
-              </span>
-            </label>
-            <p className="text-xs text-zinc-500 md:ml-7">
-              Adds a small image that loads when the recipient opens the email.
-              Some email clients block images. Open tracking may not work in all
-              clients.
-            </p>
-          </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:flex-nowrap md:items-center md:justify-end md:gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsGenerating(false);
-                setIsRegenerating(false);
-                setOpen(false);
-              }}
-              disabled={isSending}
-              className="h-12 w-full border-white/20 bg-white/5 text-base font-medium text-white transition-all hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:w-auto md:flex-initial md:text-sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAIGenerate}
-              disabled={isSending || isGenerating}
-              className="h-12 w-full bg-gradient-to-r from-purple-600 via-purple-400 to-yellow-400 text-base font-semibold text-white shadow-lg shadow-purple-500/30 transition-all duration-200 hover:from-purple-700 hover:via-purple-500 hover:to-yellow-500 hover:shadow-xl hover:shadow-purple-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:hidden"
-            >
-              {isGenerating ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
-                  Generating...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <MessageCircle className="h-4 w-4 text-white" />
-                  Generate
-                </span>
-              )}
-            </Button>
-            <Popover open={scheduleSendOpen} onOpenChange={setScheduleSendOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isSending || isGenerating}
-                  className="h-12 shrink-0 border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:border-yellow-500/60 hover:bg-yellow-500/20 md:h-10"
-                >
-                  <Clock className="mr-2 h-4 w-4" />
-                  <span className="md:hidden">Schedule</span>
-                  <span className="hidden md:inline">Schedule send</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto min-w-[280px] border-slate-800 bg-[#0a0a0a] p-6 text-white"
-                align="end"
-              >
-                <div className="space-y-6">
-                  <div className="flex w-full flex-col items-center">
-                    <Label className="mb-2 block w-full text-center text-sm font-medium text-zinc-300">
-                      Date
-                    </Label>
-                    <div className="flex w-full justify-center">
-                      <Calendar
-                        mode="single"
-                        selected={scheduleDate}
-                        onSelect={setScheduleDate}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        className="[--cell-size:1.2rem] text-[11px] rounded-lg border border-white/10 bg-white/5 p-1.5 [&_[data-slot=calendar]]:text-[11px] [&_.rdp-month]:!gap-y-0.5 [&_.rdp-week]:!mt-0.5"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="mb-3 block text-sm font-medium text-zinc-300">
-                      Time (24-hour)
-                    </Label>
-                    <TimeInput24
-                      value={scheduleTime}
-                      onChange={setScheduleTime}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleScheduleSend}
-                    disabled={
-                      scheduleSendMutation.isPending || !authLoaded || !userId
-                    }
-                    className="w-full py-2.5 bg-yellow-500 font-medium text-black hover:bg-yellow-600"
-                  >
-                    {!authLoaded || !userId
-                      ? "Loading..."
-                      : scheduleSendMutation.isPending
-                        ? "Scheduling..."
-                        : "Schedule send"}
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
+        <div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] px-5 py-3">
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
+          <input ref={folderInputRef} type="file" multiple className="hidden" onChange={handleFolderSelect}
+            // @ts-expect-error - webkitdirectory is valid for folder selection
+            webkitdirectory=""
+          />
+
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" disabled={isSending || isGenerating} className="flex h-9 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50">
+                <Plus className="h-4 w-4" /> Add
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[180px] rounded-xl border-white/[0.08] bg-[#141416]">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
+                <Paperclip className="mr-3 h-4 w-4" /> Attach files
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => folderInputRef.current?.click()} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
+                <Folder className="mr-3 h-4 w-4" /> Attach folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLinkDialogOpen(true)} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
+                <Link className="mr-3 h-4 w-4" /> Insert link
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+
+          <button
+            type="button"
+            disabled={isSending || isGenerating}
+            onClick={() => {
+              const signatureName = account?.name || account?.emailAddress || "User";
+              if (bodyEditableRef.current) {
+                bodyEditableRef.current.focus();
+                const sel = window.getSelection();
+                let range: Range;
+                if (sel && sel.rangeCount > 0 && bodyEditableRef.current.contains(sel.anchorNode)) { range = sel.getRangeAt(0); }
+                else { range = document.createRange(); range.selectNodeContents(bodyEditableRef.current); range.collapse(false); }
+                const c = bodyEditableRef.current.innerHTML.trim();
+                if (c && !c.endsWith("<br>") && !c.endsWith("</p>") && !c.endsWith("</div>")) { const br = document.createElement("br"); range.insertNode(br); range.setStartAfter(br); }
+                [document.createElement("br"), document.createElement("br")].forEach(n => { range.insertNode(n); range.setStartAfter(n); });
+                const t1 = document.createTextNode("Best regards,"); range.insertNode(t1); range.setStartAfter(t1);
+                const br3 = document.createElement("br"); range.insertNode(br3); range.setStartAfter(br3);
+                const t2 = document.createTextNode(signatureName); range.insertNode(t2); range.setStartAfter(t2);
+                range.collapse(true);
+                if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+                setBody(bodyEditableRef.current.innerHTML);
+              }
+              toast.success("Signature inserted");
+              bodyEditableRef.current?.focus();
+            }}
+            className="flex h-9 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+          >
+            <FileSignature className="h-4 w-4" /> Signature
+          </button>
+
+
+          <button
+            type="button"
+            disabled={isSending || isGenerating}
+            onClick={() => setEmojiPopoverOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[18px] transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+            title="Insert emoji"
+          >
+            😊
+          </button>
+
+
+          <div className="flex-1" />
+
+
+          <div className="flex items-center">
+            <button
+              type="button"
               onClick={handleSend}
               disabled={isSending || isGenerating || isDemo}
-              title={isDemo ? "Request access to connect your Gmail and send emails" : undefined}
-              className="h-12 w-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-amber-400 text-base font-semibold text-white shadow-lg shadow-yellow-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-yellow-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:h-10 md:w-auto md:flex-initial md:text-sm"
+              className="flex h-9 items-center justify-center gap-2 rounded-l-lg rounded-r-none border-r border-white/20 bg-[#2c7ff6] px-4 text-[14px] font-semibold leading-none text-white transition-colors hover:bg-[#1a6fe8] disabled:opacity-50"
             >
-              {isSending ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
-                  <span className="md:hidden">Sending...</span>
-                  <span className="hidden md:inline">Sending...</span>
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Send className="h-4 w-4 text-white" />
-                  <span className="md:hidden">Send</span>
-                  <span className="hidden md:inline">Send Email</span>
-                </span>
-              )}
-            </Button>
+              <Send className="h-4 w-4 shrink-0" />
+              <span className="leading-none">Send</span>
+              <kbd className="inline-flex translate-y-[1px] items-center justify-center text-[11px] font-normal leading-none opacity-75">⌘↵</kbd>
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isSending || isGenerating}
+                  className="flex h-9 w-9 items-center justify-center rounded-r-lg bg-[#2c7ff6] text-white transition-colors hover:bg-[#1a6fe8] disabled:opacity-50"
+                  aria-label="More send options"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl border-white/[0.08] bg-[#141416]">
+                <DropdownMenuItem onClick={() => setScheduleSendOpen(true)} disabled={isSending || isGenerating} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
+                  <Clock className="mr-3 h-4 w-4" /> Schedule send
+                </DropdownMenuItem>
+                <div className="my-1 border-t border-white/[0.06]" />
+                <label className="flex cursor-pointer items-center gap-3 px-2 py-2.5 text-[14px] text-[#e5e5e7] hover:bg-white/[0.06]">
+                  <input type="checkbox" checked={trackOpens} onChange={(e) => setTrackOpens(e.target.checked)} disabled={isSending || isGenerating} className="h-3.5 w-3.5 rounded border-[#3f3f46] bg-transparent text-[#3b82f6]" />
+                  Track when opened
+                </label>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+
+
+          <button
+            type="button"
+            onClick={handleAIGenerate}
+            disabled={isSending || isGenerating}
+            className="ml-3 flex h-9 items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.02] px-4 text-[14px] font-semibold text-[#e5e5e7] transition-colors hover:border-white/[0.2] hover:bg-white/[0.06] disabled:opacity-50"
+          >
+            <Wand2 className="h-4 w-4" />
+            Generate
+          </button>
         </div>
+
+        <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+          <DialogContent className="rounded-2xl border-white/[0.08] bg-[#141416] text-white">
+            <DialogHeader>
+              <DialogTitle className="text-[15px] text-white">Insert Link</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="link-text" className="text-[13px] text-[#a1a1aa]">Text</Label>
+                <Input id="link-text" placeholder="Click here" value={linkText} onChange={(e) => setLinkText(e.target.value)} className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-[#6e6e73] focus-visible:ring-[#2c7ff6]/40" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="link-url" className="text-[13px] text-[#a1a1aa]">URL</Label>
+                <Input id="link-url" placeholder="https://example.com" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="border-white/[0.08] bg-white/[0.04] text-white placeholder:text-[#6e6e73] focus-visible:ring-[#2c7ff6]/40" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setLinkDialogOpen(false); setLinkUrl(""); setLinkText(""); }} className="border-white/[0.12] bg-transparent text-[#afafb3] hover:bg-white/[0.06] hover:text-white">Cancel</Button>
+                <Button className="bg-[#2c7ff6] text-white hover:bg-[#1a6fe8]"
+                  onClick={() => {
+                    if (linkUrl && linkText) {
+                      const formattedUrl =
+                        linkUrl.startsWith("http://") ||
+                          linkUrl.startsWith("https://")
+                          ? linkUrl
+                          : `https://${linkUrl}`;
+
+                      const linkHtml = `<a href="${formattedUrl}" style="color: #0066cc; text-decoration: underline; cursor: pointer;">${linkText}</a>`;
+                      const cursorPos =
+                        bodyTextareaRef.current?.selectionStart ||
+                        body.length;
+
+                      if (bodyEditableRef.current) {
+                        bodyEditableRef.current.focus();
+
+                        const selection = window.getSelection();
+                        let range: Range;
+
+                        if (
+                          selection &&
+                          selection.rangeCount > 0 &&
+                          bodyEditableRef.current.contains(
+                            selection.anchorNode,
+                          )
+                        ) {
+                          range = selection.getRangeAt(0);
+                        } else {
+                          range = document.createRange();
+                          range.selectNodeContents(bodyEditableRef.current);
+                          range.collapse(false);
+                        }
+
+                        const hasContentBefore =
+                          range.startOffset > 0 ||
+                          (range.startContainer.nodeType ===
+                            Node.TEXT_NODE &&
+                            range.startContainer.textContent &&
+                            range.startContainer.textContent.trim().length >
+                            0);
+
+                        if (
+                          hasContentBefore &&
+                          range.startContainer.nodeType === Node.TEXT_NODE
+                        ) {
+                          const textBefore =
+                            range.startContainer.textContent || "";
+                          const charBefore =
+                            textBefore[range.startOffset - 1];
+                          if (
+                            charBefore &&
+                            charBefore !== " " &&
+                            charBefore !== "\n"
+                          ) {
+                            const spaceNode = document.createTextNode(" ");
+                            range.insertNode(spaceNode);
+                            range.setStartAfter(spaceNode);
+                          }
+                        }
+
+                        range.deleteContents();
+
+                        const linkElement = document.createElement("a");
+                        linkElement.href = formattedUrl;
+                        linkElement.style.color = "#0066cc";
+                        linkElement.style.textDecoration = "underline";
+                        linkElement.style.cursor = "pointer";
+                        linkElement.textContent = linkText;
+
+                        range.insertNode(linkElement);
+
+                        range.setStartAfter(linkElement);
+                        range.collapse(true);
+
+                        if (selection) {
+                          selection.removeAllRanges();
+                          selection.addRange(range);
+                        }
+
+                        setBody(bodyEditableRef.current.innerHTML);
+                      } else {
+                        const newBody =
+                          body.slice(0, cursorPos) +
+                          linkHtml +
+                          body.slice(cursorPos);
+                        setBody(newBody);
+                      }
+                      setLinkDialogOpen(false);
+                      setLinkUrl("");
+                      setLinkText("");
+                      toast.success("Link inserted");
+
+                      setTimeout(() => {
+                        bodyEditableRef.current?.focus();
+                      }, 0);
+                    } else {
+                      toast.error("Please enter both link text and URL");
+                    }
+                  }}
+                >
+                  Insert
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" className="absolute left-0 top-0 h-0 w-0 opacity-0" aria-hidden />
+          </PopoverTrigger>
+          <PopoverContent className="w-80 rounded-xl border-white/[0.08] bg-[#141416] text-white" align="start">
+            <div className="space-y-2">
+              <Label className="text-[13px] font-medium text-[#a1a1aa]">Emojis</Label>
+              <div className="grid grid-cols-8 gap-2">
+                {[
+                  "😀",
+                  "😊",
+                  "👍",
+                  "❤️",
+                  "🎉",
+                  "✅",
+                  "🔥",
+                  "💯",
+                  "🚀",
+                  "⭐",
+                  "💡",
+                  "🎯",
+                  "🙏",
+                  "👏",
+                  "🎊",
+                  "✨",
+                  "💪",
+                  "🌟",
+                  "😎",
+                  "🤝",
+                  "📧",
+                  "📝",
+                  "📅",
+                  "⏰",
+                ].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      if (bodyEditableRef.current) {
+                        bodyEditableRef.current.focus();
+
+                        const selection = window.getSelection();
+                        let range: Range;
+
+                        if (
+                          selection &&
+                          selection.rangeCount > 0 &&
+                          bodyEditableRef.current.contains(
+                            selection.anchorNode,
+                          )
+                        ) {
+                          range = selection.getRangeAt(0);
+                        } else {
+                          range = document.createRange();
+                          range.selectNodeContents(bodyEditableRef.current);
+                          range.collapse(false);
+                        }
+
+                        range.deleteContents();
+                        const textNode = document.createTextNode(
+                          emoji + " ",
+                        );
+                        range.insertNode(textNode);
+                        range.setStartAfter(textNode);
+                        range.collapse(true);
+
+                        if (selection) {
+                          selection.removeAllRanges();
+                          selection.addRange(range);
+                        }
+
+                        setBody(bodyEditableRef.current.innerHTML);
+                      } else {
+                        const cursorPos =
+                          bodyTextareaRef.current?.selectionStart ||
+                          body.length;
+                        const newBody =
+                          body.slice(0, cursorPos) +
+                          emoji +
+                          " " +
+                          body.slice(cursorPos);
+                        setBody(newBody);
+                      }
+                      setEmojiPopoverOpen(false);
+
+                      setTimeout(() => {
+                        bodyEditableRef.current?.focus();
+                      }, 0);
+                    }}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors hover:bg-white/[0.06]"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Dialog open={scheduleSendOpen} onOpenChange={setScheduleSendOpen}>
+          <DialogContent className="w-auto min-w-[320px] rounded-2xl border-white/[0.08] bg-[#141416] p-6 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-[16px] font-semibold text-white">Schedule send</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5">
+              <div className="flex w-full flex-col items-center">
+                <Label className="mb-2 block w-full text-center text-[13px] font-medium text-[#a1a1aa]">Date</Label>
+                <div className="flex w-full justify-center">
+                  <Calendar
+                    mode="single"
+                    selected={scheduleDate}
+                    onSelect={setScheduleDate}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    className="[--cell-size:1.2rem] rounded-lg border border-white/[0.08] bg-white/[0.02] p-1.5 text-[11px] [&_[data-slot=calendar]]:text-[11px] [&_.rdp-month]:!gap-y-0.5 [&_.rdp-week]:!mt-0.5"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="mb-3 block text-[13px] font-medium text-[#a1a1aa]">Time (24-hour)</Label>
+                <TimeInput24 value={scheduleTime} onChange={setScheduleTime} />
+              </div>
+              <Button
+                type="button"
+                onClick={handleScheduleSend}
+                disabled={scheduleSendMutation.isPending || !authLoaded || !userId}
+                className="w-full rounded-lg bg-[#2c7ff6] py-2.5 text-[14px] font-semibold text-white hover:bg-[#1a6fe8]"
+              >
+                {!authLoaded || !userId ? "Loading..." : scheduleSendMutation.isPending ? "Scheduling..." : "Schedule send"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

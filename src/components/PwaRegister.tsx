@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+
 export function PwaRegister() {
   useEffect(() => {
     if (

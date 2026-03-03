@@ -7,8 +7,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const Mail = dynamic(() => import("@/components/mail/Mail"), {
   ssr: false,
   loading: () => (
-    <div className="relative flex h-screen w-full items-center justify-center bg-[#f6f8fc] dark:bg-[#202124]">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+    <div className="relative flex min-h-dvh h-dvh w-full items-center justify-center bg-white dark:bg-[#09090b]">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#3b82f6] dark:border-[#1a1a23] dark:border-t-[#60a5fa]" />
     </div>
   ),
 });
@@ -17,7 +17,7 @@ function MailPage() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="relative h-screen w-full bg-[#f6f8fc] dark:bg-[#202124]">
+    <div className="relative min-h-dvh h-dvh w-full overflow-hidden bg-white dark:bg-[#09090b]">
       <Mail
         defaultLayout={isMobile ? [0, 100, 0] : [20, 32, 48]}
         defaultCollapsed={false}

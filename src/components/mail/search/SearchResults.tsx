@@ -11,6 +11,15 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+function HighlightedSnippet({ html }: { html: string }) {
+  return (
+    <span
+      className="[&_mark]:bg-[#fef7e0] [&_mark]:text-[#b36b00] dark:[&_mark]:bg-[#5c3317] dark:[&_mark]:text-[#fdd663] [&_mark]:rounded-sm [&_mark]:px-0.5"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 export function SearchResults({
   onResultSelect,
 }: {
@@ -80,7 +89,7 @@ export function SearchResults({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="truncate text-sm font-medium text-[#202124] dark:text-[#e8eaed]">
                       {result.from.name || result.from.address}
                     </span>
@@ -89,21 +98,54 @@ export function SearchResults({
                         addSuffix: true,
                       })}
                     </span>
+                    {result.matchType === "keyword" ? (
+                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-[#e6f4ea] text-[#137333] dark:bg-[#0d652d]/40 dark:text-[#81c995]">
+                        Keyword match
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]">
+                        Meaning match
+                        {result.relevanceScorePercent != null && (
+                          <span className="ml-1 opacity-90">
+                            {result.relevanceScorePercent}%
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </div>
                   <div className="font-medium text-sm mb-1 line-clamp-1 text-[#202124] dark:text-[#e8eaed]">
                     {result.subject}
                   </div>
                   {result.snippet && (
                     <div className="text-xs text-[#5f6368] line-clamp-2 dark:text-[#9aa0a6]">
-                      {result.snippet}
+                      {result.snippetHighlighted ? (
+                        <HighlightedSnippet html={result.snippetHighlighted} />
+                      ) : (
+                        result.snippet
+                      )}
                     </div>
                   )}
+                  {(result.matchedKeywords?.length ?? 0) > 0 && (
+                    <p className="mt-1 text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
+                      Why: Matched &quot;{result.matchedKeywords!.slice(0, 5).join("\", \"")}&quot;
+                    </p>
+                  )}
+                  {result.matchType === "keyword" &&
+                    (result.matchedKeywords == null || result.matchedKeywords.length === 0) &&
+                    result.snippet && (
+                      <p className="mt-1 text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
+                        Why: Keyword match
+                      </p>
+                    )}
+                  {result.matchType === "semantic" && (
+                    <p className="mt-1 text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
+                      Why: Related to your search
+                      {result.relevanceScorePercent != null
+                        ? ` (${result.relevanceScorePercent}% match)`
+                        : ""}
+                    </p>
+                  )}
                 </div>
-                {result.matchType === "semantic" && (
-                  <span className="shrink-0 rounded px-2 py-0.5 text-xs bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]">
-                    AI
-                  </span>
-                )}
               </div>
             </motion.button>
           ))}

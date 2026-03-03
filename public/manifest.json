@@ -1,12 +1,15 @@
 {
+  "id": "/mail",
   "name": "VectorMail AI",
   "short_name": "VectorMail",
   "description": "Smart Email Management with AI-powered insights and intelligent responses.",
   "start_url": "/mail",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#1a73e8",
   "background_color": "#ffffff",
   "orientation": "portrait-primary",
+  "categories": ["productivity", "business"],
   "icons": [
     {
       "src": "/VectorMail-New.png",

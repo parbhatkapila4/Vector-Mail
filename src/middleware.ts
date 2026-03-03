@@ -48,6 +48,23 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isProtectedRoute(req)) {
+    const { userId } = await auth();
+    const isClerkSignedIn = Boolean(userId);
+    if (isClerkSignedIn && userId) {
+      const response = NextResponse.next();
+      response.cookies.delete(DEMO_COOKIE);
+      response.cookies.set(SESSION_COOKIE, userId, {
+        path: "/",
+        maxAge: 60 * 60 * 24,
+        httpOnly: true,
+        secure: req.nextUrl.protocol === "https:",
+        sameSite: "lax",
+      });
+      const requestId = req.headers.get(REQUEST_ID_HEADER);
+      if (requestId?.trim()) response.headers.set(REQUEST_ID_HEADER, requestId.trim());
+      applySecurityHeaders(response);
+      return response;
+    }
     if (isDemoMode(req)) {
       const response = NextResponse.next();
       response.cookies.set(DEMO_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 });

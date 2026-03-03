@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useUser, UserButton, useClerk } from "@clerk/nextjs";
 import { Menu, X, ArrowRight } from "lucide-react";
 
 const NAV_LINKS = [
@@ -12,9 +13,19 @@ const NAV_LINKS = [
 ];
 
 export function Navigation() {
-  const { isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("signout") === "1") {
+      router.replace("/", { scroll: false });
+      if (signOut) void signOut();
+    }
+  }, [searchParams, signOut, router]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 16);
@@ -68,7 +79,12 @@ export function Navigation() {
 
 
         <div className="flex shrink-0 items-center gap-2">
-          {isSignedIn ? (
+          {!isLoaded ? (
+            <div className="flex items-center gap-2" aria-hidden>
+              <div className="h-9 w-24 animate-pulse rounded-full bg-white/[0.08]" />
+              <div className="h-9 w-28 animate-pulse rounded-full bg-white/[0.08]" />
+            </div>
+          ) : isSignedIn ? (
             <>
               <Link
                 href="/mail"
@@ -140,7 +156,12 @@ export function Navigation() {
               </Link>
             ))}
             <div className="my-3 border-t border-white/[0.06]" />
-            {isSignedIn ? (
+            {!isLoaded ? (
+              <div className="flex flex-col gap-2">
+                <div className="h-12 animate-pulse rounded-xl bg-white/[0.08]" />
+                <div className="h-12 animate-pulse rounded-xl bg-white/[0.08]" />
+              </div>
+            ) : isSignedIn ? (
               <div className="flex flex-col gap-2">
                 <Link
                   href="/mail"

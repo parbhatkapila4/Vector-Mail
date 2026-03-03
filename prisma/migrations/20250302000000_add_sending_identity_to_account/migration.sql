@@ -1,0 +1,8 @@
+ALTER TABLE "Account"
+ADD COLUMN IF NOT EXISTS "customFromName" TEXT;
+ALTER TABLE "Account"
+ADD COLUMN IF NOT EXISTS "customFromAddress" TEXT;
+ALTER TABLE "Account"
+ADD COLUMN IF NOT EXISTS "customDomain" TEXT;
+ALTER TABLE "Account"
+ADD COLUMN IF NOT EXISTS "deliverabilityChecklist" JSONB;

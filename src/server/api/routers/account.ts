@@ -106,6 +106,131 @@ export const accountRouter = createTRPCRouter({
       return account;
     }),
 
+  getSendingIdentity: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return {
+          providerFromName: DEMO_DISPLAY_NAME,
+          providerFromAddress: DEMO_EMAIL,
+          customFromName: null,
+          customFromAddress: null,
+          customDomain: null,
+          deliverabilityChecklist: null,
+        };
+      }
+      type SendingIdentityRow = {
+        emailAddress: string;
+        name: string;
+        customFromName?: string | null;
+        customFromAddress?: string | null;
+        customDomain?: string | null;
+        deliverabilityChecklist?: unknown;
+      };
+      const row = (await withDbRetry(() =>
+        ctx.db.account.findFirst({
+          where: { id: input.accountId, userId: ctx.auth.userId },
+          select: {
+            emailAddress: true,
+            name: true,
+            customFromName: true,
+            customFromAddress: true,
+            customDomain: true,
+            deliverabilityChecklist: true,
+          } as Record<string, boolean>,
+        }),
+      )) as SendingIdentityRow | null;
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+      return {
+        providerFromName: row.name,
+        providerFromAddress: row.emailAddress,
+        customFromName: row.customFromName,
+        customFromAddress: row.customFromAddress,
+        customDomain: row.customDomain,
+        deliverabilityChecklist: row.deliverabilityChecklist as { spf?: boolean; dkim?: boolean; dmarc?: boolean } | null,
+      };
+    }),
+
+  updateSendingIdentity: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        customFromName: z.string().max(200).optional().nullable(),
+        customFromAddress: z.string().email("Invalid email address").max(320).optional().nullable(),
+        customDomain: z.string().max(253).optional().nullable(),
+        deliverabilityChecklist: z
+          .object({
+            spf: z.boolean().optional(),
+            dkim: z.boolean().optional(),
+            dmarc: z.boolean().optional(),
+          })
+          .optional()
+          .nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Demo account cannot update sending identity." });
+      }
+      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const data: {
+        customFromName?: string | null;
+        customFromAddress?: string | null;
+        customDomain?: string | null;
+        deliverabilityChecklist?: unknown;
+      } = {};
+      if (input.customFromName !== undefined) data.customFromName = input.customFromName;
+      if (input.customFromAddress !== undefined) data.customFromAddress = input.customFromAddress;
+      if (input.customDomain !== undefined) data.customDomain = input.customDomain;
+      if (input.deliverabilityChecklist !== undefined) data.deliverabilityChecklist = input.deliverabilityChecklist;
+      if (input.customFromAddress && !input.customDomain) {
+        const domain = input.customFromAddress.split("@")[1];
+        if (domain) data.customDomain = domain;
+      }
+      await withDbRetry(() =>
+        ctx.db.account.update({
+          where: { id: input.accountId },
+          data: data as Parameters<typeof ctx.db.account.update>[0]["data"],
+        }),
+      );
+      return { success: true };
+    }),
+
+  getDeliverabilityGuidance: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { hasCustomDomain: false, providerFromAddress: DEMO_EMAIL, spf: "", dkim: "", dmarc: "" };
+      }
+      type DeliverabilityRow = {
+        emailAddress: string;
+        provider: string;
+        customFromAddress?: string | null;
+        customDomain?: string | null;
+      };
+      const row = (await withDbRetry(() =>
+        ctx.db.account.findFirst({
+          where: { id: input.accountId, userId: ctx.auth.userId },
+          select: { emailAddress: true, customFromAddress: true, customDomain: true, provider: true } as Record<string, boolean>,
+        }),
+      )) as DeliverabilityRow | null;
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+      const hasCustomDomain = !!(row.customDomain ?? (row.customFromAddress && row.customFromAddress.includes("@") && row.customFromAddress.split("@")[1]));
+      const provider = (row.provider ?? "").toLowerCase();
+      const isGoogle = provider.includes("google") || provider.includes("gmail");
+      const spfExample = isGoogle
+        ? "v=spf1 include:_spf.google.com ~all"
+        : "v=spf1 include:your-mail-provider.com ~all";
+      const dmarcExample = "v=DMARC1; p=none; rua=mailto:dmarc-reports@yourdomain.com";
+      return {
+        hasCustomDomain,
+        providerFromAddress: row.emailAddress,
+        spf: spfExample,
+        dkim: "Enable DKIM in your mail provider (Gmail/Office 365) and add the CNAME or TXT records they provide.",
+        dmarc: dmarcExample,
+      };
+    }),
+
   sendEmail: protectedProcedure
     .input(
       z.object({
@@ -1230,21 +1355,142 @@ export const accountRouter = createTRPCRouter({
           };
         }
 
-        const decodeContinueToken = (token: string): { pageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean } => {
+        const decodeContinueToken = (token: string): { pageToken?: string; syncApiPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean } => {
           try {
             const decoded = JSON.parse(Buffer.from(token, "base64url").toString()) as unknown;
-            if (typeof decoded !== "object" || decoded === null || !("pageToken" in decoded)) return {};
-            const d = decoded as { pageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean };
-            return { pageToken: d.pageToken, sentUseLabel: d.sentUseLabel, sentOmitDate: d.sentOmitDate, sentUseIsOperator: d.sentUseIsOperator, sentFromMe: d.sentFromMe, sentUseLabelIds: d.sentUseLabelIds };
+            if (typeof decoded !== "object" || decoded === null) return {};
+            const d = decoded as { pageToken?: string; syncApiPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean };
+            return { pageToken: d.pageToken, syncApiPageToken: d.syncApiPageToken, sentUseLabel: d.sentUseLabel, sentOmitDate: d.sentOmitDate, sentUseIsOperator: d.sentUseIsOperator, sentFromMe: d.sentFromMe, sentUseLabelIds: d.sentUseLabelIds };
           } catch {
             return {};
           }
         };
-        const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean, sentOmitDate?: boolean, sentUseIsOperator?: boolean, sentFromMe?: boolean, sentUseLabelIds?: boolean) =>
-          Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false }), "utf8").toString("base64url");
+        const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean, sentOmitDate?: boolean, sentUseIsOperator?: boolean, sentFromMe?: boolean, sentUseLabelIds?: boolean, syncApiPageToken?: string) =>
+          Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false, ...(syncApiPageToken != null ? { syncApiPageToken } : {}) }), "utf8").toString("base64url");
+
+        if (folder === "inbox" && !input.continueToken) {
+          const syncApiFirstPage = await emailAccount.tryGetFirstPageViaSyncApi(5_000);
+          if (syncApiFirstPage && (syncApiFirstPage.records.length > 0 || syncApiFirstPage.nextPageToken)) {
+            if (syncApiFirstPage.records.length > 0) {
+              const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+              await syncEmailsToDatabase(syncApiFirstPage.records, account.id);
+            }
+            if (syncApiFirstPage.nextDeltaToken) {
+              await ctx.db.account.update({
+                where: { id: account.id },
+                data: { nextDeltaToken: syncApiFirstPage.nextDeltaToken },
+              }).catch(() => { });
+            }
+            const threadCount = await ctx.db.thread.count({
+              where: { accountId: account.id, inboxStatus: true },
+            });
+            const hasMore = !!syncApiFirstPage.nextPageToken;
+            const continueToken = hasMore && syncApiFirstPage.nextPageToken
+              ? encodeContinueToken("", false, false, false, false, false, syncApiFirstPage.nextPageToken)
+              : undefined;
+            ctx.log?.info(
+              {
+                event: "sync_success",
+                accountId: account.id,
+                folder: "inbox",
+                durationMs: Date.now() - syncStartTime,
+                countSynced: syncApiFirstPage.records.length,
+                threadCount,
+                hasMore,
+                source: "sync_api",
+              },
+              "inbox first page done (Sync API)",
+            );
+            return {
+              success: true,
+              message: syncApiFirstPage.records.length > 0 ? `Synced ${syncApiFirstPage.records.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+              threadCount,
+              hasMore,
+              continueToken,
+            };
+          }
+
+          const result = await emailAccount.fetchInboxFirstPageInChunks(
+            20,
+            5,
+            12_000,
+            8_000,
+          );
+          const threadCount = await ctx.db.thread.count({
+            where: { accountId: account.id, inboxStatus: true },
+          });
+          const hasMore = !!result.nextPageToken;
+          const continueToken = hasMore
+            ? encodeContinueToken(result.nextPageToken!, false, false, false, false, false)
+            : undefined;
+          ctx.log?.info(
+            {
+              event: "sync_success",
+              accountId: account.id,
+              folder: "inbox",
+              durationMs: Date.now() - syncStartTime,
+              countSynced: result.emails.length,
+              threadCount,
+              hasMore,
+              source: "list_chunks",
+            },
+            "inbox first page done (chunked)",
+          );
+          return {
+            success: true,
+            message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+            threadCount,
+            hasMore,
+            continueToken,
+          };
+        }
 
         if ((folder === "inbox" || folder === "sent" || folder === "trash") && input.continueToken) {
-          const { pageToken, sentUseLabel, sentOmitDate, sentUseIsOperator, sentFromMe, sentUseLabelIds } = decodeContinueToken(input.continueToken);
+          const decoded = decodeContinueToken(input.continueToken);
+          const { syncApiPageToken } = decoded;
+          const { pageToken, sentUseLabel, sentOmitDate, sentUseIsOperator, sentFromMe, sentUseLabelIds } = decoded;
+
+          if (folder === "inbox" && syncApiPageToken) {
+            const syncResult = await emailAccount.getNextPageViaSyncApi(syncApiPageToken);
+            if (syncResult.records.length > 0) {
+              const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+              await syncEmailsToDatabase(syncResult.records, account.id);
+            }
+            if (syncResult.nextDeltaToken) {
+              await ctx.db.account.update({
+                where: { id: account.id },
+                data: { nextDeltaToken: syncResult.nextDeltaToken },
+              }).catch(() => { });
+            }
+            const threadCount = await ctx.db.thread.count({
+              where: { accountId: account.id, inboxStatus: true },
+            });
+            const hasMore = !!syncResult.nextPageToken;
+            const nextContinueToken = hasMore && syncResult.nextPageToken
+              ? encodeContinueToken("", false, false, false, false, false, syncResult.nextPageToken)
+              : undefined;
+            ctx.log?.info(
+              {
+                event: "sync_success",
+                accountId: account.id,
+                folder: "inbox",
+                durationMs: Date.now() - syncStartTime,
+                countSynced: syncResult.records.length,
+                threadCount,
+                hasMore,
+                source: "sync_api",
+              },
+              "sync chunk done (Sync API)",
+            );
+            return {
+              success: true,
+              message: syncResult.records.length > 0 ? `Synced ${syncResult.records.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+              threadCount,
+              hasMore,
+              continueToken: nextContinueToken,
+            };
+          }
+
           const result = await emailAccount.fetchEmailsByFolderOnePage(
             folder,
             pageToken,
@@ -1295,7 +1541,12 @@ export const accountRouter = createTRPCRouter({
           };
         }
 
-        if (!shouldForceFullSync && account.nextDeltaToken && folder !== "sent" && folder !== "trash") {
+        if (
+          !shouldForceFullSync &&
+          account.nextDeltaToken &&
+          folder !== "sent" &&
+          folder !== "trash"
+        ) {
           console.log(
             `[syncEmails mutation] Attempting lightweight sync using delta token...`,
           );
@@ -1449,51 +1700,6 @@ export const accountRouter = createTRPCRouter({
             }
 
           }
-        }
-
-        if (folder === "inbox") {
-          const firstPageSize = 100;
-          const result = await emailAccount.fetchEmailsByFolderOnePage(
-            "inbox",
-            undefined,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            firstPageSize,
-          );
-          if (result.emails.length > 0) {
-            const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
-            await syncEmailsToDatabase(result.emails, account.id);
-          }
-          const threadCount = await ctx.db.thread.count({
-            where: { accountId: account.id, inboxStatus: true },
-          });
-          const hasMore = !!result.nextPageToken;
-          const continueToken = hasMore
-            ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel, result.sentOmitDate, result.sentUseIsOperator, result.sentFromMe, result.sentUseLabelIds)
-            : undefined;
-          ctx.log?.info(
-            {
-              event: "sync_success",
-              accountId: account.id,
-              folder: "inbox",
-              durationMs: Date.now() - syncStartTime,
-              countSynced: result.emails.length,
-              threadCount,
-              hasMore,
-            },
-            "inbox chunk done",
-          );
-          return {
-            success: true,
-            message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
-            threadCount,
-            hasMore,
-            continueToken,
-          };
         }
 
         try {

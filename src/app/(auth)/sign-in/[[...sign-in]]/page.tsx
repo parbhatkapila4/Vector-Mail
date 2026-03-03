@@ -14,10 +14,13 @@ export default function Page() {
     if (!signIn || !isLoaded) return;
     setIsRedirecting(true);
     try {
+      const base = process.env.NEXT_PUBLIC_URL || (typeof window !== "undefined" ? window.location.origin : "");
+      const redirectUrl = base ? `${base.replace(/\/$/, "")}/sign-in/sso-callback` : "/sign-in/sso-callback";
+      const redirectUrlComplete = base ? `${base.replace(/\/$/, "")}/mail` : "/mail";
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google" as OAuthStrategy,
-        redirectUrl: "/sign-in/sso-callback",
-        redirectUrlComplete: "/auth/set-session",
+        redirectUrl,
+        redirectUrlComplete,
       });
     } catch {
       setIsRedirecting(false);

@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       trackOpens = trackOpensStr === "true";
 
       const attachmentFiles = formData.getAll("attachments");
-      const maxSize = 25 * 1024 * 1024; 
+      const maxSize = 25 * 1024 * 1024;
       const oversizedFiles: string[] = [];
 
       attachments = attachmentFiles.filter((file): file is File => {
@@ -192,9 +192,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let account;
+  type AccountForSend = {
+    id: string;
+    emailAddress: string;
+    name: string;
+    token: string;
+    provider: string;
+    customFromName?: string | null;
+    customFromAddress?: string | null;
+  };
+
+  let account: AccountForSend | null;
   try {
-    account = await db.account.findFirst({
+    account = (await db.account.findFirst({
       where: {
         id: accountId,
         userId,
@@ -205,8 +215,10 @@ export async function POST(req: NextRequest) {
         name: true,
         token: true,
         provider: true,
-      },
-    });
+        customFromName: true,
+        customFromAddress: true,
+      } as Record<string, boolean>,
+    })) as AccountForSend | null;
   } catch (error) {
     console.error("[EMAIL_SEND] Database error:", error);
     return NextResponse.json(
@@ -228,8 +240,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const fromEmail = account.emailAddress;
-  const fromName = account.name || account.emailAddress;
+  const fromEmail = account.customFromAddress ?? account.emailAddress;
+  const fromName = (account.customFromName ?? account.name ?? account.emailAddress) || fromEmail;
 
   function formatEmailBody(text: string): string {
     if (!text || !text.trim()) {

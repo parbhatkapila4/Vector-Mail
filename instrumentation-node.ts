@@ -7,6 +7,15 @@ if (typeof process !== "undefined") {
       message.includes("unrecognized HMR message") &&
       message.includes("ping");
     if (isHmrPing) return;
-    console.error("Unhandled Rejection:", reason);
+    console.error("[instrumentation] Unhandled Rejection:", reason);
+
   });
+
+  if (process.env.NODE_ENV === "development") {
+    process.on("uncaughtException", (err: Error) => {
+      console.error("[instrumentation] Uncaught Exception (server kept alive in dev):", err);
+
+
+    });
+  }
 }

@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import React, { Suspense } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Search, Zap } from "lucide-react";
 import { Navigation } from "@/components/landing/Navigation";
@@ -358,28 +356,16 @@ function HeroSection() {
   );
 }
 
-function RedirectIfSignedIn() {
-  const { isSignedIn, isLoaded } = useUser();
-  const router = useRouter();
-  const pathname = usePathname();
-  useEffect(() => {
-    if (!isLoaded || !pathname) return;
-    if (isSignedIn && pathname === "/") {
-      router.replace("/mail");
-    }
-  }, [isLoaded, isSignedIn, pathname, router]);
-  return null;
-}
-
 export default function Page() {
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
-      <RedirectIfSignedIn />
       <div className="fixed inset-0 -z-10">
         <div className="absolute left-1/4 top-0 h-[600px] w-[600px] rounded-full blur-[150px] opacity-0" aria-hidden />
         <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full blur-[120px] opacity-0" aria-hidden />
       </div>
-      <Navigation />
+      <Suspense fallback={<header className="fixed inset-x-0 top-0 z-50 h-14" />}>
+        <Navigation />
+      </Suspense>
       <main className="relative w-full overflow-hidden">
         <HeroSection />
         <Testimonials />

@@ -3,9 +3,9 @@
 import { useAuth, useClerk, useSignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isSignedIn, getToken } = useAuth();
   const { signOut } = useClerk();
@@ -109,5 +109,20 @@ export default function AuthCallbackPage() {
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
       <p className="text-sm text-zinc-400">Signing you in…</p>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a] text-white">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
+          <p className="text-sm text-zinc-400">Signing you in…</p>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

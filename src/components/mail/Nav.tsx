@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -9,7 +10,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useLocalStorage } from "usehooks-ts";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRouter } from "next/navigation";
 
 interface NavProps {
   isCollapsed: boolean;
@@ -25,7 +25,6 @@ interface NavProps {
 export function Nav({ links, isCollapsed }: NavProps) {
   const [, setTab] = useLocalStorage("vector-mail", "inbox");
   const isMobile = useIsMobile();
-  const router = useRouter();
 
   const getIconColor = (link: NavProps["links"][0]) => {
     if (link.variant === "default") return "text-yellow-500";
@@ -62,17 +61,55 @@ export function Nav({ links, isCollapsed }: NavProps) {
         )}
       >
         {links.map((link, index) =>
-          isCollapsed ? (
+          link.title === "AI Buddy" ? (
+            isCollapsed ? (
+              <Tooltip key={index} delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/buddy?fresh=true"
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-xl transition-all",
+                      "hover:bg-white/[0.04]",
+                    )}
+                  >
+                    <link.icon className={cn("h-5 w-5", getIconColor(link))} />
+                    <span className="sr-only">{link.title}</span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="right"
+                  className="flex items-center gap-3 border-white/[0.08] bg-[#1A1A1A] px-3 py-2 text-white"
+                >
+                  <span className="text-sm font-medium">{link.title}</span>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Link
+                key={index}
+                href="/buddy?fresh=true"
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all",
+                  "hover:bg-white/[0.04]",
+                  isMobile && "py-3",
+                )}
+              >
+                <link.icon
+                  className={cn("h-5 w-5 shrink-0", getIconColor(link))}
+                />
+                <div className="flex min-w-0 flex-1 items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-zinc-300">
+                      {link.title}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            )
+          ) : isCollapsed ? (
             <Tooltip key={index} delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => {
-                    if (link.title === "AI Buddy") {
-                      router.push("/buddy?fresh=true");
-                    } else {
-                      setTab(link.title.toLowerCase());
-                    }
-                  }}
+                  onClick={() => setTab(link.title.toLowerCase())}
                   className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-xl transition-all",
                     link.variant === "default"
@@ -104,13 +141,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
           ) : (
             <button
               key={index}
-              onClick={() => {
-                if (link.title === "AI Buddy") {
-                  router.push("/buddy?fresh=true");
-                } else {
-                  setTab(link.title.toLowerCase());
-                }
-              }}
+              onClick={() => setTab(link.title.toLowerCase())}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all",
                 link.variant === "default"

@@ -2,6 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { DEMO_USER_ID } from "@/lib/demo/constants";
 
 const DEMO_COOKIE = "vectormail_demo";
 
@@ -11,13 +13,12 @@ function getDemoCookie(): string | null {
   return match ? decodeURIComponent(match[1]!) : null;
 }
 
-/**
- * Client-side demo mode: true when query demo=1 or cookie vectormail_demo=1.
- */
 export function useDemoMode(): boolean {
   const searchParams = useSearchParams();
+  const { userId } = useAuth();
   return useMemo(() => {
+    if (userId && userId !== DEMO_USER_ID) return false;
     if (searchParams.get("demo") === "1") return true;
     return getDemoCookie() === "1";
-  }, [searchParams]);
+  }, [searchParams, userId]);
 }

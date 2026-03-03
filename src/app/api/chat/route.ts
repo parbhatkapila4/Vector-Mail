@@ -6,6 +6,7 @@ import { storeSearchResults, getStoredEmails } from "@/lib/chat-session";
 import { detectIntent } from "@/lib/intent-detection";
 import { selectEmails, formatEmailOptions } from "@/lib/email-selection";
 import { generateConversationalSummary } from "@/lib/conversational-summary";
+import { getSummarySourceExcerpts } from "@/lib/summary-explainability";
 import { searchEmailsByVector } from "@/lib/vector-search";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
@@ -246,6 +247,7 @@ async function chatPostHandler(req: Request) {
         id: accountId,
         userId: userId,
       },
+      select: { id: true },
     });
 
     if (!account) {
@@ -253,7 +255,7 @@ async function chatPostHandler(req: Request) {
 
       const accountExists = await db.account.findFirst({
         where: { id: accountId },
-        select: { userId: true },
+        select: { id: true, userId: true },
       });
 
       if (accountExists) {
@@ -402,7 +404,16 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
                   { userId, accountId: accountId ?? undefined },
                 );
 
-                const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+                const excerpts = getSummarySourceExcerpts(
+                  selectedEmail.body ?? "",
+                  summary,
+                  2,
+                );
+                const basedOn =
+                  excerpts.length > 0
+                    ? `\n\nBased on: "${excerpts[0]}"`
+                    : "";
+                const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}${basedOn}`;
                 const response = removeAllSymbols(rawResponse);
                 return new Response(response, {
                   headers: {
@@ -454,7 +465,14 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           { userId, accountId: accountId ?? undefined },
         );
 
-        const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}`;
+        const excerpts = getSummarySourceExcerpts(
+          selectedEmail.body ?? "",
+          summary,
+          2,
+        );
+        const basedOn =
+          excerpts.length > 0 ? `\n\nBased on: "${excerpts[0]}"` : "";
+        const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}${basedOn}`;
         const response = removeAllSymbols(rawResponse);
         return new Response(response, {
           headers: {
