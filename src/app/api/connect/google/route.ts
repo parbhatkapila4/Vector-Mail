@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 const SESSION_COOKIE = "vectormail_session_user";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
   try {

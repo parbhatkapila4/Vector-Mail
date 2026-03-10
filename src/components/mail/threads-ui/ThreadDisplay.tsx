@@ -145,7 +145,8 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                   onClose();
                 }}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                aria-label="Close"
+                aria-label="Close email"
+                title="Close email"
               >
                 <X className="h-4 w-4" />
               </button>

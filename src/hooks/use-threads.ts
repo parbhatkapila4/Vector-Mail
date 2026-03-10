@@ -75,7 +75,11 @@ function useThreads() {
       refetchInterval: false,
       staleTime: currentTab === "label" ? 0 : currentTab === "inbox" ? 0 : STALE_TIME_OTHER_MS,
       gcTime: 7 * 24 * 60 * 60 * 1000,
-      retry: 3,
+      retry: (failureCount, error) => {
+        const e = error as { data?: { code?: string }; message?: string } | undefined;
+        if (e?.data?.code === "UNAUTHORIZED" || (e?.message && /UNAUTHORIZED|sign in|session/i.test(e.message))) return false;
+        return failureCount < 3;
+      },
       placeholderData:
         currentTab === "label" || currentTab === "sent" || currentTab === "trash"
           ? undefined
@@ -93,7 +97,11 @@ function useThreads() {
       refetchInterval: false,
       staleTime: 10 * 60 * 1000,
       gcTime: 7 * 24 * 60 * 60 * 1000,
-      retry: 3,
+      retry: (failureCount, error) => {
+        const e = error as { data?: { code?: string }; message?: string } | undefined;
+        if (e?.data?.code === "UNAUTHORIZED" || (e?.message && /UNAUTHORIZED|sign in|session/i.test(e.message))) return false;
+        return failureCount < 3;
+      },
       placeholderData: keepPreviousData,
     },
   );
@@ -106,12 +114,31 @@ function useThreads() {
   const refetch = isUnified ? unifiedQuery.refetch : singleAccountQuery.refetch;
   const isPlaceholderData = isUnified ? !!unifiedQuery.isPlaceholderData : !!singleAccountQuery.isPlaceholderData;
 
+  const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (!canFetchThreads || !accountId || accountId === UNIFIED_INBOX_ACCOUNT_ID || !data?.pages?.length) return;
     if (isUnified) return;
     const hasThreads = data.pages.some((p) => p.threads.length > 0);
     if (!hasThreads) return;
-    persistThreads(accountId, currentTab, important, unread, labelIdForQuery, data.pages);
+    if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+    persistTimeoutRef.current = setTimeout(() => {
+      persistTimeoutRef.current = null;
+      if (!mountedRef.current) return;
+      try {
+        persistThreads(accountId, currentTab, important, unread, labelIdForQuery, data.pages);
+      } catch {
+      }
+    }, 300);
+    return () => {
+      if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+    };
   }, [accountId, currentTab, important, unread, labelIdForQuery, canFetchThreads, data?.pages, isUnified]);
 
   type ThreadPage = { threads: Thread[] | UnifiedThread[] };

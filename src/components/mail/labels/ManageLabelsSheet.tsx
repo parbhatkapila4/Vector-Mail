@@ -54,14 +54,65 @@ export function ManageLabelsSheet({
   );
 
   const createMutation = api.account.createLabel.useMutation({
-    onSuccess: () => {
-      void utils.account.getLabels.invalidate({ accountId });
-      void utils.account.getLabelsWithCounts.invalidate({ accountId });
+    onMutate: async (variables) => {
+      const pendingId = `pending-${Date.now()}`;
+      const optimisticLabel = {
+        id: pendingId,
+        name: variables.name.trim(),
+        color: variables.color ?? null,
+        accountId: variables.accountId,
+        createdAt: new Date(),
+      };
+      await utils.account.getLabels.cancel({ accountId });
+      await utils.account.getLabelsWithCounts.cancel({ accountId });
+      const prevLabels = utils.account.getLabels.getData({ accountId });
+      const prevWithCounts = utils.account.getLabelsWithCounts.getData({ accountId });
+      utils.account.getLabels.setData({ accountId }, (old) =>
+        old ? [...old, optimisticLabel].sort((a, b) => a.name.localeCompare(b.name)) : [optimisticLabel]
+      );
+      utils.account.getLabelsWithCounts.setData({ accountId }, (old) =>
+        old
+          ? [...old, { ...optimisticLabel, threadCount: 0 }].sort((a, b) => a.name.localeCompare(b.name))
+          : [{ ...optimisticLabel, threadCount: 0 }]
+      );
+      return { pendingId, prevLabels, prevWithCounts };
+    },
+    onSuccess: (data) => {
+      const newLabel = {
+        id: data.id,
+        name: data.name,
+        color: data.color,
+        accountId: data.accountId,
+        createdAt: data.createdAt,
+      };
+      utils.account.getLabels.setData({ accountId }, (old) =>
+        old
+          ? [...old.filter((l) => !String(l.id).startsWith("pending-")), newLabel].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          )
+          : [newLabel]
+      );
+      utils.account.getLabelsWithCounts.setData({ accountId }, (old) =>
+        old
+          ? [
+            ...old.filter((l) => !String(l.id).startsWith("pending-")),
+            { ...newLabel, threadCount: 0 },
+          ].sort((a, b) => a.name.localeCompare(b.name))
+          : [{ ...newLabel, threadCount: 0 }]
+      );
       setNewName("");
       setNewColor(LABEL_COLORS[0] ?? "#1a73e8");
       toast.success("Label created");
     },
-    onError: (e) => toast.error(e.message ?? "Failed to create label"),
+    onError: (e, _variables, context) => {
+      if (context?.prevLabels !== undefined) {
+        utils.account.getLabels.setData({ accountId }, () => context.prevLabels);
+      }
+      if (context?.prevWithCounts !== undefined) {
+        utils.account.getLabelsWithCounts.setData({ accountId }, () => context.prevWithCounts);
+      }
+      toast.error(e.message ?? "Failed to create label");
+    },
   });
 
   const updateMutation = api.account.updateLabel.useMutation({
@@ -137,8 +188,8 @@ export function ManageLabelsSheet({
                         key={c}
                         type="button"
                         className={`h-7 w-7 rounded-full border-2 transition-all hover:scale-110 ${newColor === c
-                            ? "border-[#202124] ring-2 ring-[#202124]/20 dark:border-[#e8eaed] dark:ring-[#e8eaed]/20"
-                            : "border-transparent hover:border-[#5f6368] dark:hover:border-[#9aa0a6]"
+                          ? "border-[#202124] ring-2 ring-[#202124]/20 dark:border-[#e8eaed] dark:ring-[#e8eaed]/20"
+                          : "border-transparent hover:border-[#5f6368] dark:hover:border-[#9aa0a6]"
                           }`}
                         style={{ backgroundColor: c }}
                         onClick={() => setNewColor(c)}

@@ -112,6 +112,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     refetch,
     isPlaceholderData,
     selectedLabelId,
+    account: validatedAccount,
   } = useThreads();
   const threads = rawThreads as (RouterThread & { accountEmail?: string; accountName?: string })[] | undefined;
   const [isSearching] = useAtom(isSearchingAtom);
@@ -276,7 +277,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
       const errorMessage = error.message || "Unknown error occurred";
 
-
+      if (errorMessage.includes("Account not found") || errorMessage.includes("don't have access")) {
+        void utils.account.getAccounts.invalidate();
+        toast.error("Account session expired", {
+          description: "Refreshing your account list. If you reconnected an account, it should appear shortly.",
+          duration: 5000,
+        });
+        void forceThreadListRefresh();
+        return;
+      }
       if (errorMessage.includes("timed out") || errorMessage.includes("timeout")) {
         toast.error("Sync timed out", {
           description: "The request took too long. Please try again in a moment.",
@@ -439,10 +448,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   useImperativeHandle(ref, () => ({ triggerSync: handleRefresh }), [handleRefresh]);
 
   const backgroundSyncTriggeredRef = useRef(false);
+  const isAccountValid = !!validatedAccount && validatedAccount.id === accountId;
   useEffect(() => {
     if (
       !accountId ||
       accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      !isAccountValid ||
       (currentTab !== "inbox" && currentTab !== "sent")
     )
       return;
@@ -455,12 +466,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         folder: currentTab as "inbox" | "sent" | "trash",
       });
     }
-  }, [accountId, currentTab, syncEmailsMutation]);
+  }, [accountId, currentTab, syncEmailsMutation, isAccountValid]);
 
   useEffect(() => {
     if (
       !accountId ||
       accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      !isAccountValid ||
       backgroundSyncTriggeredRef.current ||
       (currentTab !== "inbox" && currentTab !== "sent")
     )
@@ -475,7 +487,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       });
     }, 8000);
     return () => clearTimeout(t);
-  }, [accountId, currentTab, syncEmailsMutation]);
+  }, [accountId, currentTab, syncEmailsMutation, isAccountValid]);
 
   useEffect(() => {
     onSyncPendingChange?.(syncEmailsMutation.isPending);

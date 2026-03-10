@@ -43,7 +43,7 @@ If there is no clear date/time, return exactly: {"found": false}
 If there is an event, return a JSON object only, no other text:
 {"found": true, "title": "string", "startAt": "ISO8601 datetime", "endAt": "ISO8601 datetime or null", "location": "string or null"}
 
-Use the current date when interpreting relative times (e.g. "next Tuesday"). If only a date is given with no time, use 09:00 in the user's local time (you may use a reasonable timezone like America/New_York or UTC). If only start time is clear, set endAt to start + 1 hour. Return ISO 8601 for startAt and endAt (e.g. 2025-03-15T15:00:00.000Z).
+Use the current date when interpreting relative times (e.g. "next Tuesday"). If only a date is given with no time, use 09:00 in the user's local time (you may use a reasonable timezone like America/New_York or UTC). If only start time is clear, set endAt to start + 1 hour. Return ISO 8601 for startAt and endAt (e.g. 2026-03-15T15:00:00.000Z).
 
 Email subject: ${email.subject}
 

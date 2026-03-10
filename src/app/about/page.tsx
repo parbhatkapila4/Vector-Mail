@@ -26,7 +26,7 @@ export default function AboutPage() {
       icon: Clock,
       title: "Time Wasted Searching",
       description:
-        "Spending 30+ minutes daily hunting for that one email from 3 weeks ago. Traditional keyword search just doesn't cut it in 2025.",
+        "Spending 30+ minutes daily hunting for that one email from 3 weeks ago. Traditional keyword search just doesn't cut it in 2026.",
     },
     {
       icon: AlertTriangle,
@@ -73,7 +73,7 @@ export default function AboutPage() {
     {
       icon: Users,
       stat: "306 billion",
-      label: "Emails sent daily in 2025",
+      label: "Emails sent daily in 2026",
       insight: "Yet email clients haven't fundamentally changed since 2004.",
     },
     {
@@ -278,7 +278,7 @@ export default function AboutPage() {
               className="text-center sm:text-left"
             >
               <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-                Email Reimagined for 2025
+                Email Reimagined for 2026
               </h2>
               <div className="space-y-4 text-sm font-medium leading-relaxed text-white sm:text-base">
                 <p>
@@ -304,7 +304,7 @@ export default function AboutPage() {
                 </p>
                 <p className="font-bold">
                   That's VectorMail. Email built for how we actually work in
-                  2025.
+                  2026.
                 </p>
               </div>
             </motion.div>

@@ -1,12 +1,15 @@
-/**
- * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
- * for Docker builds.
- */
 import "./src/env.js";
 
-/** @type {import("next").NextConfig} */
 const config = {
   output: "standalone",
+  experimental: {
+    serverComponentsExternalPackages: ["@clerk/backend"],
+  },
+  webpack: (config, _ctx) => {
+    config.output ??= {};
+    config.output.chunkLoadTimeout = 120000;
+    return config;
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -63,7 +66,8 @@ const config = {
         https://*.hcaptcha.net
         https://challenges.cloudflare.com;
       img-src 'self' data: https:;
-      style-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' data: https://fonts.gstatic.com;
       worker-src 'self' blob:;
       object-src 'none';
     `

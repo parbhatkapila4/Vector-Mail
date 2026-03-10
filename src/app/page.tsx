@@ -4,6 +4,7 @@ import React, { Suspense } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Search, Zap } from "lucide-react";
 import { Navigation } from "@/components/landing/Navigation";
+import HeroSection_04 from "@/components/ui/aurora-hero";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { Features } from "@/components/landing/Features";
 import { CTA } from "@/components/landing/CTA";
@@ -367,7 +368,7 @@ export default function Page() {
         <Navigation />
       </Suspense>
       <main className="relative w-full overflow-hidden">
-        <HeroSection />
+        <HeroSection_04 />
         <Testimonials />
         <Features />
         <AIBanner />

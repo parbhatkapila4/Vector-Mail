@@ -1,26 +1,59 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw, Home, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 
+function isAuthRelatedError(error: Error): boolean {
+  const msg = (error?.message ?? "").toLowerCase();
+  const digest = (error as Error & { digest?: string }).digest ?? "";
+  return (
+    msg.includes("unauthorized") ||
+    msg.includes("session") ||
+    msg.includes("sign in") ||
+    msg.includes("async/await is not yet supported in client components") ||
+    digest === "DYNAMIC_SERVER_USAGE" ||
+    /UNAUTHORIZED|session expired|authentication/i.test(msg)
+  );
+}
+
+function isChunkLoadError(error: Error): boolean {
+  return error?.name === "ChunkLoadError" || /loading chunk .* failed|ChunkLoadError/i.test(error?.message ?? "");
+}
+
 export default function Error({
   error,
+  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const router = useRouter();
 
   const handleTryAgain = () => {
-    window.location.reload();
+    if (isChunkLoadError(error)) {
+      window.location.reload();
+      return;
+    }
+    reset();
   };
 
   useEffect(() => {
     console.error("Application error:", error);
   }, [error]);
 
+  useEffect(() => {
+    if (!isAuthRelatedError(error)) return;
+    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    if (pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up")) return;
+    router.replace("/sign-in?redirect_url=" + encodeURIComponent(pathname || "/mail"));
+  }, [error, router]);
+
   const showDetails = process.env.NODE_ENV === "development";
+  const isAuth = isAuthRelatedError(error);
+  const isChunk = isChunkLoadError(error);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f6f8fc] px-4 py-8 dark:bg-[#202124]">
@@ -34,10 +67,14 @@ export default function Error({
             </div>
 
             <h1 className="mb-2 text-xl font-semibold tracking-tight text-[#202124] dark:text-[#e8eaed] sm:text-2xl">
-              Something went wrong
+              {isAuth ? "Session expired" : isChunk ? "Script failed to load" : "Something went wrong"}
             </h1>
             <p className="max-w-sm text-sm leading-relaxed text-[#5f6368] dark:text-[#9aa0a6]">
-              We ran into an unexpected error. Try again or head back home.
+              {isAuth
+                ? "Redirecting you to sign in…"
+                : isChunk
+                  ? "A script timed out loading (e.g. slow connection or disk). Click “Try again” to reload."
+                  : "We ran into an unexpected error. Try again or head back home."}
             </p>
           </div>
 
@@ -71,21 +108,23 @@ export default function Error({
           )}
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <button
-              type="button"
-              onClick={handleTryAgain}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a73e8] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
-            >
-              <RefreshCw className="h-4 w-4 shrink-0" />
-              Try again
-            </button>
-            <Link href="/" className="block sm:inline-block">
+            {(!isAuth || isChunk) && (
+              <button
+                type="button"
+                onClick={handleTryAgain}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a73e8] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+              >
+                <RefreshCw className="h-4 w-4 shrink-0" />
+                Try again
+              </button>
+            )}
+            <Link href={isAuth ? "/sign-in" : "/"} className="block sm:inline-block">
               <button
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#dadce0] bg-white px-5 py-3 text-sm font-medium text-[#202124] transition-colors hover:bg-[#f8f9fa] dark:border-[#3c4043] dark:bg-[#35363a] dark:text-[#e8eaed] dark:hover:bg-[#3c4043] sm:w-auto"
               >
                 <Home className="h-4 w-4 shrink-0" />
-                Go home
+                {isAuth ? "Sign in" : "Go home"}
               </button>
             </Link>
           </div>

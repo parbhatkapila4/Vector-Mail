@@ -99,7 +99,7 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
 
 **Health & search (HTTP)**
 
-- **Health:** `GET /api/health` — returns `{ status, database, version }`; 503 if DB unreachable.
+- **Health:** `GET /api/health` - returns `{ status, database, version }`; 503 if DB unreachable.
 - **Search:** `GET /api/email/search?q=<query>&accountId=<id>`: Clerk auth; same vector + text search as tRPC, returns results and timing.
 
 **Dodo Payments (billing)**
@@ -364,8 +364,8 @@ ENABLE_EMAIL_SEND="true"
 CRON_SECRET="your-random-secret"
 
 # Inngest (background jobs: embedding/analysis, scheduled sends)
-# INNGEST_EVENT_KEY — for sending events (optional in dev)
-# INNGEST_SIGNING_KEY — for Inngest Cloud to invoke your app (production)
+# INNGEST_EVENT_KEY - for sending events (optional in dev)
+# INNGEST_SIGNING_KEY - for Inngest Cloud to invoke your app (production)
 
 # Skip env validation (e.g. CI)
 SKIP_ENV_VALIDATION="1"
@@ -461,7 +461,7 @@ Secrets: Clerk and Aurinko keys in env (or Vercel/project env). Per-account toke
 - **Cron route:** `GET` or `POST` `/api/cron/process-scheduled-sends`.
 - **Cron behavior:** Fetches pending `ScheduledSend` rows where `scheduledAt <= now`, **enqueues one Inngest job per row**, returns `{ enqueued, due }`. The job handler runs the existing send logic (REST or tRPC payload), updates status; on final failure the row is set to `failed`. Requires `ENABLE_EMAIL_SEND=true` and `CRON_SECRET` set.
 - **Inngest:** `GET|POST|PUT /api/inngest` serves Inngest (register + run). No separate worker; Inngest Cloud or dev server invokes your app. Jobs: `email/analyze`, `scheduled-send/process`, optional `email/analyze-account`.
-- **Backfill embeddings:** `GET|POST /api/admin/backfill-embeddings` — auth: same as cron/admin (e.g. `Authorization: Bearer <ADMIN_STATS_SECRET>` or `x-cron-secret`). **GET** returns `{ count }` of emails with `embedding IS NULL` (optional `?accountId=`). **POST** selects up to `limit` (default 50, max 200) emails missing embeddings (optional `accountId`, `summaryNullOnly`), enqueues one Inngest job per email with deterministic id for deduplication; returns `{ enqueued, requested }`. Job handler is idempotent (skips if embedding already set); 5 retries with exponential backoff. Do not trigger from sync or getThreads.
+- **Backfill embeddings:** `GET|POST /api/admin/backfill-embeddings` - auth: same as cron/admin (e.g. `Authorization: Bearer <ADMIN_STATS_SECRET>` or `x-cron-secret`). **GET** returns `{ count }` of emails with `embedding IS NULL` (optional `?accountId=`). **POST** selects up to `limit` (default 50, max 200) emails missing embeddings (optional `accountId`, `summaryNullOnly`), enqueues one Inngest job per email with deterministic id for deduplication; returns `{ enqueued, requested }`. Job handler is idempotent (skips if embedding already set); 5 retries with exponential backoff. Do not trigger from sync or getThreads.
 
 ---
 
@@ -547,7 +547,7 @@ Indexes (Prisma): `Thread` (accountId, lastMessageDate, inboxStatus, snoozedUnti
 
 ## Performance benchmarks
 
-This section describes what to measure for production performance (sync, embeddings, search, scheduled sends) and how to interpret the numbers. Use it for capacity planning and SLA expectations; re-check after major changes. No new instrumentation is required—observe via existing logs, admin stats, or one-off tests.
+This section describes what to measure for production performance (sync, embeddings, search, scheduled sends) and how to interpret the numbers. Use it for capacity planning and SLA expectations; re-check after major changes. No new instrumentation is required. Observe via existing logs, admin stats, or one-off tests.
 
 **Sync: ~1k emails**
 
@@ -559,7 +559,7 @@ Measure the time to generate embeddings (and optionally summaries) for about 1k 
 
 **Vector search: ~10k rows**
 
-Measure the latency of a single vector search when the account (or DB) has on the order of 10k emails with embeddings—e.g. p95 or average of search request duration. This depends on the pgvector index and DB load. Where to see it: the search route returns timing; admin stats (`GET /api/admin/stats`) exposes `averageSearchTimeMs`; or run one-off requests against an account with ~10k embedded emails. Expectation: sub-second for 10k rows with a proper pgvector index is typical; measure and document your baseline.
+Measure the latency of a single vector search when the account (or DB) has on the order of 10k emails with embeddings (e.g. p95 or average of search request duration). This depends on the pgvector index and DB load. Where to see it: the search route returns timing; admin stats (`GET /api/admin/stats`) exposes `averageSearchTimeMs`; or run one-off requests against an account with ~10k embedded emails. Expectation: sub-second for 10k rows with a proper pgvector index is typical; measure and document your baseline.
 
 **Scheduled send throughput**
 
@@ -573,11 +573,11 @@ This section explains how AI usage translates into cost and how the app limits i
 
 **Approximate tokens per email (embeddings and summaries)**
 
-Embeddings use Gemini (model `gemini-embedding-001`): one request per email, 768 dimensions. Gemini embedding is typically billed per request or per 1k input characters, not “tokens” in the same way as chat—treat it as one embedding request per email and see [Gemini pricing](https://ai.google.dev/pricing) for current rates. Summaries use OpenRouter: each summary is one chat completion (a few hundred input + output tokens per email depending on email length and model). Exact numbers depend on email length and the model chosen.
+Embeddings use Gemini (model `gemini-embedding-001`): one request per email, 768 dimensions. Gemini embedding is typically billed per request or per 1k input characters, not “tokens” in the same way as chat. Treat it as one embedding request per email and see [Gemini pricing](https://ai.google.dev/pricing) for current rates. Summaries use OpenRouter: each summary is one chat completion (a few hundred input + output tokens per email depending on email length and model). Exact numbers depend on email length and the model chosen.
 
 **Estimated cost per 1k emails**
 
-Embedding 1k emails ≈ 1k Gemini embedding requests. Summarizing 1k emails ≈ on the order of a few hundred thousand OpenRouter tokens (in + out). At typical list prices, expect on the order of low single-digit dollars for embedding + summary per 1k emails—adjust for your region and current [OpenRouter](https://openrouter.ai/docs#models) and [Gemini](https://ai.google.dev/pricing) pricing. If the project does not publish exact numbers, measure with your usage and provider pricing.
+Embedding 1k emails ≈ 1k Gemini embedding requests. Summarizing 1k emails ≈ on the order of a few hundred thousand OpenRouter tokens (in + out). At typical list prices, expect on the order of low single-digit dollars for embedding + summary per 1k emails. Adjust for your region and current [OpenRouter](https://openrouter.ai/docs#models) and [Gemini](https://ai.google.dev/pricing) pricing. If the project does not publish exact numbers, measure with your usage and provider pricing.
 
 **Typical daily AI usage per active user**
 
@@ -776,7 +776,7 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 | Feature                   | Description                                          |
 | ------------------------- | ---------------------------------------------------- |
 | **Context-Aware Writing** | AI reads the thread and writes appropriate responses |
-| **Tone Adjustment**       | Professional, casual, or custom—match any situation  |
+| **Tone Adjustment**       | Professional, casual, or custom. Match any situation |
 | **One-Click Replies**     | Generate complete, thoughtful responses instantly    |
 | **Smart Suggestions**     | Real-time writing assistance as you type             |
 
@@ -815,12 +815,12 @@ _Email analytics (response times, volume patterns) is planned and not yet availa
 <summary><strong>Enterprise-Ready Security</strong></summary>
 <br />
 
-| Feature                  | Description                                         |
-| ------------------------ | --------------------------------------------------- |
-| **Clerk Authentication** | Enterprise-grade auth with MFA, SSO support         |
-| **Data Encryption**      | Encryption for stored data                          |
-| **Privacy First**        | Your data stays yours—we don't train on your emails |
-| **SOC 2 Ready**          | Built with compliance requirements in mind          |
+| Feature                  | Description                                          |
+| ------------------------ | -----------------------------------------------------|
+| **Clerk Authentication** | Enterprise-grade auth with MFA, SSO support          |
+| **Data Encryption**      | Encryption for stored data                           |
+| **Privacy First**        | Your data stays yours. We don't train on your emails |
+| **SOC 2 Ready**          | Built with compliance requirements in mind           |
 
 </details>
 
@@ -926,7 +926,7 @@ VectorMail is open-source software licensed under the [MIT License](LICENSE).
 
 <div align="center">
 
-**VectorMail** - _Email, reimagined with AI_
+**VectorMail** - Email, reimagined with AI
 
 Built by [Parbhat Kapila](https://github.com/parbhatkapila4)
 

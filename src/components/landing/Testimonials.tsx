@@ -9,8 +9,7 @@ import {
   Brain,
   Search,
   Server,
-  Shield,
-  Infinity,
+  Sparkles,
 } from "lucide-react";
 
 const techStack = [
@@ -363,29 +362,103 @@ export function Testimonials() {
         </div>
 
         <div className="relative mt-16">
-          <blockquote className="relative overflow-hidden rounded-2xl border border-stone-200/60 bg-gradient-to-br from-white via-stone-50/20 to-stone-50/35 dark:from-white dark:via-stone-100 dark:to-stone-100 dark:border-stone-600/50 px-8 py-12 shadow-sm sm:px-12 sm:py-16 md:px-16">
-            <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-stone-200 to-stone-300 dark:from-stone-300 dark:to-stone-400" aria-hidden />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-700">
-              Architecture
-            </p>
-            <p className="mt-4 font-display-serif text-2xl font-semibold italic leading-snug text-stone-900 sm:text-3xl md:max-w-2xl">
-              Production-Ready from Day One
-            </p>
-            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-stone-800">
-              Type-safe entirely with tRPC. Optimistic updates. Real-time
-              subscriptions. Database migrations. CI/CD ready. Everything a
-              founder dreams of.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-stone-800">
-              <span><span className="font-semibold tabular-nums text-stone-900">100%</span> Type-safe</span>
-              <span className="text-stone-500" aria-hidden>·</span>
-              <span><span className="font-semibold tabular-nums text-stone-900">0</span> Runtime errors</span>
-              <span className="text-stone-500" aria-hidden>·</span>
-              <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-stone-700" /><span className="font-semibold tabular-nums text-stone-900">A+</span> Security</span>
-              <span className="text-stone-500" aria-hidden>·</span>
-              <span className="flex items-center gap-1"><Infinity className="h-3.5 w-3.5 text-stone-700" /> Scalable</span>
+          <div className="mx-auto max-w-5xl space-y-8 px-0 md:space-y-12">
+            <div className="relative -mx-4 rounded-3xl p-3 md:-mx-12 lg:col-span-3">
+              <div className="[perspective:800px]">
+                <div style={{ transform: "skewY(-2deg) skewX(-2deg) rotateX(6deg)" }}>
+                  <div className="aspect-[88/36] relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a]">
+                    <div className="to-[#0a0a0a] z-1 -inset-[4.25rem] absolute from-transparent to-75% bg-[radial-gradient(ellipse_75%_25%_at_75%_25%,transparent_0%,#0a0a0a_75%)]" />
+                    <div className="absolute inset-0 z-10 flex rounded-xl bg-[#0a0a0a]">
+                      <aside className="flex w-[16%] min-w-0 shrink-0 flex-col border-r border-white/10 bg-[#0f0f0f] py-2">
+                        <div className="flex items-center gap-1.5 px-2">
+                          <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded">
+                            <Image src="/VectorMail-New.png" alt="VectorMail" width={16} height={16} className="object-contain" />
+                          </div>
+                          <span className="truncate text-[10px] font-medium text-white/60">Your inbox, reimagined</span>
+                        </div>
+                        <nav className="mt-2 space-y-0.5 px-1.5 text-[10px]">
+                          {["Inbox", "Drafts", "Sent", "Junk", "Trash", "Archive"].map((folder, i) => (
+                            <div key={folder} className={`flex items-center justify-between rounded px-1.5 py-1 ${i === 0 ? "bg-white/10 text-white" : "text-white/70"}`}>
+                              <span className="truncate">{folder}</span>
+                              {i === 0 && <span className="text-[9px] text-white/60">128</span>}
+                            </div>
+                          ))}
+                        </nav>
+                        <div className="mt-2 border-t border-white/10 pt-2">
+                          <div className="px-1.5 text-[9px] font-medium uppercase tracking-wider text-white/50">Categories</div>
+                          {["Social", "Updates", "Forums", "Shopping", "Promotions"].map((cat, i) => (
+                            <div key={cat} className="mt-0.5 flex items-center justify-between px-1.5 py-0.5 text-[10px] text-white/70">
+                              <span className="truncate">{cat}</span>
+                              <span className="text-[9px] text-white/50">{[972, 342, 128, 8, 21][i]}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </aside>
+                      <div className="flex min-w-0 flex-1 flex-col border-r border-white/10">
+                        <div className="flex items-center justify-between border-b border-white/10 px-2 py-1.5">
+                          <span className="text-[11px] font-medium text-white">Inbox</span>
+                          <div className="flex gap-0.5">
+                            <button type="button" className="rounded px-1.5 py-0.5 text-[10px] text-white/80">All mail</button>
+                            <button type="button" className="rounded px-1.5 py-0.5 text-[10px] text-white/50">Unread</button>
+                          </div>
+                        </div>
+                        <div className="border-b border-white/10 px-2 py-1">
+                          <div className="rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[10px] text-white/50">Search by meaning, not keywords</div>
+                        </div>
+                        <div className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          {[
+                            { from: "VectorMail", subj: "Find anything in plain language", snip: "Ask \"emails from Sarah about the Q3 budget\" or \"that thread where we discussed the launch date.\" Semantic search returns the right threads in one shot.", tags: ["search", "AI"], time: "2h ago" },
+                            { from: "VectorMail", subj: "AI summaries that actually help", snip: "Every thread gets a short summary so you can triage without opening. Catch up on long chains in seconds.", tags: ["summaries"], time: "5h ago" },
+                            { from: "VectorMail", subj: "Compose in seconds, not minutes", snip: "Draft and send from one place. AI can suggest replies; you stay in control. Built for people who ship.", tags: ["compose"], time: "1d ago" },
+                            { from: "VectorMail", subj: "Your data stays yours", snip: "We don't train on your email. Connect Gmail, get semantic search and AI. Self-hostable, built for teams who care about privacy.", tags: ["privacy"], time: "2d ago" },
+                          ].map((mail, i) => (
+                            <div key={`${mail.from}-${mail.subj}-${i}`} className={`rounded px-1.5 py-1 ${i === 0 ? "bg-white/10 ring-1 ring-white/20" : ""}`}>
+                              <div className="flex items-center justify-between">
+                                <span className="truncate text-[10px] font-medium text-white">{mail.from}</span>
+                                <span className="shrink-0 text-[9px] text-white/50">{mail.time}</span>
+                              </div>
+                              <div className="mt-0.5 truncate text-[10px] font-medium text-white/90">{mail.subj}</div>
+                              <div className="mt-0.5 line-clamp-2 text-[9px] leading-tight text-white/60">{mail.snip}</div>
+                              <div className="mt-0.5 flex flex-wrap gap-0.5">
+                                {mail.tags.map((tag) => (
+                                  <span key={tag} className="rounded border border-white/20 px-1 py-0.5 text-[8px] text-white/70">{tag}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex w-[42%] min-w-0 shrink-0 flex-col bg-[#0a0a0a]">
+                        <div className="flex items-center gap-1 border-b border-white/10 px-2 py-1">
+                          {["delete", "archive", "reply", "forward"].map((a) => (
+                            <span key={a} className="h-1.5 w-1.5 rounded-full bg-white/30" aria-hidden />
+                          ))}
+                        </div>
+                        <div className="flex-1 overflow-auto px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/30 text-[10px] font-medium text-white">VM</div>
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-medium text-white">VectorMail</div>
+                              <div className="truncate text-[10px] text-white/50">Find anything in plain language</div>
+                            </div>
+                          </div>
+                          <div className="mt-1.5 text-[9px] text-white/50">feature@vectormail.ai · March 2026</div>
+                          <div className="mt-2 space-y-2 text-[10px] leading-relaxed text-white/80">
+                            <p>The one feature that sets VectorMail apart: semantic search. You don't search by keyword. You ask in plain language.</p>
+                            <p>Type "emails from Sarah about the Q3 budget" or "that thread where we discussed the launch date" and get the right conversations in one shot. No scrolling, no guessing which words were in the subject.</p>
+                            <p>Combine that with AI summaries and fast compose, and you have an inbox built for how people really work.</p>
+                          </div>
+                        </div>
+                        <div className="border-t border-white/10 p-2">
+                          <div className="rounded border border-white/15 bg-white/5 px-2 py-1.5 text-[9px] text-white/50">Ask a question or search your inbox...</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </blockquote>
+          </div>
         </div>
 
       </div>

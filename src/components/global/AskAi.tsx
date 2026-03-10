@@ -174,7 +174,7 @@ export default function EmailSearchAssistant({
             id: (Date.now() + 1).toString(),
             role: "assistant",
             content:
-              "In the full version, I’ll search your inbox and summarize results here. Request access above to connect your Gmail—we'll reply once your account is enabled.",
+              "In the full version, I’ll search your inbox and summarize results here. Request access above to connect your Gmail. We'll reply once your account is enabled.",
             timestamp: Date.now(),
           };
           setMessages((prev) => [...prev, demoReply]);

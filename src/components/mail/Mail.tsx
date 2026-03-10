@@ -300,7 +300,8 @@ export function Mail({ }: MailLayoutProps) {
                   type="button"
                   onClick={handleThreadClose}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed] [touch-action:manipulation]"
-                  aria-label="Back to list"
+                  aria-label="Close email"
+                  title="Close email"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </button>

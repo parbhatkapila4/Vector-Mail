@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -171,7 +169,7 @@
 
 
   .font-display {
-    font-family: 'Oswald', system-ui, sans-serif;
+    font-family: var(--font-oswald), system-ui, sans-serif;
   }
 
 

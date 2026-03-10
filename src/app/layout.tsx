@@ -2,7 +2,8 @@ import "@/styles/globals.css";
 import "@/lib/suppress-console-errors";
 
 import { type Metadata } from "next";
-import { Geist } from "next/font/google";
+import Script from "next/script";
+import { Inter, Oswald } from "next/font/google";
 
 import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -43,17 +44,48 @@ export const viewport = {
   viewportFit: "cover" as const,
 };
 
-const geist = Geist({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-geist-sans",
+});
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-oswald",
 });
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={geist.variable} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <Script
+          id="chunk-load-recovery"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+(function(){
+  var key = 'vm_chunk_reload';
+  if (sessionStorage.getItem(key)) { sessionStorage.removeItem(key); return; }
+  function isChunkErr(e) {
+    if (!e) return false;
+    var r = e.reason || e;
+    var msg = (r.message || e.message) || '';
+    var name = (r.name || e.name) || '';
+    return name === 'ChunkLoadError' || /Loading chunk .* failed/.test(msg);
+  }
+  window.addEventListener('unhandledrejection', function(ev) {
+    if (isChunkErr(ev.reason)) { sessionStorage.setItem(key, '1'); window.location.reload(); }
+  });
+  window.addEventListener('error', function(ev) {
+    if (isChunkErr(ev)) { sessionStorage.setItem(key, '1'); window.location.reload(); }
+  });
+})();
+            `.trim(),
+          }}
+        />
         <PwaRegister />
         <ProvidersWrapper>{children}</ProvidersWrapper>
       </body>
