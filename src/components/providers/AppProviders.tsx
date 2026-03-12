@@ -1,12 +1,19 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardShortcuts } from "@/components/global/KeyboardShortcuts";
 import { PendingSendProvider } from "@/contexts/PendingSendContext";
+
+function ClientOnlyKeyboardShortcuts() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <KeyboardShortcuts />;
+}
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -25,7 +32,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       >
         <TRPCReactProvider>
           <PendingSendProvider>
-            <KeyboardShortcuts />
+            <ClientOnlyKeyboardShortcuts />
             {children}
           </PendingSendProvider>
         </TRPCReactProvider>

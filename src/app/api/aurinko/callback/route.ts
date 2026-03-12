@@ -186,6 +186,15 @@ export async function GET(req: NextRequest) {
       console.log("[CALLBACK] ✓ User upserted");
     } catch (error) {
       console.error("[CALLBACK] ✗ User upsert failed:", error);
+      const errMessage = error instanceof Error ? error.message : String(error);
+      const errCode = error && typeof error === "object" && "code" in error ? String((error as { code: string }).code) : undefined;
+      return NextResponse.json(
+        {
+          message: "Failed to link user account. Please try again or contact support.",
+          ...(process.env.NODE_ENV === "development" && { detail: errMessage, code: errCode }),
+        },
+        { status: 500 },
+      );
     }
 
     const tokenToStore = token.accountToken ?? token.accessToken;
@@ -226,9 +235,14 @@ export async function GET(req: NextRequest) {
         metadata: { provider: "gmail" },
       });
     } catch (error) {
-      console.error("[CALLBACK] ✗ Account upsert failed:", error);
+      const errMessage = error instanceof Error ? error.message : String(error);
+      const errCode = error && typeof error === "object" && "code" in error ? String((error as { code: string }).code) : undefined;
+      console.error("[CALLBACK] ✗ Account upsert failed:", errMessage, errCode ? `(code: ${errCode})` : "", error);
       return NextResponse.json(
-        { message: "Failed to save account" },
+        {
+          message: "Failed to save account. Please try signing in again or contact support.",
+          ...(process.env.NODE_ENV === "development" && { detail: errMessage, code: errCode }),
+        },
         { status: 500 },
       );
     }

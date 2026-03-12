@@ -42,6 +42,14 @@ import { ShortcutHelpModal } from "./ShortcutHelpModal";
 import { GripVertical, RefreshCw } from "lucide-react";
 import { UserProfile, useClerk, useUser } from "@clerk/nextjs";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -55,6 +63,19 @@ import { NudgesBlock } from "./NudgesBlock";
 import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+
+const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
+
+I've been exploring VectorMail in demo mode and would like to request access so I can use it with my own inbox.
+
+I'm particularly interested in using AI Search and AI Buddy being able to find and summarize emails with natural language, and get help drafting replies and managing my workflow, would make a real difference for how I handle email day to day. I'd like to connect my Gmail account and try the full experience with my actual mail.
+
+Could you let me know what the process looks like for getting access, and when I might be able to start? I'm happy to share more about my use case or jump on a short call if that would be helpful.
+
+Thanks for your time, and I look forward to hearing from you.
+
+Best regards`;
+
 interface MailLayoutProps {
   defaultLayout?: number[] | readonly number[] | undefined;
   defaultCollapsed?: boolean;
@@ -69,6 +90,7 @@ export function Mail({ }: MailLayoutProps) {
   const [isNavigating, setIsNavigating] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [requestAccessOpen, setRequestAccessOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
   const [selectedLabelId, setSelectedLabelId] = useLocalStorage("vector-mail-label-id", "");
   const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage("mail-sidebar-width-pct", 38);
@@ -91,6 +113,10 @@ export function Mail({ }: MailLayoutProps) {
   useEffect(() => () => {
     if (signOutTimeoutRef.current) clearTimeout(signOutTimeoutRef.current);
   }, []);
+
+  useEffect(() => {
+    router.prefetch("/");
+  }, [router]);
 
   const handleSignOut = useCallback(() => {
     setIsSigningOut(true);
@@ -487,7 +513,11 @@ export function Mail({ }: MailLayoutProps) {
       <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <div className="flex h-full min-h-0 w-full bg-white dark:bg-[#09090b]">
         <aside className="flex w-[260px] shrink-0 flex-col border-r border-[#e5e7eb] bg-[#fafbfc] dark:border-[#1a1a23] dark:bg-[#09090b]">
-          <Link href="/" className="flex items-center gap-2.5 px-5 py-4">
+          <Link
+            href="/"
+            prefetch
+            className="flex w-full items-center gap-2.5 px-5 py-4 text-left transition-opacity hover:opacity-90 active:opacity-95"
+          >
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-[#3b82f6]">
               <video
                 src="/Vectormail-logo.mp4"
@@ -572,7 +602,11 @@ export function Mail({ }: MailLayoutProps) {
               <button
                 type="button"
                 onClick={() => {
-                  window.location.href = "/buddy?fresh=true";
+                  if (isDemo) {
+                    setRequestAccessOpen(true);
+                  } else {
+                    window.location.href = "/buddy?fresh=true";
+                  }
                 }}
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]"
               >
@@ -582,7 +616,13 @@ export function Mail({ }: MailLayoutProps) {
 
               <button
                 type="button"
-                onClick={() => setShowAIPanel(!showAIPanel)}
+                onClick={() => {
+                  if (isDemo) {
+                    setRequestAccessOpen(true);
+                  } else {
+                    setShowAIPanel(!showAIPanel);
+                  }
+                }}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all",
                   showAIPanel
@@ -778,6 +818,41 @@ export function Mail({ }: MailLayoutProps) {
           onOpenChange={setComposeOpen}
         />
       </div>
+
+      <Dialog open={requestAccessOpen} onOpenChange={setRequestAccessOpen}>
+        <DialogContent className="border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#111118] dark:text-[#f4f4f5">
+              Request access
+            </DialogTitle>
+            <DialogDescription className="text-left text-[#6b7280] dark:text-[#a1a1aa]">
+              <span className="block mt-2">
+                To use AI Buddy, AI Search, and other features with your own Gmail, you need access to VectorMail. Right now you're exploring with sample data.
+              </span>
+              <span className="mt-3 block">
+                Request access to connect your account and unlock the full experience: AI assistant, semantic search, smart summaries, and more - all in your mailbox.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRequestAccessOpen(false)}
+              className="border-[#e5e7eb] dark:border-[#1a1a23]"
+            >
+              Close
+            </Button>
+            <a
+              href={`mailto:parbhat@parbhat.dev?subject=${encodeURIComponent("VectorMail – Request access")}&body=${encodeURIComponent(REQUEST_ACCESS_EMAIL_BODY)}`}
+              className="inline-flex h-9 items-center justify-center rounded-md bg-[#3b82f6] px-4 text-sm font-medium text-white transition-colors hover:bg-[#2563eb]"
+              onClick={() => setRequestAccessOpen(false)}
+            >
+              Request access
+            </a>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
@@ -894,7 +969,8 @@ function MobileSidebar({
     <div className="relative flex h-full flex-col bg-white dark:bg-[#202124]">
       <Link
         href="/"
-        className="flex items-center gap-3 border-b border-[#dadce0] p-4 dark:border-[#3c4043]"
+        prefetch
+        className="flex w-full items-center gap-3 border-b border-[#dadce0] p-4 transition-opacity hover:opacity-90 active:opacity-95 dark:border-[#3c4043]"
       >
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-[#1a73e8] dark:bg-[#8ab4f8]">
           <video

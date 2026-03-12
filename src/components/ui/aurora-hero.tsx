@@ -392,7 +392,64 @@ export default function HeroSection_04() {
             aria-hidden
             className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent from-30% to-[#0a0a0a]"
           />
-          <div className="relative mx-auto max-w-7xl w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a]/95 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_80px_-20px_rgba(59,130,246,0.15)] backdrop-blur-sm sm:p-2">
+          <div className="relative mx-auto w-full max-w-[280px] md:hidden">
+            <div className="overflow-hidden rounded-[2.75rem] border-[10px] border-[#1c1c1e] bg-[#1c1c1e] shadow-[0_0_0_2px_rgba(255,255,255,0.06),0_25px_50px_-12px_rgba(0,0,0,0.5)]">
+              <div className="flex aspect-[9/19.5] min-h-[460px] flex-col rounded-[2rem] bg-[#0a0a0a] ring-1 ring-white/5 overflow-hidden">
+                <div className="shrink-0 flex justify-center pt-3 pb-1">
+                  <div className="h-7 w-[100px] rounded-full bg-black" aria-hidden />
+                </div>
+                <div className="shrink-0 border-b border-white/10 px-4 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded">
+                      <Image
+                        src="/VectorMail-New.png"
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="object-contain"
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-white">Inbox</span>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto border-t border-white/10">
+                  <div className="border-b border-white/10 px-3 py-2">
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white/50">Q Search</div>
+                  </div>
+                  <div className="space-y-0.5 p-2">
+                    {[
+                      { from: "William Smith", subj: "Meeting Tomorrow: Q4 roadmap", time: "2h ago" },
+                      { from: "Alice Smith", subj: "Re: Project Update & design review", time: "5h ago" },
+                      { from: "Bob Johnson", subj: "Weekend Plans: dinner Saturday?", time: "1d ago" },
+                      { from: "Emily Davis", subj: "Re: Budget & timeline follow-up", time: "2d ago" },
+                      { from: "Sarah Chen", subj: "VectorMail feedback: search & AI", time: "3d ago" },
+                      { from: "Marcus Reid", subj: "Invoice #4821: payment confirmation", time: "1w ago" },
+                      { from: "Jessica Park", subj: "Design system review – components", time: "1w ago" },
+                      { from: "David Kim", subj: "Sprint planning – capacity check", time: "1w ago" },
+                      { from: "Rachel Green", subj: "Re: Vendor contract renewal", time: "2w ago" },
+                      { from: "Tom Wilson", subj: "Quick sync: launch checklist", time: "2w ago" },
+                    ].map((mail, i) => (
+                      <div
+                        key={`${mail.from}-${i}`}
+                        className={`rounded-lg px-2.5 py-2 ${i === 0 ? "bg-white/10 ring-1 ring-white/20" : ""}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-white truncate min-w-0">{mail.from}</span>
+                          <span className="text-[10px] text-white/50 shrink-0 ml-1">{mail.time}</span>
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] text-white/70">{mail.subj}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="shrink-0 border-t border-white/10 p-3">
+                  <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-[11px] text-white/50">Reply...</div>
+                  <button type="button" className="mt-2 w-full rounded-lg bg-blue-600 py-2 text-xs font-medium text-white">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="relative mx-auto max-w-7xl w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a]/95 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_80px_-20px_rgba(59,130,246,0.15)] backdrop-blur-sm sm:p-2 hidden md:block">
             <div className="flex aspect-[15/8] w-full rounded-xl bg-[#0a0a0a] ring-1 ring-white/5">
               <aside className="flex w-[200px] shrink-0 flex-col border-r border-white/10 bg-[#0f0f0f] py-3">
                 <div className="flex items-center gap-2 px-3">

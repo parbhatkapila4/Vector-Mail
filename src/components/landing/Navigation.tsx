@@ -44,9 +44,9 @@ export function Navigation() {
 
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90"
+          className="flex min-w-0 shrink items-center gap-2.5 transition-opacity hover:opacity-90 md:shrink-0"
         >
-          <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white/[0.04] ring-1 ring-white/[0.06]">
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.04] ring-1 ring-white/[0.06]">
             <video
               src="/Vectormail-logo.mp4"
               autoPlay
@@ -56,7 +56,7 @@ export function Navigation() {
               className="h-full w-full scale-[1.4] object-cover"
             />
           </div>
-          <span className="text-[15px] font-semibold tracking-tight text-white">
+          <span className="hidden text-[15px] font-semibold tracking-tight text-white sm:inline">
             VectorMail
           </span>
         </Link>
@@ -78,7 +78,7 @@ export function Navigation() {
         </div>
 
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 shrink items-center justify-end gap-1.5 md:shrink-0 md:gap-2">
           {!isLoaded ? (
             <div className="flex items-center gap-2" aria-hidden>
               <div className="h-9 w-24 animate-pulse rounded-full bg-white/[0.08]" />
