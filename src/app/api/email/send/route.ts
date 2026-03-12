@@ -8,6 +8,7 @@ import {
   injectTrackingPixel,
   updateTrackingMessageId,
 } from "@/lib/email-open-tracking";
+import { rateLimit } from "@/lib/rate-limit";
 import axios from "axios";
 
 export const runtime = "nodejs";
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
       { status: 401 },
     );
   }
+
+  const rateLimitRes = rateLimit(req, "emailSend");
+  if (rateLimitRes) return rateLimitRes;
 
   const contentType = req.headers.get("content-type") || "";
   const isFormData = contentType.includes("multipart/form-data");

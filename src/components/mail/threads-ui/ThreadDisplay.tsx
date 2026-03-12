@@ -6,7 +6,7 @@ import useThreads from "@/hooks/use-threads";
 import { useAtom } from "jotai";
 import { isSearchingAtom } from "../search/SearchBar";
 import ReplyBox from "./ReplyBox";
-import { Mail, Forward, Reply, X, Clock, Bell, Tag, ChevronDown, ChevronLeft, ChevronRight, Loader2, CalendarPlus } from "lucide-react";
+import { Mail, Forward, Reply, X, Clock, Bell, Tag, ChevronDown, ChevronLeft, ChevronRight, Loader2, CalendarPlus, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import {
@@ -24,6 +24,14 @@ import { useLocalStorage } from "usehooks-ts";
 import { ThreadViewSkeleton } from "./ThreadViewSkeleton";
 import { toast } from "sonner";
 import { buildGoogleCalendarUrl } from "@/lib/calendar-url";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -37,7 +45,7 @@ interface ThreadDisplayProps {
 }
 
 export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplayProps) {
-  const { threads: rawThreads, threadId: hookThreadId, accountId, effectiveAccountId, isUnifiedView } = useThreads();
+  const { threads: rawThreads, threadId: hookThreadId, accountId, effectiveAccountId, isUnifiedView, account } = useThreads();
   const threadId = propThreadId ?? hookThreadId;
   const threads = rawThreads as Thread[] | undefined;
   const _thread = threads?.find((t: Thread) => t.id === threadId);
@@ -45,7 +53,15 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [showReplyBox, setShowReplyBox] = useState(false);
+  const [suggestedReply, setSuggestedReply] = useState<{ subject: string; body: string } | null>(null);
+  const [autoApplySuggestedReply, setAutoApplySuggestedReply] = useState(false);
+  const [suggestReplyModalOpen, setSuggestReplyModalOpen] = useState(false);
+  const [suggestReplyStep, setSuggestReplyStep] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [suggestReplyStatus, setSuggestReplyStatus] = useState("");
+  const [suggestReplyResult, setSuggestReplyResult] = useState<{ subject: string; body: string } | null>(null);
+  const [suggestReplyError, setSuggestReplyError] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const isDemo = useDemoMode() && (effectiveAccountId === DEMO_ACCOUNT_ID || accountId === DEMO_ACCOUNT_ID);
   const [currentTab] = useLocalStorage("vector-mail", "inbox");
   const accountForActions = effectiveAccountId ?? accountId;
   const showSnooze =
@@ -132,17 +148,144 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
         originalFrom={originalFrom}
         originalDate={originalDate}
       />
+      <Dialog open={suggestReplyModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          setSuggestReplyModalOpen(false);
+          setSuggestReplyStep("idle");
+          setSuggestReplyResult(null);
+          setSuggestReplyError(null);
+        }
+      }}>
+        <DialogContent className="max-w-lg border-[#e5e7eb] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
+          <DialogHeader>
+            <DialogTitle className="text-[#111118] dark:text-[#f4f4f5] flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-[#3b82f6] dark:text-[#8ab4f8]" />
+              Suggest reply
+            </DialogTitle>
+          </DialogHeader>
+          {suggestReplyStep === "loading" && (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <Loader2 className="h-10 w-10 animate-spin text-[#3b82f6] dark:text-[#8ab4f8]" />
+              <p className="text-center text-sm text-[#5f6368] dark:text-[#9aa0a6]">
+                {suggestReplyStatus}
+              </p>
+              <p className="text-xs text-[#9aa0a6] dark:text-[#71717a]">
+                AI is reading the thread and writing a reply in your voice.
+              </p>
+            </div>
+          )}
+          {suggestReplyStep === "ready" && suggestReplyResult && (
+            <div className="space-y-4">
+              <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">
+                Here’s your reply. You can edit it in the composer, send it now, or cancel.
+              </p>
+              <div className="rounded-lg border border-[#e5e7eb] bg-[#f6f8fc] p-3 dark:border-[#3c4043] dark:bg-[#292a2d]">
+                <p className="mb-1 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">Subject</p>
+                <p className="text-sm font-medium text-[#111118] dark:text-[#f4f4f5]">{suggestReplyResult.subject}</p>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-[#e5e7eb] bg-[#f6f8fc] p-3 dark:border-[#3c4043] dark:bg-[#292a2d]">
+                <p className="mb-1 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">Message</p>
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none text-[#111118] dark:text-[#e8eaed] [&_p]:mb-1"
+                  dangerouslySetInnerHTML={{ __html: suggestReplyResult.body.slice(0, 1500) + (suggestReplyResult.body.length > 1500 ? "..." : "") }}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSuggestReplyModalOpen(false);
+                    setSuggestReplyStep("idle");
+                    setSuggestReplyResult(null);
+                  }}
+                  className="border-[#dadce0] dark:border-[#3c4043]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSuggestedReply(suggestReplyResult);
+                    setAutoApplySuggestedReply(true);
+                    setShowReplyBox(true);
+                    setSuggestReplyModalOpen(false);
+                    setSuggestReplyStep("idle");
+                    setSuggestReplyResult(null);
+                    requestAnimationFrame(() => window.dispatchEvent(new CustomEvent("focus-reply")));
+                  }}
+                  className="border-[#3b82f6] text-[#3b82f6] hover:bg-[#3b82f6]/10 dark:border-[#8ab4f8] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/10"
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!suggestReplyResult || !threadId) return;
+                    try {
+                      const res = await fetch("/api/send-reply", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          threadId,
+                          subject: suggestReplyResult.subject,
+                          body: suggestReplyResult.body,
+                        }),
+                        credentials: "include",
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        toast.error(data.message ?? data.error ?? "Failed to send");
+                        return;
+                      }
+                      toast.success("Reply sent");
+                      setSuggestReplyModalOpen(false);
+                      setSuggestReplyStep("idle");
+                      setSuggestReplyResult(null);
+                      setShowReplyBox(false);
+                    } catch {
+                      toast.error("Failed to send reply");
+                    }
+                  }}
+                  className="bg-[#3b82f6] text-white hover:bg-[#2563eb] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                >
+                  Send
+                </Button>
+              </div>
+            </div>
+          )}
+          {suggestReplyStep === "error" && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-red-600 dark:text-red-400">{suggestReplyError}</p>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSuggestReplyModalOpen(false);
+                    setSuggestReplyStep("idle");
+                    setSuggestReplyError(null);
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <div className="flex h-full flex-col bg-white dark:bg-[#111113]">
 
         <div className="relative z-10 border-b border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]">
           <div className="hidden items-center gap-2 px-4 py-2 md:flex md:px-6">
-            {onClose && (
+            {threadId && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onClose();
+                  onClose?.();
                 }}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
                 aria-label="Close email"
@@ -216,6 +359,53 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
               Add to calendar
             </button>
             <div className="flex-1" />
+            {threadId && effectiveAccountId && !isDemo && (
+              <button
+                type="button"
+                disabled={suggestReplyStep === "loading"}
+                onClick={async () => {
+                  if (!threadId || !effectiveAccountId) return;
+                  setSuggestReplyModalOpen(true);
+                  setSuggestReplyStep("loading");
+                  setSuggestReplyError(null);
+                  setSuggestReplyResult(null);
+                  setSuggestReplyStatus("Reading your email and thread...");
+                  const statusTimer = setTimeout(() => {
+                    setSuggestReplyStatus("Writing your reply in your voice...");
+                  }, 1200);
+                  try {
+                    const res = await fetch("/api/generate-reply", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ threadId, accountId: effectiveAccountId }),
+                      credentials: "include",
+                    });
+                    const data = await res.json();
+                    clearTimeout(statusTimer);
+                    if (!res.ok) {
+                      setSuggestReplyStep("error");
+                      setSuggestReplyError(data.message ?? data.error ?? "Failed to suggest reply");
+                      return;
+                    }
+                    setSuggestReplyResult({ subject: data.subject ?? "", body: data.body ?? "" });
+                    setSuggestReplyStep("ready");
+                  } catch (e) {
+                    clearTimeout(statusTimer);
+                    setSuggestReplyStep("error");
+                    setSuggestReplyError("Failed to suggest reply");
+                    toast.error("Failed to suggest reply");
+                  }
+                }}
+                className="flex h-8 items-center gap-2 rounded-lg border border-[#3b82f6] bg-transparent px-4 text-[12px] font-medium text-[#3b82f6] transition-colors hover:bg-[#3b82f6]/10 dark:border-[#8ab4f8] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/10 disabled:opacity-60"
+              >
+                {suggestReplyStep === "loading" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-3.5 w-3.5" />
+                )}
+                Suggest reply
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -232,9 +422,21 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
           </div>
 
           <div className="px-4 pb-6 pt-4 md:px-6 md:pt-0">
-            <h1 className="mb-2 text-[18px] font-normal leading-tight text-[#111118] dark:text-[#f4f4f5] md:text-[22px]">
-              {firstEmail?.subject || "(No subject)"}
-            </h1>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h1 className="text-[18px] font-normal leading-tight text-[#111118] dark:text-[#f4f4f5] md:text-[22px]">
+                {firstEmail?.subject || "(No subject)"}
+              </h1>
+              {(() => {
+                const lastEmailInThread = thread?.emails?.[thread.emails.length - 1] as { from?: { address?: string } } | undefined;
+                const accountEmail = (thread as { account?: { emailAddress?: string } })?.account?.emailAddress ?? (account as { emailAddress?: string } | undefined)?.emailAddress ?? "";
+                const lastFromOther = lastEmailInThread?.from?.address && accountEmail && lastEmailInThread.from.address.toLowerCase() !== accountEmail.toLowerCase();
+                return lastFromOther ? (
+                  <span className="rounded-md bg-[#e8f0fe] px-2 py-0.5 text-[11px] font-medium text-[#1967d2] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]">
+                    Needs reply
+                  </span>
+                ) : null;
+              })()}
+            </div>
             {threadEvent && (
               <p className="mb-2 flex items-center gap-2 text-[13px] text-[#5f6368] dark:text-[#9aa0a6]">
                 <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
@@ -350,7 +552,12 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
 
         {showReplyBox && (
           <div className="hidden border-t border-[#e5e7eb] dark:border-[#1a1a23] md:block">
-            <ReplyBox />
+            <ReplyBox
+              suggestedReply={suggestedReply}
+              autoApplySuggestedReply={autoApplySuggestedReply}
+              onApplySuggestedReply={() => { setSuggestedReply(null); setAutoApplySuggestedReply(false); }}
+              onDismissSuggestedReply={() => { setSuggestedReply(null); setAutoApplySuggestedReply(false); }}
+            />
           </div>
         )}
 
@@ -396,6 +603,10 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
               <ReplyBox
                 onSendSuccess={() => setReplyDialogOpen(false)}
                 isInMobileDialog={true}
+                suggestedReply={suggestedReply}
+                autoApplySuggestedReply={autoApplySuggestedReply}
+                onApplySuggestedReply={() => { setSuggestedReply(null); setAutoApplySuggestedReply(false); }}
+                onDismissSuggestedReply={() => { setSuggestedReply(null); setAutoApplySuggestedReply(false); }}
               />
             </div>
           </div>

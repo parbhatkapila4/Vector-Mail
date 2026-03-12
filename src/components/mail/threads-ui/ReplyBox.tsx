@@ -31,14 +31,24 @@ type OptionType = {
   value: string;
 };
 
+export type SuggestedReply = { subject: string; body: string };
+
 interface ReplyBoxProps {
   onSendSuccess?: () => void;
   isInMobileDialog?: boolean;
+  suggestedReply?: SuggestedReply | null;
+  autoApplySuggestedReply?: boolean;
+  onApplySuggestedReply?: () => void;
+  onDismissSuggestedReply?: () => void;
 }
 
 const ReplyBox = ({
   onSendSuccess,
   isInMobileDialog = false,
+  suggestedReply = null,
+  autoApplySuggestedReply = false,
+  onApplySuggestedReply,
+  onDismissSuggestedReply,
 }: ReplyBoxProps) => {
   const { threadId, threads: rawThreads, account, effectiveAccountId } = useThreads();
   const threads = rawThreads as Thread[] | undefined;
@@ -79,6 +89,8 @@ const ReplyBox = ({
   const [toValues, setToValues] = React.useState<OptionType[]>([]);
   const [ccValues, setCcValues] = React.useState<OptionType[]>([]);
   const [isCollapsed, setIsCollapsed] = React.useState(true);
+  const [pendingSuggestedBody, setPendingSuggestedBody] = React.useState<string | null>(null);
+  const [applyDraftKey, setApplyDraftKey] = React.useState(0);
   const bodyContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,6 +107,16 @@ const ReplyBox = ({
     return () =>
       window.removeEventListener("focus-reply", handleFocusReply as EventListener);
   }, []);
+
+  React.useEffect(() => {
+    if (suggestedReply && autoApplySuggestedReply) {
+      setSubject(suggestedReply.subject);
+      setPendingSuggestedBody(suggestedReply.body);
+      setApplyDraftKey((k) => k + 1);
+      setIsCollapsed(false);
+      onApplySuggestedReply?.();
+    }
+  }, [suggestedReply, autoApplySuggestedReply, onApplySuggestedReply]);
   const [trackOpens, setTrackOpens] = useState(false);
   const [scheduleSendOpen, setScheduleSendOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
@@ -106,6 +128,7 @@ const ReplyBox = ({
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [pendingScheduleBody, setPendingScheduleBody] = useState<string>("");
   const sendEmail = api.account.sendEmail.useMutation();
+  const utils = api.useUtils();
   const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
   const { isLoaded: authLoaded, userId } = useAuth();
   const { isPending: isPendingSend } = usePendingSend();
@@ -320,7 +343,70 @@ const ReplyBox = ({
             onScheduleSend={handleScheduleSendClick}
             isScheduling={scheduleSendMutation.isPending}
             sendDisabled={isDemo}
+            initialBody={pendingSuggestedBody}
+            applyDraftKey={applyDraftKey}
           />
+          <Dialog
+            open={!!suggestedReply && !autoApplySuggestedReply}
+            onOpenChange={(open) => {
+              if (!open) onDismissSuggestedReply?.();
+            }}
+          >
+            <DialogContent className="max-w-lg border-[#dadce0] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
+              <DialogHeader>
+                <DialogTitle className="text-[#202124] dark:text-[#e8eaed]">
+                  Suggested reply
+                </DialogTitle>
+              </DialogHeader>
+              {suggestedReply && (
+                <div className="space-y-4">
+                  <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">
+                    Use this draft in the reply box? You can edit it before sending.
+                  </p>
+                  <div className="rounded-lg border border-[#dadce0] bg-[#f6f8fc] p-3 dark:border-[#3c4043] dark:bg-[#292a2d]">
+                    <p className="mb-1 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">Subject</p>
+                    <p className="text-sm text-[#202124] dark:text-[#e8eaed]">{suggestedReply.subject}</p>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-[#dadce0] bg-[#f6f8fc] p-3 dark:border-[#3c4043] dark:bg-[#292a2d]">
+                    <p className="mb-1 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">Body preview</p>
+                    <div
+                      className="prose prose-sm dark:prose-invert max-w-none text-[#202124] dark:text-[#e8eaed] [&_p]:mb-1"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          suggestedReply.body.length > 500
+                            ? suggestedReply.body.slice(0, 500) + "..."
+                            : suggestedReply.body || "(empty)",
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onDismissSuggestedReply?.()}
+                      className="border-[#dadce0] dark:border-[#3c4043]"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!suggestedReply) return;
+                        setSubject(suggestedReply.subject);
+                        setPendingSuggestedBody(suggestedReply.body);
+                        setApplyDraftKey((k) => k + 1);
+                        setIsCollapsed(false);
+                        onApplySuggestedReply?.();
+                      }}
+                      className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                    >
+                      Apply to draft
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
           <Dialog open={scheduleSendOpen} onOpenChange={setScheduleSendOpen}>
             <DialogContent className="max-w-sm border-[#dadce0] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
               <DialogHeader>

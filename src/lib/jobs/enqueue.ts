@@ -33,9 +33,9 @@ export async function enqueueEmailAnalysisJobs(
 
 export async function enqueueScheduledSendJobs(
   scheduledSendIds: string[],
-): Promise<void> {
-  if (scheduledSendIds.length === 0) return;
-  if (!canSendToInngest()) return;
+): Promise<number> {
+  if (scheduledSendIds.length === 0) return 0;
+  if (!canSendToInngest()) return 0;
   try {
     await Promise.all(
       scheduledSendIds.map((scheduledSendId) =>
@@ -45,6 +45,7 @@ export async function enqueueScheduledSendJobs(
         }),
       ),
     );
+    return scheduledSendIds.length;
   } catch (err) {
     console.error("[enqueueScheduledSendJobs]", err);
     throw err;

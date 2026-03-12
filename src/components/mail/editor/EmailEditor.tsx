@@ -66,6 +66,10 @@ type EmailEditorProps = {
   onScheduleSend?: (bodyHtml: string) => void;
   isScheduling?: boolean;
   sendDisabled?: boolean;
+
+  initialBody?: string | null;
+  applyDraftKey?: number;
+  onEditorReady?: (getBody: () => string) => void;
 };
 
 const EmailEditor = ({
@@ -82,6 +86,9 @@ const EmailEditor = ({
   onScheduleSend,
   isScheduling = false,
   sendDisabled = false,
+  initialBody,
+  applyDraftKey = 0,
+  onEditorReady,
 }: EmailEditorProps) => {
   const [ref] = useAutoAnimate();
   const [accountId] = useLocalStorage("accountId", "");
@@ -338,6 +345,21 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
     editor.commands.setContent(formattedHTML);
     setDisplayContent("");
   }, [displayContent, editor]);
+
+  const onEditorReadyRef = React.useRef(onEditorReady);
+  onEditorReadyRef.current = onEditorReady;
+  React.useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      onEditorReadyRef.current?.(() => editor.getHTML() ?? "");
+    }
+  }, [editor]);
+
+  React.useEffect(() => {
+    if (applyDraftKey > 0 && initialBody != null && initialBody !== "" && editor && !editor.isDestroyed) {
+      const html = initialBody.trim().startsWith("<") ? initialBody : initialBody.split("\n\n").map((p) => `<p>${p.trim()}</p>`).join("");
+      editor.commands.setContent(html || "<p></p>");
+    }
+  }, [applyDraftKey, editor]);
 
   return (
     <div className="flex h-full flex-col">

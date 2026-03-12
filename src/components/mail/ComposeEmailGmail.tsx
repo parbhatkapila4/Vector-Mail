@@ -47,6 +47,7 @@ import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { usePendingSend } from "@/contexts/PendingSendContext";
 import { useDemoMode } from "@/hooks/use-demo-mode";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 const AI_GENERATE_TIMEOUT_MS = 60_000;
@@ -719,6 +720,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
   };
 
   const isButtonDisabled = accountsLoading || !hasValidAccount;
+  const isMobile = useIsMobile();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -867,7 +869,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         )}
 
 
-        <div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] px-5 py-3">
+        <div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] px-5 py-3 max-md:overflow-x-auto max-md:flex-nowrap">
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
           <input ref={folderInputRef} type="file" multiple className="hidden" onChange={handleFolderSelect}
             // @ts-expect-error - webkitdirectory is valid for folder selection
@@ -877,7 +879,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" disabled={isSending || isGenerating} className="flex h-9 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50">
+              <button type="button" disabled={isSending || isGenerating} className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50">
                 <Plus className="h-4 w-4" /> Add
               </button>
             </DropdownMenuTrigger>
@@ -919,7 +921,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               toast.success("Signature inserted");
               bodyEditableRef.current?.focus();
             }}
-            className="flex h-9 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
           >
             <FileSignature className="h-4 w-4" /> Signature
           </button>
@@ -929,17 +931,17 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             type="button"
             disabled={isSending || isGenerating}
             onClick={() => setEmojiPopoverOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[18px] transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[18px] transition-colors hover:bg-white/[0.06] disabled:opacity-50"
             title="Insert emoji"
           >
             😊
           </button>
 
 
-          <div className="flex-1" />
+          <div className="min-w-2 flex-1 md:min-w-0" />
 
 
-          <div className="flex items-center">
+          <div className="flex shrink-0 items-center">
             <button
               type="button"
               onClick={handleSend}
@@ -962,6 +964,12 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl border-white/[0.08] bg-[#141416]">
+                {isMobile && (
+                  <DropdownMenuItem onClick={() => handleAIGenerate()} disabled={isSending || isGenerating} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
+                    <Wand2 className="mr-3 h-4 w-4" /> Generate with AI
+                  </DropdownMenuItem>
+                )}
+                {isMobile && <div className="my-1 border-t border-white/[0.06]" />}
                 <DropdownMenuItem onClick={() => setScheduleSendOpen(true)} disabled={isSending || isGenerating} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
                   <Clock className="mr-3 h-4 w-4" /> Schedule send
                 </DropdownMenuItem>
@@ -979,7 +987,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             type="button"
             onClick={handleAIGenerate}
             disabled={isSending || isGenerating}
-            className="ml-3 flex h-9 items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.02] px-4 text-[14px] font-semibold text-[#e5e5e7] transition-colors hover:border-white/[0.2] hover:bg-white/[0.06] disabled:opacity-50"
+            className="ml-3 flex h-9 shrink-0 items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.02] px-4 text-[14px] font-semibold text-[#e5e5e7] transition-colors hover:border-white/[0.2] hover:bg-white/[0.06] disabled:opacity-50"
           >
             <Wand2 className="h-4 w-4" />
             Generate

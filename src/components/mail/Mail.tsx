@@ -63,6 +63,8 @@ import { NudgesBlock } from "./NudgesBlock";
 import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+import { useSetAtom } from "jotai";
+import { threadIdAtom } from "@/hooks/use-threads";
 
 const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
 
@@ -230,13 +232,16 @@ export function Mail({ }: MailLayoutProps) {
   );
   const scheduledCount = scheduledSends?.length ?? 0;
 
+  const setThreadId = useSetAtom(threadIdAtom);
+
   const handleThreadSelect = useCallback((threadId: string) => {
     setSelectedThread(threadId);
   }, []);
 
   const handleThreadClose = useCallback(() => {
     setSelectedThread(null);
-  }, []);
+    setThreadId(null);
+  }, [setThreadId]);
 
   const handleMobileNavigation = useCallback(
     (newTab?: string, isBuddy?: boolean) => {
@@ -340,7 +345,7 @@ export function Mail({ }: MailLayoutProps) {
                   </SheetTrigger>
                   <SheetContent
                     side="left"
-                    className="flex w-[280px] flex-col border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124]"
+                    className="flex w-[280px] flex-col min-h-0 overflow-y-auto border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124]"
                   >
                     <MobileSidebar
                       navItems={navItems}

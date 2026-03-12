@@ -26,7 +26,9 @@ function isAuthorized(req: NextRequest): boolean {
     ? authHeader.slice(7).trim()
     : undefined;
   const headerSecret = req.headers.get("x-cron-secret")?.trim();
-  return bearer === secret || headerSecret === secret;
+  const url = req.nextUrl ?? new URL(req.url);
+  const querySecret = url.searchParams.get("secret")?.trim();
+  return bearer === secret || headerSecret === secret || querySecret === secret;
 }
 
 export async function GET(req: NextRequest) {
@@ -51,7 +53,13 @@ async function processScheduledSends() {
 
   if (!enableEmailSend) {
     return NextResponse.json(
-      { error: "Email sending is disabled", enqueued: 0, due: 0, processedInline: 0 },
+      {
+        error: "Email sending is disabled",
+        message: "Set ENABLE_EMAIL_SEND=true in your environment to allow scheduled sends.",
+        enqueued: 0,
+        due: 0,
+        processedInline: 0,
+      },
       { status: 403 },
     );
   }
@@ -73,16 +81,21 @@ async function processScheduledSends() {
 
   if (scheduledSendIds.length > 0) {
     try {
-      await enqueueScheduledSendJobs(scheduledSendIds);
-      enqueued = scheduledSendIds.length;
+      enqueued = await enqueueScheduledSendJobs(scheduledSendIds);
     } catch (err) {
       console.warn(
         "[process-scheduled-sends] Enqueue failed, running sends inline:",
         err,
       );
+    }
+    if (enqueued === 0) {
       for (const id of scheduledSendIds) {
-        const result = await runScheduledSend(id);
-        if (result.ok) processedInline++;
+        try {
+          const result = await runScheduledSend(id);
+          if (result.ok) processedInline++;
+        } catch (runErr) {
+          console.error("[process-scheduled-sends] Inline send failed:", id, runErr);
+        }
       }
     }
   }
