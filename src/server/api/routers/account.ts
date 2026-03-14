@@ -1273,7 +1273,8 @@ export const accountRouter = createTRPCRouter({
         });
       }
 
-      if (!input.accountId || input.accountId.trim().length === 0) {
+      const accountId = input.accountId?.trim() ?? "";
+      if (!accountId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Account ID is required",
@@ -1283,7 +1284,7 @@ export const accountRouter = createTRPCRouter({
       let account: AccountAccess;
       try {
         account = await authoriseAccountAccess(
-          input.accountId,
+          accountId,
           ctx.auth.userId,
         );
       } catch (error) {
@@ -1307,7 +1308,24 @@ export const accountRouter = createTRPCRouter({
         });
       }
 
-      const emailAccount = new Account(account.id, account.token);
+      let emailAccount = new Account(account.id, account.token);
+      const tokenExpiredOrExpiringSoon =
+        account.tokenExpiresAt &&
+        account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
+        const refreshed = await emailAccount.refreshTokenIfPossible();
+        if (refreshed) {
+          const updated = await ctx.db.account.findUnique({
+            where: { id: account.id },
+            select: { token: true },
+          });
+          if (updated?.token) {
+            account = { ...account, token: updated.token, needsReconnection: false };
+            emailAccount = new Account(account.id, account.token);
+          }
+        }
+      }
+
       const syncStartTime = Date.now();
 
       const shouldForceFullSync = input.forceFullSync ?? false;
@@ -1320,11 +1338,20 @@ export const accountRouter = createTRPCRouter({
         metadata: syncAllFolders ? { syncAllFolders: true } : { folder },
       });
 
-      try {
+      let currentAccount = account;
+      let currentEmailAccount = emailAccount;
+      const maxAttempts = 2;
+      let lastError: unknown;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        account = currentAccount;
+        emailAccount = currentEmailAccount;
+        try {
         ctx.log?.info(
           {
             event: "sync_start",
             accountId: account.id,
+            ...(attempt > 0 ? { retryAfterRefresh: true } : {}),
             forceFullSync: shouldForceFullSync,
             folder: syncAllFolders ? "all" : folder,
           },
@@ -1369,7 +1396,24 @@ export const accountRouter = createTRPCRouter({
           Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false, ...(syncApiPageToken != null ? { syncApiPageToken } : {}) }), "utf8").toString("base64url");
 
         if (folder === "inbox" && !input.continueToken) {
-          const syncApiFirstPage = await emailAccount.tryGetFirstPageViaSyncApi(5_000);
+          const latestInbox = await ctx.db.thread.findFirst({
+            where: { accountId: account.id, inboxStatus: true },
+            orderBy: { lastMessageDate: "desc" },
+            select: { lastMessageDate: true },
+          });
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const inboxStale = !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
+          if (inboxStale) {
+            await ctx.db.account.update({
+              where: { id: account.id },
+              data: { nextDeltaToken: null },
+            }).catch(() => {});
+          }
+          const syncApiTimeoutMs = inboxStale ? 18_000 : 5_000;
+          const useSyncApiFirst = !inboxStale;
+          const syncApiFirstPage = useSyncApiFirst
+            ? await emailAccount.tryGetFirstPageViaSyncApi(syncApiTimeoutMs)
+            : null;
           if (syncApiFirstPage && (syncApiFirstPage.records.length > 0 || syncApiFirstPage.nextPageToken)) {
             if (syncApiFirstPage.records.length > 0) {
               const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
@@ -1410,11 +1454,12 @@ export const accountRouter = createTRPCRouter({
             };
           }
 
+          const chunkMaxIds = inboxStale ? 200 : 50;
           const result = await emailAccount.fetchInboxFirstPageInChunks(
-            20,
+            chunkMaxIds,
             5,
-            12_000,
-            8_000,
+            inboxStale ? 25_000 : 15_000,
+            inboxStale ? 15_000 : 10_000,
           );
           const threadCount = await ctx.db.thread.count({
             where: { accountId: account.id, inboxStatus: true },
@@ -1568,6 +1613,20 @@ export const accountRouter = createTRPCRouter({
                 },
               });
 
+              const refreshAccount = new Account(account.id, account.token);
+              const refreshed = await refreshAccount.refreshTokenIfPossible();
+              if (refreshed) {
+                ctx.log?.info(
+                  { event: "sync_token_refreshed", accountId: account.id },
+                  "Token refreshed after auth error; next sync will use new token",
+                );
+                return {
+                  success: false,
+                  message: "Sync failed temporarily. Try again in a moment.",
+                  threadCount,
+                  needsReconnection: false,
+                };
+              }
               ctx.log?.warn(
                 {
                   event: "sync_error",
@@ -1579,9 +1638,13 @@ export const accountRouter = createTRPCRouter({
                 "sync auth error",
               );
               incrementSyncFailure();
+              await ctx.db.account.update({
+                where: { id: account.id },
+                data: { needsReconnection: true },
+              }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
               return {
                 success: false,
-                message: "Authentication failed. Your session may have expired.",
+                message: "Sync failed. Try again in a moment.",
                 threadCount,
                 needsReconnection: true,
               };
@@ -1670,16 +1733,28 @@ export const accountRouter = createTRPCRouter({
               (axios.isAxiosError(lightweightError) &&
                 lightweightError.response?.status === 401)
             ) {
+              const refreshAccount = new Account(account.id, account.token);
+              const refreshed = await refreshAccount.refreshTokenIfPossible();
+              if (refreshed) {
+                ctx.log?.info(
+                  { event: "sync_token_refreshed", accountId: account.id },
+                  "Token refreshed after lightweight auth error; next sync will use new token",
+                );
+                incrementSyncFailure();
+                return {
+                  success: false,
+                  message: "Sync failed temporarily. Try again in a moment.",
+                  threadCount: 0,
+                  needsReconnection: false,
+                };
+              }
               console.error(
                 `[syncEmails mutation] Authentication/token error during lightweight sync - account marked for reconnection`,
               );
-
-
               await ctx.db.account.update({
                 where: { id: account.id },
                 data: { needsReconnection: true },
               }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
-
               ctx.log?.warn(
                 {
                   event: "sync_error",
@@ -1693,7 +1768,7 @@ export const accountRouter = createTRPCRouter({
               incrementSyncFailure();
               return {
                 success: false,
-                message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
+                message: "Sync failed. Try again in a moment.",
                 threadCount: 0,
                 needsReconnection: true,
               };
@@ -1736,15 +1811,27 @@ export const accountRouter = createTRPCRouter({
             (axios.isAxiosError(syncError) &&
               syncError.response?.status === 401)
           ) {
-
+            const refreshAccount = new Account(account.id, account.token);
+            const refreshed = await refreshAccount.refreshTokenIfPossible();
+            if (refreshed) {
+              ctx.log?.info(
+                { event: "sync_token_refreshed", accountId: account.id },
+                "Token refreshed after full sync auth error; next sync will use new token",
+              );
+              return {
+                success: false,
+                message: "Sync failed temporarily. Try again in a moment.",
+                threadCount: 0,
+                needsReconnection: false,
+              };
+            }
             await ctx.db.account.update({
               where: { id: account.id },
               data: { needsReconnection: true },
             }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
-
             return {
               success: false,
-              message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
+              message: "Sync failed. Try again in a moment.",
               threadCount: 0,
               needsReconnection: true,
             };
@@ -1790,60 +1877,90 @@ export const accountRouter = createTRPCRouter({
           message: `Emails synced successfully`,
           threadCount,
         };
-      } catch (error) {
-        const durationMs = Date.now() - syncStartTime;
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        ctx.log?.error(
-          {
-            event: "sync_error",
-            accountId: account?.id,
-            durationMs,
-            error: errorMessage,
-          },
-          "sync failed",
-        );
-        incrementSyncFailure();
-        console.error("[syncEmails mutation] Email sync failed:", error);
-
-        if (error instanceof TRPCError) {
-          throw error;
-        }
-
-        const isAuthError =
-          errorMessage.includes("Authentication failed") ||
-          errorMessage.includes("401") ||
-          (axios.isAxiosError(error) && error.response?.status === 401);
-
-        if (isAuthError) {
-          ctx.log?.warn(
+        } catch (error) {
+          lastError = error;
+          const durationMs = Date.now() - syncStartTime;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          ctx.log?.error(
             {
               event: "sync_error",
-              accountId: account.id,
+              accountId: account?.id,
               durationMs,
               error: errorMessage,
-              needsReconnection: true,
+              attempt: attempt + 1,
+              maxAttempts,
             },
-            "sync failed (auth)",
+            "sync failed",
           );
-          await ctx.db.account.update({
-            where: { id: account.id },
-            data: { needsReconnection: true },
-          }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
+          incrementSyncFailure();
+          console.error("[syncEmails mutation] Email sync failed:", error);
 
-          return {
-            success: false,
-            message: "Your account needs to be reconnected. Please click the reconnect button to continue syncing emails.",
-            threadCount: 0,
-            needsReconnection: true,
-          };
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+
+          const isAuthError =
+            errorMessage.includes("Authentication failed") ||
+            errorMessage.includes("401") ||
+            (axios.isAxiosError(error) && error.response?.status === 401);
+
+          if (isAuthError && attempt < maxAttempts - 1) {
+            const refreshAccount = new Account(account.id, account.token);
+            const refreshed = await refreshAccount.refreshTokenIfPossible();
+            if (refreshed) {
+              const updated = await ctx.db.account.findUnique({
+                where: { id: account.id },
+                select: { token: true },
+              });
+              if (updated?.token) {
+                ctx.log?.info(
+                  { event: "sync_token_refreshed", accountId: account.id },
+                  "Token refreshed; retrying sync with new token",
+                );
+                currentAccount = { ...account, token: updated.token };
+                currentEmailAccount = new Account(currentAccount.id, currentAccount.token);
+                continue;
+              }
+            }
+          }
+
+          if (isAuthError) {
+            ctx.log?.warn(
+              {
+                event: "sync_error",
+                accountId: account.id,
+                durationMs,
+                error: errorMessage,
+                needsReconnection: true,
+              },
+              "sync failed (auth)",
+            );
+            await ctx.db.account.update({
+              where: { id: account.id },
+              data: { needsReconnection: true },
+            }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
+
+            return {
+              success: false,
+              message: "Sync failed. Try again in a moment.",
+              threadCount: 0,
+              needsReconnection: true,
+            };
+          }
+
+          const safeMessage =
+            errorMessage && errorMessage.trim() && !/^unknown\s*error$/i.test(errorMessage)
+              ? errorMessage
+              : "Sync failed. Please try again in a moment or reconnect your account.";
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: safeMessage,
+          });
         }
-
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Failed to sync emails: ${errorMessage}`,
-        });
       }
+
+      throw lastError;
     }),
 
   processEmailsForAI: protectedProcedure
@@ -2324,6 +2441,42 @@ export const accountRouter = createTRPCRouter({
             threadLabels: { include: { label: true } },
           },
         });
+        if (
+          input.tab === "inbox" &&
+          !cursor &&
+          threads.length > 0 &&
+          threads[0]?.lastMessageDate &&
+          threads[0].lastMessageDate.getTime() < Date.now() - 24 * 60 * 60 * 1000
+        ) {
+          try {
+            const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+            await recalculateAllThreadStatuses(account.id);
+            threads = await ctx.db.thread.findMany({
+              take: limit + 1,
+              where: whereClause,
+              orderBy: [
+                { lastMessageDate: "desc" },
+                { id: "desc" },
+              ],
+              include: {
+                emails: {
+                  include: {
+                    from: true,
+                    to: true,
+                    cc: true,
+                    bcc: true,
+                    replyTo: true,
+                  },
+                  orderBy: { sentAt: "desc" },
+                  take: 1,
+                },
+                threadLabels: { include: { label: true } },
+              },
+            });
+          } catch (repairErr) {
+            console.warn("[getThreads] Inbox lastMessageDate repair failed:", repairErr);
+          }
+        }
       }
 
       let nextCursor: typeof cursor | undefined = undefined;

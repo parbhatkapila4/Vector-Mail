@@ -303,21 +303,13 @@ export async function GET(req: NextRequest) {
 
       const is401 =
         axios.isAxiosError(error) && error.response?.status === 401;
-      if (is401) {
-        await db.account
-          .update({
-            where: { id: accountIdStr },
-            data: { needsReconnection: true },
-          })
-          .catch((err) =>
-            console.error("[CALLBACK] Failed to set needsReconnection:", err),
-          );
-        if (existingUserId) {
-          const mailUrl = new URL("/mail", baseUrl);
-          mailUrl.searchParams.set("reconnect_failed", "1");
-          console.log("[CALLBACK] Redirecting with reconnect_failed (401 after reconnect)");
-          return NextResponse.redirect(mailUrl);
-        }
+      if (is401 && existingUserId) {
+        console.warn("[CALLBACK] 401 on first sync after reconnect – leaving needsReconnection false, redirecting to /mail");
+      }
+      if (existingUserId) {
+        const mailUrl = new URL("/mail", baseUrl);
+        mailUrl.searchParams.set("reconnected", "1");
+        return NextResponse.redirect(mailUrl);
       }
     }
 
@@ -334,7 +326,11 @@ export async function GET(req: NextRequest) {
     }
 
     console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");
-    return NextResponse.redirect(new URL("/mail", baseUrl));
+    const mailUrl = new URL("/mail", baseUrl);
+    if (existingUserId) {
+      mailUrl.searchParams.set("reconnected", "1");
+    }
+    return NextResponse.redirect(mailUrl);
   } catch (err) {
     console.error("[CALLBACK] Unhandled error:", err);
     return NextResponse.json(

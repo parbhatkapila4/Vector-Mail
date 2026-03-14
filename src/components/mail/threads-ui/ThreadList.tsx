@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useMemo, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { formatDistanceToNow, format } from "date-fns";
-import { MoreVertical, RefreshCw, Mail, MailOpen, Star, Bell, CalendarClock, X, Trash2 } from "lucide-react";
+import { MoreVertical, RefreshCw, Mail, MailOpen, Star, Bell, CalendarClock, X, Trash2, Loader2 } from "lucide-react";
 import { useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -121,13 +121,29 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const [currentTab] = useLocalStorage<string>("vector-mail", "inbox");
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
-  const [refreshingAfterSync] = React.useState(false);
+  const [refreshingAfterSync, setRefreshingAfterSync] = React.useState(false);
+  const [slowLoad, setSlowLoad] = React.useState(false);
+  const slowLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
+  const utils = api.useUtils();
 
   useEffect(() => {
+    if (searchParams.get("reconnected") === "1") {
+      toast.success("Account reconnected", {
+        description: "Your email is connected again. Syncing now.",
+        duration: 4000,
+      });
+      void utils.account.getAccounts.invalidate();
+      void utils.account.getThreads.invalidate();
+      void utils.account.getNumThreads.invalidate();
+      void utils.account.getUnifiedThreads.invalidate();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("reconnected");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
     if (searchParams.get("reconnect_failed") === "1") {
       toast.error("Reconnect didn’t complete", {
         description: "Auth failed right after connecting. Please try reconnecting again or check your Google account.",
@@ -155,7 +171,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       url.searchParams.delete("error");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
-  }, [searchParams]);
+  }, [searchParams, utils]);
 
   useEffect(() => {
     setSelectedThreadIds(new Set());
@@ -182,7 +198,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       staleTime: 5 * 60 * 1000,
     });
 
-  const utils = api.useUtils();
   const syncCancelledRef = useRef(false);
   const quickSyncTriggeredRef = useRef(false);
   const accountsInvalidatedOnMountRef = useRef(false);
@@ -216,9 +231,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   );
 
   const forceThreadListRefresh = useCallback(async () => {
-    await utils.account.getThreads.invalidate();
-    await utils.account.getNumThreads.invalidate();
-    await utils.account.getUnifiedThreads.invalidate();
+    utils.account.getThreads.invalidate();
+    utils.account.getNumThreads.invalidate();
+    utils.account.getUnifiedThreads.invalidate();
     await refetch();
     router.refresh();
   }, [utils, refetch, router]);
@@ -232,27 +247,40 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       console.log("[ThreadList] ✅ Sync completed", data);
 
       if (data.needsReconnection) {
-        toast.error("Sync failed", {
-          description: "Reconnect your email account in settings to sync new emails. Your current emails are still here.",
-          duration: 5000,
-        });
         void utils.account.getAccounts.invalidate();
+        toast.error("Reconnect your account", {
+          description: "Your email connection expired and couldn’t be refreshed. Click Reconnect to sign in again.",
+          duration: 10000,
+          action: {
+            label: "Reconnect",
+            onClick: () => {
+              window.location.assign("/api/connect/google");
+            },
+          },
+        });
+        return;
+      }
+      if (data.success === false) {
+        toast.error("Sync failed. Try again.", { duration: 3000 });
+        void forceThreadListRefresh();
         return;
       }
 
       void utils.account.getAccounts.invalidate();
-      await forceThreadListRefresh();
-      setTimeout(() => void forceThreadListRefresh(), 150);
-      setTimeout(() => void forceThreadListRefresh(), 400);
-      setTimeout(() => void forceThreadListRefresh(), 800);
+      setRefreshingAfterSync(true);
+      setTimeout(async () => {
+        await forceThreadListRefresh();
+        setRefreshingAfterSync(false);
+      }, 400);
+      setTimeout(() => void forceThreadListRefresh(), 1200);
 
       const didFullSync = "syncAllFolders" in data && data.syncAllFolders === true;
       const hasMore = !didFullSync && "hasMore" in data && data.hasMore;
       const continueToken = "continueToken" in data ? data.continueToken : undefined;
-      if (data.success && hasMore && continueToken && accountId && accountId !== UNIFIED_INBOX_ACCOUNT_ID) {
+      if (data.success && hasMore && continueToken && accountId?.trim() && accountId !== UNIFIED_INBOX_ACCOUNT_ID) {
         const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
         syncEmailsMutation.mutate({
-          accountId,
+          accountId: accountId.trim(),
           folder: folder as "inbox" | "sent" | "trash",
           continueToken,
         });
@@ -275,13 +303,34 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       }
       console.error("[ThreadList] ❌ Sync failed:", error);
 
-      const errorMessage = error.message || "Unknown error occurred";
+      const rawMessage = error.message || "";
+      const errorMessage =
+        rawMessage.trim() && !/unknown\s*error/i.test(rawMessage)
+          ? rawMessage
+          : "Something went wrong. Check your connection and try again.";
 
       if (errorMessage.includes("Account not found") || errorMessage.includes("don't have access")) {
         void utils.account.getAccounts.invalidate();
         toast.error("Account session expired", {
           description: "Refreshing your account list. If you reconnected an account, it should appear shortly.",
           duration: 5000,
+        });
+        void forceThreadListRefresh();
+        return;
+      }
+      if (
+        errorMessage.includes("Account token is missing") ||
+        errorMessage.includes("Account ID is required") ||
+        (errorMessage.includes("400") && errorMessage.toLowerCase().includes("request"))
+      ) {
+        void utils.account.getAccounts.invalidate();
+        toast.error("Sync failed", {
+          description: "Account token is missing or invalid. Please reconnect your account.",
+          duration: 6000,
+          action: {
+            label: "Reconnect",
+            onClick: () => window.location.assign("/api/connect/google"),
+          },
         });
         void forceThreadListRefresh();
         return;
@@ -313,6 +362,26 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       void forceThreadListRefresh();
     },
   });
+
+  const isWaitingForThreads =
+    (threads?.length ?? 0) === 0 && (syncEmailsMutation.isPending || refreshingAfterSync || isFetching);
+  useEffect(() => {
+    if (!isWaitingForThreads) {
+      setSlowLoad(false);
+      if (slowLoadTimerRef.current) {
+        clearTimeout(slowLoadTimerRef.current);
+        slowLoadTimerRef.current = null;
+      }
+      return;
+    }
+    slowLoadTimerRef.current = setTimeout(() => {
+      setSlowLoad(true);
+      slowLoadTimerRef.current = null;
+    }, 12_000);
+    return () => {
+      if (slowLoadTimerRef.current) clearTimeout(slowLoadTimerRef.current);
+    };
+  }, [isWaitingForThreads]);
 
   const invalidateAndClearSelection = useCallback(async () => {
     await utils.account.getThreads.invalidate();
@@ -429,16 +498,18 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       toast.error("Please wait for your account to load, then try Sync again.");
       return;
     }
-    if (accountId === UNIFIED_INBOX_ACCOUNT_ID) {
-      void utils.account.getUnifiedThreads.invalidate();
-      void refetch();
+    if (!accountId?.trim() || accountId === UNIFIED_INBOX_ACCOUNT_ID) {
+      if (accountId === UNIFIED_INBOX_ACCOUNT_ID) {
+        void utils.account.getUnifiedThreads.invalidate();
+        void refetch();
+      }
       return;
     }
     syncCancelledRef.current = false;
     toast.info("Checking for new emails…");
 
     syncEmailsMutation.mutate({
-      accountId,
+      accountId: accountId.trim(),
       forceFullSync: false,
       syncAllFolders: false,
       folder: "inbox",
@@ -451,7 +522,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const isAccountValid = !!validatedAccount && validatedAccount.id === accountId;
   useEffect(() => {
     if (
-      !accountId ||
+      !accountId?.trim() ||
       accountId === UNIFIED_INBOX_ACCOUNT_ID ||
       !isAccountValid ||
       (currentTab !== "inbox" && currentTab !== "sent")
@@ -460,7 +531,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     if (!quickSyncTriggeredRef.current) {
       quickSyncTriggeredRef.current = true;
       syncEmailsMutation.mutate({
-        accountId,
+        accountId: accountId.trim(),
         forceFullSync: false,
         syncAllFolders: false,
         folder: currentTab as "inbox" | "sent" | "trash",
@@ -470,7 +541,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   useEffect(() => {
     if (
-      !accountId ||
+      !accountId?.trim() ||
       accountId === UNIFIED_INBOX_ACCOUNT_ID ||
       !isAccountValid ||
       backgroundSyncTriggeredRef.current ||
@@ -478,9 +549,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     )
       return;
     backgroundSyncTriggeredRef.current = true;
+    const aid = accountId.trim();
     const t = setTimeout(() => {
       syncEmailsMutation.mutate({
-        accountId,
+        accountId: aid,
         forceFullSync: false,
         syncAllFolders: false,
         folder: "inbox",
@@ -501,7 +573,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       (currentTab !== "inbox" && currentTab !== "sent" && currentTab !== "trash")
     )
       return;
+    let count = 0;
+    const MAX_REFRESHES_WHILE_SYNC = 25;
     const interval = setInterval(() => {
+      count += 1;
+      if (count > MAX_REFRESHES_WHILE_SYNC) return;
       void forceThreadListRefresh();
     }, 800);
     return () => clearInterval(interval);
@@ -910,11 +986,63 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     const isSyncPending = isInboxSentOrTrash && syncEmailsMutation.isPending;
 
     if (noThreads && (isSyncPending || refreshingAfterSync || isFetching)) {
+      if (slowLoad) {
+        return (
+          <div className="flex h-64 flex-col items-center justify-center gap-4 px-6 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" />
+            <div>
+              <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
+                Taking longer than usual
+              </p>
+              <p className="mt-1 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
+                The server may be busy. Try refreshing the list.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
+              onClick={() => {
+                setSlowLoad(false);
+                void forceThreadListRefresh();
+              }}
+            >
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              Refresh list
+            </Button>
+          </div>
+        );
+      }
       return <ThreadListSkeleton />;
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       const isRemindersTab = currentTab === "reminders";
+      const currentAccountNeedsReconnection = Boolean(
+        isInboxSentOrTrash &&
+          accountId &&
+          accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+          accounts?.find((a) => a.id === accountId)?.needsReconnection,
+      );
+      if (currentAccountNeedsReconnection) {
+        return (
+          <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
+            <Mail className="mb-4 h-10 w-10 text-[#d93025] dark:text-[#f28b82]" />
+            <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
+              Reconnect your account
+            </p>
+            <p className="mt-1 max-w-sm text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
+              Your email connection expired and couldn’t be refreshed. Reconnect to sync again.
+            </p>
+            <a
+              href="/api/connect/google"
+              className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+            >
+              Reconnect account
+            </a>
+          </div>
+        );
+      }
       const syncFailed =
         isInboxSentOrTrash && threadsToRender.length === 0 && syncEmailsMutation.isError;
       if (syncFailed) {
@@ -943,11 +1071,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                   size="sm"
                   className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
                   onClick={() => {
-                    syncEmailsMutation.mutate({
-                      accountId,
-                      forceFullSync: true,
-                      syncAllFolders: true,
-                    });
+                    if (accountId?.trim()) {
+                      syncEmailsMutation.mutate({
+                        accountId: accountId.trim(),
+                        forceFullSync: true,
+                        syncAllFolders: true,
+                      });
+                    }
                   }}
                   disabled={syncEmailsMutation.isPending}
                 >
@@ -985,11 +1115,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                     size="sm"
                     className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
                     onClick={() => {
-                      syncEmailsMutation.mutate({
-                        accountId,
-                        forceFullSync: true,
-                        syncAllFolders: true,
-                      });
+                      if (accountId.trim()) {
+                        syncEmailsMutation.mutate({
+                          accountId: accountId.trim(),
+                          forceFullSync: true,
+                          syncAllFolders: true,
+                        });
+                      }
                     }}
                     disabled={syncEmailsMutation.isPending}
                   >

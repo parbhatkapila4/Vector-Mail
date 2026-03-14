@@ -2,6 +2,9 @@ import "./src/env.js";
 
 const config = {
   output: "standalone",
+  async redirects() {
+    return [{ source: "/favicon.ico", destination: "/VectorMail-New.png", permanent: false }];
+  },
   experimental: {
     serverComponentsExternalPackages: ["@clerk/backend"],
   },

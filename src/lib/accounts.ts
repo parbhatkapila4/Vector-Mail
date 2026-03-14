@@ -83,6 +83,10 @@ async function with401Retry<T>(
           attempt--;
           continue;
         }
+        console.warn(
+          `[accounts] 401 for account ${accountId}: refresh failed or no refresh token - stopping retries`,
+        );
+        break;
       }
       const delay = AURINKO_401_RETRY_DELAY_MS * (attempt + 1);
       console.warn(
@@ -111,9 +115,15 @@ export class Account {
       where: { id: this.id },
       select: { refreshToken: true },
     });
-    if (!account?.refreshToken) return false;
+    if (!account?.refreshToken) {
+      console.warn(`[accounts] No refresh token in DB for account ${this.id} - cannot refresh`);
+      return false;
+    }
     const result = await refreshAurinkoToken(this.id, account.refreshToken);
-    if (!result) return false;
+    if (!result) {
+      console.warn(`[accounts] Aurinko refresh API failed for account ${this.id}`);
+      return false;
+    }
     const newToken = result.accountToken ?? result.accessToken;
     const tokenExpiresAt = result.expiresIn
       ? new Date(Date.now() + result.expiresIn * 1000)

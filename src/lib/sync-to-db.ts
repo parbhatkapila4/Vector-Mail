@@ -119,6 +119,9 @@ export async function recalculateAllThreadStatuses(accountId: string) {
           emailLabel: true,
           sysLabels: true,
           sysClassifications: true,
+          sentAt: true,
+          receivedAt: true,
+          createdTime: true,
         },
       });
 
@@ -193,10 +196,17 @@ export async function recalculateAllThreadStatuses(accountId: string) {
         threadFolderType = "sent";
       }
 
+      const latestDate = threadEmails.reduce<Date | null>((acc, e) => {
+        const d = e.sentAt ?? e.receivedAt ?? e.createdTime;
+        if (!d) return acc;
+        const t = d.getTime ? d.getTime() : new Date(d).getTime();
+        return !acc || t > acc.getTime() ? new Date(t) : acc;
+      }, null);
       const updateData = {
         draftStatus: threadFolderType === "draft",
         inboxStatus: threadFolderType === "inbox",
         sentStatus: threadFolderType === "sent",
+        ...(latestDate && { lastMessageDate: latestDate }),
       };
 
       await db.thread.update({
@@ -330,12 +340,20 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
       .filter(Boolean);
 
     const lastMessageDate = safeDate(email.sentAt ?? email.receivedAt ?? email.createdTime);
+    const existingThread = await db.thread.findUnique({
+      where: { id: email.threadId },
+      select: { lastMessageDate: true },
+    });
+    const effectiveLastMessageDate =
+      !existingThread?.lastMessageDate || lastMessageDate > existingThread.lastMessageDate
+        ? lastMessageDate
+        : existingThread.lastMessageDate;
     const thread = await db.thread.upsert({
       where: { id: email.threadId },
       update: {
         subject: email.subject,
         accountId,
-        lastMessageDate,
+        lastMessageDate: effectiveLastMessageDate,
         done: false,
         participantIds: [
           ...new Set([
@@ -355,7 +373,7 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         draftStatus: emailLabelType === "draft",
         inboxStatus: !isTrash && emailLabelType === "inbox",
         sentStatus: emailLabelType === "sent",
-        lastMessageDate,
+        lastMessageDate: effectiveLastMessageDate,
         participantIds: [
           ...new Set([
             fromAddress.id,

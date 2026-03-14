@@ -50,6 +50,7 @@ Thread list (inbox, sent, archive, trash, snoozed, reminders), infinite scroll, 
 ### Compose, reply & forward
 
 - **Compose & reply**: Rich editor with optional **open tracking** (1×1 pixel in HTML body) and **scheduled send** (date + 24h time picker). Send can be delayed with **undo send**: after sending, a toast offers “Undo” for a few seconds to cancel the actual send.
+- **Suggest reply**: AI suggests a full reply (subject + body) for the current thread. One click in the thread view fills the reply box; uses `POST /api/generate-reply` (Clerk auth, rate-limited). Disabled in demo mode.
 - **Forward**: Forward emails with optional recipients, subject/body edit, **track opens**, and **schedule send** (same scheduling and tracking as compose).
 
 ### Snooze & reminders
@@ -67,7 +68,7 @@ Semantic search over emails: query is embedded (Gemini 768-dim), compared to `Em
 
 ### AI
 
-Summaries and classifications (e.g. promotions, social) stored on `Email`; optional AI compose and “chat with inbox” via OpenRouter/Gemini. We use OpenRouter for a single client to multiple models; embeddings are Gemini. No training on user data.
+Summaries and classifications (e.g. promotions, social) stored on `Email`; optional AI **compose**, **suggest reply** (one-click AI draft for the current thread), and “chat with inbox” via OpenRouter/Gemini. We use OpenRouter for a single client to multiple models; embeddings are Gemini. No training on user data.
 
 **Per-user rate limits** (at route/procedure boundary only; inbox, sync, getThreads not limited): Search 60/min, AI 100/min. Over limit → 429 with `Retry-After` and `X-RateLimit-Remaining`.
 
@@ -97,10 +98,11 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
 
 - **Endpoint:** `GET /api/track/open?id=<trackingId>`: returns 1×1 transparent GIF and records first open (openedAt, userAgent, ip). No auth; ID is unguessable.
 
-**Health & search (HTTP)**
+**Health, search & AI (HTTP)**
 
 - **Health:** `GET /api/health` - returns `{ status, database, version }`; 503 if DB unreachable.
 - **Search:** `GET /api/email/search?q=<query>&accountId=<id>`: Clerk auth; same vector + text search as tRPC, returns results and timing.
+- **Suggest reply:** `POST /api/generate-reply`: Clerk auth; body `{ threadId, accountId }`; returns AI-suggested subject and body for the thread (rate-limited, subject to AI daily cap).
 
 **Dodo Payments (billing)**
 
@@ -173,6 +175,7 @@ When a user clicks **Try Demo** on the landing page they are redirected to `/mai
 | **AI Search panel**       | Demo conversation pre-filled; sending in demo shows toast + canned reply                                                         | AskAi uses `showDemoUI` and `DEMO_CHAT_MESSAGES`; no real API calls.               |
 | **Compose**               | On open in demo, To/Subject/Body pre-filled with `DEMO_COMPOSE`                                                                  | Send disabled in demo (toast).                                                     |
 | **Reply**                 | Disabled in demo (`ReplyBox` uses `isDemo`); no send                                                                             | Prevents errors.                                                                   |
+| **Suggest reply**         | Disabled in demo (API returns 403 "Demo mode"); button visible but does not call AI                                              | Same as reply: no real send or AI in demo.                                         |
 | **Bulk delete / actions** | Disabled in demo (toast “request access to connect Gmail”)                                                                       | ThreadList and ReplyBox guard mutations.                                           |
 
 **Demo account and IDs**
@@ -209,7 +212,7 @@ All of the above use only demo data and safe guards so the app does not crash in
                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  APPLICATION                                                    │
-│  tRPC (account, post routers) · Clerk (auth) · React Query      │
+│  tRPC (account router) · Clerk (auth) · React Query              │
 └─────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -353,7 +356,7 @@ AURINKO_CLIENT_SECRET="..."
 **Optional**
 
 ```bash
-# AI (OpenRouter for chat/compose; Gemini for embeddings)
+# AI (OpenRouter for chat, compose, suggest reply; Gemini for embeddings)
 OPENROUTER_API_KEY="..."
 GEMINI_API_KEY="..."
 
@@ -471,7 +474,7 @@ Secrets: Clerk and Aurinko keys in env (or Vercel/project env). Per-account toke
 src/
 ├── app/                    # Next.js App Router
 │   ├── api/                # aurinko/callback, cron, trpc, inngest, chat, email/send, email/search,
-│   │                       # track/open, health, create-checkout, backfill-analysis, admin/backfill-embeddings, etc.
+│   │                       # generate-reply, track/open, health, create-checkout, backfill-analysis, admin/*, etc.
 │   ├── mail/               # Inbox app (ThreadList, ThreadDisplay)
 │   └── buddy/              # AI chat-with-inbox
 ├── components/
@@ -480,7 +483,7 @@ src/
 │   │                       # AccountSwitcher, editor/, search/
 │   ├── ui/                 # shadcn-style primitives (select, time-input-24, etc.)
 │   └── landing/            # Marketing/landing pages
-├── server/api/             # tRPC: trpc.ts, routers/account.ts, post
+├── server/api/             # tRPC: trpc.ts, routers/account.ts
 ├── lib/                    # accounts, sync-to-db, vector-search, embedding, aurinko,
 │                           # email-open-tracking, undo-send, snooze-presets, remind-presets,
 │                           # intent-detection, conversational-summary, send-email-rest,
@@ -773,12 +776,13 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong> AI Composition</strong></summary>
 <br />
 
-| Feature                   | Description                                          |
-| ------------------------- | ---------------------------------------------------- |
-| **Context-Aware Writing** | AI reads the thread and writes appropriate responses |
-| **Tone Adjustment**       | Professional, casual, or custom. Match any situation |
-| **One-Click Replies**     | Generate complete, thoughtful responses instantly    |
-| **Smart Suggestions**     | Real-time writing assistance as you type             |
+| Feature                   | Description                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- |
+| **Suggest reply**         | AI suggests a full reply (subject + body) for the open thread; one click to use it in the reply box |
+| **Context-Aware Writing** | AI reads the thread and writes appropriate responses                        |
+| **Tone Adjustment**       | Professional, casual, or custom. Match any situation                        |
+| **One-Click Replies**     | Generate complete, thoughtful responses instantly                           |
+| **Smart Suggestions**     | Real-time writing assistance as you type                                    |
 
 </details>
 

@@ -170,7 +170,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                 {suggestReplyStatus}
               </p>
               <p className="text-xs text-[#9aa0a6] dark:text-[#71717a]">
-                AI is reading the thread and writing a reply in your voice.
+                AI is reading the thread and writing a reply in your voice. Usually 5-15 seconds.
               </p>
             </div>
           )}
@@ -183,7 +183,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                 <p className="mb-1 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">Subject</p>
                 <p className="text-sm font-medium text-[#111118] dark:text-[#f4f4f5]">{suggestReplyResult.subject}</p>
               </div>
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-[#e5e7eb] bg-[#f6f8fc] p-3 dark:border-[#3c4043] dark:bg-[#292a2d]">
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-[#e5e7eb] bg-[#f6f8fc] p-3 dark:border-[#3c4043] dark:bg-[#292a2d] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <p className="mb-1 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">Message</p>
                 <div
                   className="prose prose-sm dark:prose-invert max-w-none text-[#111118] dark:text-[#e8eaed] [&_p]:mb-1"
@@ -380,11 +380,21 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                       body: JSON.stringify({ threadId, accountId: effectiveAccountId }),
                       credentials: "include",
                     });
-                    const data = await res.json();
+                    const data = await res.json().catch(() => ({}));
                     clearTimeout(statusTimer);
                     if (!res.ok) {
                       setSuggestReplyStep("error");
-                      setSuggestReplyError(data.message ?? data.error ?? "Failed to suggest reply");
+                      const msg =
+                        data.message ??
+                        data.error ??
+                        (res.status === 504
+                          ? "Reply took too long. Try again."
+                          : res.status === 401
+                            ? "Your session may have expired. Refresh the page or sign in again."
+                            : res.status === 403
+                              ? "Connect your account to use Suggest reply."
+                              : "Failed to suggest reply");
+                      setSuggestReplyError(msg);
                       return;
                     }
                     setSuggestReplyResult({ subject: data.subject ?? "", body: data.body ?? "" });
@@ -427,10 +437,14 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                 {firstEmail?.subject || "(No subject)"}
               </h1>
               {(() => {
-                const lastEmailInThread = thread?.emails?.[thread.emails.length - 1] as { from?: { address?: string } } | undefined;
+                const lastEmailInThread = thread?.emails?.[thread.emails.length - 1] as { from?: { address?: string }; sysClassifications?: string[] } | undefined;
                 const accountEmail = (thread as { account?: { emailAddress?: string } })?.account?.emailAddress ?? (account as { emailAddress?: string } | undefined)?.emailAddress ?? "";
                 const lastFromOther = lastEmailInThread?.from?.address && accountEmail && lastEmailInThread.from.address.toLowerCase() !== accountEmail.toLowerCase();
-                return lastFromOther ? (
+                const allClassifications = (thread?.emails ?? []).flatMap((e) => (e as { sysClassifications?: string[] }).sysClassifications ?? []);
+                const raw = allClassifications.map((c) => String(c).toLowerCase());
+                const isPromoOrMarketing = raw.includes("promotions") || raw.includes("social") || raw.includes("updates") || raw.includes("forums");
+                const showNeedsReply = lastFromOther && !isPromoOrMarketing;
+                return showNeedsReply ? (
                   <span className="rounded-md bg-[#e8f0fe] px-2 py-0.5 text-[11px] font-medium text-[#1967d2] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]">
                     Needs reply
                   </span>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
 import {
@@ -10,7 +10,12 @@ import { env } from "@/env.js";
 import { db } from "@/server/db";
 import { DEMO_ACCOUNT_ID, DEMO_USER_ID } from "@/lib/demo/constants";
 
+const SESSION_COOKIE = "vectormail_session_user";
+const DEMO_SESSION_USER = "demo-user";
+
 const DEFAULT_REPLY_SUGGEST_MODEL = "anthropic/claude-3.5-haiku";
+const MAX_MESSAGES_FOR_CONTEXT = 8;
+const MAX_CHARS_PER_MESSAGE = 1200;
 
 const REPLY_SYSTEM = (userDisplayName: string) =>
   `You are writing a reply in the user's voice. Use the full thread history and the user's previous replies in the thread to match their tone and style.
@@ -26,9 +31,25 @@ RULES:
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkUserId } = await getAuth(req);
+    const sessionCookie = req.cookies.get(SESSION_COOKIE)?.value?.trim();
+    const userId = clerkUserId ?? (sessionCookie && sessionCookie !== DEMO_SESSION_USER ? sessionCookie : null);
+
+    if (sessionCookie === DEMO_SESSION_USER && !clerkUserId) {
+      return NextResponse.json(
+        { error: "Demo mode", message: "Connect your account to use Suggest reply." },
+        { status: 403 },
+      );
+    }
+
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          message: "Your session may have expired. Refresh the page or sign in again.",
+        },
+        { status: 401 },
+      );
     }
 
     if (userId === DEMO_USER_ID) {
@@ -144,13 +165,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const threadContext = emails
+    const recentEmails = emails.length > MAX_MESSAGES_FOR_CONTEXT
+      ? emails.slice(-MAX_MESSAGES_FOR_CONTEXT)
+      : emails;
+    const startIndex = emails.length - recentEmails.length;
+    const threadContext = recentEmails
       .map((e, i) => {
         const bodyText = e.body ?? e.bodySnippet ?? "";
-        const snippet = bodyText.length > 2000 ? bodyText.slice(0, 2000) + "..." : bodyText;
+        const snippet = bodyText.length > MAX_CHARS_PER_MESSAGE
+          ? bodyText.slice(0, MAX_CHARS_PER_MESSAGE) + "..."
+          : bodyText;
         const fromAddr = e.from?.address ?? "";
         const isUser = fromAddr.toLowerCase() === accountEmailLower;
-        return `[Message ${i + 1}] From: ${e.from?.name ?? e.from?.address ?? fromAddr} <${fromAddr}>${isUser ? " (USER - match this tone)" : ""}
+        return `[Message ${startIndex + i + 1}] From: ${e.from?.name ?? e.from?.address ?? fromAddr} <${fromAddr}>${isUser ? " (USER - match this tone)" : ""}
 Date: ${new Date(e.sentAt).toISOString()}
 Subject: ${e.subject}
 Body: ${snippet}`;
@@ -172,22 +199,32 @@ Body: ${snippet}`;
     const replyModel =
       process.env.REPLY_SUGGEST_MODEL?.trim() || DEFAULT_REPLY_SUGGEST_MODEL;
 
-    const completion = await openai.chat.completions.create({
-      model: replyModel,
-      messages: [
-        { role: "system", content: REPLY_SYSTEM(userDisplayName) },
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 50_000);
+    let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      completion = await openai.chat.completions.create(
         {
-          role: "user",
-          content: `Thread subject: ${thread.subject ?? lastMessage?.subject ?? "(No subject)"}
+          model: replyModel,
+          messages: [
+            { role: "system", content: REPLY_SYSTEM(userDisplayName) },
+            {
+              role: "user",
+              content: `Thread subject: ${thread.subject ?? lastMessage?.subject ?? "(No subject)"}
 
 Thread messages (in order):
 ${threadContext}
 
 Generate a single reply as the next message from ${userDisplayName}. Return only a JSON object with "subject" and "body" (no markdown, no code fence).`,
+            },
+          ],
+          stream: false,
         },
-      ],
-      stream: false,
-    });
+        { signal: controller.signal },
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "";
     const usage = completion.usage;
@@ -224,6 +261,13 @@ Generate a single reply as the next message from ${userDisplayName}. Return only
     return NextResponse.json({ subject, body: bodyText });
   } catch (error) {
     console.error("Error in generate-reply:", error);
+    const isAbort = error instanceof Error && error.name === "AbortError";
+    if (isAbort) {
+      return NextResponse.json(
+        { error: "Reply took too long", message: "The request timed out. Try again." },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
       { error: "Failed to generate reply" },
       { status: 500 },
