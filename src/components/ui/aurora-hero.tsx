@@ -412,7 +412,7 @@ export default function HeroSection_04() {
                     <span className="text-sm font-medium text-white">Inbox</span>
                   </div>
                 </div>
-                <div className="flex-1 overflow-auto border-t border-white/10">
+                <div className="flex-1 overflow-auto border-t border-white/10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <div className="border-b border-white/10 px-3 py-2">
                     <div className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white/50">Q Search</div>
                   </div>

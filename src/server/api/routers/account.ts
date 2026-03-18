@@ -1338,6 +1338,39 @@ export const accountRouter = createTRPCRouter({
         metadata: syncAllFolders ? { syncAllFolders: true } : { folder },
       });
 
+      const queueConfiguredForProduction =
+        process.env.NODE_ENV === "production" &&
+        !!process.env.INNGEST_EVENT_KEY?.trim() &&
+        !!process.env.INNGEST_SIGNING_KEY?.trim();
+
+      if (
+        queueConfiguredForProduction &&
+        !syncAllFolders &&
+        !shouldForceFullSync &&
+        !input.continueToken &&
+        folder === "inbox" &&
+        ctx.auth.userId !== DEMO_USER_ID
+      ) {
+        const { enqueueAccountMailSync } = await import("@/lib/jobs/enqueue");
+        const enqueued = await enqueueAccountMailSync(
+          account.id,
+          ctx.auth.userId,
+        );
+        if (enqueued) {
+          ctx.log?.info(
+            { event: "sync_background_enqueued", accountId: account.id },
+            "inbox sync delegated to Inngest",
+          );
+          return {
+            success: true,
+            background: true,
+            message:
+              "Sync is running in the background. New mail will appear shortly.",
+            needsReconnection: false,
+          };
+        }
+      }
+
       let currentAccount = account;
       let currentEmailAccount = emailAccount;
       const maxAttempts = 2;
@@ -1347,90 +1380,124 @@ export const accountRouter = createTRPCRouter({
         account = currentAccount;
         emailAccount = currentEmailAccount;
         try {
-        ctx.log?.info(
-          {
-            event: "sync_start",
-            accountId: account.id,
-            ...(attempt > 0 ? { retryAfterRefresh: true } : {}),
-            forceFullSync: shouldForceFullSync,
-            folder: syncAllFolders ? "all" : folder,
-          },
-          "sync started",
-        );
-        if (syncAllFolders) {
-          const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
-          await emailAccount.syncAllFoldersInParallel();
-          await recalculateAllThreadStatuses(account.id);
-          const { enqueueEmbeddingJobsForAccount } = await import("@/lib/jobs/enqueue");
-          enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
-            console.error("[syncEmails] Enqueue embedding jobs failed:", err);
-          });
           ctx.log?.info(
             {
-              event: "sync_success",
+              event: "sync_start",
               accountId: account.id,
-              folder: "all",
-              durationMs: Date.now() - syncStartTime,
-              mode: "full_all_folders",
+              ...(attempt > 0 ? { retryAfterRefresh: true } : {}),
+              forceFullSync: shouldForceFullSync,
+              folder: syncAllFolders ? "all" : folder,
             },
-            "sync all folders completed",
+            "sync started",
           );
-          return {
-            success: true,
-            message: "Inbox, Sent, and Trash synced",
-            syncAllFolders: true,
-          };
-        }
-
-        const decodeContinueToken = (token: string): { pageToken?: string; syncApiPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean } => {
-          try {
-            const decoded = JSON.parse(Buffer.from(token, "base64url").toString()) as unknown;
-            if (typeof decoded !== "object" || decoded === null) return {};
-            const d = decoded as { pageToken?: string; syncApiPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean };
-            return { pageToken: d.pageToken, syncApiPageToken: d.syncApiPageToken, sentUseLabel: d.sentUseLabel, sentOmitDate: d.sentOmitDate, sentUseIsOperator: d.sentUseIsOperator, sentFromMe: d.sentFromMe, sentUseLabelIds: d.sentUseLabelIds };
-          } catch {
-            return {};
+          if (syncAllFolders) {
+            const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+            await emailAccount.syncAllFoldersInParallel();
+            await recalculateAllThreadStatuses(account.id);
+            const { enqueueEmbeddingJobsForAccount } = await import("@/lib/jobs/enqueue");
+            enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
+              console.error("[syncEmails] Enqueue embedding jobs failed:", err);
+            });
+            ctx.log?.info(
+              {
+                event: "sync_success",
+                accountId: account.id,
+                folder: "all",
+                durationMs: Date.now() - syncStartTime,
+                mode: "full_all_folders",
+              },
+              "sync all folders completed",
+            );
+            return {
+              success: true,
+              message: "Inbox, Sent, and Trash synced",
+              syncAllFolders: true,
+            };
           }
-        };
-        const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean, sentOmitDate?: boolean, sentUseIsOperator?: boolean, sentFromMe?: boolean, sentUseLabelIds?: boolean, syncApiPageToken?: string) =>
-          Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false, ...(syncApiPageToken != null ? { syncApiPageToken } : {}) }), "utf8").toString("base64url");
 
-        if (folder === "inbox" && !input.continueToken) {
-          const latestInbox = await ctx.db.thread.findFirst({
-            where: { accountId: account.id, inboxStatus: true },
-            orderBy: { lastMessageDate: "desc" },
-            select: { lastMessageDate: true },
-          });
-          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-          const inboxStale = !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
-          if (inboxStale) {
-            await ctx.db.account.update({
-              where: { id: account.id },
-              data: { nextDeltaToken: null },
-            }).catch(() => {});
-          }
-          const syncApiTimeoutMs = inboxStale ? 18_000 : 5_000;
-          const useSyncApiFirst = !inboxStale;
-          const syncApiFirstPage = useSyncApiFirst
-            ? await emailAccount.tryGetFirstPageViaSyncApi(syncApiTimeoutMs)
-            : null;
-          if (syncApiFirstPage && (syncApiFirstPage.records.length > 0 || syncApiFirstPage.nextPageToken)) {
-            if (syncApiFirstPage.records.length > 0) {
-              const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
-              await syncEmailsToDatabase(syncApiFirstPage.records, account.id);
+          const decodeContinueToken = (token: string): { pageToken?: string; syncApiPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean } => {
+            try {
+              const decoded = JSON.parse(Buffer.from(token, "base64url").toString()) as unknown;
+              if (typeof decoded !== "object" || decoded === null) return {};
+              const d = decoded as { pageToken?: string; syncApiPageToken?: string; sentUseLabel?: boolean; sentOmitDate?: boolean; sentUseIsOperator?: boolean; sentFromMe?: boolean; sentUseLabelIds?: boolean };
+              return { pageToken: d.pageToken, syncApiPageToken: d.syncApiPageToken, sentUseLabel: d.sentUseLabel, sentOmitDate: d.sentOmitDate, sentUseIsOperator: d.sentUseIsOperator, sentFromMe: d.sentFromMe, sentUseLabelIds: d.sentUseLabelIds };
+            } catch {
+              return {};
             }
-            if (syncApiFirstPage.nextDeltaToken) {
+          };
+          const encodeContinueToken = (pageToken: string, sentUseLabel?: boolean, sentOmitDate?: boolean, sentUseIsOperator?: boolean, sentFromMe?: boolean, sentUseLabelIds?: boolean, syncApiPageToken?: string) =>
+            Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false, ...(syncApiPageToken != null ? { syncApiPageToken } : {}) }), "utf8").toString("base64url");
+
+          if (folder === "inbox" && !input.continueToken) {
+            const latestInbox = await ctx.db.thread.findFirst({
+              where: { accountId: account.id, inboxStatus: true },
+              orderBy: { lastMessageDate: "desc" },
+              select: { lastMessageDate: true },
+            });
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            const inboxStale = !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
+            if (inboxStale) {
               await ctx.db.account.update({
                 where: { id: account.id },
-                data: { nextDeltaToken: syncApiFirstPage.nextDeltaToken },
+                data: { nextDeltaToken: null },
               }).catch(() => { });
             }
+            const syncApiTimeoutMs = inboxStale ? 52_000 : 10_000;
+            const syncApiFirstPage =
+              await emailAccount.tryGetFirstPageViaSyncApi(syncApiTimeoutMs);
+            if (syncApiFirstPage && (syncApiFirstPage.records.length > 0 || syncApiFirstPage.nextPageToken)) {
+              if (syncApiFirstPage.records.length > 0) {
+                const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+                await syncEmailsToDatabase(syncApiFirstPage.records, account.id);
+              }
+              if (syncApiFirstPage.nextDeltaToken) {
+                await ctx.db.account.update({
+                  where: { id: account.id },
+                  data: { nextDeltaToken: syncApiFirstPage.nextDeltaToken },
+                }).catch(() => { });
+              }
+              const threadCount = await ctx.db.thread.count({
+                where: { accountId: account.id, inboxStatus: true },
+              });
+              const hasMore = !!syncApiFirstPage.nextPageToken;
+              const continueToken = hasMore && syncApiFirstPage.nextPageToken
+                ? encodeContinueToken("", false, false, false, false, false, syncApiFirstPage.nextPageToken)
+                : undefined;
+              ctx.log?.info(
+                {
+                  event: "sync_success",
+                  accountId: account.id,
+                  folder: "inbox",
+                  durationMs: Date.now() - syncStartTime,
+                  countSynced: syncApiFirstPage.records.length,
+                  threadCount,
+                  hasMore,
+                  source: "sync_api",
+                },
+                "inbox first page done (Sync API)",
+              );
+              return {
+                success: true,
+                message: syncApiFirstPage.records.length > 0 ? `Synced ${syncApiFirstPage.records.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+                threadCount,
+                hasMore,
+                continueToken,
+              };
+            }
+
+            const chunkMaxIds = inboxStale ? 36 : 50;
+            const result = await emailAccount.fetchInboxFirstPageInChunks(
+              chunkMaxIds,
+              5,
+              inboxStale ? 22_000 : 15_000,
+              inboxStale ? 11_000 : 10_000,
+            );
             const threadCount = await ctx.db.thread.count({
               where: { accountId: account.id, inboxStatus: true },
             });
-            const hasMore = !!syncApiFirstPage.nextPageToken;
-            const continueToken = hasMore && syncApiFirstPage.nextPageToken
-              ? encodeContinueToken("", false, false, false, false, false, syncApiFirstPage.nextPageToken)
+            const hasMore = !!result.nextPageToken;
+            const continueToken = hasMore
+              ? encodeContinueToken(result.nextPageToken!, false, false, false, false, false)
               : undefined;
             ctx.log?.info(
               {
@@ -1438,309 +1505,350 @@ export const accountRouter = createTRPCRouter({
                 accountId: account.id,
                 folder: "inbox",
                 durationMs: Date.now() - syncStartTime,
-                countSynced: syncApiFirstPage.records.length,
+                countSynced: result.emails.length,
                 threadCount,
                 hasMore,
-                source: "sync_api",
+                source: "list_chunks",
               },
-              "inbox first page done (Sync API)",
+              "inbox first page done (chunked)",
             );
             return {
               success: true,
-              message: syncApiFirstPage.records.length > 0 ? `Synced ${syncApiFirstPage.records.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+              message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
               threadCount,
               hasMore,
               continueToken,
             };
           }
 
-          const chunkMaxIds = inboxStale ? 200 : 50;
-          const result = await emailAccount.fetchInboxFirstPageInChunks(
-            chunkMaxIds,
-            5,
-            inboxStale ? 25_000 : 15_000,
-            inboxStale ? 15_000 : 10_000,
-          );
-          const threadCount = await ctx.db.thread.count({
-            where: { accountId: account.id, inboxStatus: true },
-          });
-          const hasMore = !!result.nextPageToken;
-          const continueToken = hasMore
-            ? encodeContinueToken(result.nextPageToken!, false, false, false, false, false)
-            : undefined;
-          ctx.log?.info(
-            {
-              event: "sync_success",
-              accountId: account.id,
-              folder: "inbox",
-              durationMs: Date.now() - syncStartTime,
-              countSynced: result.emails.length,
-              threadCount,
-              hasMore,
-              source: "list_chunks",
-            },
-            "inbox first page done (chunked)",
-          );
-          return {
-            success: true,
-            message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
-            threadCount,
-            hasMore,
-            continueToken,
-          };
-        }
+          if ((folder === "inbox" || folder === "sent" || folder === "trash") && input.continueToken) {
+            const decoded = decodeContinueToken(input.continueToken);
+            const { syncApiPageToken } = decoded;
+            const { pageToken, sentUseLabel, sentOmitDate, sentUseIsOperator, sentFromMe, sentUseLabelIds } = decoded;
 
-        if ((folder === "inbox" || folder === "sent" || folder === "trash") && input.continueToken) {
-          const decoded = decodeContinueToken(input.continueToken);
-          const { syncApiPageToken } = decoded;
-          const { pageToken, sentUseLabel, sentOmitDate, sentUseIsOperator, sentFromMe, sentUseLabelIds } = decoded;
-
-          if (folder === "inbox" && syncApiPageToken) {
-            const syncResult = await emailAccount.getNextPageViaSyncApi(syncApiPageToken);
-            if (syncResult.records.length > 0) {
-              const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
-              await syncEmailsToDatabase(syncResult.records, account.id);
+            if (folder === "inbox" && syncApiPageToken) {
+              const syncResult = await emailAccount.getNextPageViaSyncApi(syncApiPageToken);
+              if (syncResult.records.length > 0) {
+                const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+                await syncEmailsToDatabase(syncResult.records, account.id);
+              }
+              if (syncResult.nextDeltaToken) {
+                await ctx.db.account.update({
+                  where: { id: account.id },
+                  data: { nextDeltaToken: syncResult.nextDeltaToken },
+                }).catch(() => { });
+              }
+              const threadCount = await ctx.db.thread.count({
+                where: { accountId: account.id, inboxStatus: true },
+              });
+              const hasMore = !!syncResult.nextPageToken;
+              const nextContinueToken = hasMore && syncResult.nextPageToken
+                ? encodeContinueToken("", false, false, false, false, false, syncResult.nextPageToken)
+                : undefined;
+              ctx.log?.info(
+                {
+                  event: "sync_success",
+                  accountId: account.id,
+                  folder: "inbox",
+                  durationMs: Date.now() - syncStartTime,
+                  countSynced: syncResult.records.length,
+                  threadCount,
+                  hasMore,
+                  source: "sync_api",
+                },
+                "sync chunk done (Sync API)",
+              );
+              return {
+                success: true,
+                message: syncResult.records.length > 0 ? `Synced ${syncResult.records.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+                threadCount,
+                hasMore,
+                continueToken: nextContinueToken,
+              };
             }
-            if (syncResult.nextDeltaToken) {
-              await ctx.db.account.update({
-                where: { id: account.id },
-                data: { nextDeltaToken: syncResult.nextDeltaToken },
-              }).catch(() => { });
+
+            const result = await emailAccount.fetchEmailsByFolderOnePage(
+              folder,
+              pageToken,
+              sentUseLabel ?? false,
+              folder === "sent" ? (sentOmitDate ?? false) : false,
+              folder === "sent" ? (sentUseIsOperator ?? false) : false,
+              folder === "sent" ? (sentFromMe ?? false) : false,
+              folder === "sent" ? (sentUseLabelIds ?? false) : false,
+              false,
+              500,
+            );
+            if (result.emails.length > 0) {
+              const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
+              await syncEmailsToDatabase(result.emails, account.id);
             }
             const threadCount = await ctx.db.thread.count({
-              where: { accountId: account.id, inboxStatus: true },
+              where: folder === "trash"
+                ? {
+                  accountId: account.id,
+                  emails: { some: { sysLabels: { hasSome: ["trash"] } } },
+                }
+                : {
+                  accountId: account.id,
+                  ...(folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
+                },
             });
-            const hasMore = !!syncResult.nextPageToken;
-            const nextContinueToken = hasMore && syncResult.nextPageToken
-              ? encodeContinueToken("", false, false, false, false, false, syncResult.nextPageToken)
-              : undefined;
+            const hasMore =
+              folder === "sent" ? result.emails.length > 0 && !!result.nextPageToken : !!result.nextPageToken;
+            const continueToken = hasMore ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel, result.sentOmitDate, result.sentUseIsOperator, result.sentFromMe, result.sentUseLabelIds) : undefined;
             ctx.log?.info(
               {
                 event: "sync_success",
                 accountId: account.id,
-                folder: "inbox",
+                folder,
                 durationMs: Date.now() - syncStartTime,
-                countSynced: syncResult.records.length,
+                countSynced: result.emails.length,
                 threadCount,
                 hasMore,
-                source: "sync_api",
               },
-              "sync chunk done (Sync API)",
+              "sync chunk done",
             );
             return {
               success: true,
-              message: syncResult.records.length > 0 ? `Synced ${syncResult.records.length} emails` : hasMore ? "Fetching more…" : "No more emails",
+              message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
               threadCount,
               hasMore,
-              continueToken: nextContinueToken,
+              continueToken,
             };
           }
 
-          const result = await emailAccount.fetchEmailsByFolderOnePage(
-            folder,
-            pageToken,
-            sentUseLabel ?? false,
-            folder === "sent" ? (sentOmitDate ?? false) : false,
-            folder === "sent" ? (sentUseIsOperator ?? false) : false,
-            folder === "sent" ? (sentFromMe ?? false) : false,
-            folder === "sent" ? (sentUseLabelIds ?? false) : false,
-            false,
-            500,
-          );
-          if (result.emails.length > 0) {
-            const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
-            await syncEmailsToDatabase(result.emails, account.id);
-          }
-          const threadCount = await ctx.db.thread.count({
-            where: folder === "trash"
-              ? {
-                accountId: account.id,
-                emails: { some: { sysLabels: { hasSome: ["trash"] } } },
-              }
-              : {
-                accountId: account.id,
-                ...(folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
-              },
-          });
-          const hasMore =
-            folder === "sent" ? result.emails.length > 0 && !!result.nextPageToken : !!result.nextPageToken;
-          const continueToken = hasMore ? encodeContinueToken(result.nextPageToken!, result.sentUseLabel, result.sentOmitDate, result.sentUseIsOperator, result.sentFromMe, result.sentUseLabelIds) : undefined;
-          ctx.log?.info(
-            {
-              event: "sync_success",
-              accountId: account.id,
-              folder,
-              durationMs: Date.now() - syncStartTime,
-              countSynced: result.emails.length,
-              threadCount,
-              hasMore,
-            },
-            "sync chunk done",
-          );
-          return {
-            success: true,
-            message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching more…" : "No more emails",
-            threadCount,
-            hasMore,
-            continueToken,
-          };
-        }
+          if (
+            !shouldForceFullSync &&
+            account.nextDeltaToken &&
+            folder !== "sent" &&
+            folder !== "trash"
+          ) {
+            console.log(
+              `[syncEmails mutation] Attempting lightweight sync using delta token...`,
+            );
+            try {
+              const latestSyncResult = await emailAccount.syncLatestEmails();
 
-        if (
-          !shouldForceFullSync &&
-          account.nextDeltaToken &&
-          folder !== "sent" &&
-          folder !== "trash"
-        ) {
-          console.log(
-            `[syncEmails mutation] Attempting lightweight sync using delta token...`,
-          );
-          try {
-            const latestSyncResult = await emailAccount.syncLatestEmails();
-
-            if (latestSyncResult.authError) {
-              console.error(
-                `[syncEmails mutation] Authentication error - token is actually dead`,
-              );
-
-
-              const threadCount = await ctx.db.thread.count({
-                where: {
-                  accountId: account.id,
-                  ...(input.folder === "sent"
-                    ? { sentStatus: true }
-                    : { inboxStatus: true }),
-                },
-              });
-
-              const refreshAccount = new Account(account.id, account.token);
-              const refreshed = await refreshAccount.refreshTokenIfPossible();
-              if (refreshed) {
-                ctx.log?.info(
-                  { event: "sync_token_refreshed", accountId: account.id },
-                  "Token refreshed after auth error; next sync will use new token",
+              if (latestSyncResult.authError) {
+                console.error(
+                  `[syncEmails mutation] Authentication error - token is actually dead`,
                 );
+
+
+                const threadCount = await ctx.db.thread.count({
+                  where: {
+                    accountId: account.id,
+                    ...(input.folder === "sent"
+                      ? { sentStatus: true }
+                      : { inboxStatus: true }),
+                  },
+                });
+
+                const refreshAccount = new Account(account.id, account.token);
+                const refreshed = await refreshAccount.refreshTokenIfPossible();
+                if (refreshed) {
+                  ctx.log?.info(
+                    { event: "sync_token_refreshed", accountId: account.id },
+                    "Token refreshed after auth error; next sync will use new token",
+                  );
+                  return {
+                    success: false,
+                    message: "Sync failed temporarily. Try again in a moment.",
+                    threadCount,
+                    needsReconnection: false,
+                  };
+                }
+                ctx.log?.warn(
+                  {
+                    event: "sync_error",
+                    accountId: account.id,
+                    durationMs: Date.now() - syncStartTime,
+                    error: "auth_error",
+                    needsReconnection: true,
+                  },
+                  "sync auth error",
+                );
+                incrementSyncFailure();
+                await ctx.db.account.update({
+                  where: { id: account.id },
+                  data: { needsReconnection: true },
+                }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
                 return {
                   success: false,
-                  message: "Sync failed temporarily. Try again in a moment.",
+                  message: "Sync failed. Try again in a moment.",
                   threadCount,
-                  needsReconnection: false,
+                  needsReconnection: true,
                 };
               }
-              ctx.log?.warn(
-                {
-                  event: "sync_error",
-                  accountId: account.id,
-                  durationMs: Date.now() - syncStartTime,
-                  error: "auth_error",
+
+              if (latestSyncResult.success && latestSyncResult.count > 0) {
+                const threadCount = await ctx.db.thread.count({
+                  where: {
+                    accountId: account.id,
+                    ...(input.folder === "sent"
+                      ? { sentStatus: true }
+                      : { inboxStatus: true }),
+                  },
+                });
+                ctx.log?.info(
+                  {
+                    event: "sync_success",
+                    accountId: account.id,
+                    durationMs: Date.now() - syncStartTime,
+                    countSynced: latestSyncResult.count,
+                    threadCount,
+                    mode: "lightweight",
+                  },
+                  "sync success (lightweight)",
+                );
+                const { enqueueEmbeddingJobsForAccount } = await import(
+                  "@/lib/jobs/enqueue"
+                );
+                enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
+                  console.error("[syncEmails] Enqueue embedding jobs failed:", err);
+                });
+
+                return {
+                  success: true,
+                  message: `Synced ${latestSyncResult.count} new emails`,
+                  threadCount,
+                };
+              } else if (
+                latestSyncResult.success &&
+                latestSyncResult.count === 0
+              ) {
+                const threadCount = await ctx.db.thread.count({
+                  where: {
+                    accountId: account.id,
+                    ...(input.folder === "sent"
+                      ? { sentStatus: true }
+                      : { inboxStatus: true }),
+                  },
+                });
+                ctx.log?.info(
+                  {
+                    event: "sync_success",
+                    accountId: account.id,
+                    durationMs: Date.now() - syncStartTime,
+                    countSynced: 0,
+                    threadCount,
+                    mode: "lightweight",
+                  },
+                  "sync success (no new emails)",
+                );
+                return {
+                  success: true,
+                  message: "No new emails to sync",
+                  threadCount,
+                };
+              }
+            } catch (lightweightError) {
+              if (lightweightError instanceof TRPCError) {
+                throw lightweightError;
+              }
+
+              const errorMessage =
+                lightweightError instanceof Error
+                  ? lightweightError.message
+                  : String(lightweightError);
+
+              console.error(
+                `[syncEmails mutation] Lightweight sync threw an error: ${errorMessage}`,
+              );
+
+              if (
+                errorMessage.includes("Authentication failed") ||
+                errorMessage.includes("Invalid token") ||
+                errorMessage.includes("401") ||
+                errorMessage.includes("UNAUTHORIZED") ||
+                (axios.isAxiosError(lightweightError) &&
+                  lightweightError.response?.status === 401)
+              ) {
+                const refreshAccount = new Account(account.id, account.token);
+                const refreshed = await refreshAccount.refreshTokenIfPossible();
+                if (refreshed) {
+                  ctx.log?.info(
+                    { event: "sync_token_refreshed", accountId: account.id },
+                    "Token refreshed after lightweight auth error; next sync will use new token",
+                  );
+                  incrementSyncFailure();
+                  return {
+                    success: false,
+                    message: "Sync failed temporarily. Try again in a moment.",
+                    threadCount: 0,
+                    needsReconnection: false,
+                  };
+                }
+                console.error(
+                  `[syncEmails mutation] Authentication/token error during lightweight sync - account marked for reconnection`,
+                );
+                await ctx.db.account.update({
+                  where: { id: account.id },
+                  data: { needsReconnection: true },
+                }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
+                ctx.log?.warn(
+                  {
+                    event: "sync_error",
+                    accountId: account.id,
+                    durationMs: Date.now() - syncStartTime,
+                    error: errorMessage,
+                    needsReconnection: true,
+                  },
+                  "sync auth error during lightweight",
+                );
+                incrementSyncFailure();
+                return {
+                  success: false,
+                  message: "Sync failed. Try again in a moment.",
+                  threadCount: 0,
                   needsReconnection: true,
-                },
-                "sync auth error",
-              );
-              incrementSyncFailure();
-              await ctx.db.account.update({
-                where: { id: account.id },
-                data: { needsReconnection: true },
-              }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
-              return {
-                success: false,
-                message: "Sync failed. Try again in a moment.",
-                threadCount,
-                needsReconnection: true,
-              };
+                };
+              }
+
             }
+          }
 
-            if (latestSyncResult.success && latestSyncResult.count > 0) {
-              const threadCount = await ctx.db.thread.count({
-                where: {
-                  accountId: account.id,
-                  ...(input.folder === "sent"
-                    ? { sentStatus: true }
-                    : { inboxStatus: true }),
-                },
-              });
-              ctx.log?.info(
-                {
-                  event: "sync_success",
-                  accountId: account.id,
-                  durationMs: Date.now() - syncStartTime,
-                  countSynced: latestSyncResult.count,
-                  threadCount,
-                  mode: "lightweight",
-                },
-                "sync success (lightweight)",
-              );
-              const { enqueueEmbeddingJobsForAccount } = await import(
-                "@/lib/jobs/enqueue"
-              );
-              enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
-                console.error("[syncEmails] Enqueue embedding jobs failed:", err);
-              });
+          try {
+            const syncFolder = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : undefined;
+            await emailAccount.syncEmails(
+              shouldForceFullSync || !account.nextDeltaToken,
+              syncFolder,
+            );
+            const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+            await recalculateAllThreadStatuses(account.id);
+          } catch (syncError) {
+            const syncErrorMessage =
+              syncError instanceof Error ? syncError.message : String(syncError);
 
-              return {
-                success: true,
-                message: `Synced ${latestSyncResult.count} new emails`,
-                threadCount,
-              };
-            } else if (
-              latestSyncResult.success &&
-              latestSyncResult.count === 0
-            ) {
-              const threadCount = await ctx.db.thread.count({
-                where: {
-                  accountId: account.id,
-                  ...(input.folder === "sent"
-                    ? { sentStatus: true }
-                    : { inboxStatus: true }),
-                },
-              });
-              ctx.log?.info(
-                {
-                  event: "sync_success",
-                  accountId: account.id,
-                  durationMs: Date.now() - syncStartTime,
-                  countSynced: 0,
-                  threadCount,
-                  mode: "lightweight",
-                },
-                "sync success (no new emails)",
-              );
-              return {
-                success: true,
-                message: "No new emails to sync",
-                threadCount,
-              };
-            }
-          } catch (lightweightError) {
-            if (lightweightError instanceof TRPCError) {
-              throw lightweightError;
-            }
-
-            const errorMessage =
-              lightweightError instanceof Error
-                ? lightweightError.message
-                : String(lightweightError);
-
+            ctx.log?.error(
+              {
+                event: "sync_error",
+                accountId: account.id,
+                durationMs: Date.now() - syncStartTime,
+                error: syncErrorMessage,
+                phase: "full_sync",
+              },
+              "full sync failed",
+            );
+            incrementSyncFailure();
             console.error(
-              `[syncEmails mutation] Lightweight sync threw an error: ${errorMessage}`,
+              "[syncEmails mutation] Full sync failed:",
+              syncErrorMessage,
             );
 
             if (
-              errorMessage.includes("Authentication failed") ||
-              errorMessage.includes("Invalid token") ||
-              errorMessage.includes("401") ||
-              errorMessage.includes("UNAUTHORIZED") ||
-              (axios.isAxiosError(lightweightError) &&
-                lightweightError.response?.status === 401)
+              syncErrorMessage.includes("Authentication failed") ||
+              syncErrorMessage.includes("401") ||
+              (axios.isAxiosError(syncError) &&
+                syncError.response?.status === 401)
             ) {
               const refreshAccount = new Account(account.id, account.token);
               const refreshed = await refreshAccount.refreshTokenIfPossible();
               if (refreshed) {
                 ctx.log?.info(
                   { event: "sync_token_refreshed", accountId: account.id },
-                  "Token refreshed after lightweight auth error; next sync will use new token",
+                  "Token refreshed after full sync auth error; next sync will use new token",
                 );
-                incrementSyncFailure();
                 return {
                   success: false,
                   message: "Sync failed temporarily. Try again in a moment.",
@@ -1748,24 +1856,10 @@ export const accountRouter = createTRPCRouter({
                   needsReconnection: false,
                 };
               }
-              console.error(
-                `[syncEmails mutation] Authentication/token error during lightweight sync - account marked for reconnection`,
-              );
               await ctx.db.account.update({
                 where: { id: account.id },
                 data: { needsReconnection: true },
               }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
-              ctx.log?.warn(
-                {
-                  event: "sync_error",
-                  accountId: account.id,
-                  durationMs: Date.now() - syncStartTime,
-                  error: errorMessage,
-                  needsReconnection: true,
-                },
-                "sync auth error during lightweight",
-              );
-              incrementSyncFailure();
               return {
                 success: false,
                 message: "Sync failed. Try again in a moment.",
@@ -1774,109 +1868,46 @@ export const accountRouter = createTRPCRouter({
               };
             }
 
+            throw syncError;
           }
-        }
 
-        try {
-          const syncFolder = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : undefined;
-          await emailAccount.syncEmails(
-            shouldForceFullSync || !account.nextDeltaToken,
-            syncFolder,
-          );
-          const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
-          await recalculateAllThreadStatuses(account.id);
-        } catch (syncError) {
-          const syncErrorMessage =
-            syncError instanceof Error ? syncError.message : String(syncError);
 
-          ctx.log?.error(
+          const threadCount = await ctx.db.thread.count({
+            where: input.folder === "trash"
+              ? {
+                accountId: account.id,
+                emails: { some: { sysLabels: { hasSome: ["trash"] } } },
+              }
+              : {
+                accountId: account.id,
+                ...(input.folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
+              },
+          });
+
+          const folderName = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : "inbox";
+          ctx.log?.info(
             {
-              event: "sync_error",
+              event: "sync_success",
               accountId: account.id,
+              folder: folderName,
               durationMs: Date.now() - syncStartTime,
-              error: syncErrorMessage,
-              phase: "full_sync",
+              threadCount,
+              mode: "full",
             },
-            "full sync failed",
+            "sync completed",
           );
-          incrementSyncFailure();
-          console.error(
-            "[syncEmails mutation] Full sync failed:",
-            syncErrorMessage,
+          const { enqueueEmbeddingJobsForAccount } = await import(
+            "@/lib/jobs/enqueue"
           );
+          enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
+            console.error("[syncEmails] Enqueue embedding jobs failed:", err);
+          });
 
-          if (
-            syncErrorMessage.includes("Authentication failed") ||
-            syncErrorMessage.includes("401") ||
-            (axios.isAxiosError(syncError) &&
-              syncError.response?.status === 401)
-          ) {
-            const refreshAccount = new Account(account.id, account.token);
-            const refreshed = await refreshAccount.refreshTokenIfPossible();
-            if (refreshed) {
-              ctx.log?.info(
-                { event: "sync_token_refreshed", accountId: account.id },
-                "Token refreshed after full sync auth error; next sync will use new token",
-              );
-              return {
-                success: false,
-                message: "Sync failed temporarily. Try again in a moment.",
-                threadCount: 0,
-                needsReconnection: false,
-              };
-            }
-            await ctx.db.account.update({
-              where: { id: account.id },
-              data: { needsReconnection: true },
-            }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
-            return {
-              success: false,
-              message: "Sync failed. Try again in a moment.",
-              threadCount: 0,
-              needsReconnection: true,
-            };
-          }
-
-          throw syncError;
-        }
-
-
-        const threadCount = await ctx.db.thread.count({
-          where: input.folder === "trash"
-            ? {
-              accountId: account.id,
-              emails: { some: { sysLabels: { hasSome: ["trash"] } } },
-            }
-            : {
-              accountId: account.id,
-              ...(input.folder === "sent" ? { sentStatus: true } : { inboxStatus: true }),
-            },
-        });
-
-        const folderName = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : "inbox";
-        ctx.log?.info(
-          {
-            event: "sync_success",
-            accountId: account.id,
-            folder: folderName,
-            durationMs: Date.now() - syncStartTime,
+          return {
+            success: true,
+            message: `Emails synced successfully`,
             threadCount,
-            mode: "full",
-          },
-          "sync completed",
-        );
-        const { enqueueEmbeddingJobsForAccount } = await import(
-          "@/lib/jobs/enqueue"
-        );
-        enqueueEmbeddingJobsForAccount(account.id).catch((err) => {
-          console.error("[syncEmails] Enqueue embedding jobs failed:", err);
-        });
-
-        return {
-          success: true,
-          message: `Emails synced successfully`,
-          threadCount,
-        };
+          };
         } catch (error) {
           lastError = error;
           const durationMs = Date.now() - syncStartTime;

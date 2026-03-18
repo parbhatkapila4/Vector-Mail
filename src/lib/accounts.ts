@@ -14,7 +14,7 @@ import { db } from "@/server/db";
 const SYNC_LOCK_TTL_MS = 30 * 60 * 1000;
 const DEBUG_EMAIL = process.env.DEBUG_EMAIL_SYNC === "true";
 function debugLog(...args: unknown[]) {
-  if (DEBUG_EMAIL) debugLog(...args);
+  if (DEBUG_EMAIL) console.log(...args);
 }
 
 const SYNC_WINDOW_DAYS = 60;
@@ -381,8 +381,9 @@ export class Account {
     }
   }
 
-  private async startSync() {
+  private async startSync(options?: { axiosTimeoutMs?: number }) {
     debugLog("[AURINKO AUTH] Using accountToken for account:", this.id);
+    const timeout = options?.axiosTimeoutMs ?? 30_000;
 
     const data = await with401Retry(
       this.id,
@@ -398,6 +399,7 @@ export class Account {
                 bodyType: "html",
                 awaitReady: true,
               },
+              timeout,
             },
           )
           .then((r) => r.data),
@@ -462,8 +464,12 @@ export class Account {
     timeoutMs: number = 18_000,
   ): Promise<{ records: EmailMessage[]; nextPageToken?: string; nextDeltaToken?: string } | null> {
     try {
+      const axiosTimeoutMs = Math.max(
+        Math.min(timeoutMs - 2_000, 90_000),
+        12_000,
+      );
       const syncResponse = await Promise.race([
-        this.startSync(),
+        this.startSync({ axiosTimeoutMs }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Sync API start timeout")), timeoutMs),
         ),

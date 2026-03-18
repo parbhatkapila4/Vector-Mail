@@ -396,7 +396,7 @@ All variables the app reads are listed below. Required vs optional is for a mini
 | `UPSTASH_REDIS_REST_URL`            | No       | Upstash Redis REST URL. Alternative to `REDIS_URL`; preferred with Upstash.                                                                                                                                                                                                                                       |
 | `UPSTASH_REDIS_REST_TOKEN`          | No       | Upstash Redis REST token. Use with `UPSTASH_REDIS_REST_URL`.                                                                                                                                                                                                                                                      |
 | **Queue (Inngest)**                 |          |                                                                                                                                                                                                                                                                                                                   |
-| `INNGEST_EVENT_KEY`                 | No       | Inngest event key for sending events. Required for scheduled sends and embedding/analysis jobs to run via Inngest.                                                                                                                                                                                                |
+| `INNGEST_EVENT_KEY`                 | No       | Inngest event key. **Strongly recommended on Vercel Hobby:** inbox sync runs in the background via Inngest (multi-step, avoids 10s function limit). Also used for scheduled sends and embedding/analysis. Without it, inbox sync falls back to a single serverless call (may time out on large mailboxes).        |
 | `INNGEST_SIGNING_KEY`               | No       | Inngest signing key for production; required for Inngest Cloud to invoke your app.                                                                                                                                                                                                                                |
 | **AI**                              |          |                                                                                                                                                                                                                                                                                                                   |
 | `OPENROUTER_API_KEY`                | No       | OpenRouter API key for chat, compose, and summaries. Omit to disable those features; search falls back to text.                                                                                                                                                                                                   |
@@ -776,13 +776,13 @@ Describe what you want to say, and our AI composes it with the right tone, conte
 <summary><strong> AI Composition</strong></summary>
 <br />
 
-| Feature                   | Description                                                                 |
-| ------------------------- | --------------------------------------------------------------------------- |
+| Feature                   | Description                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Suggest reply**         | AI suggests a full reply (subject + body) for the open thread; one click to use it in the reply box |
-| **Context-Aware Writing** | AI reads the thread and writes appropriate responses                        |
-| **Tone Adjustment**       | Professional, casual, or custom. Match any situation                        |
-| **One-Click Replies**     | Generate complete, thoughtful responses instantly                           |
-| **Smart Suggestions**     | Real-time writing assistance as you type                                    |
+| **Context-Aware Writing** | AI reads the thread and writes appropriate responses                                                |
+| **Tone Adjustment**       | Professional, casual, or custom. Match any situation                                                |
+| **One-Click Replies**     | Generate complete, thoughtful responses instantly                                                   |
+| **Smart Suggestions**     | Real-time writing assistance as you type                                                            |
 
 </details>
 
@@ -820,7 +820,7 @@ _Email analytics (response times, volume patterns) is planned and not yet availa
 <br />
 
 | Feature                  | Description                                          |
-| ------------------------ | -----------------------------------------------------|
+| ------------------------ | ---------------------------------------------------- |
 | **Clerk Authentication** | Enterprise-grade auth with MFA, SSO support          |
 | **Data Encryption**      | Encryption for stored data                           |
 | **Privacy First**        | Your data stays yours. We don't train on your emails |

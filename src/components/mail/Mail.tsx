@@ -345,7 +345,7 @@ export function Mail({ }: MailLayoutProps) {
                   </SheetTrigger>
                   <SheetContent
                     side="left"
-                    className="flex w-[280px] flex-col min-h-0 overflow-y-auto border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124]"
+                    className="flex w-[280px] flex-col min-h-0 overflow-y-auto border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   >
                     <MobileSidebar
                       navItems={navItems}

@@ -3,12 +3,21 @@ import { runEmailAnalysisForOne, runEmailAnalysisForMany } from "@/lib/jobs/run-
 import { runScheduledSend } from "@/lib/jobs/run-scheduled-send";
 import { backfillEmailAnalysis } from "@/lib/backfill-email-analysis";
 import { recordFailedJob } from "@/lib/jobs/failed-job";
+import {
+  runInboxSyncOneStep,
+  finalizeInboxSync,
+} from "@/lib/mail-sync-inbox-step";
+import { db } from "@/server/db";
 
 export const EMAIL_ANALYZE_EVENT = "email/analyze";
 
 export const SCHEDULED_SEND_PROCESS_EVENT = "scheduled-send/process";
 
 export const EMAIL_ANALYZE_ACCOUNT_EVENT = "email/analyze-account";
+
+export const MAIL_SYNC_ACCOUNT_EVENT = "mail/sync-account";
+
+const MAX_INBOX_SYNC_STEPS = 120;
 
 async function recordAndRethrow(
   jobType: string,
@@ -171,8 +180,120 @@ export const emailAnalyzeAccountFunction = inngest.createFunction(
   },
 );
 
+export const mailSyncAccountFunction = inngest.createFunction(
+  {
+    id: "mail-sync-account",
+    name: "Background inbox sync",
+    retries: 4,
+    concurrency: {
+      limit: 1,
+      key: "event.data.accountId",
+    },
+  },
+  { event: MAIL_SYNC_ACCOUNT_EVENT },
+  async ({
+    event,
+    step,
+  }: {
+    event: { data: { accountId?: string; userId?: string } };
+    step: {
+      run: <T>(name: string, fn: () => Promise<T>) => Promise<T>;
+      sleep: (id: string, duration: string) => Promise<void>;
+    };
+  }) => {
+    const { accountId, userId } = event.data;
+    if (!accountId?.trim() || !userId?.trim()) {
+      throw new Error("mail/sync-account: accountId and userId required");
+    }
+
+    const gate = await step.run("verify-account", async () => {
+      const row = await db.account.findFirst({
+        where: { id: accountId.trim(), userId: userId.trim() },
+        select: { id: true, token: true, needsReconnection: true },
+      });
+      if (!row?.token?.trim()) return { ok: false as const, reason: "no_token" };
+      if (row.needsReconnection) return { ok: false as const, reason: "reconnect" };
+      return { ok: true as const };
+    });
+    if (!gate.ok) {
+      return { skipped: gate.reason, accountId: accountId.trim() };
+    }
+
+    let continueToken: string | undefined;
+    for (let i = 0; i < MAX_INBOX_SYNC_STEPS; i++) {
+      const r = await step.run(`inbox-step-${i}`, () =>
+        runInboxSyncOneStep(accountId.trim(), continueToken),
+      );
+      if (!r.ok) break;
+      continueToken = r.continueToken;
+      if (!r.hasMore || !continueToken) {
+        break;
+      }
+      await step.sleep(`pace-${i}`, "750ms");
+    }
+
+    await step.run("finalize", () => finalizeInboxSync(accountId.trim()));
+
+    await step.run("enqueue-embeddings", async () => {
+      if (!process.env.INNGEST_EVENT_KEY?.trim()) return;
+      const { inngest: ing } = await import("./client");
+      await ing.send({
+        name: EMAIL_ANALYZE_ACCOUNT_EVENT,
+        data: { accountId: accountId.trim(), limit: 40 },
+      });
+    });
+
+    return { ok: true, accountId: accountId.trim() };
+  },
+);
+
+export const mailSyncStaleAccountsFunction = inngest.createFunction(
+  {
+    id: "mail-sync-stale-accounts",
+    name: "Periodic inbox refresh (stale accounts)",
+    retries: 1,
+  },
+  { cron: "25 */2 * * *" },
+  async ({ step }) => {
+    const staleBefore = new Date(Date.now() - 50 * 60 * 1000);
+    const accounts = await step.run("pick-accounts", async () => {
+      return db.account.findMany({
+        where: {
+          token: { not: "" },
+          needsReconnection: false,
+          OR: [
+            { lastInboxSyncAt: null },
+            { lastInboxSyncAt: { lt: staleBefore } },
+          ],
+        },
+        select: { id: true, userId: true },
+        orderBy: [{ lastInboxSyncAt: "asc" }],
+        take: 6,
+      });
+    });
+
+    if (accounts.length === 0) return { enqueued: 0 };
+    await step.run("dispatch-sync-jobs", async () => {
+      if (!process.env.INNGEST_EVENT_KEY?.trim()) return;
+      const { inngest: ing } = await import("./client");
+      await Promise.all(
+        accounts.map((a) =>
+          ing.send({
+            name: MAIL_SYNC_ACCOUNT_EVENT,
+            data: { accountId: a.id, userId: a.userId },
+          }),
+        ),
+      );
+    });
+
+    return { enqueued: accounts.length };
+  },
+);
+
 export const inngestFunctions = [
   emailAnalyzeFunction,
   scheduledSendProcessFunction,
   emailAnalyzeAccountFunction,
+  mailSyncAccountFunction,
+  mailSyncStaleAccountsFunction,
 ];

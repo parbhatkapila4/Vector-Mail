@@ -11,6 +11,7 @@ import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const createContext = async (req: NextRequest) => {
   const headers = new Headers();

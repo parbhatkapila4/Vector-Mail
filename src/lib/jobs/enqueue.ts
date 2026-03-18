@@ -3,6 +3,7 @@ import {
   EMAIL_ANALYZE_EVENT,
   SCHEDULED_SEND_PROCESS_EVENT,
   EMAIL_ANALYZE_ACCOUNT_EVENT,
+  MAIL_SYNC_ACCOUNT_EVENT,
 } from "@/lib/inngest/functions";
 
 function canSendToInngest(): boolean {
@@ -86,5 +87,23 @@ export async function enqueueEmbeddingJobsForAccount(
     });
   } catch (err) {
     console.error("[enqueueEmbeddingJobsForAccount]", err);
+  }
+}
+
+
+export async function enqueueAccountMailSync(
+  accountId: string,
+  userId: string,
+): Promise<boolean> {
+  if (!canSendToInngest()) return false;
+  try {
+    await inngest.send({
+      name: MAIL_SYNC_ACCOUNT_EVENT,
+      data: { accountId, userId },
+    });
+    return true;
+  } catch (err) {
+    console.error("[enqueueAccountMailSync]", err);
+    return false;
   }
 }

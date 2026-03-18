@@ -266,6 +266,20 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         return;
       }
 
+      if ("background" in data && data.background) {
+        toast.info("Syncing in the background…", {
+          description: "New mail will show up as it’s fetched. You can keep using the app.",
+          duration: 5000,
+        });
+        void utils.account.getAccounts.invalidate();
+        setRefreshingAfterSync(true);
+        for (let i = 1; i <= 40; i++) {
+          setTimeout(() => void forceThreadListRefresh(), i * 2500);
+        }
+        setTimeout(() => setRefreshingAfterSync(false), 100_000);
+        return;
+      }
+
       void utils.account.getAccounts.invalidate();
       setRefreshingAfterSync(true);
       setTimeout(async () => {
@@ -1018,11 +1032,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       const isRemindersTab = currentTab === "reminders";
+      const matchedAccount = accounts?.find((a) => a.id === accountId);
       const currentAccountNeedsReconnection = Boolean(
         isInboxSentOrTrash &&
-          accountId &&
-          accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
-          accounts?.find((a) => a.id === accountId)?.needsReconnection,
+        accountId &&
+        accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+        matchedAccount &&
+        "needsReconnection" in matchedAccount &&
+        matchedAccount.needsReconnection,
       );
       if (currentAccountNeedsReconnection) {
         return (
