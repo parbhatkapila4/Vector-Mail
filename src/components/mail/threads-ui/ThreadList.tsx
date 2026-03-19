@@ -200,6 +200,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const syncCancelledRef = useRef(false);
   const quickSyncTriggeredRef = useRef(false);
+  const firstBatchTriggeredRef = useRef(false);
   const accountsInvalidatedOnMountRef = useRef(false);
   useEffect(() => {
     if (accountsInvalidatedOnMountRef.current) return;
@@ -237,6 +238,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     await refetch();
     router.refresh();
   }, [utils, refetch, router]);
+
 
   const syncEmailsMutation = api.account.syncEmails.useMutation({
     onSuccess: async (data) => {
@@ -520,7 +522,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       return;
     }
     syncCancelledRef.current = false;
-    toast.info("Checking for new emails…");
+    const noThreadsYet = (threads?.length ?? 0) === 0;
+    if (noThreadsYet && !syncFirstBatchQuickMutation.isPending) {
+      toast.info("Fetching your first emails…", { duration: 2500 });
+      syncFirstBatchQuickMutation.mutate({ accountId: accountId.trim() });
+    } else {
+      toast.info("Checking for new emails…");
+    }
 
     syncEmailsMutation.mutate({
       accountId: accountId.trim(),
@@ -528,12 +536,48 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       syncAllFolders: false,
       folder: "inbox",
     });
-  }, [refetch, accountId, syncEmailsMutation, utils.account.getUnifiedThreads]);
+  }, [
+    refetch,
+    accountId,
+    syncEmailsMutation,
+    syncFirstBatchQuickMutation,
+    threads?.length,
+    utils.account.getUnifiedThreads,
+  ]);
 
   useImperativeHandle(ref, () => ({ triggerSync: handleRefresh }), [handleRefresh]);
 
   const backgroundSyncTriggeredRef = useRef(false);
   const isAccountValid = !!validatedAccount && validatedAccount.id === accountId;
+
+  useEffect(() => {
+    if (
+      firstBatchTriggeredRef.current ||
+      accountsLoading ||
+      !accountId?.trim() ||
+      accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      isDemo ||
+      !isAccountValid
+    )
+      return;
+
+    const hasAnyThreads = (threads?.length ?? 0) > 0;
+    if (hasAnyThreads) return;
+
+    firstBatchTriggeredRef.current = true;
+    toast.info("Fetching your latest emails…", {
+      description: "Getting your first batch so your inbox appears quickly.",
+      duration: 3500,
+    });
+    syncFirstBatchQuickMutation.mutate({ accountId: accountId.trim() });
+  }, [
+    accountId,
+    accountsLoading,
+    isAccountValid,
+    isDemo,
+    syncFirstBatchQuickMutation,
+    threads?.length,
+  ]);
   useEffect(() => {
     if (
       !accountId?.trim() ||
@@ -630,17 +674,61 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const threadsToRender = useMemo(() => threads ?? [], [threads]);
 
+  const { data: inboxPreviewPayload, isFetching: inboxPreviewFetching } =
+    api.account.getInboxPreview.useQuery(
+      { accountId: accountId?.trim() ?? "", limit: 50 },
+      {
+        enabled:
+          currentTab === "inbox" &&
+          !isDemo &&
+          isAccountValid &&
+          !!accountId?.trim() &&
+          accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+          (threads?.length ?? 0) === 0,
+        staleTime: 15_000,
+        retry: 1,
+      },
+    );
+
+  const previewThreads = useMemo((): Thread[] => {
+    const items = inboxPreviewPayload?.items ?? [];
+    return items.map((row, idx) => ({
+      id: `preview:${row.threadId}:${row.messageId}:${idx}`,
+      subject: row.subject,
+      lastMessageDate: new Date(row.sentAt),
+      emails: [
+        {
+          from: { name: row.fromName },
+          bodySnippet: row.snippet || null,
+          sysLabels: row.unread ? ["unread"] : [],
+          sysClassifications: row.classifications ?? [],
+        },
+      ],
+    }));
+  }, [inboxPreviewPayload?.items]);
+
+  const threadsForDisplay = useMemo(() => {
+    if (threadsToRender.length > 0) return threadsToRender;
+    if (currentTab === "inbox" && previewThreads.length > 0) return previewThreads;
+    return threadsToRender;
+  }, [threadsToRender, previewThreads, currentTab]);
+
+  const isReadOnlyPreview =
+    currentTab === "inbox" &&
+    threadsToRender.length === 0 &&
+    previewThreads.length > 0;
+
   const groupedThreads = useMemo(() => {
-    if (!threadsToRender || threadsToRender.length === 0) return {};
-    return threadsToRender.reduce((acc: GroupedThreads, thread: Thread) => {
+    if (!threadsForDisplay || threadsForDisplay.length === 0) return {};
+    return threadsForDisplay.reduce((acc: GroupedThreads, thread: Thread) => {
       const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd");
       if (!acc[date]) acc[date] = [];
       acc[date].push(thread);
       return acc;
     }, {});
-  }, [threadsToRender]);
+  }, [threadsForDisplay]);
 
-  const allThreads = threadsToRender ?? [];
+  const allThreads = threadsForDisplay ?? [];
   const lastThreadId = allThreads[allThreads.length - 1]?.id;
 
   const handleSearchResultSelect = useCallback(
@@ -779,7 +867,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     );
   }
 
-  const renderThreadItem = (thread: Thread, isLast: boolean) => {
+  const renderThreadItem = (thread: Thread, isLast: boolean, readOnlyPreview = false) => {
     const latestEmail = thread.emails?.[0] ?? null;
     const fromName = latestEmail?.from?.name ?? "Unknown";
     const subject = thread.subject || "(No subject)";
@@ -827,9 +915,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         <div
           className={cn(
             "flex shrink-0 flex-col overflow-hidden pt-3 transition-[width,padding,opacity] duration-150",
-            isRowSelected
-              ? "w-[48px] pl-2 opacity-100 pointer-events-auto"
-              : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[48px] group-hover:min-w-0 group-hover:pl-2 group-hover:opacity-100 group-hover:pointer-events-auto",
+            readOnlyPreview && "hidden",
+            !readOnlyPreview &&
+              (isRowSelected
+                ? "w-[48px] pl-2 opacity-100 pointer-events-auto"
+                : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[48px] group-hover:min-w-0 group-hover:pl-2 group-hover:opacity-100 group-hover:pointer-events-auto"),
           )}
           onClick={(e) => e.stopPropagation()}
           role="presentation"
@@ -845,8 +935,18 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         </div>
         <button
           type="button"
-          className="relative flex min-h-[48px] min-w-0 flex-1 gap-3 px-3 py-3 pr-2 text-left outline-none [touch-action:manipulation]"
+          className={cn(
+            "relative flex min-h-[48px] min-w-0 flex-1 gap-3 px-3 py-3 pr-2 text-left outline-none [touch-action:manipulation]",
+            readOnlyPreview && "cursor-default opacity-95",
+          )}
           onClick={() => {
+            if (readOnlyPreview) {
+              toast.info("Still syncing your inbox", {
+                description: "You can open threads once your mail has finished syncing to VectorMail.",
+                duration: 4000,
+              });
+              return;
+            }
             setThreadId(thread.id);
             onThreadSelect?.(thread.id);
           }}
@@ -951,7 +1051,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             </div>
           </div>
         </button>
-        {(showSnooze || showRemind) && (
+        {!readOnlyPreview && (showSnooze || showRemind) && (
           <div className="flex items-center gap-0.5 pr-1">
             {showSnooze && (
               <SnoozeMenu
@@ -995,11 +1095,19 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const renderThreadsList = () => {
     const noThreads = threadsToRender.length === 0;
+    const hasPreviewRows =
+      currentTab === "inbox" &&
+      previewThreads.length > 0 &&
+      threadsToRender.length === 0;
     const isInboxSentOrTrash =
       currentTab === "inbox" || currentTab === "sent" || currentTab === "trash";
     const isSyncPending = isInboxSentOrTrash && syncEmailsMutation.isPending;
 
-    if (noThreads && (isSyncPending || refreshingAfterSync || isFetching)) {
+    if (
+      noThreads &&
+      (isSyncPending || refreshingAfterSync || isFetching) &&
+      !hasPreviewRows
+    ) {
       if (slowLoad) {
         return (
           <div className="flex h-64 flex-col items-center justify-center gap-4 px-6 text-center">
@@ -1031,6 +1139,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     }
 
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
+      const waitingInboxPreview =
+        currentTab === "inbox" &&
+        threadsToRender.length === 0 &&
+        inboxPreviewFetching;
+      if (waitingInboxPreview) {
+        return <ThreadListSkeleton />;
+      }
       const isRemindersTab = currentTab === "reminders";
       const matchedAccount = accounts?.find((a) => a.id === accountId);
       const currentAccountNeedsReconnection = Boolean(
@@ -1175,6 +1290,21 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
     return (
       <div className="flex flex-col">
+        {isReadOnlyPreview && (
+          <div className="border-b border-[#1f2937] bg-gradient-to-r from-[#0f172a] via-[#111827] to-[#0b1220] px-4 py-3 shadow-[inset_0_1px_0_rgba(148,163,184,0.12)]">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-[#60a5fa] shadow-[0_0_12px_rgba(96,165,250,0.9)]" />
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold tracking-wide text-[#dbeafe]">
+                  Live inbox preview
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-[#bfdbfe]/90">
+                  Showing your latest mail from the provider while we sync into VectorMail. Rows are read only until sync finishes, then you can open threads and use all actions.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {Object.entries(groupedThreads).map(([date, threads]) => (
           <React.Fragment key={date}>
             <div className="sticky top-0 z-10 border-b border-[#e5e7eb] bg-white px-4 py-2 dark:border-[#1a1a23] dark:bg-[#111113]">
@@ -1183,7 +1313,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
               </span>
             </div>
             {threads.map((thread) =>
-              renderThreadItem(thread, thread.id === lastThreadId),
+              renderThreadItem(thread, thread.id === lastThreadId, isReadOnlyPreview),
             )}
           </React.Fragment>
         ))}

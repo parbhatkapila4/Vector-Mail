@@ -62,7 +62,6 @@ import { LabelsList } from "./labels/LabelsList";
 import { NudgesBlock } from "./NudgesBlock";
 import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
 import { useDemoMode } from "@/hooks/use-demo-mode";
-import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 import { useSetAtom } from "jotai";
 import { threadIdAtom } from "@/hooks/use-threads";
 
@@ -208,30 +207,6 @@ export function Mail({ }: MailLayoutProps) {
 
   const accountId = myAccount?.id ?? "";
   const isEnabled = !!accountId;
-  const countAccountId = isDemo ? DEMO_ACCOUNT_ID : (accountId || "placeholder");
-
-  const { data: inboxCount } = api.account.getNumThreads.useQuery(
-    { accountId: countAccountId, tab: "inbox" },
-    { enabled: (isEnabled || isDemo) && (!!accountId || isDemo), refetchOnWindowFocus: false, refetchOnMount: true },
-  );
-
-  const { data: sentCount, isFetched: sentCountFetched } = api.account.getNumThreads.useQuery(
-    { accountId: countAccountId, tab: "sent" },
-    { enabled: (isEnabled || isDemo) && (!!accountId || isDemo), refetchOnWindowFocus: false, refetchOnMount: true },
-  );
-
-  const { data: trashCount, isFetched: trashCountFetched } = api.account.getNumThreads.useQuery(
-    { accountId: countAccountId, tab: "trash" },
-    { enabled: (isEnabled || isDemo) && (!!accountId || isDemo), refetchOnWindowFocus: false, refetchOnMount: true },
-  );
-
-  const utils = api.useUtils();
-  const { data: scheduledSends } = api.account.getScheduledSends.useQuery(
-    { accountId: accountId || "placeholder" },
-    { enabled: isEnabled && !!accountId && accountId.length > 0 },
-  );
-  const scheduledCount = scheduledSends?.length ?? 0;
-
   const setThreadId = useSetAtom(threadIdAtom);
 
   const handleThreadSelect = useCallback((threadId: string) => {
@@ -263,30 +238,10 @@ export function Mail({ }: MailLayoutProps) {
   );
 
   const navItems = [
-    {
-      id: "inbox",
-      icon: Inbox,
-      label: "Inbox",
-      count: inboxCount,
-    },
-    {
-      id: "sent",
-      icon: Send,
-      label: "Sent",
-      count: sentCount,
-    },
-    {
-      id: "scheduled",
-      icon: CalendarClock,
-      label: "Schedule",
-      count: scheduledCount,
-    },
-    {
-      id: "trash",
-      icon: Trash2,
-      label: "Trash",
-      count: trashCount,
-    },
+    { id: "inbox", icon: Inbox, label: "Inbox" },
+    { id: "sent", icon: Send, label: "Sent" },
+    { id: "scheduled", icon: CalendarClock, label: "Schedule" },
+    { id: "trash", icon: Trash2, label: "Trash" },
   ];
 
   if (showConnectCard) {
@@ -567,18 +522,6 @@ export function Mail({ }: MailLayoutProps) {
                 >
                   <item.icon className="h-[18px] w-[18px] shrink-0" />
                   <span className="flex-1 text-left">{item.label}</span>
-                  {(item.count ?? 0) > 0 && (
-                    <span
-                      className={cn(
-                        "min-w-[22px] rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums",
-                        tab === item.id
-                          ? "bg-[#2563eb]/10 text-[#2563eb] dark:bg-[#60a5fa]/15 dark:text-[#60a5fa]"
-                          : "text-[#9ca3af] dark:text-[#71717a]",
-                      )}
-                    >
-                      {item.count}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
@@ -961,7 +904,6 @@ function MobileSidebar({
     id: string;
     icon: React.ElementType;
     label: string;
-    count?: number;
   }>;
   tab: string;
   setTab: (tab: string) => void;
@@ -1019,16 +961,6 @@ function MobileSidebar({
           >
             <item.icon className="h-5 w-5 shrink-0" />
             <span className="flex-1">{item.label}</span>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[12px] font-medium tabular-nums",
-                tab === item.id
-                  ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/25 dark:text-[#8ab4f8]"
-                  : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
-              )}
-            >
-              {item.count ?? 0}
-            </span>
           </button>
         ))}
 

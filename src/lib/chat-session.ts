@@ -10,10 +10,17 @@ export interface StoredEmail {
   body: string;
 }
 
+
+export interface SearchSessionMemory {
+  lastSelectedEmailId?: string;
+  lastAssistantPreview?: string;
+}
+
 interface SessionData {
   emails: StoredEmail[];
   lastSearchQuery?: string;
   timestamp: number;
+  memory?: SearchSessionMemory;
 }
 
 const sessionStore = new Map<string, Map<string, SessionData>>();
@@ -48,10 +55,13 @@ export function storeSearchResults(
     body: (email.body || email.bodySnippet || "").substring(0, 5000),
   }));
 
+  const previous = userSessions.get(accountId);
+
   userSessions.set(accountId, {
     emails: storedEmails,
     lastSearchQuery: searchQuery,
     timestamp: Date.now(),
+    memory: previous?.memory,
   });
 
   cleanupExpiredSessions();
@@ -81,6 +91,39 @@ export function clearSession(userId: string, accountId: string): void {
     userSessions.delete(accountId);
   }
 }
+
+export function touchChatSession(userId: string, accountId: string): void {
+  const userSessions = sessionStore.get(userId);
+  if (!userSessions) return;
+  const session = userSessions.get(accountId);
+  if (!session) return;
+  session.timestamp = Date.now();
+}
+
+export function getSearchSessionMemory(
+  userId: string,
+  accountId: string,
+): SearchSessionMemory | null {
+  const userSessions = sessionStore.get(userId);
+  if (!userSessions) return null;
+  const session = userSessions.get(accountId);
+  if (!session || Date.now() - session.timestamp > SESSION_TTL) return null;
+  return session.memory ?? null;
+}
+
+export function updateSearchSessionMemory(
+  userId: string,
+  accountId: string,
+  patch: Partial<SearchSessionMemory>,
+): void {
+  const userSessions = sessionStore.get(userId);
+  if (!userSessions) return;
+  const session = userSessions.get(accountId);
+  if (!session) return;
+  session.memory = { ...session.memory, ...patch };
+  session.timestamp = Date.now();
+}
+
 
 function cleanupExpiredSessions(): void {
   const now = Date.now();

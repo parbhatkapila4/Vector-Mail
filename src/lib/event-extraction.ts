@@ -54,7 +54,7 @@ JSON response:`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.5-flash-lite",
+      model: "anthropic/claude-3.5-haiku",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 256,
       temperature: 0.2,

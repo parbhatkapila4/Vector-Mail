@@ -102,7 +102,7 @@ ${emailContent}
 Summary:`;
 
     const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.5-flash-lite",
+      model: "anthropic/claude-3.5-haiku",
       messages: [
         {
           role: "user",

@@ -648,7 +648,11 @@ export class Account {
     }
   }
 
-  async getEmailById(emailId: string, timeoutMs?: number): Promise<EmailMessage | null> {
+  async getEmailById(
+    emailId: string,
+    timeoutMs?: number,
+    bodyType: "html" | "text" = "html",
+  ): Promise<EmailMessage | null> {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const response = await aurinkoAxios.get<EmailMessage>(
@@ -657,7 +661,7 @@ export class Account {
             timeout: timeoutMs ?? 30000,
             headers: this.aurinkoHeaders,
             params: {
-              bodyType: "html",
+              bodyType,
             },
           },
         );
@@ -679,6 +683,88 @@ export class Account {
       }
     }
     return null;
+  }
+
+
+  async getInboxPreview(maxResults = 50): Promise<
+    Array<{
+      messageId: string;
+      threadId: string;
+      subject: string;
+      snippet: string;
+      fromName: string;
+      fromAddress: string;
+      sentAt: string;
+      unread: boolean;
+      classifications: EmailMessage["sysClassifications"];
+    }>
+  > {
+    const cap = Math.min(Math.max(maxResults, 1), 50);
+    const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
+    const listResponse = await with401Retry(
+      this.id,
+      () =>
+        aurinkoAxios.get<{
+          messages?: Array<{ id: string }>;
+          records?: Array<{ id: string }>;
+        }>("https://api.aurinko.io/v1/email/messages", {
+          headers: this.aurinkoHeaders,
+          params: {
+            maxResults: cap,
+            bodyType: "text",
+            q: `label:inbox ${newerThanQuery}`,
+          },
+          timeout: 12_000,
+        }),
+      { tryRefresh: () => this.refreshTokenIfPossible() },
+    );
+    const messageIds =
+      listResponse.data.messages?.map((m) => m.id) ??
+      listResponse.data.records?.map((r) => r.id) ??
+      [];
+    if (messageIds.length === 0) return [];
+
+    const PREVIEW_EMAIL_TIMEOUT_MS = 4_500;
+    const BATCH = 25;
+    const out: Array<{
+      messageId: string;
+      threadId: string;
+      subject: string;
+      snippet: string;
+      fromName: string;
+      fromAddress: string;
+      sentAt: string;
+      unread: boolean;
+      classifications: EmailMessage["sysClassifications"];
+    }> = [];
+
+    for (let i = 0; i < messageIds.length; i += BATCH) {
+      const chunk = messageIds.slice(i, i + BATCH);
+      const batchEmails = await Promise.all(
+        chunk.map((id) =>
+          this.getEmailById(id, PREVIEW_EMAIL_TIMEOUT_MS, "text"),
+        ),
+      );
+      for (const e of batchEmails) {
+        if (!e) continue;
+        const labels = Array.isArray(e.sysLabels) ? e.sysLabels : [];
+        out.push({
+          messageId: e.id,
+          threadId: e.threadId || e.id,
+          subject: e.subject?.trim() ? e.subject : "(No subject)",
+          snippet: (e.bodySnippet ?? "").trim().slice(0, 280),
+          fromName: e.from?.name?.trim() || e.from?.address || "Unknown",
+          fromAddress: e.from?.address ?? "",
+          sentAt: e.sentAt || e.receivedAt || e.createdTime || new Date().toISOString(),
+          unread: labels.map((l) => String(l).toLowerCase()).includes("unread"),
+          classifications: Array.isArray(e.sysClassifications)
+            ? e.sysClassifications
+            : [],
+        });
+      }
+    }
+
+    return out;
   }
 
   async syncEmails(

@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --watch",
     "test:ci": "jest --ci --coverage",
+    "test:ai-search-eval": "jest src/__tests__/lib/ai-search-eval.test.ts --ci",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

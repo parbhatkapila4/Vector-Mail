@@ -32,6 +32,8 @@ const DATE_PATTERNS = [
   /(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/i,
   /(\d{1,2})[-\/](\d{1,2})/i,
   /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/i,
+  /(\d{1,2})(?:st|nd|rd|th)?\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)/i,
+  /(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:st|nd|rd|th)?/i,
   /on\s+(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?/i,
   /(?:on|from|dated?|the)\s+(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?/i,
 ];
@@ -142,7 +144,14 @@ export function detectIntent(
   const dateMatch =
     query.match(
       /(?:on|from|dated?|the)\s+(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/i,
-    ) || query.match(/(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/);
+    ) ||
+    query.match(/(\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?)/) ||
+    query.match(
+      /((?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?)/i,
+    ) ||
+    query.match(
+      /((?:\d{1,2})(?:st|nd|rd|th)?\s+(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)(?:,?\s*\d{2,4})?)/i,
+    );
   if (dateMatch && dateMatch[1] && hasStoredResults) {
     return {
       intent: "SUMMARIZE",

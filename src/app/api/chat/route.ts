@@ -2,9 +2,22 @@ import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { env } from "@/env.js";
-import { storeSearchResults, getStoredEmails } from "@/lib/chat-session";
+import {
+  storeSearchResults,
+  getStoredEmails,
+  touchChatSession,
+  getSearchSessionMemory,
+  updateSearchSessionMemory,
+} from "@/lib/chat-session";
+import { tryResolveLastSelectedEmail } from "@/lib/ai-search-memory";
+import { buildSourcesFooter } from "@/lib/ai-search-explainable";
 import { detectIntent } from "@/lib/intent-detection";
-import { selectEmails, formatEmailOptions } from "@/lib/email-selection";
+import {
+  selectEmails,
+  formatEmailOptions,
+  pickMatchesForFollowUp,
+  formatEmailOptionsWithReasons,
+} from "@/lib/email-selection";
 import { generateConversationalSummary } from "@/lib/conversational-summary";
 import { getSummarySourceExcerpts } from "@/lib/summary-explainability";
 import { searchEmailsByVector } from "@/lib/vector-search";
@@ -31,12 +44,155 @@ function removeAllSymbols(text: string): string {
   return text;
 }
 
+function appendExplainableFooter<
+  T extends {
+    subject: string;
+    from: { name: string | null; address: string };
+    sentAt: Date;
+    bodySnippet?: string | null;
+  },
+>(text: string, explainable: boolean, emails: T[]): string {
+  const base = removeAllSymbols(text);
+  if (!explainable || emails.length === 0) return base;
+  const footer = buildSourcesFooter(
+    emails.slice(0, 5).map((e, i) => ({
+      index: i + 1,
+      subject: e.subject || "(No subject)",
+      from: e.from.name || e.from.address,
+      dateLabel: new Date(e.sentAt).toLocaleDateString(),
+      snippet: e.bodySnippet ?? undefined,
+    })),
+  );
+  return base + footer;
+}
+
 interface ChatRequest {
   messages: Array<{
     role: "user" | "assistant";
     content: string;
   }>;
   accountId: string;
+  explainableMode?: boolean;
+  founderDemo?: boolean;
+}
+
+type SearchScopeDecision =
+  | "email_search_or_summary"
+  | "compose_or_send_email"
+  | "out_of_scope";
+
+function isExplicitComposeOrSendRequest(query: string): boolean {
+  const lower = query.toLowerCase();
+  const hasComposeVerb = /\b(write|draft|compose|generate|create|send)\b/.test(lower);
+  const hasEmailContext = /\b(email|mail|message|thread)\b/.test(lower);
+  if (!hasComposeVerb) return false;
+  return hasEmailContext;
+}
+
+async function classifySearchScopeWithLlm(
+  query: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  hasStoredResults: boolean,
+): Promise<SearchScopeDecision | null> {
+  if (!env.OPENROUTER_API_KEY) return null;
+
+  try {
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
+        "X-Title": "VectorMail AI",
+      },
+    });
+
+    const recentMessages = messages.slice(-6).map((m) => ({
+      role: m.role,
+      content: m.content.slice(0, 600),
+    }));
+
+    const prompt = `Classify the user's latest message for an EMAIL SEARCH ASSISTANT.
+
+The assistant is allowed to:
+- find emails
+- filter emails
+- summarize emails
+- answer follow-up questions about previously listed emails
+
+The assistant is NOT allowed to:
+- write/compose/generate emails
+- send emails
+- do unrelated general tasks
+
+Be robust to broken English, slang, mixed language, shorthand, and implicit references like "that failed one on march 17".
+
+Return ONLY JSON:
+{"decision":"email_search_or_summary"|"compose_or_send_email"|"out_of_scope"}
+
+Context:
+- hasStoredResults: ${hasStoredResults ? "true" : "false"}
+- recentMessages: ${JSON.stringify(recentMessages)}
+- latestUserMessage: ${JSON.stringify(query)}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "anthropic/claude-3.5-haiku",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an intent classifier. Return only the requested JSON object.",
+        },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 40,
+      temperature: 0,
+      response_format: { type: "json_object" },
+    });
+
+    const content = completion.choices[0]?.message?.content?.trim() ?? "";
+    const parsed = JSON.parse(content) as { decision?: SearchScopeDecision };
+    if (
+      parsed.decision === "email_search_or_summary" ||
+      parsed.decision === "compose_or_send_email" ||
+      parsed.decision === "out_of_scope"
+    ) {
+      return parsed.decision;
+    }
+    return null;
+  } catch (error) {
+    console.warn("[Chat] Scope classification failed:", error);
+    return null;
+  }
+}
+
+function isContextualEmailFollowUp(
+  query: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+
+  if (messages.length < 2) return false;
+
+  const followUpSignal =
+    /\b(tell me about|what about|that one|this one|the one|that failed|failed one|on march|on april|on may|on june|on july|on august|on september|on october|on november|on december|on \d{1,2}[-\/]\d{1,2}|from \d{1,2}[-\/]\d{1,2})\b/i.test(
+      lowerQuery,
+    );
+
+  if (!followUpSignal) return false;
+
+  const recentAssistantContext = messages
+    .slice(-6)
+    .filter((msg) => msg.role === "assistant")
+    .map((msg) => msg.content.toLowerCase())
+    .join("\n");
+
+  return (
+    recentAssistantContext.includes("failed payments") ||
+    recentAssistantContext.includes("from:") ||
+    recentAssistantContext.includes("subject:") ||
+    recentAssistantContext.includes("would you like a detailed summary") ||
+    recentAssistantContext.includes("found ")
+  );
 }
 
 const recentDays = 365;
@@ -193,6 +349,8 @@ async function chatPostHandler(req: Request) {
     }
 
     const { messages, accountId } = body;
+    const explainableMode = body.explainableMode !== false;
+    const founderDemo = body.founderDemo === true;
 
     if (!accountId || accountId.trim() === "") {
       console.error("[Chat API] Account ID is required");
@@ -229,18 +387,6 @@ async function chatPostHandler(req: Request) {
     }
 
     const userQuery = lastMessage.content;
-
-    if (!isFindOrSummarizeQuery(userQuery)) {
-      const redirectMessage =
-        "I can only help you find and summarize emails. For other tasks like generating emails, answering general questions, or coding help, please use AI Buddy - he'll surely help you with this. I can't do that here.";
-
-      return new Response(redirectMessage, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
-      });
-    }
 
     const account = await db.account.findFirst({
       where: {
@@ -286,6 +432,37 @@ async function chatPostHandler(req: Request) {
 
     const storedEmails = getStoredEmails(userId, accountId);
     const hasStoredResults = storedEmails !== null && storedEmails.length > 0;
+    if (hasStoredResults) {
+      touchChatSession(userId, accountId);
+    }
+    const contextualFollowUp = isContextualEmailFollowUp(userQuery, messages);
+    const heuristicAllowsSearch =
+      isFindOrSummarizeQuery(userQuery) || contextualFollowUp;
+
+    if (!heuristicAllowsSearch || isExplicitComposeOrSendRequest(userQuery)) {
+      const llmDecision = await classifySearchScopeWithLlm(
+        userQuery,
+        messages,
+        hasStoredResults,
+      );
+      const shouldRedirect =
+        llmDecision === "out_of_scope" ||
+        llmDecision === "compose_or_send_email" ||
+        (llmDecision === null && !heuristicAllowsSearch) ||
+        isExplicitComposeOrSendRequest(userQuery);
+
+      if (shouldRedirect) {
+        const redirectMessage =
+          "I can only help you find and summarize emails. For email writing/sending or other tasks, please use AI Buddy.";
+
+        return new Response(redirectMessage, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+      }
+    }
 
     const isNewSearchQuery =
       /^(find|search|show|get|look|fetch|retrieve|display|list|any|all)\s+/i.test(
@@ -332,7 +509,65 @@ async function chatPostHandler(req: Request) {
         userQuery.toLowerCase().includes("what is"));
 
     if (isFollowUpQuery && shouldUseStoredResults && storedEmails) {
-      const matches = selectEmails(storedEmails, extractedData || {});
+      const memory = getSearchSessionMemory(userId, accountId);
+      const fromMemory = tryResolveLastSelectedEmail(
+        userQuery,
+        storedEmails,
+        memory,
+      );
+
+      if (fromMemory) {
+        try {
+          const summary = await generateConversationalSummary(
+            {
+              subject: fromMemory.subject,
+              from: fromMemory.from,
+              date: fromMemory.date,
+              body: fromMemory.body,
+            },
+            "auto",
+            userQuery,
+            { userId, accountId: accountId ?? undefined },
+          );
+          const excerpts = getSummarySourceExcerpts(
+            fromMemory.body ?? "",
+            summary,
+            2,
+          );
+          const basedOn =
+            excerpts.length > 0 ? `\n\nBased on: "${excerpts[0]}"` : "";
+          const rawCore = `${fromMemory.subject}\nFrom: ${fromMemory.from.name || fromMemory.from.address}\nDate: ${new Date(fromMemory.date).toLocaleDateString()}\n\n${summary}${basedOn}`;
+          let response = removeAllSymbols(rawCore);
+          if (explainableMode) {
+            response += buildSourcesFooter([
+              {
+                index: 1,
+                subject: fromMemory.subject || "(No subject)",
+                from: fromMemory.from.name || fromMemory.from.address,
+                dateLabel: new Date(fromMemory.date).toLocaleDateString(),
+                reason: "Last email you asked about in this session",
+                snippet: fromMemory.snippet,
+              },
+            ]);
+          }
+          updateSearchSessionMemory(userId, accountId, {
+            lastSelectedEmailId: fromMemory.id,
+            lastAssistantPreview: response.slice(0, 320),
+          });
+          return new Response(response, {
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Cache-Control": "no-cache",
+            },
+          });
+        } catch {
+
+        }
+      }
+
+      let matches = pickMatchesForFollowUp(
+        selectEmails(storedEmails, extractedData || {}),
+      );
 
       if (matches.length === 0) {
         if (env.OPENROUTER_API_KEY && storedEmails && storedEmails.length > 0) {
@@ -368,7 +603,7 @@ The user is asking about one of these emails. Based on their query, which email 
 Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query. If you can't determine, respond with "0".`;
 
             const completion = await openai.chat.completions.create({
-              model: "google/gemini-2.0-flash-exp:free",
+              model: "anthropic/claude-3.5-haiku",
               messages: [
                 { role: "system", content: smartSystemPrompt },
                 { role: "user", content: userQuery },
@@ -414,7 +649,26 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
                     ? `\n\nBased on: "${excerpts[0]}"`
                     : "";
                 const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}${basedOn}`;
-                const response = removeAllSymbols(rawResponse);
+                let response = removeAllSymbols(rawResponse);
+                if (explainableMode) {
+                  response += buildSourcesFooter([
+                    {
+                      index: 1,
+                      subject: selectedEmail.subject || "(No subject)",
+                      from:
+                        selectedEmail.from.name || selectedEmail.from.address,
+                      dateLabel: new Date(
+                        selectedEmail.date,
+                      ).toLocaleDateString(),
+                      reason: "Matched from your prior search list",
+                      snippet: selectedEmail.snippet,
+                    },
+                  ]);
+                }
+                updateSearchSessionMemory(userId, accountId, {
+                  lastSelectedEmailId: selectedEmail.id,
+                  lastAssistantPreview: response.slice(0, 320),
+                });
                 return new Response(response, {
                   headers: {
                     "Content-Type": "text/plain; charset=utf-8",
@@ -438,8 +692,8 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
       }
 
       if (matches.length > 1) {
-        const options = formatEmailOptions(matches.map((m) => m.email));
-        const response = `I found ${matches.length} emails that might match. Which one do you want?\n\n${options}\n\nYou can say "the first one", "the second one", or describe it more specifically.`;
+        const options = formatEmailOptionsWithReasons(matches);
+        const response = `I'm not fully sure which email you mean. Here are the closest matches:\n\n${options}\n\nReply with "the first one", "the second one", or add more detail (date, sender, or subject).`;
         return new Response(response, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -449,6 +703,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
       }
 
       const selectedEmail = matches[0]?.email;
+      const topReason = matches[0]?.matchReason;
       if (!selectedEmail) {
         return new Response("No email selected", { status: 400 });
       }
@@ -473,7 +728,23 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
         const basedOn =
           excerpts.length > 0 ? `\n\nBased on: "${excerpts[0]}"` : "";
         const rawResponse = `${selectedEmail.subject}\nFrom: ${selectedEmail.from.name || selectedEmail.from.address}\nDate: ${new Date(selectedEmail.date).toLocaleDateString()}\n\n${summary}${basedOn}`;
-        const response = removeAllSymbols(rawResponse);
+        let response = removeAllSymbols(rawResponse);
+        if (explainableMode) {
+          response += buildSourcesFooter([
+            {
+              index: 1,
+              subject: selectedEmail.subject || "(No subject)",
+              from: selectedEmail.from.name || selectedEmail.from.address,
+              dateLabel: new Date(selectedEmail.date).toLocaleDateString(),
+              reason: topReason,
+              snippet: selectedEmail.snippet,
+            },
+          ]);
+        }
+        updateSearchSessionMemory(userId, accountId, {
+          lastSelectedEmailId: selectedEmail.id,
+          lastAssistantPreview: response.slice(0, 320),
+        });
         return new Response(response, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -571,7 +842,7 @@ Return ONLY a JSON object in this exact format:
         let understandingResponse;
         try {
           understandingResponse = await openai.chat.completions.create({
-            model: "anthropic/claude-3.5-sonnet",
+            model: "anthropic/claude-3.5-haiku",
             messages: [
               {
                 role: "system",
@@ -585,9 +856,9 @@ Return ONLY a JSON object in this exact format:
             response_format: { type: "json_object" },
           });
         } catch (claudeError) {
-          console.warn("Claude failed, trying GPT-4o-mini:", claudeError);
+          console.warn("Claude failed, retrying with Claude Sonnet:", claudeError);
           understandingResponse = await openai.chat.completions.create({
-            model: "openai/gpt-4o-mini",
+            model: "anthropic/claude-3.5-haiku",
             messages: [
               {
                 role: "system",
@@ -802,11 +1073,381 @@ Return ONLY a JSON object in this exact format:
       throw searchError;
     }
 
-    let filteredEmails = relevantEmails.filter(
-      (email) => email.similarity >= similarityThreshold,
-    );
+    const lowerUserQuery = userQuery.toLowerCase();
 
-    if (filteredEmails.length > 0 && env.OPENROUTER_API_KEY) {
+    const isDeclinedPaymentsQuery =
+      /\b(declined|failed|insufficient|rejected|unsuccessful|could not process)\b/.test(
+        lowerUserQuery,
+      ) &&
+      /\b(payment|payments|receipt|invoice|invoices|subscription|subscriptions|upi|card|debit|debits|charged|charge|charges|billing|debited)\b/.test(
+        lowerUserQuery,
+      );
+
+    const isHeuristicCategoryQuery =
+      isDeclinedPaymentsQuery ||
+      /\b(urgent|asap|attention|need a reply|need reply|follow up|follow-up|reply|respond|action required|required)\b/.test(
+        lowerUserQuery,
+      ) ||
+      /\b(order|orders|tracking|shipped|delivery|delivered|dispatch)\b/.test(
+        lowerUserQuery,
+      ) ||
+      /\b(flight|travel|trip|hotel|booking|itinerary|pnr|airline|boarding pass)\b/.test(
+        lowerUserQuery,
+      ) ||
+      /\b(meeting|calendar|invite|appointment|rsvp|scheduled|call)\b/.test(
+        lowerUserQuery,
+      );
+
+    if (relevantEmails.length === 0 && isHeuristicCategoryQuery) {
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+
+      const declineTerms = [
+        "declined",
+        "failed",
+        "insufficient",
+        "rejected",
+        "unsuccessful",
+        "could not process",
+        "transaction failed",
+        "debit failed",
+      ];
+
+      const paymentTerms = [
+        "payment",
+        "payments",
+        "receipt",
+        "receipts",
+        "invoice",
+        "invoices",
+        "subscription",
+        "subscriptions",
+        "billing",
+        "upi",
+        "card",
+        "debit",
+        "debited",
+        "charged",
+        "charge",
+        "charges",
+        "transaction",
+      ];
+
+      const attentionTerms = [
+        "urgent",
+        "asap",
+        "action required",
+        "respond",
+        "reply",
+        "follow up",
+        "follow-up",
+        "needs attention",
+        "overdue",
+      ];
+
+      const orderTerms = [
+        "order",
+        "tracking",
+        "shipped",
+        "delivery",
+        "delivered",
+        "dispatch",
+      ];
+
+      const travelTerms = [
+        "flight",
+        "airline",
+        "booking",
+        "itinerary",
+        "pnr",
+        "hotel",
+        "boarding pass",
+        "ticket",
+        "reservation",
+      ];
+
+      const meetingTerms = [
+        "meeting",
+        "calendar",
+        "invite",
+        "invitation",
+        "appointment",
+        "rsvp",
+        "scheduled",
+        "schedule",
+        "call",
+      ];
+
+      let bucketTerms: string[] = [];
+      if (isDeclinedPaymentsQuery) {
+        bucketTerms = [...declineTerms, ...paymentTerms];
+      } else if (/\b(urgent|asap|attention|need a reply|need reply|follow up|follow-up|respond|action required|required)\b/.test(lowerUserQuery)) {
+        bucketTerms = attentionTerms;
+      } else if (/\b(order|orders|tracking|shipped|delivery|delivered|dispatch)\b/.test(lowerUserQuery)) {
+        bucketTerms = orderTerms;
+      } else if (/\b(flight|travel|trip|hotel|booking|itinerary|pnr|airline|boarding pass)\b/.test(lowerUserQuery)) {
+        bucketTerms = travelTerms;
+      } else if (/\b(meeting|calendar|invite|appointment|rsvp|scheduled|call)\b/.test(lowerUserQuery)) {
+        bucketTerms = meetingTerms;
+      } else {
+        if (/\b(payment|receipt|invoice|subscription|upi|card|debit|charged|billing)\b/.test(lowerUserQuery)) {
+          bucketTerms = paymentTerms;
+        }
+      }
+
+      const orConditions: Prisma.EmailWhereInput[] = [];
+      for (const t of bucketTerms) {
+        orConditions.push(
+          { subject: { contains: t, mode: "insensitive" } },
+          { bodySnippet: { contains: t, mode: "insensitive" } },
+          { summary: { contains: t, mode: "insensitive" } },
+        );
+      }
+
+      if (orConditions.length > 0) {
+        const searchResults = await db.email.findMany({
+          where: {
+            thread: { accountId: accountId },
+            sentAt: { gte: since },
+            OR: orConditions,
+          },
+          include: { from: true, to: true },
+          orderBy: { sentAt: "desc" },
+          take: 20,
+        });
+
+        relevantEmails = searchResults.map((email) => ({
+          id: email.id,
+          subject: email.subject,
+          summary: email.summary,
+          body: email.body,
+          bodySnippet: email.bodySnippet,
+          sentAt: email.sentAt,
+          similarity: 0.5,
+          from: email.from,
+          to: email.to,
+        }));
+        storeSearchResults(userId, accountId, relevantEmails, userQuery);
+      }
+    }
+
+    let filteredEmails = relevantEmails.filter((email) => {
+      const minSimilarity = isHeuristicCategoryQuery ? 0 : similarityThreshold;
+      return email.similarity >= minSimilarity;
+    });
+
+    let skipLlmStrictFilter = false;
+
+    const hitsText = (e: (typeof filteredEmails)[number]) =>
+      `${e.subject}\n${e.summary ?? ""}\n${e.bodySnippet ?? ""}\n${e.body ?? ""}`.toLowerCase();
+
+    if (isDeclinedPaymentsQuery && filteredEmails.length > 0) {
+      const declineTerms = [
+        "declined",
+        "failed",
+        "insufficient",
+        "rejected",
+        "unsuccessful",
+        "could not process",
+        "transaction failed",
+        "debit failed",
+      ];
+      const paymentTerms = [
+        "payment",
+        "receipt",
+        "invoice",
+        "subscription",
+        "billing",
+        "upi",
+        "card",
+        "debit",
+        "debited",
+        "charged",
+        "charge",
+        "subscription",
+      ];
+
+      const heurFiltered = filteredEmails.filter((e) => {
+        const t = hitsText(e);
+        const hasDecline = declineTerms.some((term) => t.includes(term));
+        const hasPayment = paymentTerms.some((term) => t.includes(term));
+        return hasDecline && hasPayment;
+      });
+
+      if (heurFiltered.length > 0) {
+        filteredEmails = heurFiltered;
+        skipLlmStrictFilter = true;
+      } else {
+        const declineOnly = filteredEmails.filter((e) => {
+          const t = hitsText(e);
+          return declineTerms.some((term) => t.includes(term));
+        });
+
+        if (declineOnly.length > 0) {
+          filteredEmails = declineOnly;
+          skipLlmStrictFilter = true;
+        }
+      }
+    }
+
+    if (!skipLlmStrictFilter && filteredEmails.length > 0) {
+      const lower = lowerUserQuery;
+
+      const isNeedAttentionQuery =
+        /\b(urgent|asap|attention|need a reply|need reply|needs a reply|need to reply|follow up|follow-up|respond|reply)\b/.test(
+          lower,
+        ) ||
+        /\b(action required|required)\b/.test(lower);
+      const attentionTerms = [
+        "urgent",
+        "asap",
+        "action required",
+        "respond",
+        "reply",
+        "follow up",
+        "follow-up",
+        "needs attention",
+        "overdue",
+      ];
+      const heurAttention = isNeedAttentionQuery
+        ? filteredEmails.filter((e) =>
+          attentionTerms.some((term) => hitsText(e).includes(term)),
+        )
+        : [];
+      if (heurAttention.length > 0) {
+        filteredEmails = heurAttention;
+        skipLlmStrictFilter = true;
+      }
+    }
+
+    if (!skipLlmStrictFilter && filteredEmails.length > 0) {
+      const lower = lowerUserQuery;
+
+      const isOrdersQuery =
+        /\b(order|orders|tracking|shipped|delivery|delivered|dispatch)\b/.test(
+          lower,
+        );
+      const orderTerms = [
+        "order",
+        "tracking",
+        "shipped",
+        "delivery",
+        "delivered",
+        "dispatch",
+        "tracking id",
+        "courier",
+      ];
+      const heurOrders = isOrdersQuery
+        ? filteredEmails.filter((e) =>
+          orderTerms.some((term) => hitsText(e).includes(term)),
+        )
+        : [];
+      if (heurOrders.length > 0) {
+        filteredEmails = heurOrders;
+        skipLlmStrictFilter = true;
+      }
+    }
+
+    if (!skipLlmStrictFilter && filteredEmails.length > 0) {
+      const lower = lowerUserQuery;
+
+      const isTravelQuery =
+        /\b(flight|travel|trip|hotel|booking|itinerary|pnr|airline|boarding pass)\b/.test(
+          lower,
+        );
+      const travelTerms = [
+        "flight",
+        "airline",
+        "booking",
+        "itinerary",
+        "pnr",
+        "hotel",
+        "boarding pass",
+        "ticket",
+        "reservation",
+        "check-in",
+      ];
+      const heurTravel = isTravelQuery
+        ? filteredEmails.filter((e) =>
+          travelTerms.some((term) => hitsText(e).includes(term)),
+        )
+        : [];
+      if (heurTravel.length > 0) {
+        filteredEmails = heurTravel;
+        skipLlmStrictFilter = true;
+      }
+    }
+
+    if (!skipLlmStrictFilter && filteredEmails.length > 0) {
+      const lower = lowerUserQuery;
+
+      const isMeetingsQuery =
+        /\b(meeting|meetings|calendar|invite|invitation|appointment|rsvp|scheduled|schedule|call)\b/.test(
+          lower,
+        );
+      const meetingTerms = [
+        "meeting",
+        "calendar",
+        "invite",
+        "invitation",
+        "appointment",
+        "rsvp",
+        "scheduled",
+        "schedule",
+        "call",
+        "rescheduled",
+      ];
+      const heurMeetings = isMeetingsQuery
+        ? filteredEmails.filter((e) =>
+          meetingTerms.some((term) => hitsText(e).includes(term)),
+        )
+        : [];
+      if (heurMeetings.length > 0) {
+        filteredEmails = heurMeetings;
+        skipLlmStrictFilter = true;
+      }
+    }
+
+    if (!skipLlmStrictFilter && filteredEmails.length > 0) {
+      const lower = lowerUserQuery;
+
+      const isPaymentsQuery =
+        /\b(payment|payments|receipt|receipts|invoice|invoices|subscription|subscriptions|upi|card|debit|debited|charged|charge|billing)\b/.test(
+          lower,
+        );
+      const paymentTerms = [
+        "payment",
+        "receipt",
+        "invoice",
+        "subscription",
+        "subscriptions",
+        "billing",
+        "upi",
+        "card",
+        "debit",
+        "debited",
+        "charged",
+        "charge",
+        "transaction",
+      ];
+      const heurPayments = isPaymentsQuery
+        ? filteredEmails.filter((e) =>
+          paymentTerms.some((term) => hitsText(e).includes(term)),
+        )
+        : [];
+      if (heurPayments.length > 0) {
+        filteredEmails = heurPayments;
+        skipLlmStrictFilter = true;
+      }
+    }
+
+    const shouldRunLlmStrictFilter =
+      !isHeuristicCategoryQuery &&
+      !skipLlmStrictFilter &&
+      filteredEmails.length > 0 &&
+      env.OPENROUTER_API_KEY;
+
+    if (shouldRunLlmStrictFilter) {
       try {
         const openai = new OpenAI({
           baseURL: "https://openrouter.ai/api/v1",
@@ -845,7 +1486,7 @@ Return format: Just numbers separated by commas, like: 1,3,5,7
 If NONE are relevant, return: 0`;
 
         const filterResponse = await openai.chat.completions.create({
-          model: "anthropic/claude-3.5-sonnet",
+          model: "anthropic/claude-3.5-haiku",
           messages: [
             {
               role: "system",
@@ -937,6 +1578,71 @@ If NONE are relevant, return: 0`;
       });
     }
 
+    if (isHeuristicCategoryQuery && filteredEmails.length > 0) {
+      const top = filteredEmails[0]!;
+      const bodyForSummary = (top.body ?? top.bodySnippet ?? "").toString();
+
+      const summary = await generateConversationalSummary(
+        {
+          subject: top.subject,
+          from: { name: top.from.name ?? null, address: top.from.address },
+          date: top.sentAt,
+          body: bodyForSummary,
+        },
+        "short",
+        undefined,
+        { userId, accountId: accountId ?? undefined },
+      );
+
+      const excerpts = getSummarySourceExcerpts(bodyForSummary, summary, 1);
+      const basedOn =
+        excerpts.length > 0 ? `\n\nBased on: "${excerpts[0]}"` : "";
+
+      const rawCore = `${top.subject}\nFrom: ${top.from.name || top.from.address}\nDate: ${new Date(top.sentAt).toLocaleDateString()}\n\n${summary}${basedOn}`;
+      let response = removeAllSymbols(rawCore);
+
+      if (explainableMode) {
+        response += buildSourcesFooter([
+          {
+            index: 1,
+            subject: top.subject || "(No subject)",
+            from: top.from.name || top.from.address,
+            dateLabel: new Date(top.sentAt).toLocaleDateString(),
+            reason: "Top match for your inbox-intelligence query",
+            snippet: top.bodySnippet ?? undefined,
+          },
+        ]);
+      }
+
+      updateSearchSessionMemory(userId, accountId, {
+        lastSelectedEmailId: top.id,
+        lastAssistantPreview: response.slice(0, 320),
+      });
+
+      return new Response(response, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+        },
+      });
+    }
+
+    const safetyRails = `
+QUALITY AND SAFETY (MANDATORY):
+- Only state facts that appear in the email previews or summaries below. Do not invent amounts, dates, senders, or outcomes.
+- If the user asks for detail that is not in the provided excerpts, say you only have the preview and suggest they open the thread in the inbox.
+- If several emails could match, briefly list the ambiguity and ask which one they mean.
+- Never offer to compose, draft, or send email in this assistant; tell them to use AI Buddy for that.
+`;
+
+    const founderDemoBlock = founderDemo
+      ? `
+FOUNDER DEMO MODE:
+- Be concise and executive: lead with the answer, then 1–2 supporting bullets from the emails.
+- Sound confident only when the evidence is in the previews; otherwise hedge clearly.
+`
+      : "";
+
     const systemPrompt = `You are an email assistant that ONLY helps users find and summarize emails. Your capabilities are LIMITED to:
 
 1. Finding Emails: Search and find emails by subject, sender, content, date, or keywords
@@ -1004,10 +1710,12 @@ Answer the user's request based on these emails. Be conversational, helpful, and
 
 IMPORTANT: If none of the emails in the list are actually relevant to the user's query, respond with: "No mails found regarding your query. I'm Sorry!" DO NOT list emails that are not relevant.
 
-If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in a friendly, brief way and remind them you can help find and summarize emails.`;
+If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in a friendly, brief way and remind them you can help find and summarize emails.
+${explainableMode ? safetyRails : ""}
+${founderDemoBlock}`;
 
     if (!env.OPENROUTER_API_KEY) {
-      const resp =
+      let resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
             .slice(0, 5)
@@ -1017,6 +1725,9 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
             )
             .join("\n\n")}`
           : "No emails found for that query.";
+      if (explainableMode && filteredEmails.length > 0) {
+        resp = appendExplainableFooter(resp, true, filteredEmails);
+      }
 
       return new Response(resp, {
         headers: {
@@ -1037,7 +1748,7 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       });
 
       const stream = await openai.chat.completions.create({
-        model: "google/gemini-2.0-flash-exp:free",
+        model: "anthropic/claude-3.5-haiku",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         max_tokens: 1000,
         temperature: 0.7,
@@ -1047,6 +1758,8 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       const encoder = new TextEncoder();
       let accumulatedRaw = "";
       let accumulatedProcessed = "";
+      const explainable = explainableMode;
+      const footerEmails = filteredEmails;
       let streamUsage: { prompt_tokens: number; completion_tokens: number } = {
         prompt_tokens: 0,
         completion_tokens: 0,
@@ -1079,13 +1792,23 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
             console.error("Streaming error:", error);
             controller.enqueue(encoder.encode("\n\nError streaming response"));
           } finally {
+            if (explainable && footerEmails.length > 0) {
+              const tail = appendExplainableFooter(
+                "",
+                true,
+                footerEmails,
+              ).replace(/^\s+/, "");
+              if (tail) {
+                controller.enqueue(encoder.encode(tail));
+              }
+            }
             recordUsage({
               userId,
               accountId: accountId ?? undefined,
               operation: "chat",
               inputTokens: streamUsage.prompt_tokens,
               outputTokens: streamUsage.completion_tokens,
-              model: "google/gemini-2.0-flash-exp:free",
+              model: "anthropic/claude-3.5-haiku",
             });
             controller.close();
           }
@@ -1100,7 +1823,7 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
       });
     } catch (openaiError) {
       console.error("OpenRouter error:", openaiError);
-      const resp =
+      let resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
             .slice(0, 5)
@@ -1110,6 +1833,9 @@ If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in 
             )
             .join("\n\n")}`
           : "No emails found.";
+      if (explainableMode && filteredEmails.length > 0) {
+        resp = appendExplainableFooter(resp, true, filteredEmails);
+      }
 
       return new Response(resp, {
         headers: {

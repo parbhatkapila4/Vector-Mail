@@ -16,17 +16,16 @@ export async function enqueueEmailAnalysisJobs(
   if (emailIds.length === 0) return;
   if (!canSendToInngest()) return;
   try {
-    if (emailIds.length === 1) {
-      await inngest.send({
-        name: EMAIL_ANALYZE_EVENT,
-        data: { emailId: emailIds[0] },
-      });
-    } else {
-      await inngest.send({
-        name: EMAIL_ANALYZE_EVENT,
-        data: { emailIds },
-      });
-    }
+ 
+    await Promise.all(
+      emailIds.map((emailId) =>
+        inngest.send({
+          name: EMAIL_ANALYZE_EVENT,
+          data: { emailId },
+          id: `email-analyze-${emailId}`,
+        }),
+      ),
+    );
   } catch (err) {
     console.error("[enqueueEmailAnalysisJobs]", err);
   }

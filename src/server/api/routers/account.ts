@@ -82,6 +82,107 @@ export const accountRouter = createTRPCRouter({
     });
   }),
 
+  
+  getInboxIntelligenceCards: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return {
+          cards: [
+            {
+              id: "payments",
+              title: "Payments & receipts",
+              count: 4,
+              suggestedQuery: "Show receipts and payments",
+            },
+            {
+              id: "travel",
+              title: "Travel & flights",
+              count: 2,
+              suggestedQuery: "Find my flight bookings",
+            },
+            {
+              id: "orders",
+              title: "Orders & delivery",
+              count: 3,
+              suggestedQuery: "Show me emails about orders",
+            },
+          ],
+        };
+      }
+      try {
+        await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      } catch {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+
+      const clusterDefs = [
+        {
+          id: "payments",
+          title: "Payments & receipts",
+          terms: ["payment", "receipt", "invoice", "upi", "debited", "credited", "transaction"],
+          suggestedQuery: "Show receipts and payments",
+        },
+        {
+          id: "travel",
+          title: "Travel & flights",
+          terms: ["flight", "airline", "booking", "itinerary", "pnr", "hotel"],
+          suggestedQuery: "Find my flight bookings",
+        },
+        {
+          id: "orders",
+          title: "Orders & delivery",
+          terms: ["order", "shipped", "delivery", "tracking", "dispatch"],
+          suggestedQuery: "Show me emails about orders",
+        },
+        {
+          id: "failed",
+          title: "Failed / declined",
+          terms: ["declined", "failed", "unsuccessful", "could not process", "insufficient"],
+          suggestedQuery: "Show failed or declined payments from my emails",
+        },
+      ] as const;
+
+      const cards: Array<{
+        id: string;
+        title: string;
+        count: number;
+        suggestedQuery: string;
+      }> = [];
+
+      for (const c of clusterDefs) {
+        const orConditions: Prisma.EmailWhereInput[] = [];
+        for (const t of c.terms) {
+          orConditions.push(
+            { subject: { contains: t, mode: "insensitive" } },
+            { bodySnippet: { contains: t, mode: "insensitive" } },
+          );
+        }
+        const count = await withDbRetry(() =>
+          ctx.db.email.count({
+            where: {
+              thread: { accountId: input.accountId },
+              sentAt: { gte: since },
+              OR: orConditions,
+            },
+          }),
+        );
+        if (count > 0) {
+          cards.push({
+            id: c.id,
+            title: c.title,
+            count,
+            suggestedQuery: c.suggestedQuery,
+          });
+        }
+      }
+
+      return { cards };
+    }),
+
   getMyAccount: protectedProcedure
     .input(z.object({ accountId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
@@ -1249,6 +1350,44 @@ export const accountRouter = createTRPCRouter({
       const emailAccount = new Account(account.id, account.token);
       const result = await emailAccount.syncFirstBatchQuick();
       return { count: result.count };
+    }),
+
+  
+  getInboxPreview: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        limit: z.number().min(1).max(50).optional().default(50),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return { items: [] };
+      }
+      if (!ctx.auth.userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "You must be logged in",
+        });
+      }
+      let account: AccountAccess;
+      try {
+        account = await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      } catch {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Account not found or you don't have access to it",
+        });
+      }
+      if (!account.token?.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Account token is missing. Please reconnect your account.",
+        });
+      }
+      const emailAccount = new Account(account.id, account.token);
+      const items = await emailAccount.getInboxPreview(input.limit);
+      return { items };
     }),
 
   syncEmails: protectedProcedure

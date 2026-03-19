@@ -10,6 +10,8 @@ import { api } from "@/trpc/react";
 import { fetchWithAuthRetry } from "@/lib/fetch-with-retry";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+import { Switch } from "@/components/ui/switch";
+import { InboxIntelligenceCards } from "@/components/mail/InboxIntelligenceCards";
 
 interface ChatMessage {
   id: string;
@@ -38,6 +40,31 @@ const suggestedQueries = [
     icon: "📅",
   },
   { label: "Payments", query: "Show receipts and payments", icon: "💰" },
+] as const;
+
+
+const founderDemoQueries = [
+  {
+    label: "Payment activity",
+    query:
+      "Summarize my recent payment, receipt, and UPI emails in short bullets",
+    icon: "💳",
+  },
+  {
+    label: "What needs attention",
+    query: "What emails look urgent or need a reply based on my recent mail?",
+    icon: "⚡",
+  },
+  {
+    label: "Failed charges",
+    query: "Show failed or declined payments and subscriptions from my emails",
+    icon: "⛔",
+  },
+  {
+    label: "Travel this month",
+    query: "Find flight, hotel, or travel booking emails from the last few weeks",
+    icon: "🧳",
+  },
 ] as const;
 
 const DEMO_CHAT_MESSAGES: ChatMessage[] = [
@@ -89,11 +116,36 @@ export default function EmailSearchAssistant({
 }: EmailSearchProps) {
   const isDemo = useDemoMode();
   const [accountId] = useLocalStorage("accountId", "");
+  const [explainableMode, setExplainableMode] = useLocalStorage(
+    "aiSearchExplainable",
+    true,
+  );
+  const [founderDemo, setFounderDemo] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const demoSeededRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (
+        params.get("founderDemo") === "1" ||
+        params.get("founderDemo") === "true"
+      ) {
+        localStorage.setItem("vectormail_founder_demo", "1");
+        setFounderDemo(true);
+        return;
+      }
+      if (localStorage.getItem("vectormail_founder_demo") === "1") {
+        setFounderDemo(true);
+      }
+    } catch {
+      
+    }
+  }, []);
 
   useEffect(() => {
     if (resetTrigger === 0) return;
@@ -211,6 +263,8 @@ export default function EmailSearchAssistant({
           body: JSON.stringify({
             messages: [...messages, newMessage],
             accountId: validAccountId,
+            explainableMode,
+            founderDemo,
           }),
           signal: controller.signal,
         });
@@ -328,7 +382,7 @@ export default function EmailSearchAssistant({
         setIsLoading(false);
       }
     },
-    [messages, validAccountId, showDemoUI],
+    [messages, validAccountId, showDemoUI, explainableMode, founderDemo],
   );
 
   const handleSubmit = useCallback(
@@ -420,6 +474,28 @@ export default function EmailSearchAssistant({
 
   return (
     <div className="flex h-full flex-col">
+      {!showDemoUI && hasValidAccount && (
+        <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2">
+          <span className="text-[11px] text-zinc-500">
+            Show grounded sources
+          </span>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={explainableMode}
+              onCheckedChange={(v) => setExplainableMode(v)}
+              aria-label="Toggle explainable sources footer"
+            />
+          </div>
+        </div>
+      )}
+      {hasValidAccount && (
+        <InboxIntelligenceCards
+          accountId={validAccountId}
+          onRunQuery={(q) => {
+            void sendMessage(q);
+          }}
+        />
+      )}
       <div className="flex flex-1 flex-col overflow-hidden">
         {messages.length > 0 ? (
           <div
@@ -502,6 +578,27 @@ export default function EmailSearchAssistant({
                   </button>
                 ))}
               </div>
+
+              {founderDemo && !showDemoUI && (
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400/80">
+                    Founder demo flows
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {founderDemoQueries.map(({ label, query, icon }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => void sendMessage(query)}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2.5 text-xs font-medium text-zinc-200 transition-all hover:border-amber-400/45 hover:bg-amber-400/10"
+                      >
+                        <span>{icon}</span>
+                        <span className="text-left leading-tight">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {!showDemoUI && (
                 <button

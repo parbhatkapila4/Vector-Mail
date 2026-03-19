@@ -110,6 +110,24 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
 
 ---
 
+## AI Search (mail assistant)
+
+Natural-language **find + summarize** over the connected inbox (drafting/sending stays in **AI Buddy**).
+
+| Feature | Behavior |
+|--------|-----------|
+| **Explainable mode** (default on) | Deterministic **Sources** footer after each answer: subject, sender, date, preview snippet. Toggle in the AI Search panel (persisted as `aiSearchExplainable` in localStorage). |
+| **Session memory** | Server session stores `lastSelectedEmailId` after a focused summary so follow-ups like “that one” / “same email” resolve when possible. |
+| **Ambiguity** | If top matches tie on score, the API asks the user to choose and lists **why** each row matched. |
+| **Quality rails** | Model instructions: no invented amounts/dates; if detail is not in previews, say so; never offer to compose/send here. |
+| **Founder demo** | `?founderDemo=1` on the mail URL (persists `vectormail_founder_demo`): curated query chips + tighter “exec-style” answer shaping in the system prompt. |
+| **Inbox intelligence cards** | `account.getInboxIntelligenceCards` — 90‑day keyword buckets (payments, travel, orders, failed/declined); tapping a card runs a prefilled AI Search query. |
+| **Eval harness** | `src/__tests__/lib/ai-search-eval.test.ts` — no live LLM; checks intent detection + selection/disambiguation. Run: `npx jest src/__tests__/lib/ai-search-eval.test.ts --ci` |
+
+**HTTP:** `POST /api/chat` with `{ messages, accountId, explainableMode?, founderDemo? }` — streams `text/plain`; append `explainableMode: false` to hide the sources block.
+
+---
+
 ## Quick Start
 
 1. **Clone and install**
@@ -396,7 +414,7 @@ All variables the app reads are listed below. Required vs optional is for a mini
 | `UPSTASH_REDIS_REST_URL`            | No       | Upstash Redis REST URL. Alternative to `REDIS_URL`; preferred with Upstash.                                                                                                                                                                                                                                       |
 | `UPSTASH_REDIS_REST_TOKEN`          | No       | Upstash Redis REST token. Use with `UPSTASH_REDIS_REST_URL`.                                                                                                                                                                                                                                                      |
 | **Queue (Inngest)**                 |          |                                                                                                                                                                                                                                                                                                                   |
-| `INNGEST_EVENT_KEY`                 | No       | Inngest event key. **Strongly recommended on Vercel Hobby:** inbox sync runs in the background via Inngest (multi-step, avoids 10s function limit). Also used for scheduled sends and embedding/analysis. Without it, inbox sync falls back to a single serverless call (may time out on large mailboxes).        |
+| `INNGEST_EVENT_KEY`                 | No       | Inngest event key. **Strongly recommended on Vercel Hobby:** inbox sync runs in the background via Inngest (multi-step, avoids 10s function limit). Also used for scheduled sends and embedding/analysis. Without it, inbox sync falls back to a single serverless call (may time out on large mailboxes). While the DB inbox is empty, `/mail` can show a **read-only live preview** (up to 50 messages) from the provider until sync catches up. |
 | `INNGEST_SIGNING_KEY`               | No       | Inngest signing key for production; required for Inngest Cloud to invoke your app.                                                                                                                                                                                                                                |
 | **AI**                              |          |                                                                                                                                                                                                                                                                                                                   |
 | `OPENROUTER_API_KEY`                | No       | OpenRouter API key for chat, compose, and summaries. Omit to disable those features; search falls back to text.                                                                                                                                                                                                   |
@@ -865,6 +883,7 @@ This spins up PostgreSQL with pgvector and the VectorMail application with auto-
 | `npm run typecheck` | Run TypeScript type checking            |
 | `npm run test`      | Run unit tests (watch mode)             |
 | `npm run test:ci`   | Run tests with coverage                 |
+| `npm run test:ai-search-eval` | Deterministic AI Search intent/selection checks |
 | `npm run test:e2e`  | Run Playwright E2E tests                |
 | `npm run db:studio` | Open Prisma Studio                      |
 

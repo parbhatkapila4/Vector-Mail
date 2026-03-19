@@ -217,7 +217,7 @@ ${conversationContext}`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-3.5-haiku",
       messages: [
         {
           role: "system",
@@ -1080,7 +1080,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
           ];
         })();
 
-      let model = "anthropic/claude-3.5-sonnet";
+      let model = "anthropic/claude-3.5-haiku";
 
       try {
         completion = await openai.chat.completions.create({
@@ -1092,11 +1092,11 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
         });
       } catch (primaryError) {
         console.warn(
-          "Primary model (Claude 3.5 Sonnet) failed, trying GPT-4o-mini:",
+          "Primary model (Claude 3.5 Sonnet) failed, retrying with Claude Sonnet:",
           primaryError,
         );
         try {
-          model = "openai/gpt-4o-mini";
+          model = "anthropic/claude-3.5-haiku";
           completion = await openai.chat.completions.create({
             model: model,
             messages: completionMessages,
@@ -1106,10 +1106,10 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
           });
         } catch (secondaryError) {
           console.warn(
-            "Secondary model failed, trying Gemini:",
+            "Secondary model failed, final retry with Claude Sonnet:",
             secondaryError,
           );
-          model = "google/gemini-2.5-flash";
+          model = "anthropic/claude-3.5-haiku";
           completion = await openai.chat.completions.create({
             model: model,
             messages: completionMessages,
