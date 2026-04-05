@@ -1,19 +1,11 @@
 "use client";
 
-import React from "react";
-import dynamic from "next/dynamic";
+import React, { Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import { Mail } from "@/components/mail/Mail";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const Mail = dynamic(() => import("@/components/mail/Mail"), {
-  ssr: false,
-  loading: () => (
-    <div className="relative flex min-h-dvh h-dvh w-full items-center justify-center bg-white dark:bg-[#09090b]">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#3b82f6] dark:border-[#1a1a23] dark:border-t-[#60a5fa]" />
-    </div>
-  ),
-});
-
-function MailPage() {
+function MailPageContent() {
   const isMobile = useIsMobile();
 
   return (
@@ -27,4 +19,16 @@ function MailPage() {
   );
 }
 
-export default MailPage;
+export default function MailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="relative flex min-h-dvh h-dvh w-full items-center justify-center overflow-hidden bg-white dark:bg-[#09090b]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <MailPageContent />
+    </Suspense>
+  );
+}

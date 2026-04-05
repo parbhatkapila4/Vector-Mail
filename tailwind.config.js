@@ -81,11 +81,16 @@ export default {
           "50%": { backgroundPosition: "100% 50%" },
           "100%": { backgroundPosition: "0% 50%" },
         },
+        shimmer: {
+          "0%, 100%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(250%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         aurora: "aurora 20s ease-in-out infinite",
+        shimmer: "shimmer 2s ease-in-out infinite",
       },
     },
   },

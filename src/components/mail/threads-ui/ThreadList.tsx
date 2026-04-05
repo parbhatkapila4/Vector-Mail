@@ -194,8 +194,8 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery(undefined, {
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: true,
+      staleTime: 90 * 1000,
     });
 
   const syncCancelledRef = useRef(false);
@@ -230,6 +230,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     }),
     [accountId, currentTab, important, unread, selectedLabelId],
   );
+
+  const softThreadListRefresh = useCallback(async () => {
+    void utils.account.getNumThreads.invalidate();
+    void utils.account.getUnifiedThreads.invalidate();
+    await refetch();
+  }, [utils, refetch]);
 
   const forceThreadListRefresh = useCallback(async () => {
     utils.account.getThreads.invalidate();
@@ -276,9 +282,31 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         void utils.account.getAccounts.invalidate();
         setRefreshingAfterSync(true);
         for (let i = 1; i <= 40; i++) {
-          setTimeout(() => void forceThreadListRefresh(), i * 2500);
+          setTimeout(() => void softThreadListRefresh(), i * 2500);
         }
         setTimeout(() => setRefreshingAfterSync(false), 100_000);
+        return;
+      }
+
+      const didFullSync = "syncAllFolders" in data && data.syncAllFolders === true;
+      const hasMore = !didFullSync && "hasMore" in data && data.hasMore;
+      const continueToken = "continueToken" in data ? data.continueToken : undefined;
+      const willContinueSync =
+        data.success &&
+        hasMore &&
+        continueToken &&
+        accountId?.trim() &&
+        accountId !== UNIFIED_INBOX_ACCOUNT_ID;
+
+      if (willContinueSync) {
+        void utils.account.getAccounts.invalidate();
+        void softThreadListRefresh();
+        const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
+        syncEmailsMutation.mutate({
+          accountId: accountId.trim(),
+          folder: folder as "inbox" | "sent" | "trash",
+          continueToken,
+        });
         return;
       }
 
@@ -289,19 +317,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         setRefreshingAfterSync(false);
       }, 400);
       setTimeout(() => void forceThreadListRefresh(), 1200);
-
-      const didFullSync = "syncAllFolders" in data && data.syncAllFolders === true;
-      const hasMore = !didFullSync && "hasMore" in data && data.hasMore;
-      const continueToken = "continueToken" in data ? data.continueToken : undefined;
-      if (data.success && hasMore && continueToken && accountId?.trim() && accountId !== UNIFIED_INBOX_ACCOUNT_ID) {
-        const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
-        syncEmailsMutation.mutate({
-          accountId: accountId.trim(),
-          folder: folder as "inbox" | "sent" | "trash",
-          continueToken,
-        });
-        return;
-      }
 
       if (data.success) {
         toast.success("Sync complete", {
@@ -374,30 +389,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
       void forceThreadListRefresh();
     },
-    onSettled: () => {
-      void forceThreadListRefresh();
-    },
   });
 
-  const isWaitingForThreads =
-    (threads?.length ?? 0) === 0 && (syncEmailsMutation.isPending || refreshingAfterSync || isFetching);
-  useEffect(() => {
-    if (!isWaitingForThreads) {
-      setSlowLoad(false);
-      if (slowLoadTimerRef.current) {
-        clearTimeout(slowLoadTimerRef.current);
-        slowLoadTimerRef.current = null;
-      }
-      return;
-    }
-    slowLoadTimerRef.current = setTimeout(() => {
-      setSlowLoad(true);
-      slowLoadTimerRef.current = null;
-    }, 12_000);
-    return () => {
-      if (slowLoadTimerRef.current) clearTimeout(slowLoadTimerRef.current);
-    };
-  }, [isWaitingForThreads]);
+  const syncEmailsPendingRef = useRef(false);
+  syncEmailsPendingRef.current = syncEmailsMutation.isPending;
 
   const invalidateAndClearSelection = useCallback(async () => {
     await utils.account.getThreads.invalidate();
@@ -609,6 +604,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     backgroundSyncTriggeredRef.current = true;
     const aid = accountId.trim();
     const t = setTimeout(() => {
+      if (syncEmailsPendingRef.current) return;
       syncEmailsMutation.mutate({
         accountId: aid,
         forceFullSync: false,
@@ -636,7 +632,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     const interval = setInterval(() => {
       count += 1;
       if (count > MAX_REFRESHES_WHILE_SYNC) return;
-      void forceThreadListRefresh();
+      void softThreadListRefresh();
     }, 800);
     return () => clearInterval(interval);
   }, [syncEmailsMutation.isPending, accountId, currentTab, forceThreadListRefresh]);
@@ -689,6 +685,51 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         retry: 1,
       },
     );
+
+  const previewAuthFailed = Boolean(inboxPreviewPayload?.needsReconnection);
+  const isWaitingForThreads =
+    (threads?.length ?? 0) === 0 &&
+    !previewAuthFailed &&
+    (syncEmailsMutation.isPending || refreshingAfterSync || isFetching);
+  useEffect(() => {
+    if (!isWaitingForThreads) {
+      setSlowLoad(false);
+      if (slowLoadTimerRef.current) {
+        clearTimeout(slowLoadTimerRef.current);
+        slowLoadTimerRef.current = null;
+      }
+      return;
+    }
+    slowLoadTimerRef.current = setTimeout(() => {
+      setSlowLoad(true);
+      slowLoadTimerRef.current = null;
+    }, 12_000);
+    return () => {
+      if (slowLoadTimerRef.current) clearTimeout(slowLoadTimerRef.current);
+    };
+  }, [isWaitingForThreads]);
+
+  const inboxPreviewReconnectToastRef = useRef(false);
+  useEffect(() => {
+    if (!inboxPreviewPayload?.needsReconnection) {
+      inboxPreviewReconnectToastRef.current = false;
+      return;
+    }
+    void utils.account.getAccounts.invalidate();
+    if (inboxPreviewReconnectToastRef.current) return;
+    inboxPreviewReconnectToastRef.current = true;
+    toast.error("Reconnect your account", {
+      description:
+        "Your email connection expired and couldn’t be refreshed. Click Reconnect to sign in again.",
+      duration: 10000,
+      action: {
+        label: "Reconnect",
+        onClick: () => {
+          window.location.assign("/api/connect/google");
+        },
+      },
+    });
+  }, [inboxPreviewPayload?.needsReconnection, utils.account.getAccounts]);
 
   const previewThreads = useMemo((): Thread[] => {
     const items = inboxPreviewPayload?.items ?? [];
@@ -1142,7 +1183,8 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       const waitingInboxPreview =
         currentTab === "inbox" &&
         threadsToRender.length === 0 &&
-        inboxPreviewFetching;
+        inboxPreviewFetching &&
+        !inboxPreviewPayload?.needsReconnection;
       if (waitingInboxPreview) {
         return <ThreadListSkeleton />;
       }
@@ -1150,11 +1192,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       const matchedAccount = accounts?.find((a) => a.id === accountId);
       const currentAccountNeedsReconnection = Boolean(
         isInboxSentOrTrash &&
-        accountId &&
-        accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
-        matchedAccount &&
-        "needsReconnection" in matchedAccount &&
-        matchedAccount.needsReconnection,
+          accountId &&
+          accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+          (inboxPreviewPayload?.needsReconnection === true ||
+            (matchedAccount &&
+              "needsReconnection" in matchedAccount &&
+              matchedAccount.needsReconnection)),
       );
       if (currentAccountNeedsReconnection) {
         return (

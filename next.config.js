@@ -1,4 +1,8 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import "./src/env.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const config = {
   output: "standalone",
@@ -53,6 +57,8 @@ const config = {
         https://*.clerk.accounts.dev
         https://clerk.vectormail.space
         https://*.vectormail.space
+        https://clerk-telemetry.com
+        https://*.clerk-telemetry.com
         https://hcaptcha.com
         https://*.hcaptcha.com
         https://*.hcaptcha.net

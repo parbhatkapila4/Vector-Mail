@@ -3,7 +3,7 @@
 import { useRef, useCallback, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 
 function useAutoResizeTextarea(minHeight: number, maxHeight: number) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -17,13 +17,9 @@ function useAutoResizeTextarea(minHeight: number, maxHeight: number) {
         return;
       }
       textarea.style.height = `${minHeight}px`;
-      const newHeight = Math.max(
-        minHeight,
-        Math.min(textarea.scrollHeight, maxHeight)
-      );
-      textarea.style.height = `${newHeight}px`;
+      textarea.style.height = `${Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight))}px`;
     },
-    [minHeight, maxHeight]
+    [minHeight, maxHeight],
   );
 
   useEffect(() => {
@@ -34,7 +30,10 @@ function useAutoResizeTextarea(minHeight: number, maxHeight: number) {
   return { textareaRef, adjustHeight };
 }
 
-function useResetHeightWhenEmpty(value: string, adjustHeight: (reset?: boolean) => void) {
+function useResetHeightWhenEmpty(
+  value: string,
+  adjustHeight: (reset?: boolean) => void,
+) {
   useEffect(() => {
     if (value === "") adjustHeight(true);
   }, [value, adjustHeight]);
@@ -54,10 +53,10 @@ export function BuddyChatInput({
   onChange,
   onSubmit,
   isLoading = false,
-  placeholder = "Describe the email you want to write...",
+  placeholder = "Reply…",
   disabled = false,
 }: BuddyChatInputProps) {
-  const { textareaRef, adjustHeight } = useAutoResizeTextarea(60, 200);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea(48, 160);
   useResetHeightWhenEmpty(value, adjustHeight);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -70,52 +69,48 @@ export function BuddyChatInput({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (value.trim() && !isLoading) onSubmit();
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="w-full">
-      <div className="relative rounded-xl border-x border-b border-white/20 bg-black/30 backdrop-blur-md">
-        <div className="overflow-y-auto">
-          <Textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => {
-              onChange(e.target.value);
-              adjustHeight();
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={disabled}
-            className={cn(
-              "w-full px-4 py-3 resize-none bg-transparent border-none",
-              "text-white text-sm placeholder:text-neutral-500 placeholder:text-sm",
-              "focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-              "min-h-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
-            )}
-            style={{ overflow: "hidden" }}
-          />
-        </div>
-        <div className="flex items-center justify-end p-3">
-          <button
-            type="submit"
-            disabled={!value.trim() || isLoading}
-            className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800 flex items-center justify-center gap-1.5",
-              value.trim() && !isLoading
-                ? "bg-white text-black border-white hover:bg-zinc-200"
-                : "text-zinc-400"
-            )}
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              "Send"
-            )}
-          </button>
-        </div>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (value.trim() && !isLoading) onSubmit();
+      }}
+      className="w-full"
+    >
+      <div className="group relative rounded-2xl border border-stone-800/80 bg-stone-900/50 transition-all duration-200 focus-within:border-amber-800/40 focus-within:bg-stone-900/70 focus-within:shadow-[0_0_0_1px_rgba(180,120,60,0.08)]">
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            adjustHeight();
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={cn(
+            "w-full resize-none border-none bg-transparent px-5 py-3.5 pr-14 text-[14px] text-stone-200",
+            "placeholder:text-stone-600 focus-visible:ring-0 focus-visible:ring-offset-0",
+            "min-h-[48px] disabled:cursor-not-allowed disabled:opacity-40",
+          )}
+          style={{ overflow: "hidden" }}
+        />
+        <button
+          type="submit"
+          disabled={!value.trim() || isLoading}
+          className={cn(
+            "absolute bottom-2.5 right-3 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200",
+            value.trim() && !isLoading
+              ? "bg-amber-600 text-white shadow-md shadow-amber-900/30 hover:bg-amber-500"
+              : "text-stone-700 cursor-default",
+          )}
+        >
+          {isLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+        </button>
       </div>
     </form>
   );
@@ -136,10 +131,10 @@ export function BuddyActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 rounded-full border border-neutral-800 text-neutral-400 hover:text-white transition-colors"
+      className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] text-stone-500 transition-colors hover:bg-stone-800/40 hover:text-stone-300"
     >
       {icon}
-      <span className="text-xs">{label}</span>
+      <span>{label}</span>
     </button>
   );
 }

@@ -142,7 +142,12 @@ export async function exchangeAurinkoCodeForToken(code: string) {
 export async function refreshAurinkoToken(
   accountId: string,
   refreshToken: string,
-): Promise<{ accessToken: string; accountToken?: string; expiresIn?: number } | null> {
+): Promise<{
+  accessToken: string;
+  accountToken?: string;
+  expiresIn?: number;
+  refreshToken?: string;
+} | null> {
   try {
     const response = await axios.post<{
       accessToken?: string;
@@ -151,6 +156,8 @@ export async function refreshAurinkoToken(
       account_token?: string;
       expiresIn?: number;
       expires_in?: number;
+      refreshToken?: string;
+      refresh_token?: string;
     }>(
       "https://api.aurinko.io/v1/auth/refresh",
       { accountId, refreshToken },
@@ -177,8 +184,10 @@ export async function refreshAurinkoToken(
         : typeof data?.expires_in === "number"
           ? data.expires_in
           : undefined;
+    const nextRefresh =
+      data?.refreshToken ?? data?.refresh_token ?? undefined;
     console.log("[TOKEN] ✓ Refresh successful for account", accountId);
-    return { accessToken, accountToken, expiresIn };
+    return { accessToken, accountToken, expiresIn, refreshToken: nextRefresh };
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.warn(

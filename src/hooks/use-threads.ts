@@ -147,6 +147,7 @@ function useThreads() {
 
   const threadsFromStorage =
     threadsFromQuery.length === 0 &&
+      !isFetching &&
       canFetchThreads &&
       !isUnified &&
       currentTab !== "sent" &&

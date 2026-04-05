@@ -37,7 +37,7 @@ function applySecurityHeaders(response: NextResponse) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space *.aurinko.io *.openai.com",
+      "connect-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space https://clerk-telemetry.com https://*.clerk-telemetry.com *.aurinko.io *.openai.com",
       "frame-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space https://accounts.vectormail.space",
     ].join("; "),
   );

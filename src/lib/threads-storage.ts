@@ -61,7 +61,6 @@ export function persistThreads(
       [{ threads: allThreads, nextCursor: firstPageNextCursor }],
       [{ threads: allThreads.slice(0, Math.ceil(allThreads.length / 2)), nextCursor: firstPageNextCursor }],
       [{ threads: allThreads.slice(0, 25), nextCursor: firstPageNextCursor }],
-      [{ threads: allThreads.slice(0, 10), nextCursor: firstPageNextCursor }],
     ];
 
     for (const p of pagesToTry) {
@@ -77,7 +76,7 @@ export function persistThreads(
         }
       }
       const minimal = { ...base, pages: [{ threads: allThreads.slice(0, 5), nextCursor: firstPageNextCursor }] };
-      safeSetItem(key, minimal);
+      if (safeSetItem(key, minimal)) return;
     } catch {
     }
   } catch {

@@ -151,10 +151,10 @@ export default function Page() {
                 )}
               </button>
 
-              <div className="mt-6 flex items-center gap-2 text-white/70">
-                <Shield className="h-4 w-4 shrink-0 text-white/60" />
-                <span className="text-[13px]">Secure sign-in with Google. We never see your password.</span>
-              </div>
+              <p className="mt-6 flex w-full items-center justify-center gap-1.5 whitespace-nowrap text-[12px] leading-none text-white/70 sm:text-[13px]">
+                <Shield className="h-3.5 w-3.5 shrink-0 text-white/60" />
+                Secure sign-in with Google. We never see your password.
+              </p>
             </div>
           </div>
 

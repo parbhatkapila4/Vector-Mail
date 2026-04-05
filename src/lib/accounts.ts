@@ -134,6 +134,7 @@ export class Account {
         token: newToken,
         needsReconnection: false,
         ...(tokenExpiresAt && { tokenExpiresAt }),
+        ...(result.refreshToken && { refreshToken: result.refreshToken }),
       },
     });
     this.token = newToken;

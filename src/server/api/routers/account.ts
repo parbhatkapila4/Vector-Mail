@@ -82,7 +82,7 @@ export const accountRouter = createTRPCRouter({
     });
   }),
 
-  
+
   getInboxIntelligenceCards: protectedProcedure
     .input(z.object({ accountId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
@@ -564,7 +564,7 @@ export const accountRouter = createTRPCRouter({
       z.object({
         accountId: z.string().min(1),
         tab: z.string(),
-        labelId: z.string().min(1).optional(),
+        labelId: z.string().min(1).nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -1352,7 +1352,7 @@ export const accountRouter = createTRPCRouter({
       return { count: result.count };
     }),
 
-  
+
   getInboxPreview: protectedProcedure
     .input(
       z.object({
@@ -1362,7 +1362,7 @@ export const accountRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
-        return { items: [] };
+        return { items: [], needsReconnection: false };
       }
       if (!ctx.auth.userId) {
         throw new TRPCError({
@@ -1385,9 +1385,46 @@ export const accountRouter = createTRPCRouter({
           message: "Account token is missing. Please reconnect your account.",
         });
       }
-      const emailAccount = new Account(account.id, account.token);
-      const items = await emailAccount.getInboxPreview(input.limit);
-      return { items };
+
+      let emailAccount = new Account(account.id, account.token);
+      const tokenExpiredOrExpiringSoon =
+        account.tokenExpiresAt &&
+        account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
+        const refreshed = await emailAccount.refreshTokenIfPossible();
+        if (refreshed) {
+          const updated = await ctx.db.account.findUnique({
+            where: { id: account.id },
+            select: { token: true },
+          });
+          if (updated?.token) {
+            account = { ...account, token: updated.token, needsReconnection: false };
+            emailAccount = new Account(account.id, account.token);
+          }
+        }
+      }
+
+      try {
+        const items = await emailAccount.getInboxPreview(input.limit);
+        return { items, needsReconnection: false };
+      } catch (error) {
+        const ax = axios.isAxiosError(error) ? error : null;
+        const status = ax?.response?.status;
+        const body = ax?.response?.data as { code?: string } | undefined;
+        const tokenDead = body?.code === "token.dead";
+        if (status === 401 || tokenDead) {
+          await ctx.db.account
+            .update({
+              where: { id: account.id },
+              data: { needsReconnection: true },
+            })
+            .catch((err) =>
+              console.error(`[getInboxPreview] Failed to set needsReconnection:`, err),
+            );
+          return { items: [], needsReconnection: true };
+        }
+        throw error;
+      }
     }),
 
   syncEmails: protectedProcedure
@@ -2248,7 +2285,7 @@ export const accountRouter = createTRPCRouter({
         unread: z.boolean(),
         limit: z.number().min(1).max(50).default(15),
         cursor: z.string().nullish(),
-        labelId: z.string().min(1).optional(),
+        labelId: z.string().min(1).nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
