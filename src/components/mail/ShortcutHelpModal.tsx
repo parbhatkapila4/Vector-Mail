@@ -22,6 +22,15 @@ const SHORTCUTS: { shortcut: string; action: string }[] = [
   { shortcut: "/", action: "Search" },
   { shortcut: "g then i", action: "Go to Inbox" },
   { shortcut: "g then s", action: "Go to Sent" },
+  { shortcut: "g then b", action: "Toggle AI Inbox Brain panel" },
+  {
+    shortcut: "g then f",
+    action: "Cycle inbox focus (All → Needs reply → Important → Low priority)",
+  },
+  {
+    shortcut: isMac ? "⌘+Enter" : "Ctrl+Enter",
+    action: "Send message in Inbox brain (when chat input is focused)",
+  },
   { shortcut: "?", action: "Show shortcuts" },
   { shortcut: "Esc", action: "Close thread or help" },
   {
@@ -57,7 +66,9 @@ export function ShortcutHelpModal({ open, onOpenChange }: ShortcutHelpModalProps
             Keyboard shortcuts
           </DialogTitle>
         </DialogHeader>
-        <div className="mt-2 max-h-[60vh] overflow-y-auto">
+        <div
+          className="mt-2 max-h-[60vh] overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700">

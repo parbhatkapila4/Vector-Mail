@@ -26,7 +26,7 @@ export function InboxIntelligenceCards({
     <div className={cn("border-b border-white/[0.06] px-3 py-2", className)}>
       <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
         <Sparkles className="h-3 w-3 text-amber-400/90" />
-        Inbox intelligence
+        Inbox brain
       </div>
       <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {data.cards.map((c) => (

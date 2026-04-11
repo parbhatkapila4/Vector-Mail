@@ -22,6 +22,8 @@ function isTyping(target: EventTarget | null): boolean {
 interface MailKeyboardShortcutsProps {
   selectedThread: string | null;
   setSelectedThread: (id: string | null) => void;
+  mailTab: string;
+  setMailTab: (tab: string) => void;
   focusSearch: () => void;
   openCompose: () => void;
   focusReply: () => void;
@@ -29,6 +31,8 @@ interface MailKeyboardShortcutsProps {
   showHelp: () => void;
   helpOpen: boolean;
   closeHelp: () => void;
+  toggleAIPanel?: () => void;
+  cycleBriefFocus?: () => void;
 }
 
 export function MailKeyboardShortcuts({
@@ -41,9 +45,13 @@ export function MailKeyboardShortcuts({
   showHelp,
   helpOpen,
   closeHelp,
+  mailTab,
+  setMailTab,
+  toggleAIPanel,
+  cycleBriefFocus,
 }: MailKeyboardShortcutsProps) {
   const pathname = usePathname();
-  const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
+  const tab = mailTab ?? "inbox";
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
   const {
@@ -212,10 +220,15 @@ export function MailKeyboardShortcuts({
 
   const handleGThen = useCallback(
     (key: string) => {
-      if (key.toLowerCase() === "i") {
-        setTab("inbox");
-      } else if (key.toLowerCase() === "s") {
-        setTab("sent");
+      const k = key.toLowerCase();
+      if (k === "i") {
+        setMailTab("inbox");
+      } else if (k === "s") {
+        setMailTab("sent");
+      } else if (k === "b") {
+        toggleAIPanel?.();
+      } else if (k === "f" && tab === "inbox") {
+        cycleBriefFocus?.();
       }
       gAwaitingRef.current = false;
       if (gTimeoutRef.current) {
@@ -223,7 +236,7 @@ export function MailKeyboardShortcuts({
         gTimeoutRef.current = null;
       }
     },
-    [setTab]
+    [setMailTab, tab, toggleAIPanel, cycleBriefFocus],
   );
 
   useEffect(() => {
@@ -244,7 +257,7 @@ export function MailKeyboardShortcuts({
 
       if (gAwaitingRef.current) {
         const k = event.key.toLowerCase();
-        if (k === "i" || k === "s") {
+        if (k === "i" || k === "s" || k === "b" || k === "f") {
           event.preventDefault();
           event.stopPropagation();
           handleGThen(k);
@@ -345,12 +358,15 @@ export function MailKeyboardShortcuts({
     handleArchive,
     handleDelete,
     handleGThen,
+    tab,
     openCompose,
     focusReply,
     focusSearch,
     onCloseThread,
     selectedThread,
     threadId,
+    toggleAIPanel,
+    cycleBriefFocus,
   ]);
 
   return null;

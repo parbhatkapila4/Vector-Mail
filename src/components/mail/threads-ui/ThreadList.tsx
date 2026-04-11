@@ -39,6 +39,7 @@ interface ThreadListProps {
 
 export interface ThreadListRef {
   triggerSync: () => void;
+  cycleBriefFocus: () => void;
 }
 
 type RouterThread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -85,6 +86,8 @@ interface GroupedThreads {
   [date: string]: Thread[];
 }
 
+type FocusView = "all" | "needsReply" | "important" | "lowPriority";
+
 const CONNECTION_ERROR_MESSAGES = {
   NO_ACCOUNT: "Connect your inbox",
   CONNECT_DESCRIPTION:
@@ -122,6 +125,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
   const [refreshingAfterSync, setRefreshingAfterSync] = React.useState(false);
+  const [focusView, setFocusView] = React.useState<FocusView>("all");
   const [slowLoad, setSlowLoad] = React.useState(false);
   const slowLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
@@ -216,6 +220,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       void utils.account.getUnifiedThreads.invalidate();
       await refetch();
       setTimeout(() => void refetch(), 800);
+    },
+    onError: (error) => {
+      console.warn("[ThreadList] Quick first sync:", error.message);
+      if (/timed out|Initial mail fetch/i.test(error.message)) {
+        toast.info("Still reaching your mail provider…", {
+          description: "Tap Sync if threads don’t show up in a minute.",
+          duration: 6000,
+        });
+      }
     },
   });
 
@@ -366,10 +379,16 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         void forceThreadListRefresh();
         return;
       }
-      if (errorMessage.includes("timed out") || errorMessage.includes("timeout")) {
-        toast.error("Sync timed out", {
-          description: "The request took too long. Please try again in a moment.",
-          duration: 4000,
+      if (
+        errorMessage.includes("timed out") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("Mail provider")
+      ) {
+        toast.info(errorMessage.includes("Mail provider") ? "Mail provider slow" : "Sync timed out", {
+          description: errorMessage.includes("Mail provider")
+            ? errorMessage
+            : "The request took too long. Please try again in a moment.",
+          duration: 5000,
         });
       } else if (
         errorMessage.includes("UNAUTHORIZED") ||
@@ -539,8 +558,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     threads?.length,
     utils.account.getUnifiedThreads,
   ]);
-
-  useImperativeHandle(ref, () => ({ triggerSync: handleRefresh }), [handleRefresh]);
 
   const backgroundSyncTriggeredRef = useRef(false);
   const isAccountValid = !!validatedAccount && validatedAccount.id === accountId;
@@ -748,30 +765,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     }));
   }, [inboxPreviewPayload?.items]);
 
-  const threadsForDisplay = useMemo(() => {
-    if (threadsToRender.length > 0) return threadsToRender;
-    if (currentTab === "inbox" && previewThreads.length > 0) return previewThreads;
-    return threadsToRender;
-  }, [threadsToRender, previewThreads, currentTab]);
-
-  const isReadOnlyPreview =
-    currentTab === "inbox" &&
-    threadsToRender.length === 0 &&
-    previewThreads.length > 0;
-
-  const groupedThreads = useMemo(() => {
-    if (!threadsForDisplay || threadsForDisplay.length === 0) return {};
-    return threadsForDisplay.reduce((acc: GroupedThreads, thread: Thread) => {
-      const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd");
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(thread);
-      return acc;
-    }, {});
-  }, [threadsForDisplay]);
-
-  const allThreads = threadsForDisplay ?? [];
-  const lastThreadId = allThreads[allThreads.length - 1]?.id;
-
   const handleSearchResultSelect = useCallback(
     (id: string) => {
       setThreadId(id);
@@ -803,6 +796,87 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     { accountId: accountId || "placeholder" },
     { enabled: !!accountId && accountId.length > 0 },
   );
+  const focusChipsEnabled =
+    currentTab === "inbox" &&
+    !!accountId &&
+    accountId !== UNIFIED_INBOX_ACCOUNT_ID;
+  const { data: dailyBriefData } = api.account.getDailyBrief.useQuery(
+    { accountId: accountId || "placeholder" },
+    {
+      enabled: focusChipsEnabled,
+      staleTime: 60_000,
+    },
+  );
+  const focusCounts = useMemo(() => {
+    const visibleIds = new Set((threadsToRender ?? []).map((t) => t.id));
+    const needsReplyIds = new Set(
+      (dailyBriefData?.needsReply ?? []).map((row) => row.threadId),
+    );
+    const importantIds = new Set(
+      (dailyBriefData?.important ?? []).map((row) => row.threadId),
+    );
+    const lowPriorityIds = new Set(
+      (dailyBriefData?.lowPriority ?? []).map((row) => row.threadId),
+    );
+
+    let needsReply = 0;
+    let important = 0;
+    let lowPriority = 0;
+    for (const id of visibleIds) {
+      if (needsReplyIds.has(id)) needsReply++;
+      if (importantIds.has(id)) important++;
+      if (lowPriorityIds.has(id)) lowPriority++;
+    }
+
+    return {
+      all: visibleIds.size,
+      needsReply,
+      important,
+      lowPriority,
+    };
+  }, [dailyBriefData, threadsToRender]);
+  const focusThreadIdSet = useMemo(() => {
+    if (!dailyBriefData || focusView === "all") return null;
+    const source = dailyBriefData[focusView] ?? [];
+    return new Set(source.map((row) => row.threadId));
+  }, [dailyBriefData, focusView]);
+  const isFocusActive = focusChipsEnabled && focusView !== "all";
+  const focusFilterHidden = isSearching && !!searchValue;
+
+  const cycleBriefFocus = useCallback(() => {
+    if (!focusChipsEnabled) return;
+    setFocusView((prev) => {
+      const order: FocusView[] = [
+        "all",
+        "needsReply",
+        "important",
+        "lowPriority",
+      ];
+      const i = order.indexOf(prev);
+      const next = ((i < 0 ? 0 : i) + 1) % order.length;
+      return order[next]!;
+    });
+  }, [focusChipsEnabled]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      triggerSync: handleRefresh,
+      cycleBriefFocus,
+    }),
+    [handleRefresh, cycleBriefFocus],
+  );
+
+  useEffect(() => {
+    if (currentTab !== "inbox") {
+      setFocusView("all");
+    }
+  }, [currentTab]);
+
+  useEffect(() => {
+    setFocusView("all");
+  }, [accountId]);
+
   const nudgeTypeByThreadId = useMemo(() => {
     const map = new Map<string, "REMINDER" | "UNREPLIED">();
     for (const n of nudgesData?.nudges ?? []) {
@@ -810,6 +884,33 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     }
     return map;
   }, [nudgesData?.nudges]);
+
+  const threadsForDisplay = useMemo(() => {
+    if (threadsToRender.length > 0) {
+      if (!isFocusActive || !focusThreadIdSet) return threadsToRender;
+      return threadsToRender.filter((t) => focusThreadIdSet.has(t.id));
+    }
+    if (currentTab === "inbox" && previewThreads.length > 0) return previewThreads;
+    return threadsToRender;
+  }, [threadsToRender, previewThreads, currentTab, isFocusActive, focusThreadIdSet]);
+
+  const isReadOnlyPreview =
+    currentTab === "inbox" &&
+    threadsToRender.length === 0 &&
+    previewThreads.length > 0;
+
+  const groupedThreads = useMemo(() => {
+    if (!threadsForDisplay || threadsForDisplay.length === 0) return {};
+    return threadsForDisplay.reduce((acc: GroupedThreads, thread: Thread) => {
+      const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd");
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(thread);
+      return acc;
+    }, {});
+  }, [threadsForDisplay]);
+
+  const allThreads = threadsForDisplay ?? [];
+  const lastThreadId = allThreads[allThreads.length - 1]?.id;
 
   if (accountsLoading) {
     return (
@@ -958,9 +1059,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             "flex shrink-0 flex-col overflow-hidden pt-3 transition-[width,padding,opacity] duration-150",
             readOnlyPreview && "hidden",
             !readOnlyPreview &&
-              (isRowSelected
-                ? "w-[48px] pl-2 opacity-100 pointer-events-auto"
-                : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[48px] group-hover:min-w-0 group-hover:pl-2 group-hover:opacity-100 group-hover:pointer-events-auto"),
+            (isRowSelected
+              ? "w-[48px] pl-2 opacity-100 pointer-events-auto"
+              : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[48px] group-hover:min-w-0 group-hover:pl-2 group-hover:opacity-100 group-hover:pointer-events-auto"),
           )}
           onClick={(e) => e.stopPropagation()}
           role="presentation"
@@ -1179,6 +1280,27 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       return <ThreadListSkeleton />;
     }
 
+    if (isFocusActive && noThreads && !isFetching) {
+      return (
+        <div className="flex h-64 flex-col items-center justify-center gap-3 px-6 text-center">
+          <p className="text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
+            No threads in this focus view yet
+          </p>
+          <p className="text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
+            Try another bucket or switch back to all threads.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
+            onClick={() => setFocusView("all")}
+          >
+            Back to All
+          </Button>
+        </div>
+      );
+    }
+
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       const waitingInboxPreview =
         currentTab === "inbox" &&
@@ -1192,12 +1314,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       const matchedAccount = accounts?.find((a) => a.id === accountId);
       const currentAccountNeedsReconnection = Boolean(
         isInboxSentOrTrash &&
-          accountId &&
-          accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
-          (inboxPreviewPayload?.needsReconnection === true ||
-            (matchedAccount &&
-              "needsReconnection" in matchedAccount &&
-              matchedAccount.needsReconnection)),
+        accountId &&
+        accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+        (inboxPreviewPayload?.needsReconnection === true ||
+          (matchedAccount &&
+            "needsReconnection" in matchedAccount &&
+            matchedAccount.needsReconnection)),
       );
       if (currentAccountNeedsReconnection) {
         return (
@@ -1502,6 +1624,50 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {focusChipsEnabled && !focusFilterHidden && (
+        <div className="flex items-center gap-1.5 border-b border-[#e5e7eb] px-3 py-2 dark:border-[#1a1a23]">
+          <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-[#9ca3af] dark:text-[#71717a]">
+            Focus
+          </span>
+          {([
+            ["all", "All"],
+            ["needsReply", "Needs reply"],
+            ["important", "Important"],
+            ["lowPriority", "Low priority"],
+          ] as const).map(([key, label]) => {
+            const active = focusView === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFocusView(key)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  active
+                    ? "border-[#3b82f6]/30 bg-[#eff6ff] text-[#2563eb] dark:border-[#60a5fa]/30 dark:bg-[#3b82f6]/[0.14] dark:text-[#93c5fd]"
+                    : "border-[#e5e7eb] bg-[#f9fafb] text-[#5f6368] hover:bg-[#f3f4f6] dark:border-[#27272a] dark:bg-[#18181b] dark:text-[#a1a1aa] dark:hover:bg-[#202024]",
+                )}
+                aria-pressed={active}
+              >
+                <span>{label}</span>
+                {key === "all" && (
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                      active
+                        ? "bg-[#dbeafe] text-[#1d4ed8] dark:bg-[#2563eb]/30 dark:text-[#bfdbfe]"
+                        : "bg-[#e8eaed] text-[#5f6368] dark:bg-[#27272a] dark:text-[#9aa0a6]",
+                    )}
+                  >
+                    {focusCounts.all}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div
         ref={listContainerRef}

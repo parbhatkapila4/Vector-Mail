@@ -424,8 +424,8 @@ export default function HeroSection_04() {
                       { from: "Emily Davis", subj: "Re: Budget & timeline follow-up", time: "2d ago" },
                       { from: "Sarah Chen", subj: "VectorMail feedback: search & AI", time: "3d ago" },
                       { from: "Marcus Reid", subj: "Invoice #4821: payment confirmation", time: "1w ago" },
-                      { from: "Jessica Park", subj: "Design system review – components", time: "1w ago" },
-                      { from: "David Kim", subj: "Sprint planning – capacity check", time: "1w ago" },
+                      { from: "Jessica Park", subj: "Design system review: components", time: "1w ago" },
+                      { from: "David Kim", subj: "Sprint planning: capacity check", time: "1w ago" },
                       { from: "Rachel Green", subj: "Re: Vendor contract renewal", time: "2w ago" },
                       { from: "Tom Wilson", subj: "Quick sync: launch checklist", time: "2w ago" },
                     ].map((mail, i) => (

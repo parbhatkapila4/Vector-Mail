@@ -22,6 +22,7 @@ import { SnoozeMenu } from "./SnoozeMenu";
 import { RemindMenu } from "./RemindMenu";
 import { useLocalStorage } from "usehooks-ts";
 import { ThreadViewSkeleton } from "./ThreadViewSkeleton";
+import { ThreadBrainPanel } from "./ThreadBrainPanel";
 import { toast } from "sonner";
 import { buildGoogleCalendarUrl } from "@/lib/calendar-url";
 import {
@@ -470,6 +471,13 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                 threadId={threadId}
                 accountId={accountForActions}
                 labels={(thread?.threadLabels ?? []).map((tl) => tl.label)}
+              />
+            )}
+
+            {threadId && accountForActions && (
+              <ThreadBrainPanel
+                threadId={threadId}
+                accountId={accountForActions}
               />
             )}
 

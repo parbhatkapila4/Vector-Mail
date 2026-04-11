@@ -1302,6 +1302,114 @@ export function getDemoNudges(): Array<{
   }));
 }
 
+export type DemoDailyBriefItem = {
+  threadId: string;
+  subject: string;
+  lastMessageDate: Date;
+  reason: string;
+  confidence?: "High" | "Medium" | "Low";
+};
+
+export function getDemoDailyBrief(): {
+  needsReply: DemoDailyBriefItem[];
+  important: DemoDailyBriefItem[];
+  lowPriority: DemoDailyBriefItem[];
+} {
+  const inbox = buildDemoThreads();
+  const nudge = getDemoNudges();
+  const needsReply: DemoDailyBriefItem[] = nudge.slice(0, 10).map((n) => ({
+    threadId: n.threadId,
+    subject: n.thread?.subject ?? "(No subject)",
+    lastMessageDate: n.thread?.lastMessageDate ?? new Date(),
+    reason: n.type === "REMINDER" ? "Reminder due" : "Waiting for your reply",
+    confidence: "High",
+  }));
+
+  const importantFromLabels = inbox
+    .filter((t) => t.threadLabels.some((tl) => /important/i.test(tl.label.name)))
+    .map(
+      (t): DemoDailyBriefItem => ({
+        threadId: t.id,
+        subject: t.subject,
+        lastMessageDate: t.lastMessageDate,
+        reason: "Marked Important",
+        confidence: "High",
+      }),
+    );
+
+  const lowFromLabels = inbox
+    .filter((t) => t.threadLabels.some((tl) => /promotion/i.test(tl.label.name)))
+    .map(
+      (t): DemoDailyBriefItem => ({
+        threadId: t.id,
+        subject: t.subject,
+        lastMessageDate: t.lastMessageDate,
+        reason: "Promotions & noise",
+        confidence: "Medium",
+      }),
+    );
+
+  const needIds = new Set(needsReply.map((x) => x.threadId));
+  const important = importantFromLabels
+    .filter((x) => !needIds.has(x.threadId))
+    .slice(0, 10);
+  const impIds = new Set(important.map((x) => x.threadId));
+  const lowPriority = lowFromLabels
+    .filter((x) => !needIds.has(x.threadId) && !impIds.has(x.threadId))
+    .slice(0, 10);
+
+  return { needsReply, important, lowPriority };
+}
+export function getDemoThreadBrain(threadId: string): {
+  about: string;
+  expectedFromMe: string;
+  expectedReason: string;
+  expectedConfidence: "High" | "Medium" | "Low";
+} {
+  const byId: Record<
+    string,
+    {
+      about: string;
+      expectedFromMe: string;
+      expectedReason: string;
+      expectedConfidence: "High" | "Medium" | "Low";
+    }
+  > = {
+    "demo-thread-1": {
+      about:
+        "A founder is asking about pilot access, AI summaries, search, and your API for integrations.",
+      expectedFromMe:
+        "Reply with architecture or pilot details, or share a scheduling link if you want to continue.",
+      expectedReason: "Latest inbound message asks for specific next steps.",
+      expectedConfidence: "High",
+    },
+    "demo-thread-4": {
+      about: "Product feedback on search UX and interest in what’s on the roadmap.",
+      expectedFromMe:
+        "Acknowledge the feedback and clarify whether search improvements are planned.",
+      expectedReason: "External sender asked roadmap questions in the latest message.",
+      expectedConfidence: "High",
+    },
+    "demo-thread-8": {
+      about: "Promotional or bulk mail-style thread in the demo inbox.",
+      expectedFromMe:
+        "No reply needed unless you want to engage; fine to archive.",
+      expectedReason: "Newsletter-like content with no direct ask.",
+      expectedConfidence: "Medium",
+    },
+  };
+  return (
+    byId[threadId] ?? {
+      about:
+        "Sample conversation in demo mode: connect Gmail to analyze your real threads here.",
+      expectedFromMe:
+        "Request access when you’re ready to use inbox intelligence on your own mail.",
+      expectedReason: "Demo placeholder without real thread intent signals.",
+      expectedConfidence: "Low",
+    }
+  );
+}
+
 export function getDemoLabelsWithCounts(): Array<{
   id: string;
   name: string;

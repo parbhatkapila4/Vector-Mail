@@ -1,4 +1,4 @@
-import { Account } from "@/lib/accounts";
+import { Account, isTransientMailProviderError } from "@/lib/accounts";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { incrementSyncFailure } from "@/lib/metrics/store";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -10,7 +10,12 @@ import { TRPCError } from "@trpc/server";
 import axios from "axios";
 import pLimit from "p-limit";
 import { DEMO_ACCOUNT_ID, DEMO_USER_ID, DEMO_EMAIL, DEMO_DISPLAY_NAME } from "@/lib/demo/constants";
-import { getDemoThreads, getDemoThreadById, getDemoEmailBody, getDemoScheduledSends, getDemoNudges, getDemoUpcomingEvents, getDemoLabelsWithCounts } from "@/lib/demo/seed-demo-data";
+import { env } from "@/env.js";
+import { checkUserRateLimit } from "@/lib/rate-limit";
+import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
+import OpenAI from "openai";
+import { getDemoThreads, getDemoThreadById, getDemoEmailBody, getDemoScheduledSends, getDemoNudges, getDemoDailyBrief, getDemoThreadBrain, getDemoUpcomingEvents, getDemoLabelsWithCounts } from "@/lib/demo/seed-demo-data";
+import { withCache } from "@/lib/cache";
 
 interface AccountAccess {
   id: string;
@@ -50,6 +55,67 @@ export const authoriseAccountAccess = async (
 
   return account;
 };
+
+type ThreadBrainEmailRow = {
+  summary: string | null;
+  bodySnippet: string | null;
+  from: { address: string; name: string | null };
+  sentAt: Date;
+};
+
+function buildThreadBrainFallback(
+  subject: string,
+  emails: ThreadBrainEmailRow[],
+  accountEmailLower: string,
+): {
+  about: string;
+  expectedFromMe: string;
+  expectedReason: string;
+  expectedConfidence: "High" | "Medium" | "Low";
+} {
+  if (emails.length === 0) {
+    return {
+      about: subject.slice(0, 400),
+      expectedFromMe: "Open the messages below to see what might be needed from you.",
+      expectedReason: "No message history available yet in this thread.",
+      expectedConfidence: "Low",
+    };
+  }
+  let lastInbound: ThreadBrainEmailRow | null = null;
+  for (let i = emails.length - 1; i >= 0; i--) {
+    const e = emails[i]!;
+    if (e.from.address.toLowerCase() !== accountEmailLower) {
+      lastInbound = e;
+      break;
+    }
+  }
+  const last = emails[emails.length - 1]!;
+  const lastIsInbound =
+    last.from.address.toLowerCase() !== accountEmailLower;
+  const snippetSource = lastInbound ?? last;
+  const snippet =
+    snippetSource.summary?.trim() || snippetSource.bodySnippet?.trim() || "";
+  const about = `${subject}${snippet ? ` - ${snippet.slice(0, 280)}` : ""}`.slice(
+    0,
+    480,
+  );
+  const expectedFromMe = lastIsInbound
+    ? "Their latest message may need a reply or action from you."
+    : "You sent the latest message; you may be waiting on them.";
+  const daysAgo = Math.max(
+    0,
+    Math.round((Date.now() - new Date(last.sentAt).getTime()) / (24 * 60 * 60 * 1000)),
+  );
+  const expectedReason = lastIsInbound
+    ? `Last message is from an external sender ${daysAgo}d ago.`
+    : `Latest message was sent by you ${daysAgo}d ago.`;
+  return {
+    about,
+    expectedFromMe,
+    expectedReason,
+    expectedConfidence: lastIsInbound ? "High" : "Medium",
+  };
+}
 
 export const accountRouter = createTRPCRouter({
   getAccounts: protectedProcedure.query(async ({ ctx }) => {
@@ -1329,6 +1395,245 @@ export const accountRouter = createTRPCRouter({
       return { nudges };
     }),
 
+  getDailyBrief: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return getDemoDailyBrief();
+      }
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+      const cacheKey = `dailyBrief:v1:${ctx.auth.userId}:${account.id}`;
+      return withCache(
+        cacheKey,
+        async () => {
+          const now = new Date();
+          const BRIEF_CAP = 10;
+          const UNREPLIED_DAYS = 14;
+          const unrepliedCutoff = new Date(now);
+          unrepliedCutoff.setDate(unrepliedCutoff.getDate() - UNREPLIED_DAYS);
+
+          type BriefRow = {
+            threadId: string;
+            subject: string;
+            lastMessageDate: Date;
+            reason: string;
+            confidence?: "High" | "Medium" | "Low";
+          };
+
+          const needsReply: BriefRow[] = [];
+          const needsIds = new Set<string>();
+
+          const dueReminderThreads = await ctx.db.thread.findMany({
+            where: {
+              accountId: account.id,
+              remindAt: { not: null, lte: now },
+              emails: {
+                none: { sysLabels: { hasSome: ["trash"] } },
+              },
+            },
+            orderBy: { remindAt: "asc" },
+            take: BRIEF_CAP,
+            select: {
+              id: true,
+              subject: true,
+              lastMessageDate: true,
+            },
+          });
+          for (const t of dueReminderThreads) {
+            if (needsReply.length >= BRIEF_CAP) break;
+            needsReply.push({
+              threadId: t.id,
+              subject: t.subject || "(No subject)",
+              lastMessageDate: t.lastMessageDate,
+              reason: "Reminder due",
+              confidence: "High",
+            });
+            needsIds.add(t.id);
+          }
+
+          const candidateUnreplied = await ctx.db.thread.findMany({
+            where: {
+              accountId: account.id,
+              inboxStatus: true,
+              lastMessageDate: { gte: unrepliedCutoff },
+              OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+              emails: {
+                none: { sysLabels: { hasSome: ["trash"] } },
+              },
+            },
+            orderBy: { lastMessageDate: "desc" },
+            take: 50,
+            select: {
+              id: true,
+              subject: true,
+              lastMessageDate: true,
+              emails: {
+                orderBy: { sentAt: "desc" },
+                take: 1,
+                select: {
+                  from: { select: { address: true } },
+                },
+              },
+            },
+          });
+          const accountEmailLower = account.emailAddress.toLowerCase();
+          for (const t of candidateUnreplied) {
+            if (needsReply.length >= BRIEF_CAP) break;
+            const latestEmail = t.emails[0];
+            if (!latestEmail?.from?.address) continue;
+            if (latestEmail.from.address.toLowerCase() === accountEmailLower) continue;
+            if (needsIds.has(t.id)) continue;
+            needsReply.push({
+              threadId: t.id,
+              subject: t.subject || "(No subject)",
+              lastMessageDate: t.lastMessageDate,
+              reason: `Last message from external sender ${Math.max(
+                0,
+                Math.round(
+                  (Date.now() - new Date(t.lastMessageDate).getTime()) /
+                  (24 * 60 * 60 * 1000),
+                ),
+              )}d ago`,
+              confidence: "High",
+            });
+            needsIds.add(t.id);
+          }
+
+          const URGENCY_RE = /\b(urgent|asap|immediately|deadline|eod|eow|invoice|contract|legal|litigation|board|investor|due today|time[\s-]?sensitive)\b/i;
+          const LOW_SUBJ_RE = /\b(newsletter|digest|weekly wrap|unsubscribe|promo|black\s*friday|\d+%\s*off|sale ends|your receipt is|no[\s-]?reply)\b/i;
+
+          const briefCandidates = await ctx.db.thread.findMany({
+            where: {
+              accountId: account.id,
+              inboxStatus: true,
+              OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+              emails: {
+                none: { sysLabels: { hasSome: ["trash"] } },
+              },
+            },
+            orderBy: { lastMessageDate: "desc" },
+            take: 100,
+            select: {
+              id: true,
+              subject: true,
+              lastMessageDate: true,
+              threadLabels: {
+                select: { label: { select: { name: true } } },
+              },
+              emails: {
+                orderBy: { sentAt: "desc" },
+                take: 1,
+                select: {
+                  subject: true,
+                  bodySnippet: true,
+                  keywords: true,
+                  sysLabels: true,
+                  sysClassifications: true,
+                  sensitivity: true,
+                  meetingMessageMethod: true,
+                },
+              },
+            },
+          });
+
+          const important: BriefRow[] = [];
+          const lowPriority: BriefRow[] = [];
+
+          const labelImportant = (names: string[]) =>
+            names.some((n) => /\bimportant\b/i.test(n));
+          const labelLow = (names: string[]) =>
+            names.some((n) =>
+              /\b(promotion|promotions|newsletter|marketing|unsubscribe|bulk)\b/i.test(n),
+            );
+
+          for (const t of briefCandidates) {
+            if (needsIds.has(t.id)) continue;
+            if (important.length >= BRIEF_CAP && lowPriority.length >= BRIEF_CAP) break;
+
+            const latest = t.emails[0];
+            if (!latest) continue;
+            const labelNames = t.threadLabels.map((tl) => tl.label.name);
+            const sysL = (latest.sysLabels ?? []).map((s) => String(s).toLowerCase());
+            const sysC = (latest.sysClassifications ?? []).map((s) =>
+              String(s).toLowerCase(),
+            );
+            const kw = (latest.keywords ?? []).map((k) => String(k).toLowerCase());
+            const blob = [t.subject, latest.subject, latest.bodySnippet ?? "", ...kw].join(
+              " ",
+            );
+
+            let impReason: string | null = null;
+            if (labelImportant(labelNames)) impReason = "Marked Important";
+            else if (sysL.includes("important") || sysL.includes("starred"))
+              impReason = sysL.includes("starred") ? "Starred in Gmail" : "Flagged important";
+            else if (
+              latest.sensitivity === "confidential" ||
+              latest.sensitivity === "private"
+            )
+              impReason = "Sensitive (confidential / private)";
+            else if (latest.meetingMessageMethod)
+              impReason = "Calendar meeting or invite";
+            else if (kw.some((k) => URGENCY_RE.test(k))) impReason = "Keywords look time-sensitive";
+            else if (URGENCY_RE.test(blob)) impReason = "Looks time-sensitive or high-stakes";
+
+            if (impReason) {
+              if (important.length < BRIEF_CAP) {
+                important.push({
+                  threadId: t.id,
+                  subject: t.subject || "(No subject)",
+                  lastMessageDate: t.lastMessageDate,
+                  reason: impReason,
+                  confidence:
+                    impReason === "Marked Important" ||
+                      impReason === "Starred in Gmail" ||
+                      impReason === "Flagged important"
+                      ? "High"
+                      : "Medium",
+                });
+              }
+              continue;
+            }
+
+            if (lowPriority.length >= BRIEF_CAP) continue;
+
+            let lowReason: string | null = null;
+            if (sysC.includes("promotions")) lowReason = "Promotions category";
+            else if (sysC.includes("social")) lowReason = "Social category";
+            else if (sysC.includes("forums")) lowReason = "Forums category";
+            else if (labelLow(labelNames)) lowReason = "Bulk / marketing label";
+            else if (
+              kw.some((k) =>
+                /\b(newsletter|promotional|marketing|unsubscribe|digest)\b/i.test(k),
+              )
+            )
+              lowReason = "Newsletter or bulk keywords";
+            else if (LOW_SUBJ_RE.test(blob)) lowReason = "Likely newsletter or promo";
+
+            if (lowReason) {
+              lowPriority.push({
+                threadId: t.id,
+                subject: t.subject || "(No subject)",
+                lastMessageDate: t.lastMessageDate,
+                reason: lowReason,
+                confidence:
+                  lowReason === "Promotions category" ||
+                    lowReason === "Social category" ||
+                    lowReason === "Forums category"
+                    ? "High"
+                    : "Medium",
+              });
+            }
+          }
+
+          return { needsReply, important, lowPriority };
+        },
+        60_000,
+      );
+    }),
+
   syncFirstBatchQuick: protectedProcedure
     .input(z.object({ accountId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -1348,8 +1653,28 @@ export const accountRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Account token is missing. Please reconnect your account." });
       }
       const emailAccount = new Account(account.id, account.token);
-      const result = await emailAccount.syncFirstBatchQuick();
-      return { count: result.count };
+      try {
+        const result = await emailAccount.syncFirstBatchQuick();
+        return { count: result.count };
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const timedOut =
+            error.code === "ECONNABORTED" ||
+            /timeout/i.test(error.message ?? "") ||
+            /timed out/i.test(String(error.response?.data ?? ""));
+          if (timedOut) {
+            console.warn(
+              `[syncFirstBatchQuick] Aurinko timeout for account ${account.id} (list/fetch slower than limit). User can use Sync to retry.`,
+            );
+            throw new TRPCError({
+              code: "TIMEOUT",
+              message:
+                "Initial mail fetch timed out; the provider was slow. Use Sync or wait; your inbox will update when it responds.",
+            });
+          }
+        }
+        throw error;
+      }
     }),
 
 
@@ -1549,7 +1874,7 @@ export const accountRouter = createTRPCRouter({
 
       let currentAccount = account;
       let currentEmailAccount = emailAccount;
-      const maxAttempts = 2;
+      const maxAttempts = 3;
       let lastError: unknown;
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -2154,6 +2479,33 @@ export const accountRouter = createTRPCRouter({
               threadCount: 0,
               needsReconnection: true,
             };
+          }
+
+          if (
+            isTransientMailProviderError(error) &&
+            attempt < maxAttempts - 1
+          ) {
+            const delayMs = 1800 * (attempt + 1);
+            ctx.log?.warn(
+              {
+                event: "sync_transient_retry",
+                accountId: account.id,
+                attempt: attempt + 1,
+                maxAttempts,
+                delayMs,
+              },
+              "sync retry after transient provider/network error",
+            );
+            await new Promise((r) => setTimeout(r, delayMs));
+            continue;
+          }
+
+          if (isTransientMailProviderError(error)) {
+            throw new TRPCError({
+              code: "TIMEOUT",
+              message:
+                "Mail provider was slow or unavailable. Wait a few seconds and tap Sync again.",
+            });
           }
 
           const safeMessage =
@@ -3065,6 +3417,159 @@ export const accountRouter = createTRPCRouter({
       }
 
       return thread;
+    }),
+
+  getThreadBrain: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().min(1),
+        accountId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.auth.userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+        return getDemoThreadBrain(input.threadId);
+      }
+
+      let account: AccountAccess;
+      try {
+        account = await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      } catch {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Account not found or access denied",
+        });
+      }
+
+      const thread = await ctx.db.thread.findFirst({
+        where: { id: input.threadId, accountId: account.id },
+        select: {
+          subject: true,
+          emails: {
+            orderBy: { sentAt: "asc" },
+            select: {
+              summary: true,
+              bodySnippet: true,
+              sentAt: true,
+              from: { select: { address: true, name: true } },
+            },
+          },
+        },
+      });
+
+      if (!thread) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
+
+      const accountEmailLower = account.emailAddress.toLowerCase();
+      const fallback = buildThreadBrainFallback(
+        thread.subject || "(No subject)",
+        thread.emails,
+        accountEmailLower,
+      );
+
+      const aiLimit = checkUserRateLimit(ctx.auth.userId, "ai");
+      if (!aiLimit.allowed || !env.OPENROUTER_API_KEY) {
+        return fallback;
+      }
+
+      const cap = await checkDailyCap(ctx.auth.userId, env.AI_DAILY_CAP_TOKENS);
+      if (!cap.allowed) {
+        return fallback;
+      }
+
+      try {
+        const openai = new OpenAI({
+          baseURL: "https://openrouter.ai/api/v1",
+          apiKey: env.OPENROUTER_API_KEY,
+          defaultHeaders: {
+            "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
+            "X-Title": "VectorMail AI",
+          },
+        });
+
+        const lines = thread.emails.map((e, i) => {
+          const from = e.from.name || e.from.address;
+          const bit = (e.summary || e.bodySnippet || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 220);
+          return `${i + 1}. From ${from} | ${bit || "(no preview)"}`;
+        });
+
+        const prompt = `The mailbox owner is the account holder (incoming mail is addressed to them).
+
+Thread subject: ${thread.subject}
+
+Messages in chronological order (oldest to newest):
+${lines.join("\n")}
+
+Return JSON only with this shape:
+{"about":"1-2 sentences: what this thread is about","expectedFromMe":"1-2 sentences: what the mailbox owner should do next (reply, wait, archive, or say if unclear)","expectedReason":"short plain-English why this recommendation matters","expectedConfidence":"High|Medium|Low"}`;
+
+        const completion = await openai.chat.completions.create({
+          model: "anthropic/claude-3.5-haiku",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You triage email threads for the inbox owner. Use only the provided lines. Output valid JSON only.",
+            },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 220,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        });
+
+        recordUsage({
+          userId: ctx.auth.userId,
+          accountId: account.id,
+          operation: "chat",
+          inputTokens: completion.usage?.prompt_tokens ?? 0,
+          outputTokens: completion.usage?.completion_tokens ?? 0,
+          model: completion.model ?? undefined,
+        });
+
+        const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+        const parsed = JSON.parse(raw) as {
+          about?: string;
+          expectedFromMe?: string;
+          expectedReason?: string;
+          expectedConfidence?: string;
+        };
+        const about = typeof parsed.about === "string" ? parsed.about.trim() : "";
+        const expectedFromMe =
+          typeof parsed.expectedFromMe === "string"
+            ? parsed.expectedFromMe.trim()
+            : "";
+        const expectedReason =
+          typeof parsed.expectedReason === "string"
+            ? parsed.expectedReason.trim()
+            : fallback.expectedReason;
+        const expectedConfidenceRaw =
+          typeof parsed.expectedConfidence === "string"
+            ? parsed.expectedConfidence.trim()
+            : fallback.expectedConfidence;
+        const expectedConfidence: "High" | "Medium" | "Low" =
+          expectedConfidenceRaw === "High" ||
+            expectedConfidenceRaw === "Medium" ||
+            expectedConfidenceRaw === "Low"
+            ? expectedConfidenceRaw
+            : fallback.expectedConfidence;
+        if (about.length > 0 && expectedFromMe.length > 0) {
+          return {
+            about: about.slice(0, 800),
+            expectedFromMe: expectedFromMe.slice(0, 800),
+            expectedReason: expectedReason.slice(0, 240),
+            expectedConfidence,
+          };
+        }
+      } catch (e) {
+        console.warn("[getThreadBrain] LLM failed, using fallback", e);
+      }
+
+      return fallback;
     }),
 
   getEventForThread: protectedProcedure

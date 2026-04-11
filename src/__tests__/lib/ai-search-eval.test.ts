@@ -19,7 +19,7 @@ const mk = (
   body: snippet,
 });
 
-describe("AI Search eval — intent detection", () => {
+describe("AI Search eval: intent detection", () => {
   it("treats messy follow-up as summarize when session has results", () => {
     const r = detectIntent("tell me about that failed one on march 17", true);
     expect(r.intent).toBe("SUMMARIZE");
@@ -32,7 +32,7 @@ describe("AI Search eval — intent detection", () => {
   });
 });
 
-describe("AI Search eval — selection & disambiguation", () => {
+describe("AI Search eval: selection & disambiguation", () => {
   const emails: StoredEmail[] = [
     mk("a", "UPI declined", "2026-03-17", "payment failed cred"),
     mk("b", "Hevy subscription", "2026-03-14", "declined renewal"),

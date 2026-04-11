@@ -30,8 +30,8 @@ const FAST_FIRST_BATCH_INBOX = 10;
 const FAST_FIRST_BATCH_SENT = 8;
 const FAST_FIRST_BATCH_TRASH = 5;
 const FAST_FIRST_FETCH_CONCURRENCY = 10;
-const FAST_FIRST_FETCH_TIMEOUT_MS = 6_000;
-const FAST_FIRST_LIST_TIMEOUT_MS = 5_000;
+const FAST_FIRST_FETCH_TIMEOUT_MS = 15_000;
+const FAST_FIRST_LIST_TIMEOUT_MS = 25_000;
 const RATE_LIMIT_WAIT_MS = 60_000;
 
 function isRateLimitError(error: unknown): boolean {
@@ -53,6 +53,7 @@ const aurinkoAxios = axios.create({
 
 const AURINKO_401_RETRIES = 3;
 const AURINKO_401_RETRY_DELAY_MS = 1500;
+const AURINKO_TRANSIENT_RETRIES = 2;
 
 function is401Error(error: unknown): boolean {
   if (axios.isAxiosError(error)) return error.response?.status === 401;
@@ -60,8 +61,67 @@ function is401Error(error: unknown): boolean {
   return /401|Authentication failed|UNAUTHORIZED/i.test(msg);
 }
 
+export function isTransientMailProviderError(error: unknown): boolean {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504) {
+      return true;
+    }
+    const code = error.code;
+    if (
+      code === "ECONNABORTED" ||
+      code === "ETIMEDOUT" ||
+      code === "ECONNRESET" ||
+      code === "ENOTFOUND" ||
+      code === "EAI_AGAIN"
+    ) {
+      return true;
+    }
+    const data = error.response?.data as { message?: string; error?: string } | string | undefined;
+    const body = typeof data === "string" ? data : `${data?.message ?? ""} ${data?.error ?? ""}`;
+    const m = body.toLowerCase();
+    if (
+      m.includes("service unavailable") ||
+      m.includes("temporarily unavailable") ||
+      m.includes("timeout") ||
+      m.includes("timed out")
+    ) {
+      return true;
+    }
+  }
+  const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return (
+    /timeout|timed out|econnaborted|etimedout|econnreset|network|408|502|503|504|service unavailable/.test(
+      msg,
+    ) && !is401Error(error)
+  );
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTransientRetries<T>(
+  fn: () => Promise<T>,
+  maxExtraAttempts: number,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxExtraAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt >= maxExtraAttempts || !isTransientMailProviderError(error)) {
+        throw error;
+      }
+      const delay = 1200 * (attempt + 1);
+      console.warn(
+        `[accounts] Transient mail-provider error (attempt ${attempt + 1}/${maxExtraAttempts + 1}), retrying in ${delay}ms...`,
+      );
+      await sleep(delay);
+    }
+  }
+  throw lastError;
 }
 
 async function with401Retry<T>(
@@ -72,7 +132,7 @@ async function with401Retry<T>(
   let lastError: unknown;
   for (let attempt = 0; attempt <= AURINKO_401_RETRIES; attempt++) {
     try {
-      return await fn();
+      return await withTransientRetries(fn, AURINKO_TRANSIENT_RETRIES);
     } catch (error) {
       lastError = error;
       if (!is401Error(error) || attempt === AURINKO_401_RETRIES) break;
@@ -95,9 +155,11 @@ async function with401Retry<T>(
       await sleep(delay);
     }
   }
-  await db.account
-    .update({ where: { id: accountId }, data: { needsReconnection: true } })
-    .catch((err) => console.error(`[accounts] Failed to update needsReconnection:`, err));
+  if (is401Error(lastError)) {
+    await db.account
+      .update({ where: { id: accountId }, data: { needsReconnection: true } })
+      .catch((err) => console.error(`[accounts] Failed to update needsReconnection:`, err));
+  }
   throw lastError;
 }
 

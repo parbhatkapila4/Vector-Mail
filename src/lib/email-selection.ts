@@ -251,7 +251,7 @@ export function formatEmailOptionsWithReasons(matches: EmailMatch[]): string {
     .map((m, index) => {
       const dateStr = new Date(m.email.date).toLocaleDateString();
       const fromStr = m.email.from.name || m.email.from.address;
-      return `${index + 1}. "${m.email.subject}" from ${fromStr} (${dateStr}) — ${m.matchReason}`;
+      return `${index + 1}. "${m.email.subject}" from ${fromStr} (${dateStr}) - ${m.matchReason}`;
     })
     .join("\n");
 }

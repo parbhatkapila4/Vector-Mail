@@ -2,7 +2,16 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
-import { Send, Bot, Loader2, MessageCircle } from "lucide-react";
+import {
+  Send,
+  Bot,
+  Loader2,
+  MessageCircle,
+  Sparkles,
+  ArrowRight,
+  SkipForward,
+  X,
+} from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -12,6 +21,10 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 import { Switch } from "@/components/ui/switch";
 import { InboxIntelligenceCards } from "@/components/mail/InboxIntelligenceCards";
+import {
+  getInboxAssistantView,
+  stripJsonFenceFromDisplay,
+} from "@/lib/inbox-chat-structured";
 
 interface ChatMessage {
   id: string;
@@ -23,6 +36,7 @@ interface ChatMessage {
 interface EmailSearchProps {
   isCollapsed: boolean;
   resetTrigger?: number;
+  onOpenThread?: (threadId: string) => void;
 }
 
 const animationConfig: Transition = {
@@ -32,39 +46,56 @@ const animationConfig: Transition = {
 };
 
 const suggestedQueries = [
-  { label: "Orders", query: "Show me emails about orders", icon: "📦" },
-  { label: "Flights", query: "Find my flight bookings", icon: "✈️" },
   {
-    label: "Meetings",
-    query: "What meetings do I have coming up?",
+    label: "Needs reply",
+    query: "What in my inbox still needs a reply?",
+    icon: "↩️",
+  },
+  {
+    label: "What matters today",
+    query: "What should I prioritize in my inbox today?",
+    icon: "✨",
+  },
+  {
+    label: "Last 7 days",
+    query: "Summarize my email from the last 7 days in short bullets.",
     icon: "📅",
   },
-  { label: "Payments", query: "Show receipts and payments", icon: "💰" },
+  {
+    label: "Find a topic",
+    query: "Find emails about hiring, candidates, or recruiting.",
+    icon: "🔎",
+  },
 ] as const;
-
 
 const founderDemoQueries = [
   {
-    label: "Payment activity",
+    label: "Reply queue",
+    query: "What threads are waiting on me for a reply?",
+    icon: "↩️",
+  },
+  {
+    label: "Today’s stack rank",
+    query: "Rank what matters in my inbox today: founder view, 5 bullets max.",
+    icon: "✨",
+  },
+  {
+    label: "Month in review",
+    query: "Summarize my mail themes from the last 30 days.",
+    icon: "📅",
+  },
+  {
+    label: "Topic sweep",
     query:
-      "Summarize my recent payment, receipt, and UPI emails in short bullets",
-    icon: "💳",
+      "Find every thread about contracts, MSAs, or legal in the last 90 days.",
+    icon: "🔎",
   },
-  {
-    label: "What needs attention",
-    query: "What emails look urgent or need a reply based on my recent mail?",
-    icon: "⚡",
-  },
-  {
-    label: "Failed charges",
-    query: "Show failed or declined payments and subscriptions from my emails",
-    icon: "⛔",
-  },
-  {
-    label: "Travel this month",
-    query: "Find flight, hotel, or travel booking emails from the last few weeks",
-    icon: "🧳",
-  },
+] as const;
+
+const GUIDED_DEMO_STEPS = [
+  "What needs my attention today?",
+  "Who haven’t I replied to?",
+  "Summarize last week in 5 bullets",
 ] as const;
 
 const DEMO_CHAT_MESSAGES: ChatMessage[] = [
@@ -87,7 +118,11 @@ This week
 3. Q4 planning - Wednesday 10:00 AM (tentative)
 4. Design review - Thursday 3:00 PM
 
-I found these from your recent emails and calendar-related threads. Request access to connect your Gmail and I’ll search your real inbox and keep this up to date.`,
+I found these from your recent emails and calendar-related threads. Request access to connect your Gmail and I’ll search your real inbox and keep this up to date.
+
+\`\`\`json
+{"summary":"Four meeting-related threads in your demo inbox","actions":["Confirm Product sync at 2:00 PM","Prep for Q4 planning Wednesday"],"threads":[{"threadId":"demo-thread-6","label":"Product sync"},{"threadId":"demo-thread-17","label":"Sprint planning"},{"threadId":"demo-thread-12","label":"Design review"}]}
+\`\`\``,
     timestamp: Date.now() - 115000,
   },
   {
@@ -105,7 +140,11 @@ I found these from your recent emails and calendar-related threads. Request acce
 2. Order #2901 - Delivered yesterday
 3. Subscription renewal - Billing next week (reminder from payments@service.com)
 
-In the full version, I’ll search your connected inbox and surface the exact threads, so you can open them with one click. Request access above to use this with your own emails.`,
+In the full version, I’ll search your connected inbox and surface the exact threads, so you can open them with one click. Request access above to use this with your own emails.
+
+\`\`\`json
+{"summary":"Three order and billing threads matched your search","actions":["Track shipment for order #2847","Confirm renewal date for subscription"],"threads":[{"threadId":"demo-thread-3","label":"Order #2847 shipped"},{"threadId":"demo-thread-13","label":"Subscription renewal"}]}
+\`\`\``,
     timestamp: Date.now() - 55000,
   },
 ];
@@ -113,6 +152,7 @@ In the full version, I’ll search your connected inbox and surface the exact th
 export default function EmailSearchAssistant({
   isCollapsed,
   resetTrigger = 0,
+  onOpenThread,
 }: EmailSearchProps) {
   const isDemo = useDemoMode();
   const [accountId] = useLocalStorage("accountId", "");
@@ -124,6 +164,8 @@ export default function EmailSearchAssistant({
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [guidedDemoActive, setGuidedDemoActive] = useState(false);
+  const [guidedStepIndex, setGuidedStepIndex] = useState(0);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const demoSeededRef = useRef(false);
 
@@ -143,7 +185,7 @@ export default function EmailSearchAssistant({
         setFounderDemo(true);
       }
     } catch {
-      
+
     }
   }, []);
 
@@ -151,6 +193,8 @@ export default function EmailSearchAssistant({
     if (resetTrigger === 0) return;
     setMessages([]);
     setInput("");
+    setGuidedDemoActive(false);
+    setGuidedStepIndex(0);
     demoSeededRef.current = false;
   }, [resetTrigger]);
   const { data: accounts, isLoading: accountsLoading } =
@@ -225,8 +269,11 @@ export default function EmailSearchAssistant({
           const demoReply: ChatMessage = {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content:
-              "In the full version, I’ll search your inbox and summarize results here. Request access above to connect your Gmail. We'll reply once your account is enabled.",
+            content: `In the full version, I’ll search your inbox and summarize results here. Request access above to connect your Gmail. We'll reply once your account is enabled.
+
+\`\`\`json
+{"summary":"Demo mode: connect Gmail to use AI Inbox Brain on your mail","actions":["Use the banner above to request access when you are ready."],"threads":[]}
+\`\`\``,
             timestamp: Date.now(),
           };
           setMessages((prev) => [...prev, demoReply]);
@@ -396,6 +443,17 @@ export default function EmailSearchAssistant({
     [input, sendMessage, hasValidAccount, showDemoUI],
   );
 
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== "Enter" || (!e.metaKey && !e.ctrlKey)) return;
+      e.preventDefault();
+      if (!input.trim() || (!hasValidAccount && !showDemoUI) || isLoading) return;
+      void sendMessage(input);
+      setInput("");
+    },
+    [input, sendMessage, hasValidAccount, showDemoUI, isLoading],
+  );
+
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setInput(e.target.value);
@@ -416,6 +474,42 @@ export default function EmailSearchAssistant({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const lastAssistantTurn = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg?.role === "assistant") {
+        return getInboxAssistantView(msg.content).turn;
+      }
+    }
+    return null;
+  })();
+
+  const canShowGuidedDemoEntry = showDemoUI || messages.length === 0;
+  const hasNextGuidedStep = guidedStepIndex < GUIDED_DEMO_STEPS.length - 1;
+
+  const runGuidedStep = useCallback(
+    (stepIndex: number) => {
+      const query = GUIDED_DEMO_STEPS[stepIndex];
+      if (!query || isLoading) return;
+      setGuidedStepIndex(stepIndex);
+      setInput("");
+      void sendMessage(query);
+    },
+    [isLoading, sendMessage],
+  );
+
+  const startGuidedDemo = useCallback(() => {
+    if (isLoading) return;
+    setGuidedDemoActive(true);
+    setGuidedStepIndex(0);
+    setMessages([]);
+    runGuidedStep(0);
+  }, [isLoading, runGuidedStep]);
+
+  const exitGuidedDemo = useCallback(() => {
+    setGuidedDemoActive(false);
+  }, []);
 
   if (isCollapsed) return null;
 
@@ -475,8 +569,8 @@ export default function EmailSearchAssistant({
   return (
     <div className="flex h-full flex-col">
       {!showDemoUI && hasValidAccount && (
-        <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2">
-          <span className="text-[11px] text-zinc-500">
+        <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2.5">
+          <span className="text-[11px] leading-snug text-zinc-500">
             Show grounded sources
           </span>
           <div className="flex items-center gap-2">
@@ -502,37 +596,167 @@ export default function EmailSearchAssistant({
             className="flex-1 overflow-y-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             ref={messageContainerRef}
           >
-            <AnimatePresence mode="wait">
-              {messages.map((message) => (
-                <motion.div
-                  key={message.id}
-                  layout="position"
-                  className={cn("z-10 mb-3 break-words rounded-xl", {
-                    "ml-auto max-w-[85%] bg-amber-400 px-4 py-2.5 rounded-2xl rounded-br-sm shadow-lg":
-                      message.role === "user",
-                    "mr-auto max-w-[90%] bg-white/[0.03] ring-1 ring-white/[0.06]":
-                      message.role === "assistant",
-                  })}
-                  layoutId={`container-[${messages.length - 1}]`}
-                  transition={animationConfig}
-                >
-                  <div className="px-4 py-3 text-sm leading-relaxed">
-                    {message.role === "assistant" ? (
-                      <div className="space-y-2">
-                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">
-                          <MessageCircle className="h-3 w-3" />
-                          Assistant
-                        </div>
-                        <div className="whitespace-pre-wrap text-sm text-zinc-300">
-                          {message.content}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-black">{message.content}</span>
-                    )}
+            {canShowGuidedDemoEntry && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-3 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-300/90">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Founder demo
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-300">
+                      Try a guided 30-sec walkthrough: attention, replies, and
+                      weekly summary.
+                    </p>
                   </div>
-                </motion.div>
-              ))}
+                  {!guidedDemoActive ? (
+                    <button
+                      type="button"
+                      onClick={startGuidedDemo}
+                      className="shrink-0 rounded-md bg-amber-400 px-2.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-amber-300"
+                    >
+                      Try 30-sec demo
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={exitGuidedDemo}
+                      className="shrink-0 rounded-md border border-white/10 px-2 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                    >
+                      Exit
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+            <AnimatePresence mode="wait">
+              {messages.map((message) => {
+                const isStreamingAssistant =
+                  isLoading &&
+                  message.role === "assistant" &&
+                  messages[messages.length - 1]?.id === message.id;
+                return (
+                  <motion.div
+                    key={message.id}
+                    layout="position"
+                    className={cn("z-10 mb-3 break-words rounded-xl", {
+                      "ml-auto max-w-[85%] bg-amber-400 px-4 py-2.5 rounded-2xl rounded-br-sm shadow-lg":
+                        message.role === "user",
+                      "mr-auto max-w-[90%] bg-white/[0.03] ring-1 ring-white/[0.06]":
+                        message.role === "assistant",
+                    })}
+                    layoutId={`container-[${messages.length - 1}]`}
+                    transition={animationConfig}
+                  >
+                    <div className="px-4 py-3 text-sm leading-relaxed">
+                      {message.role === "assistant" ? (
+                        <div className="space-y-2">
+                          <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">
+                            <MessageCircle className="h-3 w-3" />
+                            Inbox brain
+                          </div>
+                          {isStreamingAssistant ? (
+                            <div className="whitespace-pre-wrap text-sm text-zinc-300">
+                              {stripJsonFenceFromDisplay(message.content) ||
+                                "\u00a0"}
+                            </div>
+                          ) : (
+                            (() => {
+                              const { turn, detailProse } = getInboxAssistantView(
+                                message.content,
+                              );
+                              return (
+                                <div className="space-y-3">
+                                  <p className="text-sm font-semibold leading-snug text-zinc-100">
+                                    {turn.summary}
+                                  </p>
+                                  {turn.actions.length > 0 && (
+                                    <ul className="list-decimal space-y-1 pl-4 text-sm text-zinc-300">
+                                      {turn.actions.map((a, i) => (
+                                        <li key={i}>{a}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                  {turn.threads.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {turn.threads.map((t) => (
+                                        <div
+                                          key={`${message.id}-${t.threadId}`}
+                                          className="max-w-full rounded-lg border border-amber-400/25 bg-amber-400/5 px-2.5 py-2"
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              onOpenThread?.(t.threadId)
+                                            }
+                                            className="max-w-full truncate rounded-full border border-amber-400/35 bg-amber-400/10 px-3 py-1 text-left text-xs font-medium text-amber-100 transition-colors hover:bg-amber-400/20 disabled:opacity-50"
+                                            disabled={!onOpenThread}
+                                            title={
+                                              onOpenThread
+                                                ? "Open thread"
+                                                : undefined
+                                            }
+                                          >
+                                            {t.label}
+                                          </button>
+                                          {(t.reason || t.confidence) && (
+                                            <div className="mt-1.5 flex items-center gap-1.5">
+                                              {t.reason && (
+                                                <span
+                                                  className="max-w-[240px] truncate text-[10px] text-zinc-400 underline decoration-dotted underline-offset-2"
+                                                  title={`Why this? ${t.reason}`}
+                                                >
+                                                  Why this? {t.reason}
+                                                </span>
+                                              )}
+                                              {t.confidence && (
+                                                <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-medium text-indigo-200">
+                                                  {t.confidence}
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {guidedDemoActive &&
+                                    turn.threads.length > 0 &&
+                                    onOpenThread && (
+                                      <div>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            onOpenThread(turn.threads[0]!.threadId)
+                                          }
+                                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]"
+                                        >
+                                          Open top thread
+                                          <ArrowRight className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  {detailProse ? (
+                                    <div className="whitespace-pre-wrap border-t border-white/[0.06] pt-2 text-xs leading-relaxed text-zinc-400">
+                                      {detailProse}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })()
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-black">{message.content}</span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
             {isLoading && (
               <motion.div
@@ -554,24 +778,103 @@ export default function EmailSearchAssistant({
                 </div>
               </motion.div>
             )}
+            {guidedDemoActive && !isLoading && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-[11px] text-zinc-400">
+                    Step {guidedStepIndex + 1} of {GUIDED_DEMO_STEPS.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={exitGuidedDemo}
+                    className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200"
+                  >
+                    <X className="h-3 w-3" />
+                    Exit demo
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {hasNextGuidedStep ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => runGuidedStep(guidedStepIndex + 1)}
+                        className="inline-flex items-center gap-1 rounded-md bg-amber-400 px-2.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-amber-300"
+                      >
+                        Next step
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runGuidedStep(guidedStepIndex + 1)}
+                        className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                      >
+                        <SkipForward className="h-3.5 w-3.5" />
+                        Skip
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={exitGuidedDemo}
+                      className="inline-flex items-center gap-1 rounded-md bg-emerald-400/90 px-2.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-emerald-300"
+                    >
+                      Demo complete
+                    </button>
+                  )}
+                  {lastAssistantTurn?.threads?.[0] && onOpenThread && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenThread(lastAssistantTurn.threads[0]!.threadId)
+                      }
+                      className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                    >
+                      Open top thread
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-xs text-zinc-400">
+            <div className="space-y-5">
+              {canShowGuidedDemoEntry && (
+                <motion.button
+                  type="button"
+                  onClick={startGuidedDemo}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="w-full rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2.5 text-left transition-colors hover:bg-amber-400/20"
+                >
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300/90">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Try a 30-sec demo
+                  </span>
+                  <span className="mt-1 block text-[12px] text-zinc-300">
+                    Guided walkthrough in 3 steps. You can skip or exit anytime.
+                  </span>
+                </motion.button>
+              )}
+              <div className="text-center px-1">
+                <p className="text-[13px] leading-snug text-zinc-300 dark:text-zinc-400">
                   {showDemoUI
-                    ? "See how the AI assistant works. Request access to search your own inbox."
-                    : "Search, summarize & analyze your emails"}
+                    ? "Ask in plain English: get a structured answer and open real demo threads."
+                    : "Ask in plain English: get a structured answer and jump to real threads."}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {suggestedQueries.map(({ label, query, icon }) => (
                   <button
                     key={label}
                     onClick={() => handleQuerySuggestion(query)}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-xs font-medium text-zinc-300 transition-all hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-white"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-[11px] font-medium leading-tight text-zinc-200 transition-all hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-white"
                   >
                     <span>{icon}</span>
                     <span>{label}</span>
@@ -581,16 +884,16 @@ export default function EmailSearchAssistant({
 
               {founderDemo && !showDemoUI && (
                 <div>
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400/80">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400/85">
                     Founder demo flows
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {founderDemoQueries.map(({ label, query, icon }) => (
                       <button
                         key={label}
                         type="button"
                         onClick={() => void sendMessage(query)}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2.5 text-xs font-medium text-zinc-200 transition-all hover:border-amber-400/45 hover:bg-amber-400/10"
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2.5 text-[11px] font-medium leading-tight text-zinc-200 transition-all hover:border-amber-400/45 hover:bg-amber-400/10"
                       >
                         <span>{icon}</span>
                         <span className="text-left leading-tight">{label}</span>
@@ -634,19 +937,21 @@ export default function EmailSearchAssistant({
 
         <form
           onSubmit={handleSubmit}
-          className="mt-auto flex w-full gap-2 border-t border-white/[0.06] p-3"
+          className="mt-auto flex w-full gap-2 border-t border-white/[0.06] p-3.5"
         >
           <div className="relative flex-1">
             <input
+              id="inbox-brain-chat-input"
               type="text"
               onChange={handleInputChange}
+              onKeyDown={handleInputKeyDown}
               value={input}
               className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-amber-400/40 focus:ring-1 focus:ring-amber-400/30 disabled:opacity-50"
               placeholder={
                 showDemoUI
-                  ? "Try a question to see how it works. Request access to search your real inbox."
+                  ? "Try a question… request access to use Inbox brain on your mail."
                   : hasValidAccount
-                    ? "Ask about your emails..."
+                    ? "Ask your Inbox brain anything about your mail…"
                     : "Loading account..."
               }
               disabled={isLoading || (!hasValidAccount && !showDemoUI)}

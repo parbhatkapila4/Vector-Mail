@@ -1,5 +1,6 @@
 export interface StoredEmail {
   id: string;
+  threadId?: string;
   subject: string;
   from: {
     name: string | null;
@@ -32,6 +33,7 @@ export function storeSearchResults(
   accountId: string,
   emails: Array<{
     id: string;
+    threadId?: string;
     subject: string;
     from: { name: string | null; address: string };
     sentAt: Date;
@@ -48,6 +50,7 @@ export function storeSearchResults(
 
   const storedEmails: StoredEmail[] = emails.map((email) => ({
     id: email.id,
+    threadId: email.threadId,
     subject: email.subject || "",
     from: email.from,
     date: email.sentAt,

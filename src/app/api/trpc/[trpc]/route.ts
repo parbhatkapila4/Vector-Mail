@@ -1,5 +1,6 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { type NextRequest } from "next/server";
+import axios from "axios";
 
 import {
   getOrCreateRequestId,
@@ -11,7 +12,7 @@ import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const createContext = async (req: NextRequest) => {
   const headers = new Headers();
@@ -39,7 +40,18 @@ const handler = async (req: NextRequest) => {
               `❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`,
             );
             if (error.cause) {
-              console.error("Error cause:", error.cause);
+              const c = error.cause;
+              if (axios.isAxiosError(c)) {
+                console.error(
+                  "Error cause (Axios):",
+                  c.code,
+                  c.message,
+                  c.config?.method,
+                  c.config?.url,
+                );
+              } else if (c instanceof Error) {
+                console.error("Error cause:", c.message);
+              }
             }
             if (error.stack) {
               console.error("Error stack:", error.stack);

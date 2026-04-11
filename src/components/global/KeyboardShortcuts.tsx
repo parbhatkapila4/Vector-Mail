@@ -18,6 +18,14 @@ export function KeyboardShortcuts() {
 
       if (isTyping) return;
 
+      if (
+        typeof document !== "undefined" &&
+        document.querySelector(
+          '[data-slot="dialog-content"][data-state="open"]',
+        )
+      ) {
+        return;
+      }
 
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 

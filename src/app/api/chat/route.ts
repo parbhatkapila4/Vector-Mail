@@ -24,11 +24,78 @@ import { searchEmailsByVector } from "@/lib/vector-search";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
 import { checkUserRateLimit } from "@/lib/rate-limit";
+import {
+  appendStructuredJsonFence,
+  type InboxAssistantTurn,
+} from "@/lib/inbox-chat-structured";
 import type { EmailAddress, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+function structuredPlainResponse(body: string, turn: InboxAssistantTurn) {
+  return new Response(appendStructuredJsonFence(body, turn), {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache",
+    },
+  });
+}
+
+function turnSingleThread(args: {
+  summaryLine: string;
+  actionBullets: string[];
+  threadId?: string;
+  chipLabel: string;
+  reason?: string;
+  confidence?: "High" | "Medium" | "Low";
+}): InboxAssistantTurn {
+  const { summaryLine, actionBullets, threadId, chipLabel, reason, confidence } = args;
+  return {
+    summary: summaryLine.slice(0, 500),
+    actions: actionBullets.slice(0, 5),
+    threads: threadId
+      ? [
+        {
+          threadId,
+          label: chipLabel.slice(0, 56),
+          reason: reason ?? "Direct match to your question",
+          confidence: confidence ?? "High",
+        },
+      ]
+      : [],
+  };
+}
+
+function turnFromFilteredEmails(
+  summary: string,
+  actions: string[],
+  emails: Array<{
+    threadId: string;
+    subject: string;
+    from?: { name: string | null; address: string };
+    sentAt?: Date;
+    bodySnippet?: string | null;
+  }>,
+): InboxAssistantTurn {
+  const keywordRe = /\b(deadline|invoice|urgent|asap|contract|legal|board|investor)\b/i;
+  const threads = emails.slice(0, 8).map((e) => ({
+    threadId: e.threadId,
+    label: e.subject.length > 44 ? `${e.subject.slice(0, 44)}…` : e.subject,
+    reason: keywordRe.test(`${e.subject} ${e.bodySnippet ?? ""}`)
+      ? "Contains urgency or business-critical keywords"
+      : e.sentAt
+        ? `Recent thread from ${e.from?.name || e.from?.address || "sender"}`
+        : "Relevant to your query",
+    confidence: keywordRe.test(`${e.subject} ${e.bodySnippet ?? ""}`) ? "High" : "Medium" as "High" | "Medium",
+  }));
+  return {
+    summary: summary.slice(0, 500),
+    actions: actions.slice(0, 5),
+    threads,
+  };
+}
 
 function removeAllSymbols(text: string): string {
   text = text.replace(/\*+/g, "");
@@ -455,11 +522,10 @@ async function chatPostHandler(req: Request) {
         const redirectMessage =
           "I can only help you find and summarize emails. For email writing/sending or other tasks, please use AI Buddy.";
 
-        return new Response(redirectMessage, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-          },
+        return structuredPlainResponse(redirectMessage, {
+          summary: "This panel only searches and summarizes your inbox",
+          actions: ["Use AI Buddy in the sidebar to draft or send email."],
+          threads: [],
         });
       }
     }
@@ -554,12 +620,18 @@ async function chatPostHandler(req: Request) {
             lastSelectedEmailId: fromMemory.id,
             lastAssistantPreview: response.slice(0, 320),
           });
-          return new Response(response, {
-            headers: {
-              "Content-Type": "text/plain; charset=utf-8",
-              "Cache-Control": "no-cache",
-            },
-          });
+          const head =
+            removeAllSymbols(summary).split(/\n/)[0]?.trim().slice(0, 280) ||
+            fromMemory.subject;
+          return structuredPlainResponse(
+            response,
+            turnSingleThread({
+              summaryLine: head,
+              actionBullets: [],
+              threadId: fromMemory.threadId,
+              chipLabel: fromMemory.subject || "(No subject)",
+            }),
+          );
         } catch {
 
         }
@@ -669,12 +741,18 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
                   lastSelectedEmailId: selectedEmail.id,
                   lastAssistantPreview: response.slice(0, 320),
                 });
-                return new Response(response, {
-                  headers: {
-                    "Content-Type": "text/plain; charset=utf-8",
-                    "Cache-Control": "no-cache",
-                  },
-                });
+                const head =
+                  removeAllSymbols(summary).split(/\n/)[0]?.trim().slice(0, 280) ||
+                  selectedEmail.subject;
+                return structuredPlainResponse(
+                  response,
+                  turnSingleThread({
+                    summaryLine: head,
+                    actionBullets: [],
+                    threadId: selectedEmail.threadId,
+                    chipLabel: selectedEmail.subject || "(No subject)",
+                  }),
+                );
               }
             }
           } catch (llmError) {
@@ -683,22 +761,48 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
         }
 
         const response = `I couldn't find an email matching that description in the previous search results. Could you be more specific, or try a new search?`;
-        return new Response(response, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-          },
+        return structuredPlainResponse(response, {
+          summary: "No match in your last search results",
+          actions: ["Run a new search or name the sender, date, or subject."],
+          threads: [],
         });
       }
 
       if (matches.length > 1) {
         const options = formatEmailOptionsWithReasons(matches);
         const response = `I'm not fully sure which email you mean. Here are the closest matches:\n\n${options}\n\nReply with "the first one", "the second one", or add more detail (date, sender, or subject).`;
-        return new Response(response, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-          },
+        const threads = matches
+          .map((m) => {
+            const tid = m.email.threadId;
+            if (!tid) return null;
+            return {
+              threadId: tid,
+              label:
+                m.email.subject.length > 44
+                  ? `${m.email.subject.slice(0, 44)}…`
+                  : m.email.subject,
+              reason:
+                m.matchReason?.slice(0, 120) ??
+                "Potential match based on your follow-up description",
+              confidence: "Medium" as const,
+            };
+          })
+          .filter(
+            (
+              x,
+            ): x is {
+              threadId: string;
+              label: string;
+              reason: string;
+              confidence: "Medium";
+            } => x !== null,
+          );
+        return structuredPlainResponse(response, {
+          summary: "Which thread did you mean?",
+          actions: [
+            'Reply with "the first one" / "second" or tap a thread chip.',
+          ],
+          threads: threads.slice(0, 8),
         });
       }
 
@@ -745,20 +849,37 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           lastSelectedEmailId: selectedEmail.id,
           lastAssistantPreview: response.slice(0, 320),
         });
-        return new Response(response, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-          },
-        });
+        const head =
+          removeAllSymbols(summary).split(/\n/)[0]?.trim().slice(0, 280) ||
+          selectedEmail.subject;
+        return structuredPlainResponse(
+          response,
+          turnSingleThread({
+            summaryLine: head,
+            actionBullets: [],
+            threadId: selectedEmail.threadId,
+            chipLabel: selectedEmail.subject || "(No subject)",
+          }),
+        );
       } catch (summaryError) {
         console.error("Summary generation failed:", summaryError);
         const response = `This email from ${selectedEmail.from.name || selectedEmail.from.address} dated ${new Date(selectedEmail.date).toLocaleDateString()} is about "${selectedEmail.subject}". ${selectedEmail.snippet}...`;
-        return new Response(response, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-          },
+        return structuredPlainResponse(response, {
+          summary: `Snippet: ${selectedEmail.subject.slice(0, 80)}`,
+          actions: ["Open the thread for the full message."],
+          threads: selectedEmail.threadId
+            ? [
+              {
+                threadId: selectedEmail.threadId,
+                label:
+                  selectedEmail.subject.length > 44
+                    ? `${selectedEmail.subject.slice(0, 44)}…`
+                    : selectedEmail.subject,
+                reason: "Directly selected as the best match for your query",
+                confidence: "High",
+              },
+            ]
+            : [],
         });
       }
     }
@@ -768,6 +889,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
 
     let relevantEmails: Array<{
       id: string;
+      threadId: string;
       subject: string;
       summary: string | null;
       body: string | null;
@@ -925,6 +1047,7 @@ Return ONLY a JSON object in this exact format:
     try {
       let vectorSearchResults: Array<{
         id: string;
+        threadId: string;
         subject: string;
         summary: string | null;
         body: string | null;
@@ -949,6 +1072,7 @@ Return ONLY a JSON object in this exact format:
 
         vectorSearchResults = vectorResults.map((result) => ({
           id: result.email.id,
+          threadId: result.email.threadId,
           subject: result.email.subject,
           summary: result.email.summary,
           body: result.email.body,
@@ -1056,6 +1180,7 @@ Return ONLY a JSON object in this exact format:
 
         relevantEmails = searchResults.map((email) => ({
           id: email.id,
+          threadId: email.threadId,
           subject: email.subject,
           summary: email.summary,
           body: email.body,
@@ -1218,6 +1343,7 @@ Return ONLY a JSON object in this exact format:
 
         relevantEmails = searchResults.map((email) => ({
           id: email.id,
+          threadId: email.threadId,
           subject: email.subject,
           summary: email.summary,
           body: email.body,
@@ -1535,6 +1661,7 @@ If NONE are relevant, return: 0`;
     }
 
     const emailContext = filteredEmails.map((email) => ({
+      threadId: email.threadId,
       subject: email.subject,
       content: email.bodySnippet || email.body || "",
       date: email.sentAt.toISOString(),
@@ -1560,21 +1687,19 @@ If NONE are relevant, return: 0`;
         const redirectMessage =
           "I can only help you find and summarize emails. For other tasks like generating emails, answering general questions, or coding help, please use AI Buddy - he'll surely help you with this. I can't do that here.";
 
-        return new Response(redirectMessage, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-          },
+        return structuredPlainResponse(redirectMessage, {
+          summary: "That request is outside inbox search",
+          actions: ["Use AI Buddy for general questions or drafting email."],
+          threads: [],
         });
       }
 
       const response = "No mails found regarding your query. I'm Sorry!";
 
-      return new Response(response, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
+      return structuredPlainResponse(response, {
+        summary: "No matching threads found",
+        actions: ["Try different keywords or widen the date range."],
+        threads: [],
       });
     }
 
@@ -1619,12 +1744,18 @@ If NONE are relevant, return: 0`;
         lastAssistantPreview: response.slice(0, 320),
       });
 
-      return new Response(response, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
-      });
+      const head =
+        removeAllSymbols(summary).split(/\n/)[0]?.trim().slice(0, 280) ||
+        top.subject;
+      return structuredPlainResponse(
+        response,
+        turnSingleThread({
+          summaryLine: head,
+          actionBullets: [],
+          threadId: top.threadId,
+          chipLabel: top.subject || "(No subject)",
+        }),
+      );
     }
 
     const safetyRails = `
@@ -1638,7 +1769,7 @@ QUALITY AND SAFETY (MANDATORY):
     const founderDemoBlock = founderDemo
       ? `
 FOUNDER DEMO MODE:
-- Be concise and executive: lead with the answer, then 1–2 supporting bullets from the emails.
+- Be concise and executive: lead with the answer, then 1-2 supporting bullets from the emails.
 - Sound confident only when the evidence is in the previews; otherwise hedge clearly.
 `
       : "";
@@ -1661,32 +1792,32 @@ IMPORTANT RULES:
 - If user asks about a specific email from the list, provide details about that email
 - If the user asks for something that is NOT about finding or summarizing emails, politely redirect them to use AI Buddy for that task
 
-FORMATTING RULES - ABSOLUTELY CRITICAL - NO SYMBOLS ALLOWED:
-- FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (•), NO special characters
-- For lists, use ONLY numbers (1., 2., 3.) or letters (a., b., c.) - NO symbols
-- NEVER use asterisks (*), dashes (-), dots (•), or any other symbols for lists or emphasis
-- Use plain text formatting only - NO markdown symbols at all
-- Keep formatting clean and professional with plain text only
+FORMATTING RULES - PLAIN TEXT IN THE ANSWER BODY:
+- FORBIDDEN in the prose answer: markdown emphasis (* **), bullet dashes (-, •) at line starts, decorative symbols
+- For lists in prose, use ONLY numbered lines like 1. 2. 3. or letters a. b. c.
+- Keep the answer readable and plain
 
-CORRECT LIST FORMAT EXAMPLES:
-1. First item
-2. Second item
-a. Or using letters
-b. Another item
-
-ABSOLUTELY FORBIDDEN - DO NOT USE:
-* Any asterisk
-- Any dash
-• Any dot
-* For any purpose
-* Ever
+STRUCTURED OUTPUT (MANDATORY; app relies on this):
+After your plain-text answer, append EXACTLY ONE fenced JSON block using ONLY this shape (triple backticks allowed here and nowhere else):
+\`\`\`json
+{"summary":"One-line executive headline of your answer","actions":["Short actionable bullet if any","..."],"threads":[{"threadId":"<exact ThreadId from email list>","label":"Short chip text (e.g. subject)","reason":"Crisp user-facing why this thread matters","confidence":"High|Medium|Low"}]}
+\`\`\`
+Rules:
+- summary: concise headline; not empty.
+- actions: 0-5 short strings; use [] if nothing to recommend.
+- threads: up to 8 objects for threads you cite; threadId MUST be copied exactly from "ThreadId:" in the numbered emails below; never invent or guess IDs; use [] if none.
+- For each thread object, include:
+  - reason: short plain-English justification (no model internals), e.g. "Last message from external sender 3d ago", "Contains deadline/invoice keywords", "Looks newsletter-like".
+  - confidence: exactly one of High, Medium, Low.
+- The JSON must be valid and on one line or pretty-printed inside the fence.
 
 Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
 
 ${emailContext
         .map(
           (email, index) => `
-${index + 1}. From: ${email.from}
+${index + 1}. ThreadId: ${email.threadId}
+From: ${email.from}
 Subject: ${email.subject}
 Date: ${new Date(email.date).toLocaleDateString()}
 ${email.summary ? `Summary: ${email.summary}` : ""}
@@ -1729,12 +1860,26 @@ ${founderDemoBlock}`;
         resp = appendExplainableFooter(resp, true, filteredEmails);
       }
 
-      return new Response(resp, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
-      });
+      const turnNoKey: InboxAssistantTurn =
+        filteredEmails.length > 0
+          ? turnFromFilteredEmails(
+            `Found ${filteredEmails.length} emails (connect API for full AI)`,
+            ["Open a thread below to read the full message."],
+            filteredEmails.slice(0, 8).map((e) => ({
+              threadId: e.threadId,
+              subject: e.subject,
+              from: e.from,
+              sentAt: e.sentAt,
+              bodySnippet: e.bodySnippet ?? "",
+            })),
+          )
+          : {
+            summary: "No emails found for that query",
+            actions: [],
+            threads: [],
+          };
+
+      return structuredPlainResponse(resp, turnNoKey);
     }
 
     try {
@@ -1771,7 +1916,15 @@ ${founderDemoBlock}`;
               const content = chunk.choices[0]?.delta?.content;
               if (content) {
                 accumulatedRaw += content;
-                const fullyProcessed = removeAllSymbols(accumulatedRaw);
+                const fenceIdx = accumulatedRaw.indexOf("```json");
+                const prosePart =
+                  fenceIdx === -1
+                    ? accumulatedRaw
+                    : accumulatedRaw.slice(0, fenceIdx);
+                const jsonPart =
+                  fenceIdx === -1 ? "" : accumulatedRaw.slice(fenceIdx);
+                const fullyProcessed =
+                  removeAllSymbols(prosePart) + jsonPart;
                 const newContent = fullyProcessed.slice(
                   accumulatedProcessed.length,
                 );
@@ -1837,12 +1990,26 @@ ${founderDemoBlock}`;
         resp = appendExplainableFooter(resp, true, filteredEmails);
       }
 
-      return new Response(resp, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
-      });
+      const turnErr: InboxAssistantTurn =
+        filteredEmails.length > 0
+          ? turnFromFilteredEmails(
+            "Could not reach the AI model; listing search matches",
+            [],
+            filteredEmails.slice(0, 8).map((e) => ({
+              threadId: e.threadId,
+              subject: e.subject,
+              from: e.from,
+              sentAt: e.sentAt,
+              bodySnippet: e.bodySnippet ?? "",
+            })),
+          )
+          : {
+            summary: "Search unavailable",
+            actions: ["Try again in a moment."],
+            threads: [],
+          };
+
+      return structuredPlainResponse(resp, turnErr);
     }
   } catch (error) {
     console.error("[Chat API] Unhandled error:", error);

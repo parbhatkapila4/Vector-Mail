@@ -13,6 +13,7 @@ import {
   Loader2,
   Zap,
   Search,
+  CircleHelp,
   ArrowRight,
   ArrowLeft,
   CalendarClock,
@@ -60,6 +61,7 @@ import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
 import { LabelsList } from "./labels/LabelsList";
 import { NudgesBlock } from "./NudgesBlock";
+import { DailyBriefStrip } from "./DailyBriefStrip";
 import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useSetAtom } from "jotai";
@@ -69,7 +71,7 @@ const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
 
 I've been exploring VectorMail in demo mode and would like to request access so I can use it with my own inbox.
 
-I'm particularly interested in using AI Search and AI Buddy being able to find and summarize emails with natural language, and get help drafting replies and managing my workflow, would make a real difference for how I handle email day to day. I'd like to connect my Gmail account and try the full experience with my actual mail.
+I'm particularly interested in using AI Inbox Brain and AI Buddy to find and summarize mail in plain language, draft replies, and stay on top of my workflow. That would make a real difference day to day. I'd like to connect my Gmail account and try the full experience with my actual mail.
 
 Could you let me know what the process looks like for getting access, and when I might be able to start? I'm happy to share more about my use case or jump on a short call if that would be helpful.
 
@@ -105,6 +107,10 @@ export function Mail({ }: MailLayoutProps) {
   const threadListRef = useRef<ThreadListRef>(null);
   const rafRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
+  const isMacOS =
+    typeof window !== "undefined" &&
+    typeof navigator !== "undefined" &&
+    navigator.platform.toUpperCase().includes("MAC");
   const { user } = useUser();
   const userName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Account";
   const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
@@ -211,12 +217,21 @@ export function Mail({ }: MailLayoutProps) {
 
   const handleThreadSelect = useCallback((threadId: string) => {
     setSelectedThread(threadId);
-  }, []);
+    setThreadId(threadId);
+  }, [setThreadId]);
 
   const handleThreadClose = useCallback(() => {
     setSelectedThread(null);
     setThreadId(null);
   }, [setThreadId]);
+
+  const toggleAIPanel = useCallback(() => {
+    setShowAIPanel((open) => !open);
+  }, []);
+
+  const cycleBriefFocusFromShortcut = useCallback(() => {
+    threadListRef.current?.cycleBriefFocus();
+  }, []);
 
   const handleMobileNavigation = useCallback(
     (newTab?: string, isBuddy?: boolean) => {
@@ -269,6 +284,8 @@ export function Mail({ }: MailLayoutProps) {
         <MailKeyboardShortcuts
           selectedThread={selectedThread}
           setSelectedThread={setSelectedThread}
+          mailTab={tab}
+          setMailTab={setTab}
           focusSearch={focusSearch}
           openCompose={() => setComposeOpen(true)}
           focusReply={focusReply}
@@ -276,6 +293,8 @@ export function Mail({ }: MailLayoutProps) {
           showHelp={() => setHelpOpen(true)}
           helpOpen={helpOpen}
           closeHelp={() => setHelpOpen(false)}
+          toggleAIPanel={toggleAIPanel}
+          cycleBriefFocus={cycleBriefFocusFromShortcut}
         />
         <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
         <div className="flex h-full min-h-0 w-full flex-col bg-[#f6f8fc] dark:bg-[#202124]">
@@ -328,6 +347,18 @@ export function Mail({ }: MailLayoutProps) {
                       />
                     </div>
                     <div className="border-t border-[#dadce0] dark:border-[#3c4043]">
+                      {tab === "inbox" && (
+                        <DailyBriefStrip
+                          accountId={accountId}
+                          isDemo={isDemo}
+                          onShowKeyboardHelp={() => setHelpOpen(true)}
+                          showDesktopShortcuts={!isMobile}
+                          onThreadSelect={(threadId) => {
+                            handleThreadSelect(threadId);
+                            setSheetOpen(false);
+                          }}
+                        />
+                      )}
                       <NudgesBlock
                         accountId={accountId}
                         onThreadSelect={(threadId) => {
@@ -399,11 +430,13 @@ export function Mail({ }: MailLayoutProps) {
           {!selectedThread ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f6f8fc] dark:bg-[#202124]">
               <SearchBar />
-              <ThreadList
-                ref={threadListRef}
-                onThreadSelect={handleThreadSelect}
-                onSyncPendingChange={setSyncPending}
-              />
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <ThreadList
+                  ref={threadListRef}
+                  onThreadSelect={handleThreadSelect}
+                  onSyncPendingChange={setSyncPending}
+                />
+              </div>
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-[#202124]">
@@ -462,6 +495,8 @@ export function Mail({ }: MailLayoutProps) {
       <MailKeyboardShortcuts
         selectedThread={selectedThread}
         setSelectedThread={setSelectedThread}
+        mailTab={tab}
+        setMailTab={setTab}
         focusSearch={focusSearch}
         openCompose={() => setComposeOpen(true)}
         focusReply={focusReply}
@@ -469,6 +504,8 @@ export function Mail({ }: MailLayoutProps) {
         showHelp={() => setHelpOpen(true)}
         helpOpen={helpOpen}
         closeHelp={() => setHelpOpen(false)}
+        toggleAIPanel={toggleAIPanel}
+        cycleBriefFocus={cycleBriefFocusFromShortcut}
       />
       <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <div className="flex h-full min-h-0 w-full bg-white dark:bg-[#09090b]">
@@ -564,6 +601,7 @@ export function Mail({ }: MailLayoutProps) {
 
               <button
                 type="button"
+                title="Open AI Inbox Brain"
                 onClick={() => {
                   if (isDemo) {
                     setRequestAccessOpen(true);
@@ -579,7 +617,7 @@ export function Mail({ }: MailLayoutProps) {
                 )}
               >
                 <MessageCircle className="h-[18px] w-[18px] shrink-0" />
-                <span className="flex-1 text-left">AI Search</span>
+                <span className="flex-1 text-left">Inbox brain</span>
                 {isDemo && (
                   <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
                     Demo
@@ -588,6 +626,15 @@ export function Mail({ }: MailLayoutProps) {
               </button>
             </div>
 
+            {tab === "inbox" && (
+              <DailyBriefStrip
+                accountId={accountId}
+                isDemo={isDemo}
+                onShowKeyboardHelp={() => setHelpOpen(true)}
+                showDesktopShortcuts={!isMobile}
+                onThreadSelect={handleThreadSelect}
+              />
+            )}
             <NudgesBlock
               accountId={accountId}
               onThreadSelect={handleThreadSelect}
@@ -668,7 +715,7 @@ export function Mail({ }: MailLayoutProps) {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <div className="min-w-0 flex-1 overflow-hidden">
+              <div className="min-h-0 flex-1 overflow-hidden">
                 <ThreadList
                   ref={threadListRef}
                   onThreadSelect={handleThreadSelect}
@@ -708,21 +755,66 @@ export function Mail({ }: MailLayoutProps) {
               )}
             >
               <div className="flex h-full flex-col">
-                <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3 dark:border-[#1a1a23]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3b82f6]">
+                <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3.5 dark:border-[#1a1a23]">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3b82f6]">
                       <MessageCircle className="h-4 w-4 text-white" />
                     </div>
-                    <span className="text-[14px] font-medium text-[#111118] dark:text-[#f4f4f5]">
-                      AI Search
-                    </span>
-                    {isDemo && (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
-                        Demo
-                      </span>
-                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-[14px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
+                          AI Inbox Brain
+                        </span>
+                        {isDemo && (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
+                            Demo
+                          </span>
+                        )}
+                      </div>
+                      {!isMobile ? (
+                        <p className="mt-0.5 truncate text-[10px] text-[#9ca3af] dark:text-[#71717a]">
+                          <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                            g
+                          </kbd>
+                          <span className="mx-0.5">then</span>
+                          <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                            b
+                          </kbd>
+                          <span className="mx-1 text-[#d1d5db] dark:text-[#52525b]">·</span>
+                          <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                            {isMacOS ? "⌘↵" : "Ctrl+Enter"}
+                          </kbd>
+                          <span className="ml-1">send</span>
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-[10px] text-[#9ca3af] dark:text-[#71717a]">
+                          Keyboard shortcuts on desktop
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    {!isMobile && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setHelpOpen(true);
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
+                            aria-label="Keyboard shortcuts"
+                          >
+                            <CircleHelp className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[260px]">
+                          <p>All mail &amp; Inbox brain shortcuts</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
@@ -734,13 +826,13 @@ export function Mail({ }: MailLayoutProps) {
                             setAiSearchResetKey((k) => k + 1);
                           }}
                           className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
-                          aria-label="New chat (AI Search)"
+                          aria-label="New chat (AI Inbox Brain)"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
-                        <p>New chat (AI Search)</p>
+                        <p>New chat (Inbox brain)</p>
                       </TooltipContent>
                     </Tooltip>
                     <button
@@ -753,7 +845,11 @@ export function Mail({ }: MailLayoutProps) {
                   </div>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <EmailSearchAssistant isCollapsed={false} resetTrigger={aiSearchResetKey} />
+                  <EmailSearchAssistant
+                    isCollapsed={false}
+                    resetTrigger={aiSearchResetKey}
+                    onOpenThread={handleThreadSelect}
+                  />
                 </div>
               </div>
             </aside>
@@ -775,10 +871,10 @@ export function Mail({ }: MailLayoutProps) {
             </DialogTitle>
             <DialogDescription className="text-left text-[#6b7280] dark:text-[#a1a1aa]">
               <span className="block mt-2">
-                To use AI Buddy, AI Search, and other features with your own Gmail, you need access to VectorMail. Right now you're exploring with sample data.
+                To use AI Buddy, AI Inbox Brain, and other features with your own Gmail, you need access to VectorMail. Right now you're exploring with sample data.
               </span>
               <span className="mt-3 block">
-                Request access to connect your account and unlock the full experience: AI assistant, semantic search, smart summaries, and more - all in your mailbox.
+                Request access to connect your account and unlock the full experience: AI Inbox Brain, AI Buddy, semantic search, smart summaries, and more, all in your mailbox.
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -792,7 +888,7 @@ export function Mail({ }: MailLayoutProps) {
               Close
             </Button>
             <a
-              href={`mailto:parbhat@parbhat.dev?subject=${encodeURIComponent("VectorMail – Request access")}&body=${encodeURIComponent(REQUEST_ACCESS_EMAIL_BODY)}`}
+              href={`mailto:parbhat@parbhat.dev?subject=${encodeURIComponent("VectorMail - Request access")}&body=${encodeURIComponent(REQUEST_ACCESS_EMAIL_BODY)}`}
               className="inline-flex h-9 items-center justify-center rounded-md bg-[#3b82f6] px-4 text-sm font-medium text-white transition-colors hover:bg-[#2563eb]"
               onClick={() => setRequestAccessOpen(false)}
             >
@@ -995,11 +1091,12 @@ function MobileSidebar({
               </div>
               <Search className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
             </div>
-            <h3 className="mb-2 text-[14px] font-medium text-[#202124] dark:text-[#e8eaed]">
-              Email assistant
+            <h3 className="mb-2 text-[14px] font-semibold tracking-tight text-[#202124] dark:text-[#e8eaed]">
+              AI Inbox Brain
             </h3>
             <p className="text-[13px] leading-relaxed text-[#5f6368] dark:text-[#9aa0a6]">
-              Find emails, summarize threads, and get insights. Best on desktop.
+              Ask in plain English, get structured answers, and open the threads.
+              Best on desktop.
             </p>
           </div>
           <div className="mt-4 flex items-center gap-2 text-[13px] font-medium text-[#1a73e8] dark:text-[#8ab4f8]">

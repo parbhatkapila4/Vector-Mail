@@ -304,7 +304,7 @@ export async function GET(req: NextRequest) {
       const is401 =
         axios.isAxiosError(error) && error.response?.status === 401;
       if (is401 && existingUserId) {
-        console.warn("[CALLBACK] 401 on first sync after reconnect – leaving needsReconnection false, redirecting to /mail");
+        console.warn("[CALLBACK] 401 on first sync after reconnect; leaving needsReconnection false, redirecting to /mail");
       }
       if (existingUserId) {
         const mailUrl = new URL("/mail", baseUrl);
