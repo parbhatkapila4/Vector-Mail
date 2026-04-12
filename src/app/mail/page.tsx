@@ -11,7 +11,7 @@ function MailPageContent() {
   return (
     <div className="relative min-h-dvh h-dvh w-full overflow-hidden bg-white dark:bg-[#09090b]">
       <Mail
-        defaultLayout={isMobile ? [0, 100, 0] : [20, 32, 48]}
+        defaultLayout={isMobile ? [0, 100, 0] : [20, 52, 48]}
         defaultCollapsed={false}
         navCollapsedSize={4}
       />

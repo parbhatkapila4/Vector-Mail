@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/trpc/react";
 import { threadIdAtom } from "@/hooks/use-threads";
+import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -444,6 +445,10 @@ export function DailyBriefStrip({
     const md = formatBriefMarkdown(data, accountId, origin, new Date());
     const ok = await copyTextToClipboard(md);
     if (ok) {
+      trackInboxBrainEvent("daily_brief_copied", {
+        success: true,
+        brief_thread_count: totals.n,
+      });
       toast.success("Brief copied", {
         description:
           "Markdown is on your clipboard. Paste into Slack, Notion, or email.",
@@ -454,7 +459,7 @@ export function DailyBriefStrip({
           "Allow clipboard access for this site, or copy the text manually.",
       });
     }
-  }, [isLoading, isError, data, accountId]);
+  }, [isLoading, isError, data, accountId, totals.n]);
 
   if (!accountId) return null;
 
@@ -538,6 +543,9 @@ export function DailyBriefStrip({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          trackInboxBrainEvent("daily_brief_refreshed", {
+            brief_thread_count: totals.n,
+          });
           void refetch();
         }}
         className={cn(

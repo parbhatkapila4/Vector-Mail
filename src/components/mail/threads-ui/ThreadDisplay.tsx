@@ -159,9 +159,9 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
       }}>
         <DialogContent className="max-w-lg border-[#e5e7eb] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
           <DialogHeader>
-            <DialogTitle className="text-[#111118] dark:text-[#f4f4f5] flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-[#3b82f6] dark:text-[#8ab4f8]" />
-              Suggest reply
+            <DialogTitle className="flex items-center gap-2 pr-8 text-left text-[#111118] dark:text-[#f4f4f5]">
+              <MessageCircle className="h-5 w-5 shrink-0 text-[#3b82f6] dark:text-[#8ab4f8]" />
+              <span className="whitespace-nowrap">Suggest reply</span>
             </DialogTitle>
           </DialogHeader>
           {suggestReplyStep === "loading" && (
@@ -279,157 +279,161 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
       <div className="flex h-full flex-col bg-white dark:bg-[#111113]">
 
         <div className="relative z-10 border-b border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]">
-          <div className="hidden items-center gap-2 px-4 py-2 md:flex md:px-6">
-            {threadId && (
+          <div className="hidden w-full min-w-0 flex-col gap-2 px-4 py-2 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-3 md:gap-y-2 md:px-6">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+              {threadId && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose?.();
+                  }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
+                  aria-label="Close email"
+                  title="Close email"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              {showSnooze && (
+                <SnoozeMenu
+                  threadId={threadId ?? ""}
+                  accountId={accountForActions ?? ""}
+                  isSnoozedTab={currentTab === "snoozed"}
+                >
+                  <button
+                    type="button"
+                    className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
+                  >
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    Snooze
+                  </button>
+                </SnoozeMenu>
+              )}
+              {showRemind && (
+                <RemindMenu
+                  threadId={threadId ?? ""}
+                  accountId={accountForActions ?? ""}
+                  isRemindersTab={currentTab === "reminders"}
+                >
+                  <button
+                    type="button"
+                    className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
+                  >
+                    <Bell className="h-3.5 w-3.5 shrink-0" />
+                    Remind me
+                  </button>
+                </RemindMenu>
+              )}
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onClose?.();
-                }}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                aria-label="Close email"
-                title="Close email"
+                onClick={() => setForwardDialogOpen(true)}
+                className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
               >
-                <X className="h-4 w-4" />
+                <Forward className="h-3.5 w-3.5 shrink-0" />
+                Forward
               </button>
-            )}
-            {showSnooze && (
-              <SnoozeMenu
-                threadId={threadId ?? ""}
-                accountId={accountForActions ?? ""}
-                isSnoozedTab={currentTab === "snoozed"}
-              >
-                <button
-                  type="button"
-                  className="flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                  Snooze
-                </button>
-              </SnoozeMenu>
-            )}
-            {showRemind && (
-              <RemindMenu
-                threadId={threadId ?? ""}
-                accountId={accountForActions ?? ""}
-                isRemindersTab={currentTab === "reminders"}
-              >
-                <button
-                  type="button"
-                  className="flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                >
-                  <Bell className="h-3.5 w-3.5" />
-                  Remind me
-                </button>
-              </RemindMenu>
-            )}
-            <button
-              onClick={() => setForwardDialogOpen(true)}
-              className="flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-            >
-              <Forward className="h-3.5 w-3.5" />
-              Forward
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const event = threadEvent ?? {
-                  title: firstEmail?.subject || "Event from email",
-                  startAt: new Date().toISOString(),
-                  endAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                };
-                const url = buildGoogleCalendarUrl(event, {
-                  description: typeof window !== "undefined" ? `From email - Vector Mail\n${window.location.href}` : undefined,
-                });
-                window.open(url, "_blank", "noopener,noreferrer");
-                if (accountForActions && threadId) {
-                  saveToCalendarList.mutate({
-                    accountId: accountForActions,
-                    threadId,
-                    title: event.title,
-                    startAt: event.startAt,
-                    endAt: event.endAt,
-                  });
-                }
-              }}
-              className="flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-            >
-              <CalendarPlus className="h-3.5 w-3.5" />
-              Add to calendar
-            </button>
-            <div className="flex-1" />
-            {threadId && effectiveAccountId && !isDemo && (
               <button
                 type="button"
-                disabled={suggestReplyStep === "loading"}
-                onClick={async () => {
-                  if (!threadId || !effectiveAccountId) return;
-                  setSuggestReplyModalOpen(true);
-                  setSuggestReplyStep("loading");
-                  setSuggestReplyError(null);
-                  setSuggestReplyResult(null);
-                  setSuggestReplyStatus("Reading your email and thread...");
-                  const statusTimer = setTimeout(() => {
-                    setSuggestReplyStatus("Writing your reply in your voice...");
-                  }, 1200);
-                  try {
-                    const res = await fetch("/api/generate-reply", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ threadId, accountId: effectiveAccountId }),
-                      credentials: "include",
+                onClick={() => {
+                  const event = threadEvent ?? {
+                    title: firstEmail?.subject || "Event from email",
+                    startAt: new Date().toISOString(),
+                    endAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                  };
+                  const url = buildGoogleCalendarUrl(event, {
+                    description: typeof window !== "undefined" ? `From email - Vector Mail\n${window.location.href}` : undefined,
+                  });
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  if (accountForActions && threadId) {
+                    saveToCalendarList.mutate({
+                      accountId: accountForActions,
+                      threadId,
+                      title: event.title,
+                      startAt: event.startAt,
+                      endAt: event.endAt,
                     });
-                    const data = await res.json().catch(() => ({}));
-                    clearTimeout(statusTimer);
-                    if (!res.ok) {
-                      setSuggestReplyStep("error");
-                      const msg =
-                        data.message ??
-                        data.error ??
-                        (res.status === 504
-                          ? "Reply took too long. Try again."
-                          : res.status === 401
-                            ? "Your session may have expired. Refresh the page or sign in again."
-                            : res.status === 403
-                              ? "Connect your account to use Suggest reply."
-                              : "Failed to suggest reply");
-                      setSuggestReplyError(msg);
-                      return;
-                    }
-                    setSuggestReplyResult({ subject: data.subject ?? "", body: data.body ?? "" });
-                    setSuggestReplyStep("ready");
-                  } catch (e) {
-                    clearTimeout(statusTimer);
-                    setSuggestReplyStep("error");
-                    setSuggestReplyError("Failed to suggest reply");
-                    toast.error("Failed to suggest reply");
                   }
                 }}
-                className="flex h-8 items-center gap-2 rounded-lg border border-[#3b82f6] bg-transparent px-4 text-[12px] font-medium text-[#3b82f6] transition-colors hover:bg-[#3b82f6]/10 dark:border-[#8ab4f8] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/10 disabled:opacity-60"
+                className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
               >
-                {suggestReplyStep === "loading" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <MessageCircle className="h-3.5 w-3.5" />
-                )}
-                Suggest reply
+                <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
+                Add to calendar
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setShowReplyBox(true);
-                requestAnimationFrame(() => {
-                  window.dispatchEvent(new CustomEvent("focus-reply"));
-                });
-              }}
-              className="flex h-8 items-center gap-2 rounded-lg bg-[#3b82f6] px-4 text-[12px] font-medium text-white transition-colors hover:bg-[#2563eb]"
-            >
-              <Reply className="h-3.5 w-3.5" />
-              Reply
-            </button>
+            </div>
+            <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 md:w-auto">
+              {threadId && effectiveAccountId && !isDemo && (
+                <button
+                  type="button"
+                  disabled={suggestReplyStep === "loading"}
+                  onClick={async () => {
+                    if (!threadId || !effectiveAccountId) return;
+                    setSuggestReplyModalOpen(true);
+                    setSuggestReplyStep("loading");
+                    setSuggestReplyError(null);
+                    setSuggestReplyResult(null);
+                    setSuggestReplyStatus("Reading your email and thread...");
+                    const statusTimer = setTimeout(() => {
+                      setSuggestReplyStatus("Writing your reply in your voice...");
+                    }, 1200);
+                    try {
+                      const res = await fetch("/api/generate-reply", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ threadId, accountId: effectiveAccountId }),
+                        credentials: "include",
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      clearTimeout(statusTimer);
+                      if (!res.ok) {
+                        setSuggestReplyStep("error");
+                        const msg =
+                          data.message ??
+                          data.error ??
+                          (res.status === 504
+                            ? "Reply took too long. Try again."
+                            : res.status === 401
+                              ? "Your session may have expired. Refresh the page or sign in again."
+                              : res.status === 403
+                                ? "Connect your account to use Suggest reply."
+                                : "Failed to suggest reply");
+                        setSuggestReplyError(msg);
+                        return;
+                      }
+                      setSuggestReplyResult({ subject: data.subject ?? "", body: data.body ?? "" });
+                      setSuggestReplyStep("ready");
+                    } catch (e) {
+                      clearTimeout(statusTimer);
+                      setSuggestReplyStep("error");
+                      setSuggestReplyError("Failed to suggest reply");
+                      toast.error("Failed to suggest reply");
+                    }
+                  }}
+                  className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-[#3b82f6] bg-transparent px-3.5 text-[12px] font-medium leading-none text-[#3b82f6] transition-colors hover:bg-[#3b82f6]/10 dark:border-[#8ab4f8] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/10 disabled:opacity-60 sm:px-4"
+                >
+                  {suggestReplyStep === "loading" ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  ) : (
+                    <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  Suggest reply
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReplyBox(true);
+                  requestAnimationFrame(() => {
+                    window.dispatchEvent(new CustomEvent("focus-reply"));
+                  });
+                }}
+                className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-[#3b82f6] px-3.5 text-[12px] font-medium leading-none text-white transition-colors hover:bg-[#2563eb] sm:px-4"
+              >
+                <Reply className="h-3.5 w-3.5 shrink-0" />
+                Reply
+              </button>
+            </div>
           </div>
 
           <div className="px-4 pb-6 pt-4 md:px-6 md:pt-0">

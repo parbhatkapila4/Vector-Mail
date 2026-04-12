@@ -25,6 +25,7 @@ const FIRST_BATCH_CONCURRENCY = EMAIL_FETCH_BATCH_SIZE;
 const INSTANT_SYNC_CONCURRENCY = 200;
 const DELAY_BETWEEN_BATCHES_MS = 150;
 const INSTANT_SYNC_LIST_SIZE = 500;
+const warnedMissingRefreshTokenAccountIds = new Set<string>();
 
 const FAST_FIRST_BATCH_INBOX = 10;
 const FAST_FIRST_BATCH_SENT = 8;
@@ -178,7 +179,12 @@ export class Account {
       select: { refreshToken: true },
     });
     if (!account?.refreshToken) {
-      console.warn(`[accounts] No refresh token in DB for account ${this.id} - cannot refresh`);
+      if (!warnedMissingRefreshTokenAccountIds.has(this.id)) {
+        warnedMissingRefreshTokenAccountIds.add(this.id);
+        console.warn(
+          `[accounts] No refresh token in DB for account ${this.id} — silent renewal disabled; reconnect Gmail if the mailbox stops syncing.`,
+        );
+      }
       return false;
     }
     const result = await refreshAurinkoToken(this.id, account.refreshToken);

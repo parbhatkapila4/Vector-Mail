@@ -25,6 +25,7 @@ import {
   getInboxAssistantView,
   stripJsonFenceFromDisplay,
 } from "@/lib/inbox-chat-structured";
+import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 
 interface ChatMessage {
   id: string;
@@ -683,16 +684,25 @@ export default function EmailSearchAssistant({
                                   )}
                                   {turn.threads.length > 0 && (
                                     <div className="flex flex-wrap gap-2">
-                                      {turn.threads.map((t) => (
+                                      {turn.threads.map((t, chipIndex) => (
                                         <div
                                           key={`${message.id}-${t.threadId}`}
                                           className="max-w-full rounded-lg border border-amber-400/25 bg-amber-400/5 px-2.5 py-2"
                                         >
                                           <button
                                             type="button"
-                                            onClick={() =>
-                                              onOpenThread?.(t.threadId)
-                                            }
+                                            onClick={() => {
+                                              trackInboxBrainEvent(
+                                                "structured_chat_thread_chip_clicked",
+                                                {
+                                                  chip_index: chipIndex,
+                                                  threads_in_turn:
+                                                    turn.threads.length,
+                                                  interaction: "chip",
+                                                },
+                                              );
+                                              onOpenThread?.(t.threadId);
+                                            }}
                                             className="max-w-full truncate rounded-full border border-amber-400/35 bg-amber-400/10 px-3 py-1 text-left text-xs font-medium text-amber-100 transition-colors hover:bg-amber-400/20 disabled:opacity-50"
                                             disabled={!onOpenThread}
                                             title={
@@ -730,9 +740,18 @@ export default function EmailSearchAssistant({
                                       <div>
                                         <button
                                           type="button"
-                                          onClick={() =>
-                                            onOpenThread(turn.threads[0]!.threadId)
-                                          }
+                                          onClick={() => {
+                                            trackInboxBrainEvent(
+                                              "structured_chat_thread_chip_clicked",
+                                              {
+                                                chip_index: 0,
+                                                threads_in_turn:
+                                                  turn.threads.length,
+                                                interaction: "open_top",
+                                              },
+                                            );
+                                            onOpenThread(turn.threads[0]!.threadId);
+                                          }}
                                           className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]"
                                         >
                                           Open top thread
@@ -829,9 +848,18 @@ export default function EmailSearchAssistant({
                   {lastAssistantTurn?.threads?.[0] && onOpenThread && (
                     <button
                       type="button"
-                      onClick={() =>
-                        onOpenThread(lastAssistantTurn.threads[0]!.threadId)
-                      }
+                      onClick={() => {
+                        trackInboxBrainEvent(
+                          "structured_chat_thread_chip_clicked",
+                          {
+                            chip_index: 0,
+                            threads_in_turn:
+                              lastAssistantTurn.threads.length,
+                            interaction: "open_top",
+                          },
+                        );
+                        onOpenThread(lastAssistantTurn.threads[0]!.threadId);
+                      }}
                       className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
                     >
                       Open top thread

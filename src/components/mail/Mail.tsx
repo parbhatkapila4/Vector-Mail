@@ -66,6 +66,7 @@ import { UpcomingFromEmailBlock } from "./UpcomingFromEmailBlock";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useSetAtom } from "jotai";
 import { threadIdAtom } from "@/hooks/use-threads";
+import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 
 const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
 
@@ -85,7 +86,25 @@ interface MailLayoutProps {
   navCollapsedSize?: number;
 }
 
-export function Mail({ }: MailLayoutProps) {
+
+const THREAD_LIST_WIDTH_PCT = { min: 20, max: 55, fallback: 52 } as const;
+
+function threadListWidthPctDefault(
+  defaultLayout?: number[] | readonly number[] | undefined,
+): number {
+  const raw = defaultLayout?.[1];
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return THREAD_LIST_WIDTH_PCT.fallback;
+  }
+
+  if (raw >= 90) return THREAD_LIST_WIDTH_PCT.fallback;
+  return Math.min(
+    THREAD_LIST_WIDTH_PCT.max,
+    Math.max(THREAD_LIST_WIDTH_PCT.min, Math.round(raw)),
+  );
+}
+
+export function Mail({ defaultLayout }: MailLayoutProps) {
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [aiSearchResetKey, setAiSearchResetKey] = useState(0);
@@ -96,7 +115,10 @@ export function Mail({ }: MailLayoutProps) {
   const [requestAccessOpen, setRequestAccessOpen] = useState(false);
   const [tab, setTab] = useLocalStorage("vector-mail", "inbox");
   const [selectedLabelId, setSelectedLabelId] = useLocalStorage("vector-mail-label-id", "");
-  const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage("mail-sidebar-width-pct", 38);
+  const [sidebarWidthPct, setSidebarWidthPct] = useLocalStorage(
+    "mail-sidebar-width-pct",
+    threadListWidthPctDefault(defaultLayout),
+  );
   const [isResizing, setIsResizing] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -135,9 +157,6 @@ export function Mail({ }: MailLayoutProps) {
     }, forceRedirectMs);
   }, [signOut]);
 
-  const SIDEBAR_MIN_PCT = 20;
-  const SIDEBAR_MAX_PCT = 55;
-
   const handleResizeStart = useCallback(
     (e: React.PointerEvent) => {
       e.preventDefault();
@@ -164,7 +183,10 @@ export function Mail({ }: MailLayoutProps) {
       if (containerWidth <= 0) return;
       const deltaPct = ((x - start.x) / containerWidth) * 100;
       let next = start.pct + deltaPct;
-      next = Math.max(SIDEBAR_MIN_PCT, Math.min(SIDEBAR_MAX_PCT, next));
+      next = Math.max(
+        THREAD_LIST_WIDTH_PCT.min,
+        Math.min(THREAD_LIST_WIDTH_PCT.max, next),
+      );
       resizeStartRef.current = { ...start, finalPct: next };
       sidebar.style.width = `${next}%`;
     };
@@ -226,7 +248,11 @@ export function Mail({ }: MailLayoutProps) {
   }, [setThreadId]);
 
   const toggleAIPanel = useCallback(() => {
-    setShowAIPanel((open) => !open);
+    setShowAIPanel((open) => {
+      if (open) return false;
+      trackInboxBrainEvent("inbox_brain_panel_opened", { source: "keyboard" });
+      return true;
+    });
   }, []);
 
   const cycleBriefFocusFromShortcut = useCallback(() => {
@@ -606,7 +632,14 @@ export function Mail({ }: MailLayoutProps) {
                   if (isDemo) {
                     setRequestAccessOpen(true);
                   } else {
-                    setShowAIPanel(!showAIPanel);
+                    setShowAIPanel((prev) => {
+                      if (!prev) {
+                        trackInboxBrainEvent("inbox_brain_panel_opened", {
+                          source: "sidebar",
+                        });
+                      }
+                      return !prev;
+                    });
                   }
                 }}
                 className={cn(
@@ -822,7 +855,15 @@ export function Mail({ }: MailLayoutProps) {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setShowAIPanel(true);
+                            setShowAIPanel((prev) => {
+                              if (!prev) {
+                                trackInboxBrainEvent(
+                                  "inbox_brain_panel_opened",
+                                  { source: "toolbar_new_chat" },
+                                );
+                              }
+                              return true;
+                            });
                             setAiSearchResetKey((k) => k + 1);
                           }}
                           className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"

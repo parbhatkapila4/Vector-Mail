@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Brain, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function ThreadBrainPanel({
@@ -58,7 +59,16 @@ export function ThreadBrainPanel({
         <button
           type="button"
           className={cn(headerClass, "transition-colors hover:bg-[#f3f4f6] dark:hover:bg-[#ffffff]/[0.04]")}
-          onClick={() => setExpanded((e) => !e)}
+          onClick={() =>
+            setExpanded((e) => {
+              const next = !e;
+              trackInboxBrainEvent("thread_brain_expanded", {
+                expanded: next,
+                surface: "mobile",
+              });
+              return next;
+            })
+          }
           aria-expanded={expanded}
         >
           {title}

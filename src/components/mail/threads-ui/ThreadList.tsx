@@ -31,6 +31,7 @@ import { ThreadListSkeleton } from "./ThreadListSkeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
@@ -854,7 +855,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       ];
       const i = order.indexOf(prev);
       const next = ((i < 0 ? 0 : i) + 1) % order.length;
-      return order[next]!;
+      const nextKey = order[next]!;
+      queueMicrotask(() => {
+        trackInboxBrainEvent("daily_brief_focus_changed", {
+          filter_key: nextKey,
+          source: "keyboard",
+        });
+      });
+      return nextKey;
     });
   }, [focusChipsEnabled]);
 
@@ -1293,7 +1301,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             variant="outline"
             size="sm"
             className="border-[#dadce0] text-[#202124] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
-            onClick={() => setFocusView("all")}
+            onClick={() => {
+              trackInboxBrainEvent("daily_brief_focus_changed", {
+                filter_key: "all",
+                source: "chip",
+              });
+              setFocusView("all");
+            }}
           >
             Back to All
           </Button>
@@ -1641,7 +1655,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
               <button
                 key={key}
                 type="button"
-                onClick={() => setFocusView(key)}
+                onClick={() => {
+                  trackInboxBrainEvent("daily_brief_focus_changed", {
+                    filter_key: key,
+                    source: "chip",
+                  });
+                  setFocusView(key);
+                }}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                   active

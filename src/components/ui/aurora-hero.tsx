@@ -305,11 +305,11 @@ export default function HeroSection_04() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            Introducing VectorMail 2.0
+            AI Inbox Brain
           </motion.p>
           <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
             <span className="bg-gradient-to-b from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(255,255,255,0.15)]">
-              Inbox reimagined
+              The intelligence layer
             </span>
             <br />
             <span
@@ -320,11 +320,11 @@ export default function HeroSection_04() {
                 WebkitTextFillColor: "transparent",
               }}
             >
-              with AI
+              for your mail
             </span>
           </h1>
           <p className="mx-auto mt-5 max-w-3xl text-center text-base leading-relaxed text-white/90 sm:text-lg sm:leading-relaxed">
-            One place for mail, semantic search, and AI that helps you compose faster, find anything instantly, and stay in control. Built to ship.
+            A prioritized daily brief, natural-language search over your threads, and structured answers with deep links back to mail. Same inbox you already use; clearer what needs attention.
           </p>
           <AnimatedGroup
             variants={{
@@ -348,8 +348,8 @@ export default function HeroSection_04() {
                 size="lg"
                 className="rounded-xl px-6 text-base font-semibold bg-white text-[#0c0a12] shadow-sm hover:bg-white/95"
               >
-                <Link href="/sign-up">
-                  <span className="text-nowrap">Get VectorMail</span>
+                <Link href="/sign-in">
+                  <span className="text-nowrap">Sign in</span>
                 </Link>
               </Button>
             </div>
@@ -362,13 +362,9 @@ export default function HeroSection_04() {
                 size="lg"
                 className="rounded-xl px-6 text-base font-semibold bg-white text-[#0c0a12] hover:bg-white/95 hover:text-[#0c0a12]"
               >
-                <a
-                  href="mailto:parbhat@parbhat.dev?subject=Request%20access%20-%20VectorMail"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span className="text-nowrap">Request access</span>
-                </a>
+                <Link href="/api/demo/enter">
+                  <span className="text-nowrap">Try demo</span>
+                </Link>
               </Button>
             </div>
           </AnimatedGroup>

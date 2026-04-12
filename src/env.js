@@ -28,7 +28,12 @@ export const env = createEnv({
     INNGEST_SIGNING_KEY: z.string().optional(),
   },
 
-  client: {},
+  client: {
+    NEXT_PUBLIC_ANALYTICS_ENABLED: z
+      .string()
+      .optional()
+      .transform((v) => (v === "true" ? true : false)),
+  },
 
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
@@ -44,6 +49,7 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
+    NEXT_PUBLIC_ANALYTICS_ENABLED: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

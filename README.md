@@ -124,6 +124,19 @@ Natural-language **find + summarize** over the connected inbox (drafting/sending
 | **Inbox intelligence cards**      | `account.getInboxIntelligenceCards`: 90-day keyword buckets (payments, travel, orders, failed/declined); tapping a card runs a prefilled AI Search query.                       |
 | **Eval harness**                  | `src/__tests__/lib/ai-search-eval.test.ts`: no live LLM; checks intent detection + selection/disambiguation. Run: `npx jest src/__tests__/lib/ai-search-eval.test.ts --ci`      |
 
+### Inbox Brain product analytics (optional)
+
+When `NEXT_PUBLIC_ANALYTICS_ENABLED="true"`, the client posts privacy-safe events to `POST /api/analytics/inbox-brain`. The route validates event names, strips unknown property shapes, and **logs only** (structured JSON in production, `console.info` in development)—no database writes. Properties are limited to coarse strings (e.g. filter keys), booleans, and counts—never subject, body, or email addresses.
+
+| Event                                 | When it fires                                                        | Typical properties                                                                                  |
+| ------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `inbox_brain_panel_opened`            | User opens the Inbox Brain panel (not on every render)               | `source`: `sidebar` \| `keyboard` \| `toolbar_new_chat`                                             |
+| `daily_brief_refreshed`               | User clicks refresh on Today’s brief                                 | `brief_thread_count` (number)                                                                       |
+| `daily_brief_focus_changed`           | Focus bucket changes (keyboard cycle or chip / “Back to All”)        | `filter_key`: `all` \| `needsReply` \| `important` \| `lowPriority`; `source`: `keyboard` \| `chip` |
+| `daily_brief_copied`                  | Brief Markdown copied successfully                                   | `success` (boolean), `brief_thread_count`                                                           |
+| `structured_chat_thread_chip_clicked` | User opens a thread from structured chat (chip or “Open top thread”) | `chip_index`, `threads_in_turn`; `interaction`: `chip` \| `open_top`                                |
+| `thread_brain_expanded`               | Mobile: user toggles Thread Brain section expand/collapse            | `expanded` (boolean), `surface`: `mobile`                                                           |
+
 **HTTP:** `POST /api/chat` with `{ messages, accountId, explainableMode?, founderDemo? }` streams `text/plain`; append `explainableMode: false` to hide the sources block.
 
 ---
@@ -390,6 +403,9 @@ CRON_SECRET="your-random-secret"
 
 # Skip env validation (e.g. CI)
 SKIP_ENV_VALIDATION="1"
+
+# Inbox Brain: optional privacy-safe product analytics (see README → AI Search)
+NEXT_PUBLIC_ANALYTICS_ENABLED="true"
 ```
 
 **Full reference (grouped)**
@@ -428,6 +444,7 @@ All variables the app reads are listed below. Required vs optional is for a mini
 | **Other**                           |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `NODE_ENV`                          | No       | `development` \| `test` \| `production`; defaults to `development`.                                                                                                                                                                                                                                                                                                                                                                                |
 | `SKIP_ENV_VALIDATION`               | No       | Set to `"1"` to skip env schema validation (e.g. CI).                                                                                                                                                                                                                                                                                                                                                                                              |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED`     | No       | Set to `"true"` to enable Inbox Brain client analytics (`POST /api/analytics/inbox-brain`). Omit or any other value disables tracking (no-op). See [Inbox Brain product analytics](#inbox-brain-product-analytics-optional).                                                                                                                                                                                                                       |
 | `DODO_WEBHOOK_SECRET`               | No       | Optional secret for Dodo webhook integration.                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 **How to run the stack**

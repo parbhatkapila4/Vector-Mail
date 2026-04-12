@@ -7,14 +7,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config = {
   output: "standalone",
   async redirects() {
-    return [{ source: "/favicon.ico", destination: "/VectorMail-New.png", permanent: false }];
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/VectorMail-New.png",
+        permanent: false,
+      },
+    ];
   },
   experimental: {
     serverComponentsExternalPackages: ["@clerk/backend"],
   },
-  webpack: (config, _ctx) => {
+  webpack: (config, ctx) => {
     config.output ??= {};
     config.output.chunkLoadTimeout = 120000;
+
+    if (ctx.dev) {
+      config.cache = { type: "memory" };
+    }
     return config;
   },
   eslint: {
