@@ -105,3 +105,30 @@ const isAuth = t.middleware(async ({ next, ctx }) => {
 
 export const publicProcedure = t.procedure.use(timingMiddleware);
 export const protectedProcedure = t.procedure.use(isAuth);
+
+function isAdminUserId(userId: string): boolean {
+  const raw = process.env.ADMIN_USER_IDS ?? "";
+  const adminUsers = raw
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return adminUsers.includes(userId);
+}
+
+const isAdmin = t.middleware(async ({ ctx, next }) => {
+  const userId = ctx.auth.userId;
+  if (!userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Please sign in to continue",
+    });
+  }
+  if (!isAdminUserId(userId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin only",
+    });
+  }
+  return next();
+});
+export const adminProcedure = protectedProcedure.use(isAdmin);

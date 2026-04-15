@@ -1,4 +1,8 @@
-import { Account, isTransientMailProviderError } from "@/lib/accounts";
+import {
+  Account,
+  isInvalidAurinkoSyncTokenError,
+  isTransientMailProviderError,
+} from "@/lib/accounts";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { incrementSyncFailure } from "@/lib/metrics/store";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -1470,11 +1474,18 @@ export const accountRouter = createTRPCRouter({
               id: true,
               subject: true,
               lastMessageDate: true,
+              threadLabels: {
+                select: { label: { select: { name: true } } },
+              },
               emails: {
                 orderBy: { sentAt: "desc" },
                 take: 1,
                 select: {
                   from: { select: { address: true } },
+                  subject: true,
+                  bodySnippet: true,
+                  keywords: true,
+                  sysClassifications: true,
                 },
               },
             },
@@ -1486,6 +1497,38 @@ export const accountRouter = createTRPCRouter({
             if (!latestEmail?.from?.address) continue;
             if (latestEmail.from.address.toLowerCase() === accountEmailLower) continue;
             if (needsIds.has(t.id)) continue;
+
+            const sysC = (latestEmail.sysClassifications ?? []).map((c) =>
+              String(c).toLowerCase(),
+            );
+            const labelNames = t.threadLabels.map((tl) =>
+              tl.label.name.toLowerCase(),
+            );
+            const kw = (latestEmail.keywords ?? []).map((k) =>
+              String(k).toLowerCase(),
+            );
+            const blob = [
+              t.subject ?? "",
+              latestEmail.subject ?? "",
+              latestEmail.bodySnippet ?? "",
+              ...kw,
+            ]
+              .join(" ")
+              .toLowerCase();
+            const isPromoLike =
+              sysC.some((c) =>
+                ["promotions", "social", "updates", "forums"].includes(c),
+              ) ||
+              labelNames.some((n) =>
+                /\b(promotion|promotions|newsletter|marketing|unsubscribe|bulk|social|updates|forums)\b/.test(
+                  n,
+                ),
+              ) ||
+              /\b(newsletter|promo|promotional|marketing|unsubscribe|sale|offer|discount|deal)\b/.test(
+                blob,
+              );
+            if (isPromoLike) continue;
+
             needsReply.push({
               threadId: t.id,
               subject: t.subject || "(No subject)",
@@ -1652,9 +1695,31 @@ export const accountRouter = createTRPCRouter({
       if (!account.token?.trim()) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Account token is missing. Please reconnect your account." });
       }
-      const emailAccount = new Account(account.id, account.token);
+      let emailAccount = new Account(account.id, account.token);
+      const tokenExpiredOrExpiringSoon =
+        account.tokenExpiresAt &&
+        account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
+        const refreshed = await emailAccount.refreshTokenIfPossible();
+        if (refreshed) {
+          const updated = await ctx.db.account.findUnique({
+            where: { id: account.id },
+            select: { token: true },
+          });
+          if (updated?.token) {
+            account = { ...account, token: updated.token, needsReconnection: false };
+            emailAccount = new Account(account.id, account.token);
+          }
+        }
+      }
       try {
         const result = await emailAccount.syncFirstBatchQuick();
+        await ctx.db.account
+          .update({
+            where: { id: account.id },
+            data: { needsReconnection: false },
+          })
+          .catch(() => { });
         return { count: result.count };
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -1670,6 +1735,19 @@ export const accountRouter = createTRPCRouter({
               code: "TIMEOUT",
               message:
                 "Initial mail fetch timed out; the provider was slow. Use Sync or wait; your inbox will update when it responds.",
+            });
+          }
+          if (error.response?.status === 401) {
+            await ctx.db.account
+              .update({
+                where: { id: account.id },
+                data: { needsReconnection: true },
+              })
+              .catch(() => { });
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message:
+                "Gmail access expired. Use Reconnect once — you stay signed in to VectorMail.",
             });
           }
         }
@@ -2309,69 +2387,115 @@ export const accountRouter = createTRPCRouter({
             }
           }
 
+          const syncFolder = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : undefined;
+          const accountSyncState = await ctx.db.account.findUnique({
+            where: { id: account.id },
+            select: { nextDeltaToken: true },
+          });
+          const mustFullSync =
+            shouldForceFullSync || !accountSyncState?.nextDeltaToken;
+          const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+
+          let lastSyncErr: unknown = null;
           try {
-            const syncFolder = input.folder === "sent" ? "sent" : input.folder === "trash" ? "trash" : undefined;
-            await emailAccount.syncEmails(
-              shouldForceFullSync || !account.nextDeltaToken,
-              syncFolder,
-            );
-            const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+            await emailAccount.syncEmails(mustFullSync, syncFolder);
             await recalculateAllThreadStatuses(account.id);
-          } catch (syncError) {
-            const syncErrorMessage =
-              syncError instanceof Error ? syncError.message : String(syncError);
-
-            ctx.log?.error(
-              {
-                event: "sync_error",
-                accountId: account.id,
-                durationMs: Date.now() - syncStartTime,
-                error: syncErrorMessage,
-                phase: "full_sync",
-              },
-              "full sync failed",
-            );
-            incrementSyncFailure();
-            console.error(
-              "[syncEmails mutation] Full sync failed:",
-              syncErrorMessage,
-            );
-
-            if (
-              syncErrorMessage.includes("Authentication failed") ||
-              syncErrorMessage.includes("401") ||
-              (axios.isAxiosError(syncError) &&
-                syncError.response?.status === 401)
-            ) {
-              const refreshAccount = new Account(account.id, account.token);
-              const refreshed = await refreshAccount.refreshTokenIfPossible();
-              if (refreshed) {
-                ctx.log?.info(
-                  { event: "sync_token_refreshed", accountId: account.id },
-                  "Token refreshed after full sync auth error; next sync will use new token",
+          } catch (firstErr) {
+            lastSyncErr = firstErr;
+            if (isInvalidAurinkoSyncTokenError(firstErr)) {
+              ctx.log?.warn(
+                {
+                  event: "sync_token_reset_retry",
+                  accountId: account.id,
+                  phase: "full_sync",
+                },
+                "invalid Aurinko sync token; cleared delta and retrying full sync once",
+              );
+              await ctx.db.account
+                .update({
+                  where: { id: account.id },
+                  data: { nextDeltaToken: null },
+                })
+                .catch((err) =>
+                  console.error(
+                    `[syncEmails mutation] Failed to clear nextDeltaToken:`,
+                    err,
+                  ),
                 );
-                return {
-                  success: false,
-                  message: "Sync failed temporarily. Try again in a moment.",
-                  threadCount: 0,
-                  needsReconnection: false,
-                };
+              try {
+                await emailAccount.syncEmails(true, syncFolder);
+                await recalculateAllThreadStatuses(account.id);
+                lastSyncErr = null;
+              } catch (retryErr) {
+                lastSyncErr = retryErr;
               }
-              await ctx.db.account.update({
-                where: { id: account.id },
-                data: { needsReconnection: true },
-              }).catch(err => console.error(`[syncEmails mutation] Failed to update needsReconnection:`, err));
-              return {
-                success: false,
-                message: "Sync failed. Try again in a moment.",
-                threadCount: 0,
-                needsReconnection: true,
-              };
             }
 
-            throw syncError;
-          }
+            if (lastSyncErr != null) {
+              const syncError = lastSyncErr;
+              const syncErrorMessage =
+                syncError instanceof Error
+                  ? syncError.message
+                  : String(syncError);
 
+              ctx.log?.error(
+                {
+                  event: "sync_error",
+                  accountId: account.id,
+                  durationMs: Date.now() - syncStartTime,
+                  error: syncErrorMessage,
+                  phase: "full_sync",
+                },
+                "full sync failed",
+              );
+              incrementSyncFailure();
+              console.error(
+                "[syncEmails mutation] Full sync failed:",
+                syncErrorMessage,
+              );
+
+              if (
+                syncErrorMessage.includes("Authentication failed") ||
+                syncErrorMessage.includes("401") ||
+                (axios.isAxiosError(syncError) &&
+                  syncError.response?.status === 401)
+              ) {
+                const refreshAccount = new Account(account.id, account.token);
+                const refreshed = await refreshAccount.refreshTokenIfPossible();
+                if (refreshed) {
+                  ctx.log?.info(
+                    { event: "sync_token_refreshed", accountId: account.id },
+                    "Token refreshed after full sync auth error; next sync will use new token",
+                  );
+                  return {
+                    success: false,
+                    message: "Sync failed temporarily. Try again in a moment.",
+                    threadCount: 0,
+                    needsReconnection: false,
+                  };
+                }
+                await ctx.db.account
+                  .update({
+                    where: { id: account.id },
+                    data: { needsReconnection: true },
+                  })
+                  .catch((err) =>
+                    console.error(
+                      `[syncEmails mutation] Failed to update needsReconnection:`,
+                      err,
+                    ),
+                  );
+                return {
+                  success: false,
+                  message: "Sync failed. Try again in a moment.",
+                  threadCount: 0,
+                  needsReconnection: true,
+                };
+              }
+
+              throw syncError;
+            }
+          }
 
           const threadCount = await ctx.db.thread.count({
             where: input.folder === "trash"
@@ -2430,6 +2554,35 @@ export const accountRouter = createTRPCRouter({
 
           if (error instanceof TRPCError) {
             throw error;
+          }
+
+          if (isInvalidAurinkoSyncTokenError(error) && account?.id) {
+            await ctx.db.account
+              .update({
+                where: { id: account.id },
+                data: { nextDeltaToken: null },
+              })
+              .catch((err) =>
+                console.error(
+                  `[syncEmails mutation] Failed to clear nextDeltaToken:`,
+                  err,
+                ),
+              );
+            ctx.log?.warn(
+              {
+                event: "sync_aurinko_token_invalid",
+                accountId: account.id,
+                durationMs,
+              },
+              "Aurinko sync token invalid; cleared delta — user can retry Sync",
+            );
+            return {
+              success: false,
+              message:
+                "Mail sync was out of date with your provider. Tap Sync again.",
+              threadCount: 0,
+              needsReconnection: false,
+            };
           }
 
           const isAuthError =

@@ -134,37 +134,173 @@
     background-size: 24px 24px;
   }
 
-  [data-sonner-toast],
-  [data-sonner-toast] *,
-  [data-sonner-toaster],
-  .toast-black-text,
-  .toast-black-text * {
-    color: #000000 !important;
-    z-index: 99999 !important;
+  .vm-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: var(--width, 356px);
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.45;
+    pointer-events: auto;
+    background: hsl(0 0% 8% / 0.92);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    color: hsl(0 0% 94%);
+    box-shadow:
+      0 1px 2px hsl(0 0% 0% / 0.25),
+      0 8px 24px -4px hsl(0 0% 0% / 0.5);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
   }
 
-  [data-sonner-toast] [data-title],
-  [data-sonner-toast] [data-description] {
-    color: #000000 !important;
+  .vm-toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
   }
 
-  [data-sonner-toast] svg {
-    color: #000000 !important;
+  .vm-toast-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .vm-toast-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .vm-toast-title {
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: -0.01em;
+    color: hsl(0 0% 96%);
+  }
+
+  .vm-toast-desc {
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 1.4;
+    color: hsl(0 0% 58%);
+  }
+
+  .vm-toast-action {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    background: hsl(0 0% 100% / 0.12);
+    color: hsl(0 0% 92%);
+    transition: background 0.15s ease;
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  .vm-toast-action:hover {
+    background: hsl(0 0% 100% / 0.2);
+  }
+
+  .vm-toast-cancel {
+    font-size: 12px;
+    font-weight: 400;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: hsl(0 0% 52%);
+    transition: background 0.15s ease;
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  .vm-toast-cancel:hover {
+    background: hsl(0 0% 100% / 0.06);
+  }
+
+  .vm-toast--success {
+    background: hsl(145 30% 8% / 0.94);
+    border-color: hsl(152 28% 18% / 0.7);
+  }
+
+  .vm-toast--success .vm-toast-title {
+    color: hsl(152 60% 70%);
+  }
+
+  .vm-toast--success .vm-toast-desc {
+    color: hsl(152 16% 54%);
+  }
+
+  .vm-toast--success .vm-toast-icon svg {
+    color: hsl(152 60% 56%);
+  }
+
+  .vm-toast--error {
+    background: hsl(350 30% 9% / 0.94);
+    border-color: hsl(350 28% 20% / 0.7);
+  }
+
+  .vm-toast--error .vm-toast-title {
+    color: hsl(350 80% 76%);
+  }
+
+  .vm-toast--error .vm-toast-desc {
+    color: hsl(350 16% 56%);
+  }
+
+  .vm-toast--error .vm-toast-icon svg {
+    color: hsl(350 70% 60%);
   }
 
 
-  [data-sonner-toaster] {
-    z-index: 99999 !important;
-    position: fixed !important;
+  .vm-toast--info {
+    background: hsl(220 30% 9% / 0.94);
+    border-color: hsl(218 22% 20% / 0.7);
+  }
+
+  .vm-toast--info .vm-toast-title {
+    color: hsl(210 70% 75%);
+  }
+
+  .vm-toast--info .vm-toast-desc {
+    color: hsl(215 14% 56%);
+  }
+
+  .vm-toast--info .vm-toast-icon svg {
+    color: hsl(210 60% 62%);
   }
 
 
-  [data-sonner-toast] {
-    z-index: 99999 !important;
-    position: relative !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
+  .vm-toast--warning {
+    background: hsl(36 30% 9% / 0.94);
+    border-color: hsl(34 22% 20% / 0.7);
+  }
+
+  .vm-toast--warning .vm-toast-title {
+    color: hsl(42 80% 68%);
+  }
+
+  .vm-toast--warning .vm-toast-desc {
+    color: hsl(38 14% 56%);
+  }
+
+  .vm-toast--warning .vm-toast-icon svg {
+    color: hsl(42 70% 56%);
+  }
+
+
+  .vm-toast--loading .vm-toast-icon svg {
+    color: hsl(0 0% 56%);
   }
 
 

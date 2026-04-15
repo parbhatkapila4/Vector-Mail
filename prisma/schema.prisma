@@ -18,6 +18,7 @@ model User {
   stripeSubscriptionId String?             @unique
   role                 Role                @default(user)
   accounts             Account[]
+  actionExecutions     ActionExecution[]
   chatbotInteraction   ChatbotInteraction?
   stripeSubscription   StripeSubscription? @relation(fields: [stripeSubscriptionId], references: [id], onDelete: Cascade)
 }
@@ -47,28 +48,30 @@ model StripeSubscription {
 }
 
 model Account {
-  id                      String          @id @default(cuid())
+  id                      String            @id @default(cuid())
   userId                  String
   binaryIndex             Json?
-  token                   String          @unique
+  token                   String            @unique
   refreshToken            String?
   provider                String
   emailAddress            String
   name                    String
   nextDeltaToken          String?
   lastInboxSyncAt         DateTime?
-  needsReconnection       Boolean         @default(false)
+  needsReconnection       Boolean           @default(false)
   tokenExpiresAt          DateTime?
   customFromName          String?
   customFromAddress       String?
   customDomain            String?
   deliverabilityChecklist Json?
-  user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  automationMode          AutomationMode    @default(manual)
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailAddresses          EmailAddress[]
   threads                 Thread[]
   scheduledSends          ScheduledSend[]
   labels                  Label[]
   filterRules             FilterRule[]
+  actionExecutions        ActionExecution[]
 }
 
 model ScheduledSend {
@@ -87,21 +90,22 @@ model ScheduledSend {
 }
 
 model Thread {
-  id                   String        @id @default(cuid())
+  id                   String            @id @default(cuid())
   subject              String
   lastMessageDate      DateTime
   participantIds       String[]
   accountId            String
-  done                 Boolean       @default(false)
-  inboxStatus          Boolean       @default(true)
-  draftStatus          Boolean       @default(false)
-  sentStatus           Boolean       @default(false)
+  done                 Boolean           @default(false)
+  inboxStatus          Boolean           @default(true)
+  draftStatus          Boolean           @default(false)
+  sentStatus           Boolean           @default(false)
   snoozedUntil         DateTime?
   remindAt             DateTime?
   remindIfNoReplySince DateTime?
   emails               Email[]
-  account              Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account              Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
   threadLabels         ThreadLabel[]
+  actionExecutions     ActionExecution[]
 
   @@index([accountId])
   @@index([done])
@@ -289,6 +293,47 @@ model SavedCalendarEvent {
 
   @@index([accountId])
   @@index([userId])
+}
+
+enum AutomationMode {
+  manual
+  assist
+  auto
+}
+
+enum ActionExecutionStatus {
+  pending
+  awaiting_approval
+  running
+  success
+  failed
+  cancelled
+}
+
+model ActionExecution {
+  id                String                @id @default(cuid())
+  userId            String
+  accountId         String
+  threadId          String?
+  type              String
+  status            ActionExecutionStatus @default(pending)
+  modeSnapshot      AutomationMode
+  confidence        Float?
+  reason            String?
+  payload           Json
+  idempotencyKey    String                @unique
+  retryCount        Int                   @default(0)
+  lastError         String?
+  dryRun            Boolean               @default(true)
+  providerMessageId String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account           Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  thread            Thread?               @relation(fields: [threadId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([threadId])
 }
 
 enum Role {

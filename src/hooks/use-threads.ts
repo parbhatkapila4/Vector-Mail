@@ -34,8 +34,9 @@ function useThreads() {
     { accountId: isUnified ? firstAccountId : (accountId || "placeholder") },
     {
       enabled: !isUnified && !!accountId && accountId.length > 0 && !accountsLoading,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      staleTime: 30 * 1000,
       retry: false,
     },
   );

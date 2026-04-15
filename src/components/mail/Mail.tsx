@@ -119,6 +119,11 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
     "mail-sidebar-width-pct",
     threadListWidthPctDefault(defaultLayout),
   );
+  const [sidebarLayoutHydrated, setSidebarLayoutHydrated] = useState(false);
+  useEffect(() => setSidebarLayoutHydrated(true), []);
+  const threadListLayoutWidthPct = sidebarLayoutHydrated
+    ? sidebarWidthPct
+    : threadListWidthPctDefault(defaultLayout);
   const [isResizing, setIsResizing] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -721,7 +726,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               ref={sidebarRef}
               className="flex h-full shrink-0 flex-col border-r border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]"
               style={{
-                width: `${sidebarWidthPct}%`,
+                width: `${threadListLayoutWidthPct}%`,
                 minWidth: 280,
                 ...(isResizing && { willChange: "width" }),
               }}

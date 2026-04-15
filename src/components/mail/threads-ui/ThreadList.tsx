@@ -76,7 +76,7 @@ interface Thread {
   subject: string;
   lastMessageDate: Date;
   emails: Array<{
-    from?: { name: string | null };
+    from?: { name?: string | null; address?: string | null };
     bodySnippet?: string | null;
     sysLabels: string[];
     sysClassifications?: string[];
@@ -88,6 +88,37 @@ interface GroupedThreads {
 }
 
 type FocusView = "all" | "needsReply" | "important" | "lowPriority";
+
+function accountLowerForThreadRow(
+  thread: Thread & { accountEmail?: string },
+  isUnifiedView: boolean,
+  inboxAccountEmail: string | undefined,
+): string {
+  if (isUnifiedView && thread.accountEmail) {
+    return thread.accountEmail.toLowerCase();
+  }
+  return (inboxAccountEmail ?? "").toLowerCase();
+}
+function threadMatchesNeedsReplyFocus(
+  thread: Thread,
+  accountEmailLower: string,
+): boolean {
+  if (!accountEmailLower) return false;
+  const latest = thread.emails?.[0];
+  const from = (latest?.from?.address ?? "").toLowerCase();
+  if (!from || from === accountEmailLower) return false;
+  const sysC = (latest?.sysClassifications ?? []).map((s) =>
+    String(s).toLowerCase(),
+  );
+  if (
+    sysC.some((c) =>
+      ["promotions", "social", "updates", "forums"].includes(c),
+    )
+  ) {
+    return false;
+  }
+  return true;
+}
 
 const CONNECTION_ERROR_MESSAGES = {
   NO_ACCOUNT: "Connect your inbox",
@@ -134,14 +165,21 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const listContainerRef = useRef<HTMLDivElement>(null);
   const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
   const utils = api.useUtils();
+  const quickSyncTriggeredRef = useRef(false);
+  const firstBatchTriggeredRef = useRef(false);
+  const backgroundSyncTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (searchParams.get("reconnected") === "1") {
+      quickSyncTriggeredRef.current = false;
+      firstBatchTriggeredRef.current = false;
+      backgroundSyncTriggeredRef.current = false;
       toast.success("Account reconnected", {
         description: "Your email is connected again. Syncing now.",
         duration: 4000,
       });
       void utils.account.getAccounts.invalidate();
+      void utils.account.getMyAccount.invalidate();
       void utils.account.getThreads.invalidate();
       void utils.account.getNumThreads.invalidate();
       void utils.account.getUnifiedThreads.invalidate();
@@ -150,6 +188,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       window.history.replaceState({}, "", url.pathname + url.search);
     }
     if (searchParams.get("reconnect_failed") === "1") {
+      quickSyncTriggeredRef.current = false;
+      firstBatchTriggeredRef.current = false;
+      backgroundSyncTriggeredRef.current = false;
       toast.error("Reconnect didn’t complete", {
         description: "Auth failed right after connecting. Please try reconnecting again or check your Google account.",
         duration: 5000,
@@ -204,8 +245,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     });
 
   const syncCancelledRef = useRef(false);
-  const quickSyncTriggeredRef = useRef(false);
-  const firstBatchTriggeredRef = useRef(false);
   const accountsInvalidatedOnMountRef = useRef(false);
   useEffect(() => {
     if (accountsInvalidatedOnMountRef.current) return;
@@ -228,6 +267,23 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         toast.info("Still reaching your mail provider…", {
           description: "Tap Sync if threads don’t show up in a minute.",
           duration: 6000,
+        });
+        return;
+      }
+      if (
+        error.data?.code === "UNAUTHORIZED" ||
+        /gmail access expired|reconnect|401/i.test(error.message)
+      ) {
+        void utils.account.getAccounts.invalidate();
+        void utils.account.getMyAccount.invalidate();
+        toast.error("Reconnect Gmail", {
+          description:
+            "VectorMail is still signed in — only the Gmail link needs a quick refresh.",
+          duration: 9000,
+          action: {
+            label: "Reconnect",
+            onClick: () => window.location.assign("/api/connect/google"),
+          },
         });
       }
     },
@@ -266,11 +322,16 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         syncCancelledRef.current = false;
         return;
       }
-      console.log("[ThreadList] ✅ Sync completed", data);
+      if (data.needsReconnection || data.success === false) {
+        console.warn("[ThreadList] Sync finished with issues", data);
+      } else {
+        console.log("[ThreadList] Sync completed", data);
+      }
 
       if (data.needsReconnection) {
         void utils.account.getAccounts.invalidate();
         toast.error("Reconnect your account", {
+          id: "reconnect-account-warning",
           description: "Your email connection expired and couldn’t be refreshed. Click Reconnect to sign in again.",
           duration: 10000,
           action: {
@@ -366,14 +427,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       if (
         errorMessage.includes("Account token is missing") ||
         errorMessage.includes("Account ID is required") ||
-        (errorMessage.includes("400") && errorMessage.toLowerCase().includes("request"))
+        errorMessage.includes("reconnect your account") ||
+        errorMessage.includes("Please reconnect")
       ) {
         void utils.account.getAccounts.invalidate();
         toast.error("Sync failed", {
-          description: "Account token is missing or invalid. Please reconnect your account.",
+          description: "Your Gmail link needs to be refreshed. Reconnect — you stay signed in to VectorMail.",
           duration: 6000,
           action: {
-            label: "Reconnect",
+            label: "Reconnect Gmail",
             onClick: () => window.location.assign("/api/connect/google"),
           },
         });
@@ -560,7 +622,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     utils.account.getUnifiedThreads,
   ]);
 
-  const backgroundSyncTriggeredRef = useRef(false);
   const isAccountValid = !!validatedAccount && validatedAccount.id === accountId;
 
   useEffect(() => {
@@ -737,6 +798,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     if (inboxPreviewReconnectToastRef.current) return;
     inboxPreviewReconnectToastRef.current = true;
     toast.error("Reconnect your account", {
+      id: "reconnect-account-warning",
       description:
         "Your email connection expired and couldn’t be refreshed. Click Reconnect to sign in again.",
       duration: 10000,
@@ -810,9 +872,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   );
   const focusCounts = useMemo(() => {
     const visibleIds = new Set((threadsToRender ?? []).map((t) => t.id));
-    const needsReplyIds = new Set(
-      (dailyBriefData?.needsReply ?? []).map((row) => row.threadId),
-    );
     const importantIds = new Set(
       (dailyBriefData?.important ?? []).map((row) => row.threadId),
     );
@@ -820,13 +879,21 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       (dailyBriefData?.lowPriority ?? []).map((row) => row.threadId),
     );
 
+    const inboxEmail = validatedAccount?.emailAddress;
+
     let needsReply = 0;
     let important = 0;
     let lowPriority = 0;
-    for (const id of visibleIds) {
-      if (needsReplyIds.has(id)) needsReply++;
-      if (importantIds.has(id)) important++;
-      if (lowPriorityIds.has(id)) lowPriority++;
+    for (const t of threadsToRender ?? []) {
+      if (!visibleIds.has(t.id)) continue;
+      const acct = accountLowerForThreadRow(
+        t as Thread & { accountEmail?: string },
+        isUnifiedView,
+        inboxEmail,
+      );
+      if (threadMatchesNeedsReplyFocus(t, acct)) needsReply++;
+      if (importantIds.has(t.id)) important++;
+      if (lowPriorityIds.has(t.id)) lowPriority++;
     }
 
     return {
@@ -835,12 +902,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       important,
       lowPriority,
     };
-  }, [dailyBriefData, threadsToRender]);
-  const focusThreadIdSet = useMemo(() => {
-    if (!dailyBriefData || focusView === "all") return null;
-    const source = dailyBriefData[focusView] ?? [];
-    return new Set(source.map((row) => row.threadId));
-  }, [dailyBriefData, focusView]);
+  }, [
+    dailyBriefData,
+    threadsToRender,
+    validatedAccount?.emailAddress,
+    isUnifiedView,
+  ]);
   const isFocusActive = focusChipsEnabled && focusView !== "all";
   const focusFilterHidden = isSearching && !!searchValue;
 
@@ -895,12 +962,40 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const threadsForDisplay = useMemo(() => {
     if (threadsToRender.length > 0) {
-      if (!isFocusActive || !focusThreadIdSet) return threadsToRender;
-      return threadsToRender.filter((t) => focusThreadIdSet.has(t.id));
+      if (!isFocusActive) return threadsToRender;
+
+      if (focusView === "needsReply") {
+        const inboxEmail = validatedAccount?.emailAddress;
+        return threadsToRender.filter((t) =>
+          threadMatchesNeedsReplyFocus(
+            t,
+            accountLowerForThreadRow(
+              t as Thread & { accountEmail?: string },
+              isUnifiedView,
+              inboxEmail,
+            ),
+          ),
+        );
+      }
+
+      if (!dailyBriefData) return [];
+      const ids = new Set(
+        (dailyBriefData[focusView] ?? []).map((row) => row.threadId),
+      );
+      return threadsToRender.filter((t) => ids.has(t.id));
     }
     if (currentTab === "inbox" && previewThreads.length > 0) return previewThreads;
     return threadsToRender;
-  }, [threadsToRender, previewThreads, currentTab, isFocusActive, focusThreadIdSet]);
+  }, [
+    threadsToRender,
+    previewThreads,
+    currentTab,
+    isFocusActive,
+    focusView,
+    dailyBriefData,
+    validatedAccount?.emailAddress,
+    isUnifiedView,
+  ]);
 
   const isReadOnlyPreview =
     currentTab === "inbox" &&
@@ -1244,11 +1339,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   };
 
   const renderThreadsList = () => {
-    const noThreads = threadsToRender.length === 0;
+    const noThreads = threadsForDisplay.length === 0;
     const hasPreviewRows =
       currentTab === "inbox" &&
       previewThreads.length > 0 &&
-      threadsToRender.length === 0;
+      threadsForDisplay.length === 0;
     const isInboxSentOrTrash =
       currentTab === "inbox" || currentTab === "sent" || currentTab === "trash";
     const isSyncPending = isInboxSentOrTrash && syncEmailsMutation.isPending;
@@ -1318,7 +1413,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     if (Object.keys(groupedThreads).length === 0 && !isFetching) {
       const waitingInboxPreview =
         currentTab === "inbox" &&
-        threadsToRender.length === 0 &&
+        threadsForDisplay.length === 0 &&
         inboxPreviewFetching &&
         !inboxPreviewPayload?.needsReconnection;
       if (waitingInboxPreview) {

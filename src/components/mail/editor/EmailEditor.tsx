@@ -35,7 +35,6 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import TagInput from "./TagInput";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { useLocalStorage } from "usehooks-ts";
 import AIComposeButton from "./AiComposeButton";
 import { toast } from "sonner";
 import useThreads from "@/hooks/use-threads";
@@ -91,11 +90,13 @@ const EmailEditor = ({
   onEditorReady,
 }: EmailEditorProps) => {
   const [ref] = useAutoAnimate();
-  const [accountId] = useLocalStorage("accountId", "");
+  const { threads: rawThreads, threadId, account, effectiveAccountId } =
+    useThreads();
+  const suggestionsAccountId = effectiveAccountId ?? "";
   const { data: suggestions } = api.account.getEmailSuggestions.useQuery(
-    { accountId: accountId, query: "" },
+    { accountId: suggestionsAccountId, query: "" },
     {
-      enabled: !!accountId && accountId.length > 0,
+      enabled: suggestionsAccountId.length > 0,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
     },
@@ -106,8 +107,6 @@ const EmailEditor = ({
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [displayContent, setDisplayContent] = React.useState("");
   const completeContentRef = React.useRef("");
-
-  const { threads: rawThreads, threadId, account } = useThreads();
   const threads = rawThreads as Thread[] | undefined;
 
   const handleGenerateClick = () => {
@@ -362,7 +361,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
   }, [applyDraftKey, editor]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex border-b border-[#dadce0] bg-[#f6f8fc] p-2 dark:border-[#3c4043] dark:bg-[#292a2d] md:p-3 md:py-2">
         {editor && <TipTapMenuBar editor={editor} />}
       </div>

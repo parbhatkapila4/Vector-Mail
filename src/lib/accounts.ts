@@ -62,6 +62,22 @@ function is401Error(error: unknown): boolean {
   return /401|Authentication failed|UNAUTHORIZED/i.test(msg);
 }
 
+export function isInvalidAurinkoSyncTokenError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const status = error.response?.status;
+  if (status === 410) return true;
+  if (status !== 400) return false;
+  const data = error.response?.data;
+  if (data == null || typeof data !== "object") return false;
+  const d = data as { code?: string; message?: string };
+  const code = String(d.code ?? "");
+  if (code === "token.notValid" || code === "token_not_valid") return true;
+  const msg = String(d.message ?? "").toLowerCase();
+  if (msg.includes("sync token is not valid")) return true;
+  if (msg.includes("token") && msg.includes("not valid")) return true;
+  return false;
+}
+
 export function isTransientMailProviderError(error: unknown): boolean {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
@@ -571,6 +587,14 @@ export class Account {
         nextDeltaToken: page.nextDeltaToken,
       };
     } catch (err) {
+      if (isInvalidAurinkoSyncTokenError(err)) {
+        await db.account
+          .update({
+            where: { id: this.id },
+            data: { nextDeltaToken: null },
+          })
+          .catch(() => { });
+      }
       debugLog("[tryGetFirstPageViaSyncApi] Failed:", err);
       return null;
     }
@@ -579,18 +603,30 @@ export class Account {
   async getNextPageViaSyncApi(
     pageToken: string,
   ): Promise<{ records: EmailMessage[]; nextPageToken?: string; nextDeltaToken?: string }> {
-    const page = await this.getUpdatedEmails(undefined, pageToken, false);
-    const records = page.records ?? [];
-    for (const email of records) {
-      if (!email.sysLabels.includes("inbox")) {
-        email.sysLabels.push("inbox");
+    try {
+      const page = await this.getUpdatedEmails(undefined, pageToken, false);
+      const records = page.records ?? [];
+      for (const email of records) {
+        if (!email.sysLabels.includes("inbox")) {
+          email.sysLabels.push("inbox");
+        }
       }
+      return {
+        records,
+        nextPageToken: page.nextPageToken,
+        nextDeltaToken: page.nextDeltaToken,
+      };
+    } catch (e) {
+      if (isInvalidAurinkoSyncTokenError(e)) {
+        await db.account
+          .update({
+            where: { id: this.id },
+            data: { nextDeltaToken: null },
+          })
+          .catch(() => { });
+      }
+      throw e;
     }
-    return {
-      records,
-      nextPageToken: page.nextPageToken,
-      nextDeltaToken: page.nextDeltaToken,
-    };
   }
 
   async fetchInboxFirstPageInChunks(
@@ -1189,38 +1225,63 @@ export class Account {
         });
       } else {
         debugLog(`Using delta token: ${deltaToken.substring(0, 20)}...`);
-        let response = await this.getUpdatedEmails(deltaToken);
-        allEmails = response.records || [];
-        storedDeltaToken = deltaToken;
+        try {
+          let response = await this.getUpdatedEmails(deltaToken);
+          allEmails = response.records || [];
+          storedDeltaToken = deltaToken;
 
-        debugLog(`Delta sync response: ${allEmails.length} emails found`);
+          debugLog(`Delta sync response: ${allEmails.length} emails found`);
 
-        if (response.nextDeltaToken) {
-          storedDeltaToken = response.nextDeltaToken;
-          debugLog(`Updated delta token: ${storedDeltaToken}`);
-        }
-
-        if (allEmails.length > 0) {
-          await syncEmailsToDatabase(allEmails, account.id);
-          syncedIncrementally = true;
-        }
-        while (response.nextPageToken) {
-          debugLog(
-            `Fetching next page with token: ${response.nextPageToken}`,
-          );
-          response = await this.getUpdatedEmails("", response.nextPageToken);
-          const records = response.records || [];
-          allEmails = allEmails.concat(records);
-          if (records.length > 0) {
-            await syncEmailsToDatabase(records, account.id);
-            syncedIncrementally = true;
-          }
-          debugLog(
-            `Page response: ${records.length} emails synced, total: ${allEmails.length}`,
-          );
           if (response.nextDeltaToken) {
             storedDeltaToken = response.nextDeltaToken;
+            debugLog(`Updated delta token: ${storedDeltaToken}`);
           }
+
+          if (allEmails.length > 0) {
+            await syncEmailsToDatabase(allEmails, account.id);
+            syncedIncrementally = true;
+          }
+          while (response.nextPageToken) {
+            debugLog(
+              `Fetching next page with token: ${response.nextPageToken}`,
+            );
+            response = await this.getUpdatedEmails("", response.nextPageToken);
+            const records = response.records || [];
+            allEmails = allEmails.concat(records);
+            if (records.length > 0) {
+              await syncEmailsToDatabase(records, account.id);
+              syncedIncrementally = true;
+            }
+            debugLog(
+              `Page response: ${records.length} emails synced, total: ${allEmails.length}`,
+            );
+            if (response.nextDeltaToken) {
+              storedDeltaToken = response.nextDeltaToken;
+            }
+          }
+        } catch (deltaOrPageErr) {
+          if (!isInvalidAurinkoSyncTokenError(deltaOrPageErr)) {
+            throw deltaOrPageErr;
+          }
+          console.warn(
+            `[_performSync] Aurinko sync token invalid for account ${this.id} (delta or page); clearing and running initial sync`,
+          );
+          await db.account.update({
+            where: { id: account.id },
+            data: { nextDeltaToken: null },
+          });
+          const initialSyncResult = await this.performInitialSync(undefined, {
+            firstBatchOnly: false,
+          });
+          allEmails = initialSyncResult?.emails ?? [];
+          storedDeltaToken = initialSyncResult?.deltaToken ?? "";
+          debugLog(
+            `[_performSync] Initial sync after invalid token: ${allEmails.length} emails`,
+          );
+          await db.account.update({
+            where: { id: account.id },
+            data: { lastInboxSyncAt: new Date() },
+          });
         }
       }
     }
@@ -1491,6 +1552,20 @@ export class Account {
         return { success: false, count: 0, authError: true };
       }
 
+      if (isInvalidAurinkoSyncTokenError(error)) {
+        console.warn(
+          `[Latest Sync] Delta/page token invalid for account ${account.id}, resetting nextDeltaToken`,
+        );
+        await db.account.update({
+          where: { id: account.id },
+          data: { nextDeltaToken: null },
+        });
+        debugLog(
+          `[Latest Sync] Delta token reset - full sync will run on next step`,
+        );
+        return { success: false, count: 0, authError: false };
+      }
+
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
         const errorData = error.response?.data;
@@ -1500,22 +1575,6 @@ export class Account {
           statusText: error.response?.statusText,
           data: errorData,
         });
-
-        if (status === 400 || status === 410) {
-          console.warn(
-            `[Latest Sync] Delta token invalid/expired (${status}) for account ${account.id}, resetting...`,
-          );
-
-          await db.account.update({
-            where: { id: account.id },
-            data: { nextDeltaToken: null },
-          });
-
-          debugLog(
-            `[Latest Sync] Delta token reset - will use full sync on next regular sync`,
-          );
-          return { success: false, count: 0, authError: false };
-        }
       } else {
         console.error(
           `[Latest Sync] Non-axios error syncing latest emails for account ${account.id}:`,

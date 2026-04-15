@@ -272,7 +272,9 @@ const ReplyBox = ({
   const shouldShowCollapsed = isInMobileDialog ? false : isCollapsed;
 
   return (
-    <div className="flex h-full flex-col border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124] md:sticky md:bottom-0 md:z-50">
+    <div
+      className={`flex min-h-0 flex-col border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124] ${isInMobileDialog ? "flex-1" : "h-full md:sticky md:bottom-0 md:z-50"}`}
+    >
       {!isInMobileDialog && (
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
@@ -326,26 +328,28 @@ const ReplyBox = ({
               Some email clients block images.
             </p>
           </div>
-          <EmailEditor
-            toValues={toValues || []}
-            ccValues={ccValues}
-            onToChange={(values) => {
-              setToValues(values);
-            }}
-            onCcChange={(values) => {
-              setCcValues(values || []);
-            }}
-            subject={subject}
-            setSubject={setSubject}
-            to={toValues.map((t) => t.value).filter(Boolean)}
-            handleSend={handleSend}
-            isSending={sendEmail.isPending || isPendingSend}
-            onScheduleSend={handleScheduleSendClick}
-            isScheduling={scheduleSendMutation.isPending}
-            sendDisabled={isDemo}
-            initialBody={pendingSuggestedBody}
-            applyDraftKey={applyDraftKey}
-          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <EmailEditor
+              toValues={toValues || []}
+              ccValues={ccValues}
+              onToChange={(values) => {
+                setToValues(values);
+              }}
+              onCcChange={(values) => {
+                setCcValues(values || []);
+              }}
+              subject={subject}
+              setSubject={setSubject}
+              to={toValues.map((t) => t.value).filter(Boolean)}
+              handleSend={handleSend}
+              isSending={sendEmail.isPending || isPendingSend}
+              onScheduleSend={handleScheduleSendClick}
+              isScheduling={scheduleSendMutation.isPending}
+              sendDisabled={isDemo}
+              initialBody={pendingSuggestedBody}
+              applyDraftKey={applyDraftKey}
+            />
+          </div>
           <Dialog
             open={!!suggestedReply && !autoApplySuggestedReply}
             onOpenChange={(open) => {

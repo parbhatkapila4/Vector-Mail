@@ -276,9 +276,9 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
           )}
         </DialogContent>
       </Dialog>
-      <div className="flex h-full flex-col bg-white dark:bg-[#111113]">
+      <div className="flex min-h-0 h-full flex-col bg-white dark:bg-[#111113]">
 
-        <div className="relative z-10 border-b border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]">
+        <div className="relative z-10 shrink-0 border-b border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]">
           <div className="hidden w-full min-w-0 flex-col gap-2 px-4 py-2 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-3 md:gap-y-2 md:px-6">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
               {threadId && (
@@ -435,7 +435,9 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
               </button>
             </div>
           </div>
+        </div>
 
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto scroll-smooth pb-20 text-base md:pb-0 md:text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="px-4 pb-6 pt-4 md:px-6 md:pt-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <h1 className="text-[18px] font-normal leading-tight text-[#111118] dark:text-[#f4f4f5] md:text-[22px]">
@@ -520,9 +522,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto scroll-smooth pb-20 text-base md:pb-0 md:text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="w-full px-4 py-6 md:px-6 md:py-8">
             {thread.emails.length > 1 && (
               <div className="mb-8 flex items-center gap-4">
@@ -577,7 +577,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
         </div>
 
         {showReplyBox && (
-          <div className="hidden border-t border-[#e5e7eb] dark:border-[#1a1a23] md:block">
+          <div className="hidden shrink-0 border-t border-[#e5e7eb] dark:border-[#1a1a23] md:block">
             <ReplyBox
               suggestedReply={suggestedReply}
               autoApplySuggestedReply={autoApplySuggestedReply}
@@ -625,7 +625,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex flex-1 flex-col overflow-hidden pb-0">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <ReplyBox
                 onSendSuccess={() => setReplyDialogOpen(false)}
                 isInMobileDialog={true}
