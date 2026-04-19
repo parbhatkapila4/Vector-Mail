@@ -17,7 +17,7 @@ type EmailWithRelations = Email & {
 
 interface RawEmailResult {
   id: string;
-  distance: number;
+  distance: number | string;
   [key: string]: unknown;
 }
 
@@ -25,6 +25,15 @@ export interface SearchResult {
   email: EmailWithRelations;
   similarity: number;
   relevanceScore: number;
+}
+
+function normalizeDistance(value: number | string | null | undefined): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 1;
 }
 
 export async function searchEmailsByVector(
@@ -42,7 +51,7 @@ export async function searchEmailsByVector(
 
     const emails = (await db.$queryRaw`
       SELECT 
-        e.*,
+        e.id,
         (e."embedding" <=> ${JSON.stringify(queryEmbedding)}::vector) as distance
       FROM "Email" e
       JOIN "Thread" t ON e."threadId" = t.id
@@ -71,7 +80,9 @@ export async function searchEmailsByVector(
       },
     });
 
-    const emailDistanceMap = new Map(emails.map((e) => [e.id, e.distance]));
+    const emailDistanceMap = new Map(
+      emails.map((e) => [e.id, normalizeDistance(e.distance)]),
+    );
 
     const results: SearchResult[] = fullEmails
       .map((email) => {

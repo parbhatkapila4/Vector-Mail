@@ -7,6 +7,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardShortcuts } from "@/components/global/KeyboardShortcuts";
 import { PendingSendProvider } from "@/contexts/PendingSendContext";
+import { MailNavigationProvider } from "@/components/mail-navigation-loader";
 
 function ClientOnlyKeyboardShortcuts() {
   const [mounted, setMounted] = useState(false);
@@ -32,8 +33,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       >
         <TRPCReactProvider>
           <PendingSendProvider>
-            <ClientOnlyKeyboardShortcuts />
-            {children}
+            <MailNavigationProvider>
+              <ClientOnlyKeyboardShortcuts />
+              {children}
+            </MailNavigationProvider>
           </PendingSendProvider>
         </TRPCReactProvider>
         <Toaster />

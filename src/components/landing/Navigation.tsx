@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser, UserButton, useClerk } from "@clerk/nextjs";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, Loader2 } from "lucide-react";
+import { useMailNavigation } from "@/components/mail-navigation-loader";
 
 const NAV_LINKS = [
   { label: "Features", href: "/features" },
@@ -19,6 +20,7 @@ export function Navigation() {
   const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { navigateToMail, isNavigating } = useMailNavigation();
 
   useEffect(() => {
     if (searchParams.get("signout") === "1") {
@@ -86,13 +88,18 @@ export function Navigation() {
             </div>
           ) : isSignedIn ? (
             <>
-              <Link
-                href="/mail"
-                className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black shadow-[0_0_20px_-4px_rgba(255,255,255,0.2)] transition-all hover:bg-zinc-100 hover:shadow-[0_0_24px_-4px_rgba(255,255,255,0.3)]"
+              <button
+                onClick={navigateToMail}
+                disabled={isNavigating}
+                className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black shadow-[0_0_20px_-4px_rgba(255,255,255,0.2)] transition-all hover:bg-zinc-100 hover:shadow-[0_0_24px_-4px_rgba(255,255,255,0.3)] disabled:opacity-70"
               >
-                Open Inbox
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+                {isNavigating ? "Opening…" : "Open Inbox"}
+                {isNavigating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                )}
+              </button>
               <div className="flex items-center gap-2.5 rounded-full border border-white/[0.08] bg-white/[0.04] pl-1 pr-3 py-1">
                 <UserButton
                   afterSignOutUrl="/"
@@ -163,14 +170,18 @@ export function Navigation() {
               </div>
             ) : isSignedIn ? (
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/mail"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-white py-3 text-[15px] font-semibold text-black"
+                <button
+                  onClick={() => { setMobileMenuOpen(false); navigateToMail(); }}
+                  disabled={isNavigating}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-[15px] font-semibold text-black disabled:opacity-70"
                 >
-                  Open Inbox
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                  {isNavigating ? "Opening…" : "Open Inbox"}
+                  {isNavigating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4" />
+                  )}
+                </button>
                 <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-4 py-3">
                   <UserButton
                     afterSignOutUrl="/"

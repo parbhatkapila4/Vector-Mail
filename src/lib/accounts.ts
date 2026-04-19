@@ -34,6 +34,16 @@ const FAST_FIRST_FETCH_CONCURRENCY = 10;
 const FAST_FIRST_FETCH_TIMEOUT_MS = 15_000;
 const FAST_FIRST_LIST_TIMEOUT_MS = 25_000;
 const RATE_LIMIT_WAIT_MS = 60_000;
+const AUTH_WARN_COOLDOWN_MS = 60_000;
+const lastAuthWarnAtByKey = new Map<string, number>();
+
+function warnWithCooldown(key: string, message: string): void {
+  const now = Date.now();
+  const lastAt = lastAuthWarnAtByKey.get(key) ?? 0;
+  if (now - lastAt < AUTH_WARN_COOLDOWN_MS) return;
+  lastAuthWarnAtByKey.set(key, now);
+  console.warn(message);
+}
 
 function isRateLimitError(error: unknown): boolean {
   if (!axios.isAxiosError(error)) return false;
@@ -156,11 +166,15 @@ async function with401Retry<T>(
       if (options?.tryRefresh) {
         const refreshed = await options.tryRefresh();
         if (refreshed) {
-          console.warn(`[accounts] Token refreshed for account ${accountId}, retrying request...`);
+          warnWithCooldown(
+            `401-refreshed-${accountId}`,
+            `[accounts] Token refreshed for account ${accountId}, retrying request...`,
+          );
           attempt--;
           continue;
         }
-        console.warn(
+        warnWithCooldown(
+          `401-refresh-failed-${accountId}`,
           `[accounts] 401 for account ${accountId}: refresh failed or no refresh token - stopping retries`,
         );
         break;
@@ -288,6 +302,10 @@ export class Account {
       );
       return true;
     }
+  }
+
+  async ensureValidToken(): Promise<boolean> {
+    return this.validateToken();
   }
 
   async performInitialSync(

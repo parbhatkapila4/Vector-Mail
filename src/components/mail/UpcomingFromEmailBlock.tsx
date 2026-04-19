@@ -89,7 +89,7 @@ export function UpcomingFromEmailBlock({
         {expanded && (
           <div className="space-y-2 px-2 py-3">
             <p className="text-center text-xs text-[#5f6368] dark:text-[#9aa0a6]">
-              No events found in the last 2 weeks. Meeting-style emails will show here with an “Add to calendar” option.
+              No meeting-related emails found in the last 60 days. Emails that look like meetings or calendar invites will appear here.
             </p>
             <a
               href={buildGoogleCalendarUrl({

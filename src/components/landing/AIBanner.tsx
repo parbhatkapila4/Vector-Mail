@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { useMailNavigation } from "@/components/mail-navigation-loader";
 
 const ambientLines = [
   "const query = embed(search);",
@@ -18,6 +19,7 @@ const ambientLines = [
 
 export function AIBanner() {
   const { isSignedIn } = useUser();
+  const { navigateToMail } = useMailNavigation();
 
   return (
     <section className="relative overflow-hidden py-28 md:py-40 mb-20 md:mb-28">
@@ -161,12 +163,21 @@ export function AIBanner() {
           Find it.
         </h2>
         <div className="shrink-0 md:pl-4">
-          <Link
-            href={isSignedIn ? "/mail" : "/sign-up"}
-            className="inline-flex rounded-xl bg-white px-8 py-4 text-base font-semibold text-[#0c0a12] shadow-lg shadow-black/10 transition-shadow hover:shadow-xl hover:shadow-black/15"
-          >
-            Get VectorMail
-          </Link>
+          {isSignedIn ? (
+            <button
+              onClick={navigateToMail}
+              className="inline-flex rounded-xl bg-white px-8 py-4 text-base font-semibold text-[#0c0a12] shadow-lg shadow-black/10 transition-shadow hover:shadow-xl hover:shadow-black/15"
+            >
+              Get VectorMail
+            </button>
+          ) : (
+            <Link
+              href="/sign-up"
+              className="inline-flex rounded-xl bg-white px-8 py-4 text-base font-semibold text-[#0c0a12] shadow-lg shadow-black/10 transition-shadow hover:shadow-xl hover:shadow-black/15"
+            >
+              Get VectorMail
+            </Link>
+          )}
         </div>
       </div>
     </section>

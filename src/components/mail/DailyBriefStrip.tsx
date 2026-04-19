@@ -18,8 +18,6 @@ import {
   Bell,
   Clock,
   Archive,
-  CircleHelp,
-  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -80,95 +78,6 @@ const DEMO_ACTIONS_MSG =
 
 type DailyBriefData = RouterOutputs["account"]["getDailyBrief"];
 type BriefRow = DailyBriefData["needsReply"][number];
-
-function sanitizeMarkdownLinkLabel(text: string): string {
-  return text
-    .replace(/\r?\n/g, " ")
-    .replace(/\[/g, "\\[")
-    .replace(/\]/g, "\\]")
-    .replace(/\*/g, "");
-}
-
-function threadDeepLink(origin: string, accountId: string, threadId: string): string {
-  const u = new URL("/mail", origin);
-  u.searchParams.set("thread", threadId);
-  u.searchParams.set("account", accountId);
-  return u.toString();
-}
-
-function formatBriefMarkdown(
-  data: DailyBriefData,
-  accountId: string,
-  origin: string | null,
-  generatedAt: Date,
-): string {
-  const gen = format(generatedAt, "PPpp");
-  const lines: string[] = [
-    "# Today's inbox brief",
-    "",
-    `_Generated: ${gen}_`,
-    "",
-  ];
-
-  const appendSection = (heading: string, rows: BriefRow[]) => {
-    lines.push(`## ${heading}`, "");
-    if (rows.length === 0) {
-      lines.push("_No threads in this section._", "");
-      return;
-    }
-    for (const row of rows) {
-      const subject = row.subject?.trim() || "(No subject)";
-      const label = sanitizeMarkdownLinkLabel(subject);
-      const reason = row.reason?.trim();
-      const conf = row.confidence ? ` (${row.confidence})` : "";
-      if (origin && accountId) {
-        const href = threadDeepLink(origin, accountId, row.threadId);
-        let line = `- [${label}](${href})`;
-        if (reason) line += ` - ${sanitizeMarkdownLinkLabel(reason)}`;
-        if (conf) line += conf;
-        lines.push(line);
-      } else {
-        let line = `- **${label}** - \`${row.threadId}\``;
-        if (reason) line += ` - ${sanitizeMarkdownLinkLabel(reason)}`;
-        if (conf) line += conf;
-        lines.push(line);
-      }
-    }
-    lines.push("");
-  };
-
-  appendSection("Needs reply", data.needsReply);
-  appendSection("Important", data.important);
-  appendSection("Can wait", data.lowPriority);
-
-  return lines.join("\n").trimEnd() + "\n";
-}
-
-async function copyTextToClipboard(text: string): Promise<boolean> {
-  try {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-  }
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    ta.style.top = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
 
 type SnoozeVars = { threadId: string; accountId: string; snoozedUntil: string };
 type RemindVars = { threadId: string; accountId: string; days: number };
@@ -435,130 +344,72 @@ export function DailyBriefStrip({
     return { n, empty: n === 0 };
   }, [data]);
 
-  const handleCopyBrief = useCallback(async () => {
-    if (isLoading || isError || !data) {
-      toast.error("Brief isn’t ready to copy yet.");
-      return;
-    }
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : null;
-    const md = formatBriefMarkdown(data, accountId, origin, new Date());
-    const ok = await copyTextToClipboard(md);
-    if (ok) {
-      trackInboxBrainEvent("daily_brief_copied", {
-        success: true,
-        brief_thread_count: totals.n,
-      });
-      toast.success("Brief copied", {
-        description:
-          "Markdown is on your clipboard. Paste into Slack, Notion, or email.",
-      });
-    } else {
-      toast.error("Couldn’t copy", {
-        description:
-          "Allow clipboard access for this site, or copy the text manually.",
-      });
-    }
-  }, [isLoading, isError, data, accountId, totals.n]);
-
   if (!accountId) return null;
 
   const header = (
-    <div className="flex w-full min-w-0 items-center gap-1 px-0.5">
-      <button
-        type="button"
-        title={
-          showDesktopShortcuts
-            ? "AI Inbox Brain · Today's prioritized threads"
-            : "Today's brief: keyboard shortcuts available on desktop"
-        }
-        onClick={() => setExpanded((e) => !e)}
-        className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded px-2 py-1.5 text-left transition-colors",
-          "hover:bg-[#f3f4f6] dark:hover:bg-[#ffffff]/[0.04]",
-        )}
-        aria-expanded={expanded}
-      >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
-        )}
-        <Newspaper className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
-        <span className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6]">
-          Today&apos;s brief
+    <div className="flex w-full min-w-0 items-center gap-1.5 px-1 py-0.5">
+      <div className="flex min-w-0 items-center gap-1">
+        <button
+          type="button"
+          title={
+            showDesktopShortcuts
+              ? "AI Inbox Brain · Today's prioritized threads"
+              : "Today's brief: keyboard shortcuts available on desktop"
+          }
+          onClick={() => setExpanded((e) => !e)}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left transition-colors",
+            "hover:bg-[#f3f4f6] dark:hover:bg-[#ffffff]/[0.04]",
+          )}
+          aria-expanded={expanded}
+        >
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+          )}
+          <Newspaper className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+          <span className="min-w-0 text-xs font-medium uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6]">
+            Today&apos;s brief
+          </span>
+        </button>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums",
+            "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#27272a] dark:text-[#9aa0a6]",
+          )}
+          aria-label={
+            isLoading
+              ? "Brief count loading"
+              : `${totals.n} thread${totals.n === 1 ? "" : "s"} in today’s brief`
+          }
+        >
+          {isLoading ? "…" : totals.n}
         </span>
-      </button>
-      <span
-        className={cn(
-          "shrink-0 rounded-full px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums",
-          "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#27272a] dark:text-[#9aa0a6]",
-        )}
-        aria-label={
-          isLoading
-            ? "Brief count loading"
-            : `${totals.n} thread${totals.n === 1 ? "" : "s"} in today’s brief`
-        }
-      >
-        {isLoading ? "…" : totals.n}
-      </span>
-      <button
-        type="button"
-        disabled={isLoading || isError || !data}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          void handleCopyBrief();
-        }}
-        className={cn(
-          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#9ca3af] transition-colors",
-          "hover:bg-[#e8eaed] hover:text-[#5f6368] dark:hover:bg-[#27272a] dark:hover:text-[#d4d4d8]",
-          "disabled:pointer-events-none disabled:opacity-45",
-        )}
-        aria-label="Copy today’s brief as Markdown"
-        title="Copy today’s brief as Markdown"
-      >
-        <Copy className="h-4 w-4" aria-hidden />
-      </button>
-      {showDesktopShortcuts && onShowKeyboardHelp && (
+      </div>
+      <div className="ml-auto flex items-center gap-1">
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            onShowKeyboardHelp();
+            trackInboxBrainEvent("daily_brief_refreshed", {
+              brief_thread_count: totals.n,
+            });
+            void refetch();
           }}
           className={cn(
             "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#9ca3af] transition-colors",
             "hover:bg-[#e8eaed] hover:text-[#5f6368] dark:hover:bg-[#27272a] dark:hover:text-[#d4d4d8]",
           )}
-          aria-label="Keyboard shortcuts"
-          title="Keyboard shortcuts: g then b: Inbox brain panel · g then f: focus"
+          aria-label="Refresh brief"
+          title="Refresh brief"
         >
-          <CircleHelp className="h-4 w-4" aria-hidden />
+          <RefreshCw
+            className={cn("h-3.5 w-3.5", isFetching && !isLoading && "animate-spin")}
+          />
         </button>
-      )}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          trackInboxBrainEvent("daily_brief_refreshed", {
-            brief_thread_count: totals.n,
-          });
-          void refetch();
-        }}
-        className={cn(
-          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#9ca3af] transition-colors",
-          "hover:bg-[#e8eaed] hover:text-[#5f6368] dark:hover:bg-[#27272a] dark:hover:text-[#d4d4d8]",
-        )}
-        aria-label="Refresh brief"
-        title="Refresh brief"
-      >
-        <RefreshCw
-          className={cn("h-3.5 w-3.5", isFetching && !isLoading && "animate-spin")}
-        />
-      </button>
+      </div>
     </div>
   );
 

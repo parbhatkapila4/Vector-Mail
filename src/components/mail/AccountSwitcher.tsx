@@ -28,9 +28,34 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
   React.useEffect(() => {
     if (accounts && accounts.length > 0) {
       const isUnified = accountId === UNIFIED_INBOX_ACCOUNT_ID;
+      const connectedFallbackId =
+        accounts.find((acc) =>
+          !("needsReconnection" in acc) ||
+          !(acc as { needsReconnection?: boolean }).needsReconnection,
+        )?.id ??
+        accounts[0]!.id;
+      const currentAccount = accounts.find((acc) => acc.id === accountId);
       const isCurrentAccountValid =
         isUnified || (accountId && accounts.some((acc: { id: string }) => acc.id === accountId));
-      if (!isCurrentAccountValid) setAccountId(accounts[0]!.id);
+      if (!isCurrentAccountValid) {
+        setAccountId(connectedFallbackId);
+        return;
+      }
+      if (
+        !isUnified &&
+        currentAccount &&
+        "needsReconnection" in currentAccount &&
+        !!(currentAccount as { needsReconnection?: boolean }).needsReconnection &&
+        connectedFallbackId &&
+        connectedFallbackId !== currentAccount.id
+      ) {
+        setAccountId(connectedFallbackId);
+        toast.info("Switched to your connected inbox", {
+          description:
+            "One linked account needs reconnect. You can reconnect it later from the account switcher.",
+          duration: 4000,
+        });
+      }
     } else if (accounts && accounts.length === 0) {
       toast("Connect your Google account to continue", {
         action: {

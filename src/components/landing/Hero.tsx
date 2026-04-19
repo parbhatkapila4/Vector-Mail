@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { BackgroundBeamsWithCollision } from "@/components/ui/background-beams-with-collision";
+import { useMailNavigation } from "@/components/mail-navigation-loader";
 
 export function Hero() {
   const { isSignedIn } = useUser();
+  const { navigateToMail, isNavigating } = useMailNavigation();
 
   return (
     <section className="relative min-h-screen">
@@ -67,13 +69,28 @@ export function Hero() {
           </p>
 
           <div className="relative z-20 mt-10 flex justify-center">
-            <Link
-              href={isSignedIn ? "/mail" : "/sign-up"}
-              className="group flex items-center gap-3 rounded-full bg-white px-8 py-4 text-[16px] font-semibold text-[#0A0A0B] transition-all hover:bg-white/90"
-            >
-              Get Started Free
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            {isSignedIn ? (
+              <button
+                onClick={navigateToMail}
+                disabled={isNavigating}
+                className="group flex items-center gap-3 rounded-full bg-white px-8 py-4 text-[16px] font-semibold text-[#0A0A0B] transition-all hover:bg-white/90 disabled:opacity-70"
+              >
+                {isNavigating ? "Opening Inbox…" : "Get Started Free"}
+                {isNavigating ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                )}
+              </button>
+            ) : (
+              <Link
+                href="/sign-up"
+                className="group flex items-center gap-3 rounded-full bg-white px-8 py-4 text-[16px] font-semibold text-[#0A0A0B] transition-all hover:bg-white/90"
+              >
+                Get Started Free
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            )}
           </div>
         </div>
 

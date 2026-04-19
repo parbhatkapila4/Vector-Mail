@@ -5,7 +5,7 @@ const ALLOWED: Record<
   readonly ActionExecutionStatus[]
 > = {
   pending: ["awaiting_approval", "running", "cancelled"],
-  awaiting_approval: ["running", "cancelled"],
+  awaiting_approval: ["pending", "running", "cancelled"],
   running: ["success", "failed", "cancelled"],
   success: [],
   failed: ["running", "cancelled"],

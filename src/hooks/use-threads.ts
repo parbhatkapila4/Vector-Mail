@@ -23,12 +23,23 @@ function useThreads() {
   const [storedAccountId] = useLocalStorage("accountId", "");
 
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
+  const firstConnectedAccountId =
+    accounts?.find((acc) => !("needsReconnection" in acc) || !acc.needsReconnection)?.id ??
+    firstAccountId;
   const isUnified = storedAccountId === UNIFIED_INBOX_ACCOUNT_ID;
+  const storedAccount =
+    storedAccountId && accounts?.find((acc) => acc.id === storedAccountId);
+  const shouldFallbackFromDisconnectedStoredAccount =
+    !!storedAccount &&
+    "needsReconnection" in storedAccount &&
+    !!storedAccount.needsReconnection &&
+    !!firstConnectedAccountId &&
+    firstConnectedAccountId !== storedAccount.id;
   const accountId = isUnified
     ? UNIFIED_INBOX_ACCOUNT_ID
-    : storedAccountId && accounts?.some((acc) => acc.id === storedAccountId)
+    : storedAccount && !shouldFallbackFromDisconnectedStoredAccount
       ? storedAccountId
-      : firstAccountId;
+      : firstConnectedAccountId;
 
   const { data: myAccount } = api.account.getMyAccount.useQuery(
     { accountId: isUnified ? firstAccountId : (accountId || "placeholder") },

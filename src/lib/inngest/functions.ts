@@ -1,6 +1,11 @@
 import { inngest } from "./client";
 import { runEmailAnalysisForOne, runEmailAnalysisForMany } from "@/lib/jobs/run-email-analysis";
 import { runScheduledSend } from "@/lib/jobs/run-scheduled-send";
+import {
+  isTransientAutomationError,
+  runAutomationExecutionDryRun,
+} from "@/lib/jobs/run-automation-execution";
+import { detectAndCreateFollowUpExecutionsForAccount } from "@/lib/automation/detect";
 import { backfillEmailAnalysis } from "@/lib/backfill-email-analysis";
 import { recordFailedJob } from "@/lib/jobs/failed-job";
 import {
@@ -16,8 +21,14 @@ export const SCHEDULED_SEND_PROCESS_EVENT = "scheduled-send/process";
 export const EMAIL_ANALYZE_ACCOUNT_EVENT = "email/analyze-account";
 
 export const MAIL_SYNC_ACCOUNT_EVENT = "mail/sync-account";
+export const AUTOMATION_EXECUTE_EVENT = "automation/execute";
 
 const MAX_INBOX_SYNC_STEPS = 120;
+const AUTOMATION_EXECUTE_MAX_RETRIES = 3;
+
+//Just a reminder telling that this limit is according to the vercel hobby plan - To all who clone this repo - Author Parbhat kapila
+const CRON_STALE_INBOX_SYNC = "30 4 * * *";
+const CRON_AUTOMATION_DETECT_FOLLOWUPS = "0 5 * * *"; 
 
 async function recordAndRethrow(
   jobType: string,
@@ -253,7 +264,7 @@ export const mailSyncStaleAccountsFunction = inngest.createFunction(
     name: "Periodic inbox refresh (stale accounts)",
     retries: 1,
   },
-  { cron: "25 */2 * * *" },
+  { cron: CRON_STALE_INBOX_SYNC },
   async ({ step }) => {
     const staleBefore = new Date(Date.now() - 50 * 60 * 1000);
     const accounts = await step.run("pick-accounts", async () => {
@@ -290,10 +301,144 @@ export const mailSyncStaleAccountsFunction = inngest.createFunction(
   },
 );
 
+export const automationExecuteFunction = inngest.createFunction(
+  {
+    id: "automation-execute",
+    name: "Automation dry-run execution",
+    retries: AUTOMATION_EXECUTE_MAX_RETRIES,
+    concurrency: {
+      limit: 1,
+      key: "event.data.executionId",
+    },
+  },
+  { event: AUTOMATION_EXECUTE_EVENT },
+  async ({
+    event,
+    step,
+  }: {
+    event: { data: { executionId?: string } };
+    step: {
+      run: <T>(name: string, fn: () => Promise<T>) => Promise<T>;
+      sleep: (id: string, duration: string) => Promise<void>;
+    };
+  }) => {
+    const executionId = event.data.executionId?.trim();
+    if (!executionId) {
+      throw new Error("automation/execute: executionId required");
+    }
+
+    try {
+      const result = await step.run("run-dry-execution", async () =>
+        runAutomationExecutionDryRun(executionId),
+      );
+      return { ok: true, executionId, state: result.state, dryRun: true };
+    } catch (err) {
+      const exec = await step.run("load-exec-on-error", async () =>
+        db.actionExecution.findUnique({
+          where: { id: executionId },
+          select: { id: true, userId: true, retryCount: true, status: true },
+        }),
+      );
+      if (!exec) {
+        throw err;
+      }
+
+      const message = err instanceof Error ? err.message : String(err);
+      const isTransient = isTransientAutomationError(err);
+      if (!isTransient) {
+        await step.run("mark-failed-permanent", async () =>
+          db.actionExecution.update({
+            where: { id: exec.id },
+            data: {
+              status: "failed",
+              lastError: message.slice(0, 1900),
+            },
+          }),
+        );
+        throw err;
+      }
+
+      const nextRetryCount = exec.retryCount + 1;
+      const maxAttempts = AUTOMATION_EXECUTE_MAX_RETRIES + 1;
+      const attemptsExhausted = nextRetryCount >= maxAttempts;
+      await step.run("persist-retry-state", async () =>
+        db.actionExecution.update({
+          where: { id: exec.id },
+          data: {
+            retryCount: { increment: 1 },
+            lastError: message.slice(0, 1900),
+            ...(attemptsExhausted ? { status: "failed" } : {}),
+          },
+        }),
+      );
+
+      if (attemptsExhausted) {
+        return {
+          ok: false,
+          executionId,
+          state: "failed",
+          dryRun: true,
+          reason: "max_retries_exhausted",
+        };
+      }
+
+      const delayMs = Math.min(30_000, 1000 * Math.pow(2, Math.max(0, nextRetryCount - 1)));
+      await step.sleep(`retry-backoff-${nextRetryCount}`, `${delayMs}ms`);
+      throw err;
+    }
+  },
+);
+
+export const automationDetectFollowUpsFunction = inngest.createFunction(
+  {
+    id: "automation-detect-followups",
+    name: "Automation detector (follow-up candidates)",
+    retries: 1,
+  },
+  { cron: CRON_AUTOMATION_DETECT_FOLLOWUPS },
+  async ({ step }) => {
+    const accounts = await step.run("pick-accounts", async () => {
+      return db.account.findMany({
+        where: {
+          token: { not: "" },
+          needsReconnection: false,
+          automationMode: { in: ["assist", "auto"] },
+        },
+        select: { id: true },
+        orderBy: [{ lastInboxSyncAt: "asc" }],
+        take: 10,
+      });
+    });
+
+    if (accounts.length === 0) {
+      return { ok: true, scannedAccounts: 0, created: 0, duplicates: 0, enqueued: 0 };
+    }
+
+    const totals = await step.run("detect-and-create", async () => {
+      let created = 0;
+      let duplicates = 0;
+      let enqueued = 0;
+      let scannedAccounts = 0;
+      for (const a of accounts) {
+        scannedAccounts += 1;
+        const res = await detectAndCreateFollowUpExecutionsForAccount(a.id);
+        created += res.created;
+        duplicates += res.duplicates;
+        enqueued += res.enqueued;
+      }
+      return { scannedAccounts, created, duplicates, enqueued };
+    });
+
+    return { ok: true, ...totals };
+  },
+);
+
 export const inngestFunctions = [
   emailAnalyzeFunction,
   scheduledSendProcessFunction,
   emailAnalyzeAccountFunction,
   mailSyncAccountFunction,
   mailSyncStaleAccountsFunction,
+  automationExecuteFunction,
+  automationDetectFollowUpsFunction,
 ];

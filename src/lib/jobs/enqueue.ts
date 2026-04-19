@@ -4,6 +4,7 @@ import {
   SCHEDULED_SEND_PROCESS_EVENT,
   EMAIL_ANALYZE_ACCOUNT_EVENT,
   MAIL_SYNC_ACCOUNT_EVENT,
+  AUTOMATION_EXECUTE_EVENT,
 } from "@/lib/inngest/functions";
 
 function canSendToInngest(): boolean {
@@ -16,7 +17,7 @@ export async function enqueueEmailAnalysisJobs(
   if (emailIds.length === 0) return;
   if (!canSendToInngest()) return;
   try {
- 
+
     await Promise.all(
       emailIds.map((emailId) =>
         inngest.send({
@@ -103,6 +104,24 @@ export async function enqueueAccountMailSync(
     return true;
   } catch (err) {
     console.error("[enqueueAccountMailSync]", err);
+    return false;
+  }
+}
+
+export async function enqueueAutomationExecution(
+  executionId: string,
+): Promise<boolean> {
+  if (!executionId.trim()) return false;
+  if (!canSendToInngest()) return false;
+  try {
+    await inngest.send({
+      name: AUTOMATION_EXECUTE_EVENT,
+      data: { executionId: executionId.trim() },
+      id: `automation-execute-${executionId.trim()}`,
+    });
+    return true;
+  } catch (err) {
+    console.error("[enqueueAutomationExecution]", err);
     return false;
   }
 }

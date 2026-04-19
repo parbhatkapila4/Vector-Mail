@@ -67,6 +67,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useSetAtom } from "jotai";
 import { threadIdAtom } from "@/hooks/use-threads";
 import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
+import { AutopilotSection } from "@/components/mail/AutopilotSection";
 
 const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
 
@@ -793,46 +794,67 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               )}
             >
               <div className="flex h-full flex-col">
-                <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3.5 dark:border-[#1a1a23]">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3b82f6]">
-                      <MessageCircle className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-[14px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
-                          AI Inbox Brain
-                        </span>
-                        {isDemo && (
-                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
-                            Demo
+                <div className="border-b border-[#e5e7eb] px-4 py-3.5 dark:border-[#1a1a23]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3b82f6]">
+                        <MessageCircle className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-[14px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
+                            AI Inbox Brain
                           </span>
+                          {isDemo && (
+                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
+                              Demo
+                            </span>
+                          )}
+                        </div>
+                        {!isMobile ? (
+                          <p className="mt-0.5 truncate text-[10px] text-[#9ca3af] dark:text-[#71717a]">
+                            <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                              g
+                            </kbd>
+                            <span className="mx-0.5">then</span>
+                            <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                              b
+                            </kbd>
+                            <span className="mx-1 text-[#d1d5db] dark:text-[#52525b]">·</span>
+                            <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                              {isMacOS ? "⌘↵" : "Ctrl+Enter"}
+                            </kbd>
+                            <span className="ml-1">send</span>
+                          </p>
+                        ) : (
+                          <p className="mt-0.5 text-[10px] text-[#9ca3af] dark:text-[#71717a]">
+                            Keyboard shortcuts on desktop
+                          </p>
                         )}
                       </div>
-                      {!isMobile ? (
-                        <p className="mt-0.5 truncate text-[10px] text-[#9ca3af] dark:text-[#71717a]">
-                          <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                            g
-                          </kbd>
-                          <span className="mx-0.5">then</span>
-                          <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                            b
-                          </kbd>
-                          <span className="mx-1 text-[#d1d5db] dark:text-[#52525b]">·</span>
-                          <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                            {isMacOS ? "⌘↵" : "Ctrl+Enter"}
-                          </kbd>
-                          <span className="ml-1">send</span>
-                        </p>
-                      ) : (
-                        <p className="mt-0.5 text-[10px] text-[#9ca3af] dark:text-[#71717a]">
-                          Keyboard shortcuts on desktop
-                        </p>
-                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {!isMobile && (
+                    <div className="flex items-center gap-1">
+                      {!isMobile && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setHelpOpen(true);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
+                              aria-label="Keyboard shortcuts"
+                            >
+                              <CircleHelp className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-[260px]">
+                            <p>All mail &amp; Inbox brain shortcuts</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
@@ -840,55 +862,41 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setHelpOpen(true);
+                              setShowAIPanel((prev) => {
+                                if (!prev) {
+                                  trackInboxBrainEvent(
+                                    "inbox_brain_panel_opened",
+                                    { source: "toolbar_new_chat" },
+                                  );
+                                }
+                                return true;
+                              });
+                              setAiSearchResetKey((k) => k + 1);
                             }}
                             className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
-                            aria-label="Keyboard shortcuts"
+                            aria-label="New chat (AI Inbox Brain)"
                           >
-                            <CircleHelp className="h-4 w-4" />
+                            <Plus className="h-4 w-4" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-[260px]">
-                          <p>All mail &amp; Inbox brain shortcuts</p>
+                        <TooltipContent side="bottom">
+                          <p>New chat (Inbox brain)</p>
                         </TooltipContent>
                       </Tooltip>
-                    )}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowAIPanel((prev) => {
-                              if (!prev) {
-                                trackInboxBrainEvent(
-                                  "inbox_brain_panel_opened",
-                                  { source: "toolbar_new_chat" },
-                                );
-                              }
-                              return true;
-                            });
-                            setAiSearchResetKey((k) => k + 1);
-                          }}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
-                          aria-label="New chat (AI Inbox Brain)"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p>New chat (Inbox brain)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <button
-                      onClick={() => setShowAIPanel(false)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
-                      aria-label="Close"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                      <button
+                        onClick={() => setShowAIPanel(false)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition-colors hover:bg-[#f3f4f6] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04]"
+                        aria-label="Close"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
+                  {accountId && !isDemo && (
+                    <div className="mt-3">
+                      <AutopilotSection accountId={accountId} />
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <EmailSearchAssistant

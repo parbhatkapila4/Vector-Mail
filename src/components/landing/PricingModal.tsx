@@ -5,6 +5,7 @@ import { X, Check, Star, Zap, Crown, Mail, HelpCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { useMailNavigation } from "@/components/mail-navigation-loader";
 
 const pricingPlans = [
   {
@@ -116,6 +117,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [, setSelectedPlan] = useState<string | null>(null);
   const [showFAQ, setShowFAQ] = useState<number | null>(null);
   const { isSignedIn } = useUser();
+  const { navigateToMail } = useMailNavigation();
 
   useEffect(() => {
     if (isOpen) {
@@ -289,9 +291,9 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                           </div>
 
                           <div className="mt-auto">
-                            <Link href={isSignedIn ? "/mail" : "/sign-up"}>
+                            {isSignedIn ? (
                               <button
-                                onClick={() => setSelectedPlan(plan.name)}
+                                onClick={() => { setSelectedPlan(plan.name); navigateToMail(); }}
                                 className={`w-full rounded-xl px-6 py-3 font-semibold transition-all duration-300 ${plan.popular
                                     ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
                                     : plan.name === "Starter"
@@ -303,7 +305,23 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                                   ? "Get Started Free"
                                   : `Choose ${plan.name}`}
                               </button>
-                            </Link>
+                            ) : (
+                              <Link href="/sign-up">
+                                <button
+                                  onClick={() => setSelectedPlan(plan.name)}
+                                  className={`w-full rounded-xl px-6 py-3 font-semibold transition-all duration-300 ${plan.popular
+                                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
+                                      : plan.name === "Starter"
+                                        ? "border-2 border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                        : "bg-black text-white hover:bg-gray-800"
+                                    }`}
+                                >
+                                  {plan.name === "Starter"
+                                    ? "Get Started Free"
+                                    : `Choose ${plan.name}`}
+                                </button>
+                              </Link>
+                            )}
                           </div>
                         </motion.div>
                       ))}

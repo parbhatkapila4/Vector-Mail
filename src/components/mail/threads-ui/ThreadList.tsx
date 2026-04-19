@@ -127,6 +127,10 @@ const CONNECTION_ERROR_MESSAGES = {
   CONNECT_BUTTON: "Connect your Google account",
 } as const;
 
+const MAX_AUTO_CONTINUE_SYNC_PAGES = 3;
+const SYNC_POLL_INTERVAL_MS = 4000;
+const MAX_REFRESHES_WHILE_SYNC = 6;
+
 export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function ThreadList(
   { onThreadSelect, onSyncPendingChange },
   ref,
@@ -157,6 +161,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
   const [refreshingAfterSync, setRefreshingAfterSync] = React.useState(false);
+  const [loadingMoreAtListEnd, setLoadingMoreAtListEnd] = React.useState(false);
   const [focusView, setFocusView] = React.useState<FocusView>("all");
   const [slowLoad, setSlowLoad] = React.useState(false);
   const slowLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -168,6 +173,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const quickSyncTriggeredRef = useRef(false);
   const firstBatchTriggeredRef = useRef(false);
   const backgroundSyncTriggeredRef = useRef(false);
+  const autoContinueSyncCountRef = useRef(0);
 
   useEffect(() => {
     if (searchParams.get("reconnected") === "1") {
@@ -329,6 +335,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       }
 
       if (data.needsReconnection) {
+        autoContinueSyncCountRef.current = 0;
         void utils.account.getAccounts.invalidate();
         toast.error("Reconnect your account", {
           id: "reconnect-account-warning",
@@ -344,12 +351,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         return;
       }
       if (data.success === false) {
+        autoContinueSyncCountRef.current = 0;
         toast.error("Sync failed. Try again.", { duration: 3000 });
         void forceThreadListRefresh();
         return;
       }
 
       if ("background" in data && data.background) {
+        autoContinueSyncCountRef.current = 0;
         toast.info("Syncing in the background…", {
           description: "New mail will show up as it’s fetched. You can keep using the app.",
           duration: 5000,
@@ -374,17 +383,33 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         accountId !== UNIFIED_INBOX_ACCOUNT_ID;
 
       if (willContinueSync) {
+        if (autoContinueSyncCountRef.current >= MAX_AUTO_CONTINUE_SYNC_PAGES) {
+          autoContinueSyncCountRef.current = 0;
+          toast.info("Background sync will continue shortly", {
+            description:
+              "Loaded several pages already. To keep the app responsive, remaining pages sync in the next cycle.",
+            duration: 5000,
+          });
+          setRefreshingAfterSync(true);
+          setTimeout(() => void forceThreadListRefresh(), 1200);
+          setTimeout(() => setRefreshingAfterSync(false), 2000);
+          return;
+        }
+        autoContinueSyncCountRef.current += 1;
         void utils.account.getAccounts.invalidate();
         void softThreadListRefresh();
         const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
-        syncEmailsMutation.mutate({
-          accountId: accountId.trim(),
-          folder: folder as "inbox" | "sent" | "trash",
-          continueToken,
-        });
+        setTimeout(() => {
+          syncEmailsMutation.mutate({
+            accountId: accountId.trim(),
+            folder: folder as "inbox" | "sent" | "trash",
+            continueToken,
+          });
+        }, 1200);
         return;
       }
 
+      autoContinueSyncCountRef.current = 0;
       void utils.account.getAccounts.invalidate();
       setRefreshingAfterSync(true);
       setTimeout(async () => {
@@ -405,6 +430,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     onError: (error) => {
       if (syncCancelledRef.current) {
         syncCancelledRef.current = false;
+        autoContinueSyncCountRef.current = 0;
         return;
       }
       console.error("[ThreadList] ❌ Sync failed:", error);
@@ -470,6 +496,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       }
 
       void forceThreadListRefresh();
+      autoContinueSyncCountRef.current = 0;
     },
   });
 
@@ -599,6 +626,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       return;
     }
     syncCancelledRef.current = false;
+    autoContinueSyncCountRef.current = 0;
     const noThreadsYet = (threads?.length ?? 0) === 0;
     if (noThreadsYet && !syncFirstBatchQuickMutation.isPending) {
       toast.info("Fetching your first emails…", { duration: 2500 });
@@ -662,6 +690,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       return;
     if (!quickSyncTriggeredRef.current) {
       quickSyncTriggeredRef.current = true;
+      autoContinueSyncCountRef.current = 0;
       syncEmailsMutation.mutate({
         accountId: accountId.trim(),
         forceFullSync: false,
@@ -707,12 +736,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     )
       return;
     let count = 0;
-    const MAX_REFRESHES_WHILE_SYNC = 25;
     const interval = setInterval(() => {
       count += 1;
       if (count > MAX_REFRESHES_WHILE_SYNC) return;
       void softThreadListRefresh();
-    }, 800);
+    }, SYNC_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [syncEmailsMutation.isPending, accountId, currentTab, forceThreadListRefresh]);
 
@@ -722,17 +750,26 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const lastThreadElementRef = useCallback(
     (node: HTMLDivElement | null) => {
-      if (isFetchingNextPage) return;
+      if (isFetchingNextPage || loadingMoreAtListEnd) return;
       if (observerRef.current) observerRef.current.disconnect();
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && hasNextPage) {
-          void fetchNextPage();
+          setLoadingMoreAtListEnd(true);
+          void fetchNextPage().finally(() => {
+            setLoadingMoreAtListEnd(false);
+          });
         }
       });
       if (node) observerRef.current.observe(node);
     },
-    [isFetchingNextPage, hasNextPage, fetchNextPage],
+    [isFetchingNextPage, loadingMoreAtListEnd, hasNextPage, fetchNextPage],
   );
+
+  useEffect(() => {
+    if (!hasNextPage && loadingMoreAtListEnd) {
+      setLoadingMoreAtListEnd(false);
+    }
+  }, [hasNextPage, loadingMoreAtListEnd]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -1591,7 +1628,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             )}
           </React.Fragment>
         ))}
-        {isFetchingNextPage && (
+        {(isFetchingNextPage || loadingMoreAtListEnd) && (
           <div className="flex justify-center py-6">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#3b82f6] dark:border-[#1a1a23] dark:border-t-[#60a5fa]" />
           </div>

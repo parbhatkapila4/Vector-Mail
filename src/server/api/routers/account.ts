@@ -1699,8 +1699,10 @@ export const accountRouter = createTRPCRouter({
       const tokenExpiredOrExpiringSoon =
         account.tokenExpiresAt &&
         account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      let refreshedAtRisk = false;
       if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
         const refreshed = await emailAccount.refreshTokenIfPossible();
+        refreshedAtRisk = refreshed;
         if (refreshed) {
           const updated = await ctx.db.account.findUnique({
             where: { id: account.id },
@@ -1711,6 +1713,11 @@ export const accountRouter = createTRPCRouter({
             emailAccount = new Account(account.id, account.token);
           }
         }
+      }
+      if (account.needsReconnection && !refreshedAtRisk) {
+        const tokenOk = await emailAccount.ensureValidToken();
+        if (!tokenOk) return { count: 0 };
+        account = { ...account, needsReconnection: false };
       }
       try {
         const result = await emailAccount.syncFirstBatchQuick();
@@ -1793,8 +1800,10 @@ export const accountRouter = createTRPCRouter({
       const tokenExpiredOrExpiringSoon =
         account.tokenExpiresAt &&
         account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      let refreshedAtRisk = false;
       if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
         const refreshed = await emailAccount.refreshTokenIfPossible();
+        refreshedAtRisk = refreshed;
         if (refreshed) {
           const updated = await ctx.db.account.findUnique({
             where: { id: account.id },
@@ -1805,6 +1814,11 @@ export const accountRouter = createTRPCRouter({
             emailAccount = new Account(account.id, account.token);
           }
         }
+      }
+      if (account.needsReconnection && !refreshedAtRisk) {
+        const tokenOk = await emailAccount.ensureValidToken();
+        if (!tokenOk) return { items: [], needsReconnection: true };
+        account = { ...account, needsReconnection: false };
       }
 
       try {
@@ -1891,8 +1905,10 @@ export const accountRouter = createTRPCRouter({
       const tokenExpiredOrExpiringSoon =
         account.tokenExpiresAt &&
         account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      let refreshedAtRisk = false;
       if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
         const refreshed = await emailAccount.refreshTokenIfPossible();
+        refreshedAtRisk = refreshed;
         if (refreshed) {
           const updated = await ctx.db.account.findUnique({
             where: { id: account.id },
@@ -1903,6 +1919,17 @@ export const accountRouter = createTRPCRouter({
             emailAccount = new Account(account.id, account.token);
           }
         }
+      }
+      if (account.needsReconnection && !refreshedAtRisk) {
+        const tokenOk = await emailAccount.ensureValidToken();
+        if (!tokenOk) {
+          return {
+            success: false,
+            message: "Gmail access expired. Reconnect your mailbox to resume sync.",
+            needsReconnection: true,
+          };
+        }
+        account = { ...account, needsReconnection: false };
       }
 
       const syncStartTime = Date.now();
@@ -3787,56 +3814,106 @@ Return JSON only with this shape:
         ctx.auth.userId,
       );
       const now = new Date();
-      const DAYS = 14;
-      const limitThreads = 20;
-      const EXTRACTION_CONCURRENCY = 5;
+      const DAYS = 60;
+      const EXTRACTION_CONCURRENCY = 4;
       const cutoff = new Date(now);
       cutoff.setDate(cutoff.getDate() - DAYS);
+      const MEETING_RE =
+        /\b(meeting|calendar|invite|invitation|zoom|google meet|teams|webinar|call|appointment|demo|conference|reschedul|schedule|event)\b/i;
+      const PROMO_RE =
+        /\b(sale|discount|offer|promo|promotion|coupon|unsubscribe|newsletter|deal|clearance)\b/i;
 
-      const threads = await ctx.db.thread.findMany({
+      const inboxEmails = await ctx.db.email.findMany({
         where: {
-          accountId: account.id,
-          lastMessageDate: { gte: cutoff },
-          emails: {
-            none: { sysLabels: { hasSome: ["trash"] } },
+          sentAt: { gte: cutoff },
+          sysLabels: { hasSome: ["inbox"] },
+          NOT: {
+            sysLabels: { hasSome: ["trash", "spam", "junk"] },
+          },
+          thread: {
+            accountId: account.id,
           },
         },
-        orderBy: { lastMessageDate: "desc" },
-        take: limitThreads,
-        include: {
-          emails: {
-            orderBy: { sentAt: "desc" },
-            take: 1,
-            select: {
-              id: true,
-              subject: true,
-              body: true,
-              bodySnippet: true,
-              sentAt: true,
-            },
-          },
+        orderBy: { sentAt: "desc" },
+        select: {
+          id: true,
+          subject: true,
+          bodySnippet: true,
+          keywords: true,
+          sysClassifications: true,
+          meetingMessageMethod: true,
+          sentAt: true,
+          threadId: true,
+        },
+      });
+
+      const candidateEmailIds: string[] = [];
+      const candidateMeta = new Map<string, { threadId: string; sentAt: Date; subject: string }>();
+      for (const email of inboxEmails) {
+        const subject = email.subject ?? "";
+        const snippet = email.bodySnippet ?? "";
+        const blob = `${subject}\n${snippet}\n${(email.keywords ?? []).join(" ")}`;
+        const classes = (email.sysClassifications ?? []).map((c) => String(c).toLowerCase());
+        const promoClass =
+          classes.includes("promotions") ||
+          classes.includes("social") ||
+          classes.includes("forums");
+        const explicitMeeting = Boolean(email.meetingMessageMethod);
+        const looksMeeting = MEETING_RE.test(blob);
+        const looksPromo = PROMO_RE.test(blob);
+        if (!explicitMeeting && (!looksMeeting || promoClass || looksPromo)) continue;
+        candidateEmailIds.push(email.id);
+        candidateMeta.set(email.id, {
+          threadId: email.threadId,
+          sentAt: email.sentAt,
+          subject: subject || "(No subject)",
+        });
+      }
+
+      if (candidateEmailIds.length === 0) {
+        return { events: [] };
+      }
+
+      const candidateEmails = await ctx.db.email.findMany({
+        where: { id: { in: candidateEmailIds } },
+        select: {
+          id: true,
+          threadId: true,
+          subject: true,
+          body: true,
+          bodySnippet: true,
+          sentAt: true,
+          meetingMessageMethod: true,
         },
       });
 
       const { extractEventFromEmail } = await import("@/lib/event-extraction");
       const limit = pLimit(EXTRACTION_CONCURRENCY);
-      const pairs: Array<{ threadId: string; email: { id: string; subject: string; body: string | null; bodySnippet: string | null } }> = [];
-      for (const thread of threads) {
-        const email = thread.emails[0];
-        if (!email) continue;
-        const body = email.body ?? email.bodySnippet ?? "";
-        if (!body && !email.subject) continue;
-        pairs.push({ threadId: thread.id, email: { id: email.id, subject: email.subject, body: email.body, bodySnippet: email.bodySnippet } });
-      }
       const results = await Promise.all(
-        pairs.map(({ threadId, email }) =>
+        candidateEmails.map((email) =>
           limit(async () => {
             const event = await extractEventFromEmail(
               { subject: email.subject, body: email.body ?? email.bodySnippet ?? "" },
               { userId: ctx.auth.userId, accountId: account.id },
             );
-            if (!event) return null;
-            return { ...event, sourceEmailId: email.id, sourceThreadId: threadId };
+            if (event) {
+              return {
+                ...event,
+                sourceEmailId: email.id,
+                sourceThreadId: email.threadId,
+              };
+            }
+            // Fallback for calendar-style emails with no explicit parseable date/time.
+            if (email.meetingMessageMethod) {
+              return {
+                title: email.subject || "Meeting email",
+                startAt: email.sentAt.toISOString(),
+                endAt: new Date(email.sentAt.getTime() + 60 * 60 * 1000).toISOString(),
+                sourceEmailId: email.id,
+                sourceThreadId: email.threadId,
+              };
+            }
+            return null;
           }),
         ),
       );
@@ -3870,7 +3947,18 @@ Return JSON only with this shape:
       savedMapped.forEach((e) => {
         if (!byThread.has(e.sourceThreadId)) byThread.set(e.sourceThreadId, e);
       });
-      deduped.forEach((e) => byThread.set(e.sourceThreadId, { ...e, sourceEmailId: e.sourceEmailId }));
+      deduped.forEach((e) => {
+        const existing = byThread.get(e.sourceThreadId);
+        if (!existing) {
+          byThread.set(e.sourceThreadId, { ...e, sourceEmailId: e.sourceEmailId });
+          return;
+        }
+        const existingTs = new Date(existing.startAt).getTime();
+        const nextTs = new Date(e.startAt).getTime();
+        if (!Number.isNaN(nextTs) && (Number.isNaN(existingTs) || nextTs > existingTs)) {
+          byThread.set(e.sourceThreadId, { ...e, sourceEmailId: e.sourceEmailId });
+        }
+      });
       const combined = Array.from(byThread.values());
       combined.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 
