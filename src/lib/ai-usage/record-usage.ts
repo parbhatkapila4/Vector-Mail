@@ -6,7 +6,8 @@ export type AiUsageOperation =
   | "compose"
   | "summary"
   | "embedding"
-  | "buddy";
+  | "buddy"
+  | "automation_draft";
 
 export interface RecordUsageParams {
   userId: string;

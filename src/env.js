@@ -15,6 +15,10 @@ export const env = createEnv({
       .transform((val) => val === "true")
       .default("false")
       .optional(),
+    AUTOMATION_REAL_SEND_ENABLED: z
+      .string()
+      .optional()
+      .transform((val) => val === "true"),
     CRON_SECRET: z.string().min(1).optional(),
     ADMIN_STATS_SECRET: z.string().min(1).optional(),
     AI_DAILY_CAP_TOKENS: z
@@ -41,6 +45,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ENABLE_EMAIL_SEND: process.env.ENABLE_EMAIL_SEND,
+    AUTOMATION_REAL_SEND_ENABLED: process.env.AUTOMATION_REAL_SEND_ENABLED,
     CRON_SECRET: process.env.CRON_SECRET,
     ADMIN_STATS_SECRET: process.env.ADMIN_STATS_SECRET,
     AI_DAILY_CAP_TOKENS: process.env.AI_DAILY_CAP_TOKENS,

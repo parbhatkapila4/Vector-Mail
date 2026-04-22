@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify account belongs to user
     const account = await db.account.findFirst({
       where: {
         id: accountId,
@@ -37,7 +36,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Run backfill
     const result = await backfillEmailAnalysis(accountId, limit);
 
     return NextResponse.json({
@@ -69,7 +67,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Verify account belongs to user
     const account = await db.account.findFirst({
       where: {
         id: accountId,

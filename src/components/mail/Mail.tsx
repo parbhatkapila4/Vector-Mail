@@ -32,7 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AccountSwitcher } from "./AccountSwitcher";
+import { AccountSwitcher, UNIFIED_INBOX_ACCOUNT_ID } from "./AccountSwitcher";
 import { ThreadList, type ThreadListRef } from "./threads-ui/ThreadList";
 import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
@@ -68,6 +68,8 @@ import { useSetAtom } from "jotai";
 import { threadIdAtom } from "@/hooks/use-threads";
 import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 import { AutopilotSection } from "@/components/mail/AutopilotSection";
+import { AutomationOutcomeBanner } from "@/components/mail/AutomationOutcomeBanner";
+import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
 const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
 
@@ -233,14 +235,23 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   const { data: accounts, isLoading: accountsLoading } = api.account.getAccounts.useQuery();
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
   const showConnectCard = !isDemo && !accountsLoading && !!accounts && accounts.length === 0;
-
-  const { data: myAccount } = api.account.getMyAccount.useQuery(
-    { accountId: firstAccountId || "placeholder" },
-    { enabled: !!firstAccountId && firstAccountId.length > 0 },
-  );
-
-  const accountId = myAccount?.id ?? "";
-  const isEnabled = !!accountId;
+  const [storedAccountId] = useLocalStorage("accountId", "");
+  const firstConnectedAccountId =
+    accounts?.find((acc) => !("needsReconnection" in acc) || !acc.needsReconnection)
+      ?.id ?? firstAccountId;
+  const storedAccount = accounts?.find((acc) => acc.id === storedAccountId);
+  const shouldFallbackFromDisconnectedStoredAccount =
+    !!storedAccount &&
+    "needsReconnection" in storedAccount &&
+    !!storedAccount.needsReconnection &&
+    !!firstConnectedAccountId &&
+    firstConnectedAccountId !== storedAccount.id;
+  const accountId =
+    storedAccountId === UNIFIED_INBOX_ACCOUNT_ID
+      ? firstAccountId
+      : storedAccount && !shouldFallbackFromDisconnectedStoredAccount
+        ? storedAccountId
+        : firstConnectedAccountId;
   const setThreadId = useSetAtom(threadIdAtom);
 
   const handleThreadSelect = useCallback((threadId: string) => {
@@ -405,6 +416,16 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                           setSheetOpen(false);
                         }}
                       />
+                      {accountId ? (
+                        <AutomationOutcomeBanner
+                          accountId={accountId}
+                          isDemo={isDemo && accountId === DEMO_ACCOUNT_ID}
+                          onOpenThread={(threadId) => {
+                            handleThreadSelect(threadId);
+                            setSheetOpen(false);
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -682,6 +703,13 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               accountId={accountId}
               onThreadSelect={handleThreadSelect}
             />
+            {accountId ? (
+              <AutomationOutcomeBanner
+                accountId={accountId}
+                isDemo={isDemo && accountId === DEMO_ACCOUNT_ID}
+                onOpenThread={handleThreadSelect}
+              />
+            ) : null}
           </nav>
 
           <div className="border-t border-[#e5e7eb] p-2 dark:border-[#1a1a23]">
@@ -892,9 +920,9 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                       </button>
                     </div>
                   </div>
-                  {accountId && !isDemo && (
+                  {(accountId || isDemo) && (
                     <div className="mt-3">
-                      <AutopilotSection accountId={accountId} />
+                      <AutopilotSection accountId={isDemo ? DEMO_ACCOUNT_ID : accountId} isDemo={isDemo} />
                     </div>
                   )}
                 </div>

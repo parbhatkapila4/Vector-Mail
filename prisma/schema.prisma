@@ -65,6 +65,7 @@ model Account {
   customDomain            String?
   deliverabilityChecklist Json?
   automationMode          AutomationMode    @default(manual)
+  automationGuardrails    Json?
   user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailAddresses          EmailAddress[]
   threads                 Thread[]
@@ -102,6 +103,7 @@ model Thread {
   snoozedUntil         DateTime?
   remindAt             DateTime?
   remindIfNoReplySince DateTime?
+  lastAutoFollowUpAt   DateTime?
   emails               Email[]
   account              Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
   threadLabels         ThreadLabel[]
@@ -333,6 +335,7 @@ model ActionExecution {
   thread            Thread?               @relation(fields: [threadId], references: [id], onDelete: SetNull)
 
   @@index([accountId, createdAt])
+  @@index([accountId, updatedAt])
   @@index([threadId])
 }
 

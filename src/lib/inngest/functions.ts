@@ -331,7 +331,7 @@ export const automationExecuteFunction = inngest.createFunction(
       const result = await step.run("run-dry-execution", async () =>
         runAutomationExecutionDryRun(executionId),
       );
-      return { ok: true, executionId, state: result.state, dryRun: true };
+      return { ok: true, executionId, state: result.state };
     } catch (err) {
       const exec = await step.run("load-exec-on-error", async () =>
         db.actionExecution.findUnique({

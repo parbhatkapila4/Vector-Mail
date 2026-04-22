@@ -217,8 +217,8 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: index * 0.1 }}
                           className={`relative flex flex-col rounded-2xl border-2 bg-white p-8 transition-all duration-300 hover:shadow-2xl ${plan.popular
-                              ? "scale-105 border-purple-500 shadow-xl"
-                              : "border-gray-200 hover:border-gray-300"
+                            ? "scale-105 border-purple-500 shadow-xl"
+                            : "border-gray-200 hover:border-gray-300"
                             }`}
                         >
                           {plan.badge && (
@@ -295,10 +295,10 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                               <button
                                 onClick={() => { setSelectedPlan(plan.name); navigateToMail(); }}
                                 className={`w-full rounded-xl px-6 py-3 font-semibold transition-all duration-300 ${plan.popular
-                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
-                                    : plan.name === "Starter"
-                                      ? "border-2 border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                      : "bg-black text-white hover:bg-gray-800"
+                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
+                                  : plan.name === "Starter"
+                                    ? "border-2 border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                    : "bg-black text-white hover:bg-gray-800"
                                   }`}
                               >
                                 {plan.name === "Starter"
@@ -310,10 +310,10 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                                 <button
                                   onClick={() => setSelectedPlan(plan.name)}
                                   className={`w-full rounded-xl px-6 py-3 font-semibold transition-all duration-300 ${plan.popular
-                                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
-                                      : plan.name === "Starter"
-                                        ? "border-2 border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                        : "bg-black text-white hover:bg-gray-800"
+                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
+                                    : plan.name === "Starter"
+                                      ? "border-2 border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                      : "bg-black text-white hover:bg-gray-800"
                                     }`}
                                 >
                                   {plan.name === "Starter"

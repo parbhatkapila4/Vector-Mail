@@ -9,13 +9,15 @@ import {
 import { env } from "@/env.js";
 import { db } from "@/server/db";
 import { DEMO_ACCOUNT_ID, DEMO_USER_ID } from "@/lib/demo/constants";
+import {
+  buildThreadContextBlock,
+  loadThreadForReplySuggest,
+} from "@/lib/automation/thread-reply-context";
 
 const SESSION_COOKIE = "vectormail_session_user";
 const DEMO_SESSION_USER = "demo-user";
 
 const DEFAULT_REPLY_SUGGEST_MODEL = "anthropic/claude-3.5-haiku";
-const MAX_MESSAGES_FOR_CONTEXT = 8;
-const MAX_CHARS_PER_MESSAGE = 1200;
 
 const REPLY_SYSTEM = (userDisplayName: string) =>
   `You are writing a reply in the user's voice. Use the full thread history and the user's previous replies in the thread to match their tone and style.
@@ -99,18 +101,7 @@ export async function POST(req: NextRequest) {
       })
       .then((rows) => new Set(rows.map((r) => r.id)));
 
-    const thread = await db.thread.findFirst({
-      where: { id: threadId },
-      include: {
-        account: {
-          select: { id: true, emailAddress: true, name: true },
-        },
-        emails: {
-          include: { from: true, to: true },
-          orderBy: { sentAt: "asc" },
-        },
-      },
-    });
+    const thread = await loadThreadForReplySuggest({ threadId, userId });
 
     if (!thread) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 });
@@ -165,24 +156,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const recentEmails = emails.length > MAX_MESSAGES_FOR_CONTEXT
-      ? emails.slice(-MAX_MESSAGES_FOR_CONTEXT)
-      : emails;
-    const startIndex = emails.length - recentEmails.length;
-    const threadContext = recentEmails
-      .map((e, i) => {
-        const bodyText = e.body ?? e.bodySnippet ?? "";
-        const snippet = bodyText.length > MAX_CHARS_PER_MESSAGE
-          ? bodyText.slice(0, MAX_CHARS_PER_MESSAGE) + "..."
-          : bodyText;
-        const fromAddr = e.from?.address ?? "";
-        const isUser = fromAddr.toLowerCase() === accountEmailLower;
-        return `[Message ${startIndex + i + 1}] From: ${e.from?.name ?? e.from?.address ?? fromAddr} <${fromAddr}>${isUser ? " (USER - match this tone)" : ""}
-Date: ${new Date(e.sentAt).toISOString()}
-Subject: ${e.subject}
-Body: ${snippet}`;
-      })
-      .join("\n\n");
+    const threadContext = buildThreadContextBlock(emails, accountEmailLower, emails.length);
 
     const userDisplayName = account.name ?? "User";
 

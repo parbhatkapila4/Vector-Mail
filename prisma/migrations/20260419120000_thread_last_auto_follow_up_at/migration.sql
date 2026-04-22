@@ -1,0 +1,2 @@
+ALTER TABLE "Thread"
+ADD COLUMN "lastAutoFollowUpAt" TIMESTAMP(3);

@@ -36,6 +36,8 @@ const FAST_FIRST_LIST_TIMEOUT_MS = 25_000;
 const RATE_LIMIT_WAIT_MS = 60_000;
 const AUTH_WARN_COOLDOWN_MS = 60_000;
 const lastAuthWarnAtByKey = new Map<string, number>();
+const first401WithoutRefreshAtByAccountId = new Map<string, number>();
+const NO_REFRESH_GRACE_MS = 10 * 60 * 1000;
 
 function warnWithCooldown(key: string, message: string): void {
   const now = Date.now();
@@ -159,7 +161,9 @@ async function with401Retry<T>(
   let lastError: unknown;
   for (let attempt = 0; attempt <= AURINKO_401_RETRIES; attempt++) {
     try {
-      return await withTransientRetries(fn, AURINKO_TRANSIENT_RETRIES);
+      const result = await withTransientRetries(fn, AURINKO_TRANSIENT_RETRIES);
+      first401WithoutRefreshAtByAccountId.delete(accountId);
+      return result;
     } catch (error) {
       lastError = error;
       if (!is401Error(error) || attempt === AURINKO_401_RETRIES) break;
@@ -187,9 +191,35 @@ async function with401Retry<T>(
     }
   }
   if (is401Error(lastError)) {
-    await db.account
-      .update({ where: { id: accountId }, data: { needsReconnection: true } })
-      .catch((err) => console.error(`[accounts] Failed to update needsReconnection:`, err));
+    const account = await db.account.findUnique({
+      where: { id: accountId },
+      select: { refreshToken: true, tokenExpiresAt: true },
+    });
+    const hasRefreshToken = !!account?.refreshToken;
+    const now = Date.now();
+    const tokenExpired =
+      account?.tokenExpiresAt != null
+        ? account.tokenExpiresAt.getTime() <= now + 5 * 60 * 1000
+        : true;
+
+    let shouldMarkNeedsReconnection = hasRefreshToken || tokenExpired;
+    if (!shouldMarkNeedsReconnection) {
+      const firstSeen = first401WithoutRefreshAtByAccountId.get(accountId) ?? now;
+      first401WithoutRefreshAtByAccountId.set(accountId, firstSeen);
+      shouldMarkNeedsReconnection = now - firstSeen >= NO_REFRESH_GRACE_MS;
+      if (!shouldMarkNeedsReconnection) {
+        warnWithCooldown(
+          `401-no-refresh-grace-${accountId}`,
+          `[accounts] 401 for account ${accountId} without refresh token; within grace window, not marking needsReconnection yet`,
+        );
+      }
+    }
+
+    if (shouldMarkNeedsReconnection) {
+      await db.account
+        .update({ where: { id: accountId }, data: { needsReconnection: true } })
+        .catch((err) => console.error(`[accounts] Failed to update needsReconnection:`, err));
+    }
   }
   throw lastError;
 }
@@ -235,6 +265,7 @@ export class Account {
         ...(result.refreshToken && { refreshToken: result.refreshToken }),
       },
     });
+    first401WithoutRefreshAtByAccountId.delete(this.id);
     this.token = newToken;
     return true;
   }
@@ -305,7 +336,17 @@ export class Account {
   }
 
   async ensureValidToken(): Promise<boolean> {
-    return this.validateToken();
+    if (await this.validateToken()) return true;
+    const latest = await db.account.findUnique({
+      where: { id: this.id },
+      select: { token: true },
+    });
+    const t = latest?.token?.trim();
+    if (t && t !== this.token) {
+      this.token = t;
+      return this.validateToken();
+    }
+    return false;
   }
 
   async performInitialSync(
@@ -1703,59 +1744,57 @@ export class Account {
     const listOpts = { timeout: FAST_FIRST_LIST_TIMEOUT_MS };
     const limit = pLimit(FAST_FIRST_FETCH_CONCURRENCY);
 
-    const listInbox = () =>
-      with401Retry(this.id, () =>
-        aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
-          "https://api.aurinko.io/v1/email/messages",
-          {
-            ...listOpts,
-            headers: this.aurinkoHeaders,
-            params: {
-              maxResults: FAST_FIRST_BATCH_INBOX,
-              bodyType: "text",
-              q: `label:inbox ${newerThanQuery}`,
-            },
-          },
-        ),
-        { tryRefresh: () => this.refreshTokenIfPossible() },
-      );
-    const listSent = () =>
-      with401Retry(this.id, () =>
-        aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
-          "https://api.aurinko.io/v1/email/messages",
-          {
-            ...listOpts,
-            headers: this.aurinkoHeaders,
-            params: {
-              maxResults: FAST_FIRST_BATCH_SENT,
-              bodyType: "text",
-              q: `label:sent ${newerThanQuery}`,
-            },
-          },
-        ),
-        { tryRefresh: () => this.refreshTokenIfPossible() },
-      );
-    const listTrash = () =>
-      with401Retry(this.id, () =>
-        aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
-          "https://api.aurinko.io/v1/email/messages",
-          {
-            ...listOpts,
-            headers: this.aurinkoHeaders,
-            params: {
-              maxResults: FAST_FIRST_BATCH_TRASH,
-              bodyType: "text",
-              q: `label:trash ${newerThanQuery}`,
-            },
-          },
-        ),
-        { tryRefresh: () => this.refreshTokenIfPossible() },
-      );
+    const listIdsWithFallback = async (
+      maxResults: number,
+      candidates: Array<{ q?: string; labelIds?: string }>,
+    ): Promise<string[]> => {
+      for (const candidate of candidates) {
+        const ids = await with401Retry(
+          this.id,
+          () =>
+            aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+              "https://api.aurinko.io/v1/email/messages",
+              {
+                ...listOpts,
+                headers: this.aurinkoHeaders,
+                params: {
+                  maxResults,
+                  bodyType: "text",
+                  ...(candidate.q ? { q: candidate.q } : {}),
+                  ...(candidate.labelIds ? { labelIds: candidate.labelIds } : {}),
+                },
+              },
+            ),
+          { tryRefresh: () => this.refreshTokenIfPossible() },
+        ).then((r) => r.data.messages?.map((m) => m.id) ?? []);
+        if (ids.length > 0) return ids;
+      }
+      return [];
+    };
 
-    const [inboxRes, sentRes, trashRes] = await Promise.all([listInbox(), listSent(), listTrash()]);
-    const inboxIds = inboxRes.data.messages?.map((m) => m.id) ?? [];
-    const sentIds = sentRes.data.messages?.map((m) => m.id) ?? [];
-    const trashIds = trashRes.data.messages?.map((m) => m.id) ?? [];
+    const [inboxIds, sentIds, trashIds] = await Promise.all([
+      listIdsWithFallback(FAST_FIRST_BATCH_INBOX, [
+        { q: `label:inbox ${newerThanQuery}` },
+        { q: `in:inbox ${newerThanQuery}` },
+        { q: "label:inbox" },
+        { q: "in:inbox" },
+        { labelIds: "INBOX" },
+      ]),
+      listIdsWithFallback(FAST_FIRST_BATCH_SENT, [
+        { q: `label:sent ${newerThanQuery}` },
+        { q: `in:sent ${newerThanQuery}` },
+        { q: "label:sent" },
+        { q: "in:sent" },
+        { q: "is:sent" },
+        { labelIds: "SENT" },
+      ]),
+      listIdsWithFallback(FAST_FIRST_BATCH_TRASH, [
+        { q: `label:trash ${newerThanQuery}` },
+        { q: "label:trash" },
+        { q: "in:trash" },
+        { labelIds: "TRASH" },
+      ]),
+    ]);
 
     const CHUNK_SIZE = 5;
     const fetchAndSyncInChunks = async (ids: string[]): Promise<number> => {

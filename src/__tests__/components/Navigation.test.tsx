@@ -40,7 +40,7 @@ describe("Navigation Component", () => {
     it("does not show duplicate pricing link", () => {
       render(<Navigation />);
       const pricingLinks = screen.getAllByText("Pricing");
-      expect(pricingLinks.length).toBe(1); // Only one pricing link should appear
+      expect(pricingLinks.length).toBe(1);
     });
   });
 

@@ -531,11 +531,10 @@ function NavItem({
 
   return (
     <button
-      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 transition-all ${
-        active
+      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 transition-all ${active
           ? `${activeBg} text-white`
           : `text-slate-400 hover:text-white hover:${iconColor} hover:bg-slate-900/50`
-      }`}
+        }`}
     >
       <div className="flex items-center gap-2">
         <Icon className={`h-4 w-4 ${active ? iconColor : ""}`} />
@@ -573,11 +572,10 @@ function EmailItem({
 }) {
   return (
     <div
-      className={`mb-2 flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all ${
-        active
+      className={`mb-2 flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all ${active
           ? "border border-yellow-500/30 bg-yellow-500/10 shadow-lg shadow-yellow-500/10"
           : "border border-slate-800 bg-slate-900/50 hover:bg-slate-800"
-      }`}
+        }`}
     >
       {logo ? (
         <div

@@ -32,6 +32,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
+import { shouldKeepPreviewReadOnly } from "@/lib/mail/preview-lock";
 
 interface ThreadListProps {
   onThreadSelect?: (threadId: string) => void;
@@ -130,6 +131,7 @@ const CONNECTION_ERROR_MESSAGES = {
 const MAX_AUTO_CONTINUE_SYNC_PAGES = 3;
 const SYNC_POLL_INTERVAL_MS = 4000;
 const MAX_REFRESHES_WHILE_SYNC = 6;
+const PREVIEW_READ_ONLY_MAX_MS = 25_000;
 
 export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function ThreadList(
   { onThreadSelect, onSyncPendingChange },
@@ -167,8 +169,28 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const slowLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedThreadIds, setSelectedThreadIds] = React.useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [previewStartedAtMs, setPreviewStartedAtMs] = React.useState<number | null>(null);
+  const [previewNowMs, setPreviewNowMs] = React.useState(() => Date.now());
+  const previewRecoveryTriggeredRef = useRef(false);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
+  const badgeAccountId = (isUnifiedView ? effectiveAccountId : accountId) ?? "";
+  const visibleThreadIds = useMemo(
+    () => (threads ?? []).map((t) => t.id).filter(Boolean),
+    [threads],
+  );
+  const followUpBadgesQuery = api.automation.getThreadAutoFollowUpBadges.useQuery(
+    { accountId: badgeAccountId.trim(), threadIds: visibleThreadIds },
+    {
+      enabled:
+        !isUnifiedView &&
+        badgeAccountId.trim().length > 0 &&
+        badgeAccountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+        visibleThreadIds.length > 0,
+      staleTime: 30_000,
+    },
+  );
+  const followUpBadgeByThreadId = followUpBadgesQuery.data?.byThreadId ?? {};
   const utils = api.useUtils();
   const quickSyncTriggeredRef = useRef(false);
   const firstBatchTriggeredRef = useRef(false);
@@ -850,8 +872,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const previewThreads = useMemo((): Thread[] => {
     const items = inboxPreviewPayload?.items ?? [];
-    return items.map((row, idx) => ({
-      id: `preview:${row.threadId}:${row.messageId}:${idx}`,
+    const uniqueByThreadId = new Map<string, (typeof items)[number]>();
+    for (const row of items) {
+      const id = row.threadId?.trim();
+      if (!id || uniqueByThreadId.has(id)) continue;
+      uniqueByThreadId.set(id, row);
+    }
+    return Array.from(uniqueByThreadId.values()).map((row) => ({
+      id: row.threadId,
       subject: row.subject,
       lastMessageDate: new Date(row.sentAt),
       emails: [
@@ -864,6 +892,31 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       ],
     }));
   }, [inboxPreviewPayload?.items]);
+
+  const hasPreviewRows = currentTab === "inbox" && previewThreads.length > 0;
+  useEffect(() => {
+    if (
+      hasPreviewRows &&
+      threadsToRender.length === 0 &&
+      !previewAuthFailed
+    ) {
+      setPreviewStartedAtMs((prev) => prev ?? Date.now());
+      return;
+    }
+    setPreviewStartedAtMs(null);
+    previewRecoveryTriggeredRef.current = false;
+  }, [hasPreviewRows, threadsToRender.length, previewAuthFailed]);
+
+  useEffect(() => {
+    if (!previewStartedAtMs) return;
+    const t = setInterval(() => setPreviewNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [previewStartedAtMs]);
+
+  const previewReadOnlyTimedOut = Boolean(
+    previewStartedAtMs &&
+    previewNowMs - previewStartedAtMs >= PREVIEW_READ_ONLY_MAX_MS,
+  );
 
   const handleSearchResultSelect = useCallback(
     (id: string) => {
@@ -1034,10 +1087,45 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     isUnifiedView,
   ]);
 
-  const isReadOnlyPreview =
-    currentTab === "inbox" &&
-    threadsToRender.length === 0 &&
-    previewThreads.length > 0;
+  const isSyncActive =
+    syncEmailsMutation.isPending || refreshingAfterSync || isFetching;
+  const isReadOnlyPreview = shouldKeepPreviewReadOnly({
+    currentTab,
+    hasDbThreads: threadsToRender.length > 0,
+    hasPreviewThreads: previewThreads.length > 0,
+    isSyncActive,
+    previewStartedAtMs,
+    nowMs: previewNowMs,
+    maxReadOnlyMs: PREVIEW_READ_ONLY_MAX_MS,
+  });
+
+  useEffect(() => {
+    if (!previewReadOnlyTimedOut || previewRecoveryTriggeredRef.current) return;
+    previewRecoveryTriggeredRef.current = true;
+    void forceThreadListRefresh();
+    if (
+      accountId?.trim() &&
+      accountId !== UNIFIED_INBOX_ACCOUNT_ID &&
+      !syncEmailsMutation.isPending
+    ) {
+      syncEmailsMutation.mutate({
+        accountId: accountId.trim(),
+        forceFullSync: true,
+        syncAllFolders: false,
+        folder: "inbox",
+      });
+    }
+    toast.warning("Sync taking longer than expected", {
+      description:
+        "Preview is unlocked now while we keep retrying inbox sync in the background.",
+      duration: 4500,
+    });
+  }, [
+    previewReadOnlyTimedOut,
+    forceThreadListRefresh,
+    accountId,
+    syncEmailsMutation,
+  ]);
 
   const groupedThreads = useMemo(() => {
     if (!threadsForDisplay || threadsForDisplay.length === 0) return {};
@@ -1301,6 +1389,18 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                       {lbl.name}
                     </span>
                   ))}
+                  {followUpBadgeByThreadId[thread.id] && (
+                    <span
+                      className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-violet-100 text-violet-900 ring-1 ring-violet-300/60 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-400/25"
+                      title={
+                        followUpBadgeByThreadId[thread.id]?.wasRealSend
+                          ? "Auto follow-up sent (delivered)"
+                          : "Auto follow-up completed (simulated)"
+                      }
+                    >
+                      Auto
+                    </span>
+                  )}
                 </div>
                 {bodySnippet && (
                   <div className="line-clamp-2 text-[12px] leading-snug text-[#5f6368] dark:text-[#9aa0a6]">
@@ -1377,10 +1477,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const renderThreadsList = () => {
     const noThreads = threadsForDisplay.length === 0;
-    const hasPreviewRows =
-      currentTab === "inbox" &&
-      previewThreads.length > 0 &&
-      threadsForDisplay.length === 0;
+    const hasPreviewRows = currentTab === "inbox" && previewThreads.length > 0 && threadsForDisplay.length === 0;
     const isInboxSentOrTrash =
       currentTab === "inbox" || currentTab === "sent" || currentTab === "trash";
     const isSyncPending = isInboxSentOrTrash && syncEmailsMutation.isPending;
@@ -1614,6 +1711,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                 </p>
               </div>
             </div>
+          </div>
+        )}
+        {currentTab === "inbox" && !isReadOnlyPreview && hasPreviewRows && (
+          <div className="border-b border-amber-300/30 bg-amber-50 px-4 py-2.5 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <p className="text-[11px] text-amber-800 dark:text-amber-200">
+              Sync is taking longer than expected. Threads are unlocked now, and inbox sync will keep retrying in the background.
+            </p>
           </div>
         )}
         {Object.entries(groupedThreads).map(([date, threads]) => (

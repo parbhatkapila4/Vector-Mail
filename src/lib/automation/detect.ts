@@ -4,8 +4,15 @@ import { log as auditLog } from "@/lib/audit/audit-log";
 import { enqueueAutomationExecution } from "@/lib/jobs/enqueue";
 import { decisionForModeAndConfidence } from "@/lib/automation/policy";
 import { db, withDbRetry } from "@/server/db";
+import { env } from "@/env.js";
+import {
+  blockReasonForSender,
+  normalizeAutomationGuardrails,
+} from "@/lib/automation/guardrails";
 
-export const AUTO_FOLLOW_UP_ACTION_TYPE = "AUTO_FOLLOW_UP" as const;
+import { AUTO_FOLLOW_UP_ACTION_TYPE } from "@/lib/automation/action-types";
+
+export { AUTO_FOLLOW_UP_ACTION_TYPE };
 
 const DETECTOR_VERSION = "followup-detector:v1";
 
@@ -72,6 +79,7 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
         emailAddress: true,
         automationMode: true,
         needsReconnection: true,
+        automationGuardrails: true,
       },
     }),
   );
@@ -100,6 +108,10 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
   if (account.needsReconnection) {
     return resultBase;
   }
+  const guardrails = normalizeAutomationGuardrails(account.automationGuardrails);
+  if (guardrails.paused) {
+    return resultBase;
+  }
 
   const accountEmailLower = account.emailAddress.toLowerCase();
   const unrepliedCutoff = new Date(now);
@@ -123,6 +135,13 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
         id: true,
         subject: true,
         lastMessageDate: true,
+        emails: {
+          orderBy: { sentAt: "desc" },
+          take: 1,
+          select: {
+            from: { select: { address: true } },
+          },
+        },
       },
     }),
   );
@@ -170,6 +189,7 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
     subject: string;
     lastMessageDate: Date;
     reasonCode: "reminder_due" | "unreplied_external";
+    latestInboundAddress: string | null;
   };
 
   const candidates: Candidate[] = [];
@@ -177,11 +197,14 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
 
   for (const t of dueReminderThreads) {
     if (seenThreadIds.has(t.id)) continue;
+    const sender = t.emails[0]?.from?.address ?? null;
+    if (sender && blockReasonForSender(sender, guardrails)) continue;
     candidates.push({
       threadId: t.id,
       subject: t.subject || "(No subject)",
       lastMessageDate: t.lastMessageDate,
       reasonCode: "reminder_due",
+      latestInboundAddress: sender,
     });
     seenThreadIds.add(t.id);
   }
@@ -228,6 +251,7 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
       subject: t.subject || "(No subject)",
       lastMessageDate: t.lastMessageDate,
       reasonCode: "unreplied_external",
+      latestInboundAddress: latestEmail.from.address,
     });
     seenThreadIds.add(t.id);
   }
@@ -260,6 +284,21 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
   const eligible = candidates.filter((c) => !lastOutboundAt.has(c.threadId));
   resultBase.skippedRecentOutbound = candidates.length - eligible.length;
   resultBase.eligibleThreads = eligible.length;
+  const sendsToday = await withDbRetry(() =>
+    db.actionExecution.count({
+      where: {
+        userId: account.userId,
+        accountId: account.id,
+        type: AUTO_FOLLOW_UP_ACTION_TYPE,
+        status: "success",
+        providerMessageId: { not: null },
+        updatedAt: {
+          gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+        },
+      },
+    }),
+  );
+  const realSendCapReached = sendsToday >= guardrails.maxAutoSendsPerDay;
 
   for (const c of eligible) {
     const key = idempotencyKeyForFollowUp({
@@ -271,6 +310,15 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
     const modeSnapshot = account.automationMode;
     const confidence = confidenceForReason(c.reasonCode);
     const decision = decisionForModeAndConfidence(modeSnapshot, confidence);
+    const guardrailCancelsRealSendCandidate =
+      realSendCapReached &&
+      modeSnapshot === "auto" &&
+      decision.status === "pending";
+    const targetStatus = guardrailCancelsRealSendCandidate ? "cancelled" : decision.status;
+    const realSendDryRunOff =
+      env.AUTOMATION_REAL_SEND_ENABLED === true &&
+      modeSnapshot === "auto" &&
+      targetStatus === "pending";
     const payload: Prisma.InputJsonValue = {
       detector: DETECTOR_VERSION,
       detectedAt: now.toISOString(),
@@ -291,13 +339,15 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
             accountId: account.id,
             threadId: c.threadId,
             type: AUTO_FOLLOW_UP_ACTION_TYPE,
-            status: decision.status,
+            status: targetStatus,
             modeSnapshot,
             confidence,
-            reason: reasonFor(c.reasonCode, FOLLOW_UP_OUTBOUND_COOLDOWN_HOURS),
+            reason: guardrailCancelsRealSendCandidate
+              ? "Guardrail: daily cap reached"
+              : reasonFor(c.reasonCode, FOLLOW_UP_OUTBOUND_COOLDOWN_HOURS),
             payload,
             idempotencyKey: key,
-            dryRun: true,
+            dryRun: !realSendDryRunOff,
           },
           select: { id: true },
         }),
@@ -324,12 +374,13 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
         detector: DETECTOR_VERSION,
         idempotencyKey: key,
         status: decision.status,
+        ...(guardrailCancelsRealSendCandidate ? { guardrail: "daily_cap_reached" } : {}),
         confidence,
         confidenceBand: decision.band,
       },
     });
 
-    if (modeSnapshot === "auto" && decision.status === "pending" && createdExecutionId) {
+    if (modeSnapshot === "auto" && targetStatus === "pending" && createdExecutionId) {
       const enqueued = await enqueueAutomationExecution(createdExecutionId);
       if (enqueued) resultBase.enqueued += 1;
     }

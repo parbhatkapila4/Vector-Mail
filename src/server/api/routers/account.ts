@@ -1902,6 +1902,24 @@ export const accountRouter = createTRPCRouter({
       }
 
       let emailAccount = new Account(account.id, account.token);
+      if (account.needsReconnection) {
+        const snap = await ctx.db.account.findFirst({
+          where: { id: account.id, userId: ctx.auth.userId },
+          select: {
+            id: true,
+            emailAddress: true,
+            name: true,
+            token: true,
+            nextDeltaToken: true,
+            needsReconnection: true,
+            tokenExpiresAt: true,
+          },
+        });
+        if (snap) {
+          account = snap;
+          emailAccount = new Account(account.id, account.token);
+        }
+      }
       const tokenExpiredOrExpiringSoon =
         account.tokenExpiresAt &&
         account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
@@ -2133,7 +2151,38 @@ export const accountRouter = createTRPCRouter({
             const { pageToken, sentUseLabel, sentOmitDate, sentUseIsOperator, sentFromMe, sentUseLabelIds } = decoded;
 
             if (folder === "inbox" && syncApiPageToken) {
-              const syncResult = await emailAccount.getNextPageViaSyncApi(syncApiPageToken);
+              let syncResult: Awaited<ReturnType<typeof emailAccount.getNextPageViaSyncApi>>;
+              try {
+                syncResult = await emailAccount.getNextPageViaSyncApi(syncApiPageToken);
+              } catch (error) {
+                if (isInvalidAurinkoSyncTokenError(error)) {
+                  await ctx.db.account
+                    .update({
+                      where: { id: account.id },
+                      data: { nextDeltaToken: null },
+                    })
+                    .catch(() => { });
+                  const threadCount = await ctx.db.thread.count({
+                    where: { accountId: account.id, inboxStatus: true },
+                  });
+                  ctx.log?.warn(
+                    {
+                      event: "sync_chunk_token_invalid_recovered",
+                      accountId: account.id,
+                      durationMs: Date.now() - syncStartTime,
+                    },
+                    "sync chunk token invalid; resetting token and continuing without failing UI",
+                  );
+                  return {
+                    success: true,
+                    message: "Resynced sync state. Continuing with latest inbox.",
+                    threadCount,
+                    hasMore: false,
+                    continueToken: undefined,
+                  };
+                }
+                throw error;
+              }
               if (syncResult.records.length > 0) {
                 const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
                 await syncEmailsToDatabase(syncResult.records, account.id);
@@ -3818,17 +3867,25 @@ Return JSON only with this shape:
       const EXTRACTION_CONCURRENCY = 4;
       const cutoff = new Date(now);
       cutoff.setDate(cutoff.getDate() - DAYS);
-      const MEETING_RE =
-        /\b(meeting|calendar|invite|invitation|zoom|google meet|teams|webinar|call|appointment|demo|conference|reschedul|schedule|event)\b/i;
-      const PROMO_RE =
-        /\b(sale|discount|offer|promo|promotion|coupon|unsubscribe|newsletter|deal|clearance)\b/i;
+      const PROVIDER_LINK_RE =
+        /\b(?:https?:\/\/)?(?:meet\.google\.com\/[a-z0-9-]+|[\w.-]+\.zoom\.us\/(?:j|my|w|s)\/[^\s<>"')]+|teams\.microsoft\.com\/l\/meetup-join\/[^\s<>"')]+)\b/i;
+      const PROVIDER_HINT_RE =
+        /\b(google meet|meet\.google\.com|zoom|teams\.microsoft\.com|microsoft teams)\b/i;
 
       const inboxEmails = await ctx.db.email.findMany({
         where: {
           sentAt: { gte: cutoff },
-          sysLabels: { hasSome: ["inbox"] },
+          OR: [
+            { sysLabels: { hasSome: ["inbox"] } },
+            { sysLabels: { hasSome: ["INBOX"] } },
+            { sysLabels: { hasSome: ["sent"] } },
+            { sysLabels: { hasSome: ["SENT"] } },
+          ],
           NOT: {
-            sysLabels: { hasSome: ["trash", "spam", "junk"] },
+            OR: [
+              { sysLabels: { hasSome: ["trash", "spam", "junk"] } },
+              { sysLabels: { hasSome: ["TRASH", "SPAM", "JUNK"] } },
+            ],
           },
           thread: {
             accountId: account.id,
@@ -3839,6 +3896,7 @@ Return JSON only with this shape:
           id: true,
           subject: true,
           bodySnippet: true,
+          from: true,
           keywords: true,
           sysClassifications: true,
           meetingMessageMethod: true,
@@ -3848,25 +3906,26 @@ Return JSON only with this shape:
       });
 
       const candidateEmailIds: string[] = [];
-      const candidateMeta = new Map<string, { threadId: string; sentAt: Date; subject: string }>();
+      const candidateMeta = new Map<
+        string,
+        { threadId: string; sentAt: Date; subject: string; shouldFallbackToHeuristicEvent: boolean }
+      >();
       for (const email of inboxEmails) {
         const subject = email.subject ?? "";
         const snippet = email.bodySnippet ?? "";
-        const blob = `${subject}\n${snippet}\n${(email.keywords ?? []).join(" ")}`;
-        const classes = (email.sysClassifications ?? []).map((c) => String(c).toLowerCase());
-        const promoClass =
-          classes.includes("promotions") ||
-          classes.includes("social") ||
-          classes.includes("forums");
+        const fromName = email.from?.name ?? "";
+        const fromAddress = email.from?.address ?? "";
+        const blob = `${subject}\n${snippet}\n${fromName}\n${fromAddress}\n${(email.keywords ?? []).join(" ")}`;
         const explicitMeeting = Boolean(email.meetingMessageMethod);
-        const looksMeeting = MEETING_RE.test(blob);
-        const looksPromo = PROMO_RE.test(blob);
-        if (!explicitMeeting && (!looksMeeting || promoClass || looksPromo)) continue;
+        const hasProviderHint = PROVIDER_HINT_RE.test(blob);
+        if (!explicitMeeting && !hasProviderHint) continue;
+        const shouldFallbackToHeuristicEvent = explicitMeeting;
         candidateEmailIds.push(email.id);
         candidateMeta.set(email.id, {
           threadId: email.threadId,
           sentAt: email.sentAt,
           subject: subject || "(No subject)",
+          shouldFallbackToHeuristicEvent,
         });
       }
 
@@ -3892,6 +3951,9 @@ Return JSON only with this shape:
       const results = await Promise.all(
         candidateEmails.map((email) =>
           limit(async () => {
+            const bodyText = `${email.subject ?? ""}\n${email.bodySnippet ?? ""}\n${email.body ?? ""}`;
+            const hasProviderLink = PROVIDER_LINK_RE.test(bodyText);
+            if (!hasProviderLink) return null;
             const event = await extractEventFromEmail(
               { subject: email.subject, body: email.body ?? email.bodySnippet ?? "" },
               { userId: ctx.auth.userId, accountId: account.id },
@@ -3903,8 +3965,8 @@ Return JSON only with this shape:
                 sourceThreadId: email.threadId,
               };
             }
-            // Fallback for calendar-style emails with no explicit parseable date/time.
-            if (email.meetingMessageMethod) {
+            const meta = candidateMeta.get(email.id);
+            if (email.meetingMessageMethod || meta?.shouldFallbackToHeuristicEvent) {
               return {
                 title: email.subject || "Meeting email",
                 startAt: email.sentAt.toISOString(),

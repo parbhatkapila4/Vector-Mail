@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api, type RouterOutputs } from "@/trpc/react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import EmailDisplay from "./EmailDisplay";
 import useThreads from "@/hooks/use-threads";
 import { useAtom } from "jotai";
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+import { UNIFIED_INBOX_ACCOUNT_ID } from "@/components/mail/AccountSwitcher";
 
 type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
@@ -65,6 +66,20 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
   const isDemo = useDemoMode() && (effectiveAccountId === DEMO_ACCOUNT_ID || accountId === DEMO_ACCOUNT_ID);
   const [currentTab] = useLocalStorage("vector-mail", "inbox");
   const accountForActions = effectiveAccountId ?? accountId;
+  const summaryAccountId =
+    (_thread as { accountId?: string } | undefined)?.accountId?.trim() ||
+    accountForActions?.trim() ||
+    "";
+  const { data: autoFollowUpSummary } = api.automation.getThreadFollowUpSummary.useQuery(
+    { accountId: summaryAccountId, threadId: threadId ?? "" },
+    {
+      enabled:
+        !!threadId &&
+        summaryAccountId.length > 0 &&
+        summaryAccountId !== UNIFIED_INBOX_ACCOUNT_ID,
+      staleTime: 30_000,
+    },
+  );
   const showSnooze =
     threadId &&
     accountForActions &&
@@ -465,6 +480,15 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                 {threadEvent.location && ` · ${threadEvent.location}`}
                 {" - "}
                 {threadEvent.title}
+              </p>
+            )}
+            {autoFollowUpSummary && (
+              <p className="mb-2 text-[12px] leading-snug text-[#5f6368] dark:text-[#9aa0a6]">
+                Auto follow-up{" "}
+                {autoFollowUpSummary.wasRealSend ? "sent" : "completed (simulated)"}{" "}
+                {formatDistanceToNow(new Date(autoFollowUpSummary.lastSuccessAt), {
+                  addSuffix: true,
+                })}
               </p>
             )}
             {isUnifiedView && thread?.account && (

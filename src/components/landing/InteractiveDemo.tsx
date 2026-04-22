@@ -92,13 +92,11 @@ export function InteractiveDemo() {
               viewport={{ once: true }}
               whileHover={{ y: -12, scale: 1.03 }}
               onHoverStart={() => setActiveFeature(index)}
-              className={`group relative bg-gradient-to-b ${
-                activeFeature === index
+              className={`group relative bg-gradient-to-b ${activeFeature === index
                   ? "from-black/10 to-black/5"
                   : "from-black/5 to-black/[0.02]"
-              } rounded-3xl border-2 p-8 backdrop-blur-xl ${
-                activeFeature === index ? "border-black/20" : "border-black/10"
-              } cursor-pointer overflow-hidden transition-all duration-300`}
+                } rounded-3xl border-2 p-8 backdrop-blur-xl ${activeFeature === index ? "border-black/20" : "border-black/10"
+                } cursor-pointer overflow-hidden transition-all duration-300`}
             >
               <motion.div
                 className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 transition-opacity duration-300 group-hover:opacity-10`}

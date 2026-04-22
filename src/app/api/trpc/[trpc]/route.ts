@@ -37,7 +37,7 @@ const handler = async (req: NextRequest) => {
               return;
             }
             console.error(
-              `❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`,
+              `tRPC failed on ${path ?? "<no-path>"}: ${error.message}`,
             );
             if (error.cause) {
               const c = error.cause;

@@ -52,19 +52,19 @@ const TagInput: React.FC<TagInputProps> = ({
         options={
           input
             ? options.concat({
-                label: (
-                  <span className="flex items-center gap-2">
-                    <Avatar
-                      name={input}
-                      size="25"
-                      textSizeRatio={2}
-                      round={true}
-                    />
-                    {input}
-                  </span>
-                ),
-                value: input,
-              })
+              label: (
+                <span className="flex items-center gap-2">
+                  <Avatar
+                    name={input}
+                    size="25"
+                    textSizeRatio={2}
+                    round={true}
+                  />
+                  {input}
+                </span>
+              ),
+              value: input,
+            })
             : options
         }
         classNames={{

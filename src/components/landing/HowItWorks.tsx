@@ -76,9 +76,8 @@ export function HowItWorks() {
               className="relative"
             >
               <div
-                className={`grid grid-cols-1 items-center gap-12 lg:grid-cols-2 ${
-                  index % 2 === 1 ? "lg:flex-row-reverse" : ""
-                }`}
+                className={`grid grid-cols-1 items-center gap-12 lg:grid-cols-2 ${index % 2 === 1 ? "lg:flex-row-reverse" : ""
+                  }`}
               >
                 <motion.div
                   initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}

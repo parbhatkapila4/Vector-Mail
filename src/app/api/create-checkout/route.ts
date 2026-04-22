@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
 const PRICING = {
-  pro: 999, // USD cents
-  enterprise: 6000, // USD cents
+  pro: 999,
+  enterprise: 6000,
 } as const;
 
 type Plan = keyof typeof PRICING;
@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { plan, userId } = body;
 
-    // Validate plan
     if (!plan || !userId) {
       return NextResponse.json(
         { error: "Missing required fields: plan, userId" },
@@ -28,10 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get amount from pricing map
     const amount = PRICING[plan as Plan];
 
-    // Get Dodo secret key
     const dodoSecretKey = process.env.DODO_SECRET_KEY;
     if (!dodoSecretKey) {
       console.error("DODO_SECRET_KEY is not configured");
@@ -41,7 +38,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create checkout session with Dodo Payments API
     const checkoutPayload = {
       amount,
       currency: "USD",
@@ -81,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ checkoutUrl });
   } catch (error) {
     console.error("Error creating checkout:", error);
-    
+
     if (axios.isAxiosError(error)) {
       console.error("Dodo API error:", error.response?.data);
       return NextResponse.json(

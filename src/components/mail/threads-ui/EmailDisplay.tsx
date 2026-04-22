@@ -222,7 +222,6 @@ const EmailDisplay = ({ email }: Props) => {
     } catch {
       processed = text;
     }
-    // Remove [image: ...] placeholders from stripped HTML so plain-text fallback doesn't show metadata
     processed = processed.replace(/\[image:\s*[^\]]*\]/gi, "").trim();
 
     const lines = processed.split(/\r?\n/);

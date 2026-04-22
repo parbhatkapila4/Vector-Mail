@@ -1,6 +1,3 @@
--- Use CREATE INDEX (not CONCURRENTLY) so this migration can run inside a transaction.
--- PostgreSQL does not allow CREATE INDEX CONCURRENTLY inside a transaction block,
--- and Prisma migrate dev replays all migrations in a transaction on the shadow DB.
 CREATE INDEX IF NOT EXISTS idx_email_embedding_vector ON "Email" USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 CREATE INDEX IF NOT EXISTS idx_email_thread_sent ON "Email"(threadId, sentAt DESC);
 CREATE INDEX IF NOT EXISTS idx_email_account_label ON "Email"(threadId, emailLabel);

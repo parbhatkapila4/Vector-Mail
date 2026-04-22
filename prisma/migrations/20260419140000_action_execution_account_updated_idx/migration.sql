@@ -1,0 +1,1 @@
+CREATE INDEX "ActionExecution_accountId_updatedAt_idx" ON "ActionExecution"("accountId", "updatedAt");
