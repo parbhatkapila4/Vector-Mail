@@ -27,10 +27,8 @@ const DELAY_BETWEEN_BATCHES_MS = 150;
 const INSTANT_SYNC_LIST_SIZE = 500;
 const warnedMissingRefreshTokenAccountIds = new Set<string>();
 
-const FAST_FIRST_BATCH_INBOX = 10;
-const FAST_FIRST_BATCH_SENT = 8;
-const FAST_FIRST_BATCH_TRASH = 5;
-const FAST_FIRST_FETCH_CONCURRENCY = 10;
+const FAST_FIRST_BATCH_INBOX = 50;
+const FAST_FIRST_FETCH_CONCURRENCY = 20;
 const FAST_FIRST_FETCH_TIMEOUT_MS = 15_000;
 const FAST_FIRST_LIST_TIMEOUT_MS = 25_000;
 const RATE_LIMIT_WAIT_MS = 60_000;
@@ -1772,57 +1770,76 @@ export class Account {
       return [];
     };
 
-    const [inboxIds, sentIds, trashIds] = await Promise.all([
-      listIdsWithFallback(FAST_FIRST_BATCH_INBOX, [
-        { q: `label:inbox ${newerThanQuery}` },
-        { q: `in:inbox ${newerThanQuery}` },
-        { q: "label:inbox" },
-        { q: "in:inbox" },
-        { labelIds: "INBOX" },
-      ]),
-      listIdsWithFallback(FAST_FIRST_BATCH_SENT, [
-        { q: `label:sent ${newerThanQuery}` },
-        { q: `in:sent ${newerThanQuery}` },
-        { q: "label:sent" },
-        { q: "in:sent" },
-        { q: "is:sent" },
-        { labelIds: "SENT" },
-      ]),
-      listIdsWithFallback(FAST_FIRST_BATCH_TRASH, [
-        { q: `label:trash ${newerThanQuery}` },
-        { q: "label:trash" },
-        { q: "in:trash" },
-        { labelIds: "TRASH" },
-      ]),
+    let inboxIds = await listIdsWithFallback(FAST_FIRST_BATCH_INBOX, [
+      { q: `label:inbox ${newerThanQuery}` },
+      { q: `in:inbox ${newerThanQuery}` },
+      { q: "label:inbox" },
+      { q: "in:inbox" },
+      { labelIds: "INBOX" },
     ]);
 
-    const CHUNK_SIZE = 5;
-    const fetchAndSyncInChunks = async (ids: string[]): Promise<number> => {
-      let total = 0;
-      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-        const chunk = ids.slice(i, i + CHUNK_SIZE);
-        const emails = await Promise.all(
-          chunk.map((id) => limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS))),
+    if (inboxIds.length === 0) {
+
+
+      const broadList = await with401Retry(
+        this.id,
+        () =>
+          aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+            "https://api.aurinko.io/v1/email/messages",
+            {
+              ...listOpts,
+              headers: this.aurinkoHeaders,
+              params: {
+                maxResults: 120,
+                bodyType: "text",
+              },
+            },
+          ),
+        { tryRefresh: () => this.refreshTokenIfPossible() },
+      );
+      const broadIds = broadList.data.messages?.map((m) => m.id) ?? [];
+      if (broadIds.length > 0) {
+        const broadEmails = await Promise.all(
+          broadIds.map((id) =>
+            limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS)),
+          ),
         );
-        const valid = emails.filter((e): e is EmailMessage => e !== null);
-        if (valid.length > 0) {
-          await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 15, skipRecalculate: false });
-          total += valid.length;
-        }
+        const inboxLike = broadEmails
+          .filter((e): e is EmailMessage => e !== null)
+          .filter((e) => {
+            const labels = (e.sysLabels ?? []).map((l) => String(l).toLowerCase());
+            if (labels.includes("trash") || labels.includes("draft")) return false;
+            if (
+              labels.includes("inbox") ||
+              labels.includes("unread") ||
+              labels.includes("important")
+            ) {
+              return true;
+            }
+            return !labels.includes("sent");
+          })
+          .slice(0, FAST_FIRST_BATCH_INBOX);
+        inboxIds = inboxLike.map((e) => e.id);
       }
-      return total;
-    };
+    }
 
-    const inboxCount = await fetchAndSyncInChunks(inboxIds);
-    const [sentCount, trashCount] = await Promise.all([
-      fetchAndSyncInChunks(sentIds),
-      fetchAndSyncInChunks(trashIds),
-    ]);
+    const fetchBatch = await Promise.all(
+      inboxIds.map((id) =>
+        limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS)),
+      ),
+    );
+    const inboxEmails = fetchBatch.filter((e): e is EmailMessage => e !== null);
+    if (inboxEmails.length > 0) {
+      await syncEmailsToDatabase(inboxEmails, this.id, {
+        writeConcurrency: 20,
+        skipRecalculate: true,
+      });
+    }
 
-    const total = inboxCount + sentCount + trashCount;
+    const total = inboxEmails.length;
     const elapsed = Date.now() - start;
     console.log(
-      `[syncFirstBatchQuick] ✓ inbox ${inboxCount} sent ${sentCount} trash ${trashCount} (total ${total}) in ${elapsed}ms`,
+      `[syncFirstBatchQuick] ✓ inbox ${total} (latest first-batch) in ${elapsed}ms`,
     );
     return { count: total };
   }

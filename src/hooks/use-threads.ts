@@ -1,10 +1,11 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { useLocalStorage } from "usehooks-ts";
 import { atom, useAtom } from "jotai";
 import { keepPreviousData } from "@tanstack/react-query";
 import { persistThreads, getStoredThreads } from "@/lib/threads-storage";
 import { UNIFIED_INBOX_ACCOUNT_ID } from "@/components/mail/AccountSwitcher";
+import { mergeThreadsStable, getThreadTimestamp } from "@/lib/thread-merge";
 
 export const threadIdAtom = atom<string | null>(null);
 
@@ -29,15 +30,9 @@ function useThreads() {
   const isUnified = storedAccountId === UNIFIED_INBOX_ACCOUNT_ID;
   const storedAccount =
     storedAccountId && accounts?.find((acc) => acc.id === storedAccountId);
-  const shouldFallbackFromDisconnectedStoredAccount =
-    !!storedAccount &&
-    "needsReconnection" in storedAccount &&
-    !!storedAccount.needsReconnection &&
-    !!firstConnectedAccountId &&
-    firstConnectedAccountId !== storedAccount.id;
   const accountId = isUnified
     ? UNIFIED_INBOX_ACCOUNT_ID
-    : storedAccount && !shouldFallbackFromDisconnectedStoredAccount
+    : storedAccount
       ? storedAccountId
       : firstConnectedAccountId;
 
@@ -170,6 +165,39 @@ function useThreads() {
   const threads =
     threadsFromQuery.length > 0 ? threadsFromQuery : threadsFromStorage;
 
+  const stickyThreadsKey = `${accountId}-${currentTab}-${important ? "1" : "0"}-${unread ? "1" : "0"}-${labelIdForQuery ?? "none"}-${isUnified ? "u" : "s"}`;
+  const [stickyThreads, setStickyThreads] = useState<Array<Thread | UnifiedThread>>([]);
+  const stickyKeyRef = useRef(stickyThreadsKey);
+
+  useEffect(() => {
+    if (stickyKeyRef.current === stickyThreadsKey) return;
+    stickyKeyRef.current = stickyThreadsKey;
+    setStickyThreads([]);
+  }, [stickyThreadsKey]);
+
+  useEffect(() => {
+    if (threads.length === 0) return;
+    setStickyThreads((prev) => {
+      const merged = mergeThreadsStable(
+        threads as Array<Thread | UnifiedThread>,
+        prev,
+      );
+      if (merged.length !== prev.length) return merged;
+      for (let i = 0; i < merged.length; i += 1) {
+        const a = merged[i];
+        const b = prev[i];
+        if (!a || !b) return merged;
+        if (a.id !== b.id) return merged;
+        if (getThreadTimestamp(a) !== getThreadTimestamp(b)) return merged;
+      }
+      return prev;
+    });
+  }, [threads]);
+
+  const displayThreads = (stickyThreads.length > 0
+    ? stickyThreads
+    : threads) as typeof threads;
+
   const refetchedFromStorageRef = useRef(false);
   const prevKeyRef = useRef(`${accountId}-${currentTab}`);
   useEffect(() => {
@@ -239,7 +267,7 @@ function useThreads() {
   }, [threadId, threads, accountId, isUnified, firstAccountId]);
 
   return {
-    threads,
+    threads: displayThreads,
     isFetching,
     isFetchingNextPage,
     hasNextPage,

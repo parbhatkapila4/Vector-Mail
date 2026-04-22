@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown, ChevronRight, CalendarPlus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -21,12 +21,27 @@ export function UpcomingFromEmailBlock({
   className,
 }: UpcomingFromEmailBlockProps) {
   const [expanded, setExpanded] = useState(false);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const { data, isLoading } = api.account.getUpcomingEventsFromEmails.useQuery(
     { accountId: accountId || "placeholder" },
     { enabled: !!accountId && accountId.length > 0 && expanded },
   );
 
-  const events = data?.events ?? [];
+  useEffect(() => {
+    if (!expanded) return;
+    const timer = setInterval(() => setNowTs(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [expanded]);
+
+  const events = useMemo(() => {
+    const rawEvents = data?.events ?? [];
+    return rawEvents.filter((event) => {
+      const endTs = event.endAt ? new Date(event.endAt).getTime() : Number.NaN;
+      const startTs = new Date(event.startAt).getTime();
+      if (Number.isFinite(endTs)) return endTs > nowTs;
+      return startTs > nowTs;
+    });
+  }, [data?.events, nowTs]);
   const displayEvents = events.slice(0, UPCOMING_DISPLAY_LIMIT);
 
   if (!accountId) return null;

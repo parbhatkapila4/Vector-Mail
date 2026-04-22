@@ -5,6 +5,11 @@ const SESSION_COOKIE = "vectormail_session_user";
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
+  const redirectToParam = req.nextUrl.searchParams.get("redirectTo");
+  const safeRedirectTo =
+    redirectToParam && redirectToParam.startsWith("/")
+      ? redirectToParam
+      : "/mail";
   if (!token?.trim()) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
@@ -31,7 +36,7 @@ export async function GET(req: NextRequest) {
   }
   if (!userId) return NextResponse.redirect(new URL("/sign-in", req.url));
 
-  const res = NextResponse.redirect(new URL("/mail", req.url));
+  const res = NextResponse.redirect(new URL(safeRedirectTo, req.url));
   res.cookies.set(SESSION_COOKIE, userId, {
     path: "/",
     httpOnly: true,

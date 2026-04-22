@@ -1085,7 +1085,7 @@ export const automationRouter = createTRPCRouter({
     .input(
       z.object({
         accountId: z.string().min(1),
-        threadIds: z.array(z.string().min(1)).max(100),
+        threadIds: z.array(z.string().min(1)).max(500),
       }),
     )
     .query(async ({ ctx, input }) => {

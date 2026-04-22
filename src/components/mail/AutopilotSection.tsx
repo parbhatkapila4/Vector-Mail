@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, CircleHelp, Clock3, Copy, Loader2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  CircleHelp,
+  Clock3,
+  Copy,
+  Inbox,
+  Loader2,
+  MousePointerClick,
+  ScrollText,
+  X,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
@@ -9,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -566,82 +580,124 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
             if (!next) setSelectedExecutionId(null);
           }}
         >
-          <DialogContent className="max-h-[90vh] w-[95vw] max-w-5xl overflow-hidden border-neutral-800 bg-[#0b0b0d] text-white p-0">
+          <DialogContent
+            showCloseButton={false}
+            className="max-h-[90vh] w-[95vw] max-w-5xl overflow-hidden border-neutral-800 bg-[#0b0b0d] text-white p-0 gap-0"
+          >
+            <DialogHeader className="sr-only">
+              <DialogTitle>Automation log</DialogTitle>
+              <DialogDescription>Recent executions and outcomes.</DialogDescription>
+            </DialogHeader>
             <div className="grid h-[78vh] grid-cols-1 md:grid-cols-[1.15fr_0.85fr]">
-              <div className="border-b border-white/[0.08] p-4 md:border-b-0 md:border-r">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold">Automation log</h3>
-                    <p className="text-[11px] text-zinc-400">Recent executions and outcomes.</p>
+              <div className="flex min-h-0 flex-col border-b border-white/[0.08] md:border-b-0 md:border-r">
+                <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/[0.06] ring-1 ring-white/[0.08]">
+                      <ScrollText className="h-3.5 w-3.5 text-zinc-300" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[13px] font-semibold leading-tight">Automation log</h3>
+                      <p className="text-[11px] leading-tight text-zinc-400">Recent executions and outcomes.</p>
+                    </div>
                   </div>
-                  <select
-                    className="h-8 rounded-md border border-white/[0.1] bg-black/40 px-2 text-[12px] text-zinc-200"
-                    value={logStatus}
-                    onChange={(e) => {
-                      setLogStatus(e.target.value as typeof logStatus);
-                      setLogPage(0);
-                    }}
-                  >
-                    <option value="">All statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="running">Running</option>
-                    <option value="awaiting_approval">Awaiting approval</option>
-                    <option value="success">Success</option>
-                    <option value="failed">Failed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                  <div className="relative shrink-0">
+                    <select
+                      className="h-8 appearance-none rounded-md border border-white/[0.1] bg-black/40 pl-2.5 pr-7 text-[12px] text-zinc-200 outline-none transition-colors hover:border-white/[0.18] focus:border-[#3b82f6]/50"
+                      value={logStatus}
+                      onChange={(e) => {
+                        setLogStatus(e.target.value as typeof logStatus);
+                        setLogPage(0);
+                      }}
+                    >
+                      <option value="">All statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="running">Running</option>
+                      <option value="awaiting_approval">Awaiting approval</option>
+                      <option value="success">Success</option>
+                      <option value="failed">Failed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                  </div>
                 </div>
-                <div className="h-[calc(78vh-110px)] overflow-y-auto pr-1">
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
                   {listExecutionsQuery.isLoading ? (
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] text-zinc-400">Loading execution log…</div>
+                    <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] text-zinc-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading execution log…
+                    </div>
                   ) : listExecutionsQuery.isError ? (
-                    <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-[12px] text-rose-200">Failed to load execution log.</div>
+                    <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-[12px] text-rose-200">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Failed to load execution log.
+                    </div>
                   ) : executionRows.length === 0 ? (
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] text-zinc-400">No executions found for this filter.</div>
+                    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.08] bg-white/[0.01] px-4 py-10 text-center">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.04] ring-1 ring-white/[0.08]">
+                        <Inbox className="h-4 w-4 text-zinc-400" />
+                      </div>
+                      <p className="text-[12px] font-medium text-zinc-200">No executions yet</p>
+                      <p className="max-w-[260px] text-[11px] leading-snug text-zinc-500">
+                        Nothing matches this filter. Try another status, or run a scan from the Autopilot panel.
+                      </p>
+                    </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {executionRows.map((row) => (
                         <button
                           key={row.id}
                           type="button"
                           onClick={() => setSelectedExecutionId(row.id)}
                           className={cn(
-                            "w-full rounded-lg border p-3 text-left transition-colors",
+                            "group w-full rounded-lg border p-3 text-left transition-all",
                             selectedExecutionId === row.id
-                              ? "border-[#3b82f6]/40 bg-[#3b82f6]/[0.08]"
-                              : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]",
+                              ? "border-[#3b82f6]/50 bg-[#3b82f6]/[0.08] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.15)]"
+                              : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.14] hover:bg-white/[0.04]",
                           )}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className="line-clamp-2 text-[12px] font-semibold text-white">
                               {row.thread?.subject ?? "(No thread subject)"}
                             </p>
-                            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] ring-1", statusChipClass(row.status))}>
+                            <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1", statusChipClass(row.status))}>
+                              <span className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                row.status === "success" ? "bg-emerald-400"
+                                  : row.status === "failed" ? "bg-rose-400"
+                                    : row.status === "cancelled" ? "bg-zinc-400"
+                                      : row.status === "awaiting_approval" ? "bg-amber-400"
+                                        : "bg-sky-400",
+                              )} />
                               {row.status.replaceAll("_", " ")}
                             </span>
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-400">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-400">
                             <span>{new Date(row.createdAt).toLocaleString()}</span>
-                            <span>·</span>
-                            <span>{row.dryRun ? "dry-run" : "real-send"}</span>
-                            <span>·</span>
-                            <span className="font-mono">{row.id.slice(0, 10)}</span>
+                            <span className="text-zinc-600">·</span>
+                            <span className={cn(
+                              "rounded px-1.5 py-[1px] text-[9px] font-medium uppercase tracking-wide",
+                              row.dryRun ? "bg-zinc-500/15 text-zinc-300" : "bg-emerald-500/15 text-emerald-300",
+                            )}>
+                              {row.dryRun ? "dry-run" : "real-send"}
+                            </span>
+                            <span className="text-zinc-600">·</span>
+                            <span className="font-mono text-zinc-500">{row.id.slice(0, 10)}</span>
                           </div>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-400">
+                <div className="flex items-center justify-between border-t border-white/[0.06] px-4 py-2.5 text-[11px] text-zinc-400">
                   <span>
                     Page {Math.min(logPage + 1, logTotalPages)} / {logTotalPages}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[11px]"
+                      className="h-7 px-2 text-[11px] text-zinc-300 hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
                       disabled={logPage <= 0}
                       onClick={() => setLogPage((p) => Math.max(0, p - 1))}
                     >
@@ -651,7 +707,7 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[11px]"
+                      className="h-7 px-2 text-[11px] text-zinc-300 hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
                       disabled={!listExecutionsQuery.data?.hasMore}
                       onClick={() => setLogPage((p) => p + 1)}
                     >
@@ -660,17 +716,39 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
                   </div>
                 </div>
               </div>
-              <div className="p-4">
+              <div className="relative flex min-h-0 flex-col">
+                <DialogClose
+                  className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]/50"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </DialogClose>
                 {!selectedExecutionId ? (
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] text-zinc-400">
-                    Select an execution to inspect timeline, retries, errors, and payload.
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] ring-1 ring-white/[0.08]">
+                      <MousePointerClick className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <p className="text-[12px] font-medium text-zinc-200">No execution selected</p>
+                    <p className="max-w-[280px] text-[11px] leading-snug text-zinc-500">
+                      Select an execution on the left to inspect its timeline, retries, errors, and payload.
+                    </p>
                   </div>
                 ) : selectedDetailQuery.isLoading ? (
-                  <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] text-zinc-400">Loading detail…</div>
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] text-zinc-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading detail…
+                    </div>
+                  </div>
                 ) : selectedDetailQuery.isError || !selectedDetailQuery.data ? (
-                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-[12px] text-rose-200">Failed to load execution detail.</div>
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-[12px] text-rose-200">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Failed to load execution detail.
+                    </div>
+                  </div>
                 ) : (
-                  <div className="h-[calc(78vh-32px)] overflow-y-auto pr-1">
+                  <div className="min-h-0 flex-1 overflow-y-auto p-4">
                     <div className="mb-3 flex items-start justify-between gap-2">
                       <div>
                         <p className="text-[13px] font-semibold text-white">

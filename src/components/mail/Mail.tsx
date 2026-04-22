@@ -59,6 +59,7 @@ import {
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { LabelsList } from "./labels/LabelsList";
 import { NudgesBlock } from "./NudgesBlock";
 import { DailyBriefStrip } from "./DailyBriefStrip";
@@ -145,6 +146,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   const userName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Account";
   const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signOut } = useClerk();
 
   useEffect(() => () => {
@@ -235,21 +237,28 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   const { data: accounts, isLoading: accountsLoading } = api.account.getAccounts.useQuery();
   const firstAccountId = accounts && accounts.length > 0 ? accounts[0]!.id : "";
   const showConnectCard = !isDemo && !accountsLoading && !!accounts && accounts.length === 0;
-  const [storedAccountId] = useLocalStorage("accountId", "");
+  const [storedAccountId, setStoredAccountId] = useLocalStorage("accountId", "");
+  useEffect(() => {
+    if (storedAccountId) return;
+    const qsAccountId = searchParams.get("accountId");
+    if (!qsAccountId?.trim()) return;
+    if (qsAccountId !== storedAccountId) {
+      setStoredAccountId(qsAccountId);
+    }
+  }, [searchParams, storedAccountId, setStoredAccountId]);
   const firstConnectedAccountId =
     accounts?.find((acc) => !("needsReconnection" in acc) || !acc.needsReconnection)
       ?.id ?? firstAccountId;
+  useEffect(() => {
+    if (storedAccountId) return;
+    if (!firstConnectedAccountId) return;
+    setStoredAccountId(firstConnectedAccountId);
+  }, [storedAccountId, firstConnectedAccountId, setStoredAccountId]);
   const storedAccount = accounts?.find((acc) => acc.id === storedAccountId);
-  const shouldFallbackFromDisconnectedStoredAccount =
-    !!storedAccount &&
-    "needsReconnection" in storedAccount &&
-    !!storedAccount.needsReconnection &&
-    !!firstConnectedAccountId &&
-    firstConnectedAccountId !== storedAccount.id;
   const accountId =
     storedAccountId === UNIFIED_INBOX_ACCOUNT_ID
       ? firstAccountId
-      : storedAccount && !shouldFallbackFromDisconnectedStoredAccount
+      : storedAccount
         ? storedAccountId
         : firstConnectedAccountId;
   const setThreadId = useSetAtom(threadIdAtom);
@@ -263,6 +272,12 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
     setSelectedThread(null);
     setThreadId(null);
   }, [setThreadId]);
+
+  useEffect(() => {
+
+    setSelectedThread(null);
+    setThreadId(null);
+  }, [accountId, setThreadId]);
 
   const toggleAIPanel = useCallback(() => {
     setShowAIPanel((open) => {

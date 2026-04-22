@@ -41,21 +41,6 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
         setAccountId(connectedFallbackId);
         return;
       }
-      if (
-        !isUnified &&
-        currentAccount &&
-        "needsReconnection" in currentAccount &&
-        !!(currentAccount as { needsReconnection?: boolean }).needsReconnection &&
-        connectedFallbackId &&
-        connectedFallbackId !== currentAccount.id
-      ) {
-        setAccountId(connectedFallbackId);
-        toast.info("Switched to your connected inbox", {
-          description:
-            "One linked account needs reconnect. You can reconnect it later from the account switcher.",
-          duration: 4000,
-        });
-      }
     } else if (accounts && accounts.length === 0) {
       toast("Connect your Google account to continue", {
         action: {

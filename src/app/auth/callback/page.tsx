@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth, useClerk, useSignIn } from "@clerk/nextjs";
+import { useAuth, useSignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -8,7 +8,6 @@ import { Suspense, useEffect, useRef, useState } from "react";
 function AuthCallbackContent() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isSignedIn, getToken } = useAuth();
-  const { signOut } = useClerk();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
@@ -19,6 +18,7 @@ function AuthCallbackContent() {
     if (!isLoaded || !signIn || !setActive) return;
 
     const ticket = searchParams.get("ticket");
+    const accountId = searchParams.get("accountId");
     if (!ticket) {
       setStatus("error");
       setErrorMessage("Missing sign-in link. Please try signing in again.");
@@ -26,6 +26,7 @@ function AuthCallbackContent() {
     }
 
     const ticketVal = ticket;
+    const accountIdParam = accountId?.trim() ? accountId.trim() : "";
     const signInFn = signIn;
     const setActiveFn = setActive;
     let cancelled = false;
@@ -49,6 +50,9 @@ function AuthCallbackContent() {
               typeof window !== "undefined" &&
               window.location.protocol === "http:" &&
               (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+            const redirectTo = accountIdParam
+              ? `/mail?accountId=${encodeURIComponent(accountIdParam)}`
+              : "/mail";
             if (isHttpLocalhost) {
               let token: string | null = null;
               for (let i = 0; i < 3 && !token; i++) {
@@ -57,11 +61,13 @@ function AuthCallbackContent() {
                 token = (await getToken?.({ skipCache: true })) ?? null;
               }
               if (token) {
-                window.location.replace(`/api/auth/dev-session?token=${encodeURIComponent(token)}`);
+                window.location.replace(
+                  `/api/auth/dev-session?token=${encodeURIComponent(token)}&redirectTo=${encodeURIComponent(redirectTo)}`,
+                );
                 return;
               }
             }
-            window.location.replace("/mail");
+            window.location.replace(redirectTo);
           }
         } else {
           setStatus("error");
@@ -75,8 +81,12 @@ function AuthCallbackContent() {
       }
     }
 
-    if (isSignedIn && signOut) {
-      void signOut({ redirectUrl: undefined }).catch(() => { });
+    if (isSignedIn) {
+      if (typeof window !== "undefined") {
+        window.location.replace("/mail");
+      } else {
+        router.replace("/mail");
+      }
       return;
     }
 
@@ -88,7 +98,7 @@ function AuthCallbackContent() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, signIn, setActive, isSignedIn, signOut, searchParams, router, getToken]);
+  }, [isLoaded, signIn, setActive, isSignedIn, searchParams, router, getToken]);
 
   if (status === "error") {
     return (

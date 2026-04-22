@@ -132,6 +132,8 @@ const MAX_AUTO_CONTINUE_SYNC_PAGES = 3;
 const SYNC_POLL_INTERVAL_MS = 4000;
 const MAX_REFRESHES_WHILE_SYNC = 6;
 const PREVIEW_READ_ONLY_MAX_MS = 25_000;
+const RECONNECT_UI_MUTE_MS = 90_000;
+const RECONNECT_UI_MUTE_KEY = "vm-reconnect-ui-muted-until";
 
 export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function ThreadList(
   { onThreadSelect, onSyncPendingChange },
@@ -176,7 +178,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
   const badgeAccountId = (isUnifiedView ? effectiveAccountId : accountId) ?? "";
   const visibleThreadIds = useMemo(
-    () => (threads ?? []).map((t) => t.id).filter(Boolean),
+    () => (threads ?? []).map((t) => t.id).filter(Boolean).slice(0, 100),
     [threads],
   );
   const followUpBadgesQuery = api.automation.getThreadAutoFollowUpBadges.useQuery(
@@ -196,9 +198,33 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const firstBatchTriggeredRef = useRef(false);
   const backgroundSyncTriggeredRef = useRef(false);
   const autoContinueSyncCountRef = useRef(0);
+  const reconnectUiMutedUntilRef = useRef(0);
+  const muteReconnectUi = useCallback((durationMs: number = RECONNECT_UI_MUTE_MS) => {
+    const until = Date.now() + durationMs;
+    reconnectUiMutedUntilRef.current = until;
+    try {
+      window.sessionStorage.setItem(RECONNECT_UI_MUTE_KEY, String(until));
+    } catch {
+    }
+  }, []);
+  const isReconnectUiMuted = useCallback(
+    () => Date.now() < reconnectUiMutedUntilRef.current,
+    [],
+  );
+
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(RECONNECT_UI_MUTE_KEY);
+      const parsed = raw ? Number(raw) : 0;
+      reconnectUiMutedUntilRef.current = Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+      reconnectUiMutedUntilRef.current = 0;
+    }
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("reconnected") === "1") {
+      muteReconnectUi();
       quickSyncTriggeredRef.current = false;
       firstBatchTriggeredRef.current = false;
       backgroundSyncTriggeredRef.current = false;
@@ -245,7 +271,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       url.searchParams.delete("error");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
-  }, [searchParams, utils]);
+  }, [searchParams, utils, muteReconnectUi]);
 
   useEffect(() => {
     setSelectedThreadIds(new Set());
@@ -304,6 +330,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       ) {
         void utils.account.getAccounts.invalidate();
         void utils.account.getMyAccount.invalidate();
+        if (isReconnectUiMuted()) return;
         toast.error("Reconnect Gmail", {
           description:
             "VectorMail is still signed in — only the Gmail link needs a quick refresh.",
@@ -359,6 +386,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       if (data.needsReconnection) {
         autoContinueSyncCountRef.current = 0;
         void utils.account.getAccounts.invalidate();
+        if (isReconnectUiMuted()) return;
         toast.error("Reconnect your account", {
           id: "reconnect-account-warning",
           description: "Your email connection expired and couldn’t be refreshed. Click Reconnect to sign in again.",
@@ -479,6 +507,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         errorMessage.includes("Please reconnect")
       ) {
         void utils.account.getAccounts.invalidate();
+        if (isReconnectUiMuted()) return;
         toast.error("Sync failed", {
           description: "Your Gmail link needs to be refreshed. Reconnect — you stay signed in to VectorMail.",
           duration: 6000,
@@ -628,6 +657,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     bulkArchiveMutation.isPending;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const prefetchedNextPageRef = useRef(false);
 
   const handleRefresh = useCallback(() => {
     if (syncEmailsMutation.isPending) {
@@ -671,6 +701,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     threads?.length,
     utils.account.getUnifiedThreads,
   ]);
+
+  useEffect(() => {
+    prefetchedNextPageRef.current = false;
+  }, [accountId, currentTab, selectedLabelId, isUnifiedView]);
 
   const isAccountValid = !!validatedAccount && validatedAccount.id === accountId;
 
@@ -808,6 +842,26 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const threadsToRender = useMemo(() => threads ?? [], [threads]);
 
+  useEffect(() => {
+    if (prefetchedNextPageRef.current) return;
+    if (isFetching || isFetchingNextPage || loadingMoreAtListEnd) return;
+    if (!hasNextPage) return;
+    if ((threadsToRender?.length ?? 0) < 50) return;
+    if (currentTab !== "inbox" && currentTab !== "label") return;
+    prefetchedNextPageRef.current = true;
+    void fetchNextPage().catch(() => {
+      prefetchedNextPageRef.current = false;
+    });
+  }, [
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    loadingMoreAtListEnd,
+    threadsToRender?.length,
+    currentTab,
+    fetchNextPage,
+  ]);
+
   const { data: inboxPreviewPayload, isFetching: inboxPreviewFetching } =
     api.account.getInboxPreview.useQuery(
       { accountId: accountId?.trim() ?? "", limit: 50 },
@@ -854,6 +908,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       return;
     }
     void utils.account.getAccounts.invalidate();
+    if (isReconnectUiMuted()) return;
     if (inboxPreviewReconnectToastRef.current) return;
     inboxPreviewReconnectToastRef.current = true;
     toast.error("Reconnect your account", {
@@ -868,7 +923,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         },
       },
     });
-  }, [inboxPreviewPayload?.needsReconnection, utils.account.getAccounts]);
+  }, [inboxPreviewPayload?.needsReconnection, utils.account.getAccounts, isReconnectUiMuted]);
 
   const previewThreads = useMemo((): Thread[] => {
     const items = inboxPreviewPayload?.items ?? [];
@@ -1266,6 +1321,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       (currentTab === "inbox" ||
         currentTab === "snoozed" ||
         currentTab === "reminders");
+    const showRowActions =
+      !readOnlyPreview &&
+      (showSnooze || showRemind) &&
+      (isSelected || isRowSelected);
     const nudgeType = nudgeTypeByThreadId.get(thread.id);
     const threadAccountId = (thread as { accountId?: string }).accountId ?? accountId ?? "";
     const accountLabel = isUnifiedView && "accountEmail" in thread ? String((thread as { accountEmail?: string; accountName?: string }).accountEmail ?? (thread as { accountEmail?: string; accountName?: string }).accountName ?? "") : "";
@@ -1433,7 +1492,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             </div>
           </div>
         </button>
-        {!readOnlyPreview && (showSnooze || showRemind) && (
+        {showRowActions && (
           <div className="flex items-center gap-0.5 pr-1">
             {showSnooze && (
               <SnoozeMenu
@@ -1564,7 +1623,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             "needsReconnection" in matchedAccount &&
             matchedAccount.needsReconnection)),
       );
-      if (currentAccountNeedsReconnection) {
+      if (currentAccountNeedsReconnection && !isReconnectUiMuted()) {
         return (
           <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
             <Mail className="mb-4 h-10 w-10 text-[#d93025] dark:text-[#f28b82]" />
@@ -1733,8 +1792,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           </React.Fragment>
         ))}
         {(isFetchingNextPage || loadingMoreAtListEnd) && (
-          <div className="flex justify-center py-6">
+          <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#3b82f6] dark:border-[#1a1a23] dark:border-t-[#60a5fa]" />
+            <span>Loading more emails…</span>
           </div>
         )}
       </div>

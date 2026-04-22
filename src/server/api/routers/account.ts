@@ -133,6 +133,9 @@ export const accountRouter = createTRPCRouter({
         where: {
           userId: ctx.auth.userId,
         },
+        orderBy: {
+          emailAddress: "asc",
+        },
         select: {
           id: true,
           emailAddress: true,
@@ -2900,6 +2903,32 @@ export const accountRouter = createTRPCRouter({
       const { cursor } = input;
       const syncResult = { success: true, count: 0 };
 
+      if (input.tab === "inbox" && !cursor && !input.labelId) {
+        try {
+          const latestInboxThread = await ctx.db.thread.findFirst({
+            where: {
+              accountId: account.id,
+              inboxStatus: true,
+            },
+            orderBy: { lastMessageDate: "desc" },
+            select: { lastMessageDate: true },
+          });
+          const staleCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+          const shouldRefreshLatest =
+            !latestInboxThread?.lastMessageDate ||
+            latestInboxThread.lastMessageDate < staleCutoff;
+          if (shouldRefreshLatest && account.token) {
+            const emailAccount = new Account(account.id, account.token);
+            await emailAccount.fetchAndSyncLatestInboxPage();
+          }
+        } catch (refreshErr) {
+          console.warn(
+            "[getThreads] Latest inbox refresh before listing failed, continuing with DB:",
+            refreshErr,
+          );
+        }
+      }
+
       const limit = Math.min(
         input.tab === "inbox" ? (input.limit ?? 50) : (input.limit ?? 15),
         100,
@@ -3687,7 +3716,14 @@ export const accountRouter = createTRPCRouter({
       });
 
       if (!thread) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+        return {
+          about: "This thread is not available right now.",
+          expectedFromMe:
+            "Try selecting another thread, or refresh the inbox if this was just synced.",
+          expectedReason:
+            "The thread may have moved accounts or is still loading from sync.",
+          expectedConfidence: "Low" as const,
+        };
       }
 
       const accountEmailLower = account.emailAddress.toLowerCase();
@@ -4023,8 +4059,14 @@ Return JSON only with this shape:
       });
       const combined = Array.from(byThread.values());
       combined.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+      const upcomingOnly = combined.filter((event) => {
+        const endTs = event.endAt ? new Date(event.endAt).getTime() : Number.NaN;
+        const startTs = new Date(event.startAt).getTime();
+        if (Number.isFinite(endTs)) return endTs > now.getTime();
+        return startTs > now.getTime();
+      });
 
-      return { events: combined.slice(0, 20) };
+      return { events: upcomingOnly.slice(0, 20) };
     }),
 
   saveEventToCalendarList: protectedProcedure

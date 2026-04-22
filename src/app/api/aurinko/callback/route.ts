@@ -6,7 +6,7 @@ import { Account } from "@/lib/accounts";
 import axios from "axios";
 import { log as auditLog } from "@/lib/audit/audit-log";
 
-const FAST_FIRST_SYNC_TIMEOUT_MS = 8_000;
+const FAST_FIRST_SYNC_TIMEOUT_MS = 30_000;
 
 function getBaseUrl(req: NextRequest): string {
   try {
@@ -289,15 +289,20 @@ export async function GET(req: NextRequest) {
         return { count: 0 };
       });
 
-      const [firstResult] = await Promise.all([
-        fastFirstSync,
-        getDeltaTokenAndSave(),
-      ]);
+      void getDeltaTokenAndSave();
+      const firstResult = await fastFirstSync;
       console.log("[CALLBACK] ✓ First batch:", firstResult.count, "emails (rest will sync in background on /mail)");
 
-      const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
-      await recalculateAllThreadStatuses(accountIdStr);
-      console.log("[CALLBACK] ✓ Thread statuses recalculated");
+
+      void (async () => {
+        try {
+          const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+          await recalculateAllThreadStatuses(accountIdStr);
+          console.log("[CALLBACK] ✓ Thread statuses recalculated (background)");
+        } catch (recalcErr) {
+          console.warn("[CALLBACK] Thread status recalculation failed (background):", recalcErr);
+        }
+      })();
     } catch (error) {
       console.error("[CALLBACK] ✗ Post-reconnection sync failed:", error);
 
@@ -321,6 +326,7 @@ export async function GET(req: NextRequest) {
       });
       const callbackUrl = new URL("/auth/callback", baseUrl);
       callbackUrl.searchParams.set("ticket", signInToken);
+      callbackUrl.searchParams.set("accountId", accountIdStr);
       console.log("[CALLBACK] ========== REDIRECTING TO AUTH CALLBACK (one-click) ==========");
       return NextResponse.redirect(callbackUrl);
     }
