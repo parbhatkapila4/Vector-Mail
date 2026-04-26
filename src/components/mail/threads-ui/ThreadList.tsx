@@ -333,7 +333,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         if (isReconnectUiMuted()) return;
         toast.error("Reconnect Gmail", {
           description:
-            "VectorMail is still signed in — only the Gmail link needs a quick refresh.",
+            "VectorMail is still signed in - only the Gmail link needs a quick refresh.",
           duration: 9000,
           action: {
             label: "Reconnect",
@@ -509,7 +509,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         void utils.account.getAccounts.invalidate();
         if (isReconnectUiMuted()) return;
         toast.error("Sync failed", {
-          description: "Your Gmail link needs to be refreshed. Reconnect — you stay signed in to VectorMail.",
+          description: "Your Gmail link needs to be refreshed. Reconnect - you stay signed in to VectorMail.",
           duration: 6000,
           action: {
             label: "Reconnect Gmail",

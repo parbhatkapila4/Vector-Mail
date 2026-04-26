@@ -632,13 +632,6 @@ export default function AboutPage() {
               ))}
             </div>
 
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/features" className="w-full sm:w-auto">
-                <button className="w-full rounded-xl border border-slate-800 bg-slate-900/50 px-10 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 hover:shadow-lg active:scale-95 sm:w-auto">
-                  Explore Features
-                </button>
-              </Link>
-            </div>
           </motion.div>
         </div>
       </section>

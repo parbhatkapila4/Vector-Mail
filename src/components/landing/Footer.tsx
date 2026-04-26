@@ -1,223 +1,217 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Twitter, Github, Linkedin, Mail } from "lucide-react";
-import { toast } from "sonner";
 
-export function Footer() {
-  const currentYear = new Date().getFullYear();
-  const [email, setEmail] = useState("");
+function BrandMark({ size = 30 }: { size?: number }) {
+  return (
+    <span
+      aria-hidden
+      className="grid place-items-center"
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 30 30" fill="none" width={size} height={size}>
+        <rect x="3" y="6" width="24" height="18" rx="3" fill="#0a0a0a" />
+        <g
+          stroke="#9d7af3"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7 11l3 4-3 4" />
+          <path d="M13 11l3 4-3 4" />
+          <path d="M19 11l3 4-3 4" />
+        </g>
+      </svg>
+    </span>
+  );
+}
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    toast.success("We'll mail you whenever new features come in, Thanks!");
-
-    setEmail("");
-  };
-
-  const links = {
-    product: [
+const COLS: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "Product",
+    links: [
       { label: "Features", href: "/features" },
       { label: "Pricing", href: "/pricing" },
+      { label: "Brief 2.0", href: "/brief" },
+      { label: "Changelog", href: "/changelog" },
     ],
-    resources: [
+  },
+  {
+    title: "Use Cases",
+    links: [
+      { label: "Founders", href: "/?usecase=founders#use-cases" },
+      { label: "Sales", href: "/?usecase=sales#use-cases" },
+      { label: "Engineering", href: "/?usecase=engineering#use-cases" },
+      { label: "Customer Support", href: "/?usecase=support#use-cases" },
+      { label: "Investors", href: "/?usecase=investors#use-cases" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
       { label: "About", href: "/about" },
-      { label: "Support", href: "mailto:parbhat@parbhat.dev" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "Contact Us", href: "mailto:parbhat@parbhat.work" },
     ],
-    legal: [
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
-    ],
-  };
+  },
+];
 
-  const socials = [
-    { icon: Twitter, href: "https://x.com/Parbhat03", label: "Twitter" },
-    {
-      icon: Github,
-      href: "https://github.com/parbhatkapila4/Vector-Mail",
-      label: "GitHub",
-    },
-    {
-      icon: Linkedin,
-      href: "https://www.linkedin.com/in/parbhat-kapila/",
-      label: "LinkedIn",
-    },
-  ];
+export function Footer() {
+  const year = new Date().getFullYear();
 
   return (
-    <footer className="relative overflow-hidden bg-[#0a0a0a]">
-      <div
-        className="pointer-events-none absolute inset-0 flex items-end justify-center pb-48 pt-20"
-        aria-hidden
-      >
-        <span
-          className="select-none font-bold uppercase tracking-[0.06em] text-white/[0.08]"
-          style={{
-            fontSize: "clamp(4rem, 18vw, 14rem)",
-            lineHeight: 0.85,
-          }}
-        >
-          VectorMail
-        </span>
+    <footer className="relative px-5 pb-12 pt-[72px] md:px-8">
+      <div className="relative z-[1] mx-auto grid max-w-[1280px] grid-cols-1 gap-10 md:grid-cols-2 md:gap-8 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-12">
+        <div className="flex flex-col gap-5">
+          <Link
+            href="/"
+            aria-label="VectorMail"
+            className="flex items-center gap-2.5 leading-none transition-opacity hover:opacity-90"
+            style={{
+              color: "var(--vmx-ink, #0a0a0a)",
+              fontFamily: "var(--vmx-sans)",
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: "-0.04em",
+            }}
+          >
+            <BrandMark />
+            VectorMail
+          </Link>
+
+          <p
+            className="max-w-[280px]"
+            style={{
+              fontSize: 14,
+              color: "var(--vmx-ink-2, #4a4a4a)",
+              lineHeight: 1.5,
+            }}
+          >
+            A drop-in intelligence layer for the email you already use. Built
+            for production.
+          </p>
+
+          <div className="mt-2 flex gap-3.5">
+            {[
+              {
+                label: "X",
+                href: "https://x.com/Parbhat03",
+                svg: (
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="currentColor">
+                    <path d="M14.5 1h-2.7L9 5 6.2 1H1.5l5 7-5 8h2.7L8 11l3.8 5h4.7l-5.5-8 5.5-7zM4.7 14.5L7 11l-1.2-1.7-3.6 5.2h2.5zM13.3 14.5L9 8.5l1.2-1.7 5.6 7.7h-2.5z" />
+                  </svg>
+                ),
+              },
+              {
+                label: "LinkedIn",
+                href: "https://www.linkedin.com/in/parbhat-kapila/",
+                svg: (
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="currentColor">
+                    <path d="M15.5 1H2.5C1.7 1 1 1.7 1 2.5v13c0 .8.7 1.5 1.5 1.5h13c.8 0 1.5-.7 1.5-1.5v-13c0-.8-.7-1.5-1.5-1.5zm-9 13H4V7h2.5v7zM5.2 6c-.8 0-1.5-.7-1.5-1.5S4.4 3 5.2 3s1.5.7 1.5 1.5S6.1 6 5.2 6zM14 14h-2.5v-3.5c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5V14H6V7h2.5v1c.5-.7 1.5-1.2 2.5-1.2 1.7 0 3 1.3 3 3V14z" />
+                  </svg>
+                ),
+              },
+              {
+                label: "GitHub",
+                href: "https://github.com/parbhatkapila4/Vector-Mail",
+                svg: (
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="currentColor">
+                    <path d="M9 1C4.6 1 1 4.6 1 9c0 3.5 2.3 6.5 5.5 7.6.4.1.5-.2.5-.4v-1.5c-2.2.5-2.7-1.1-2.7-1.1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7.1-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.1-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8.6-.2 1.3-.3 2-.3s1.4.1 2 .3c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3-1.8 3.7-3.6 3.9.3.2.5.7.5 1.4v2c0 .2.1.5.5.4 3.2-1.1 5.5-4.1 5.5-7.6 0-4.4-3.6-8-8-8z" />
+                  </svg>
+                ),
+              },
+            ].map((s) => (
+              <a
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={s.label}
+                className="grid place-items-center rounded-[7px] transition-all"
+                style={{
+                  width: 32,
+                  height: 32,
+                  background: "rgba(255,255,255,0.5)",
+                  border: "1px solid var(--vmx-line-strong, #d6cfe5)",
+                  color: "var(--vmx-ink-2, #4a4a4a)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "var(--vmx-ink, #0a0a0a)";
+                  (e.currentTarget as HTMLElement).style.color = "white";
+                  (e.currentTarget as HTMLElement).style.borderColor =
+                    "var(--vmx-ink, #0a0a0a)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "rgba(255,255,255,0.5)";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "var(--vmx-ink-2, #4a4a4a)";
+                  (e.currentTarget as HTMLElement).style.borderColor =
+                    "var(--vmx-line-strong, #d6cfe5)";
+                }}
+              >
+                {s.svg}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {COLS.map((col) => (
+          <div key={col.title}>
+            <h4
+              className="mb-4 uppercase"
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                color: "var(--vmx-ink-3, #767676)",
+              }}
+            >
+              {col.title}
+            </h4>
+            <ul className="flex flex-col gap-3">
+              {col.links.map((l) => (
+                <li key={l.label}>
+                  <Link
+                    href={l.href}
+                    className="transition-colors"
+                    style={{
+                      color: "var(--vmx-ink-1, #1f1f1f)",
+                      fontSize: 14.5,
+                      fontWeight: 500,
+                      letterSpacing: "-0.005em",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.color =
+                        "var(--vmx-lav-bright, #9d7af3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.color =
+                        "var(--vmx-ink-1, #1f1f1f)";
+                    }}
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-6 pb-12 pt-20">
-        <div className="grid gap-12 lg:grid-cols-6">
-          <div className="lg:col-span-2">
-            <Link href="/" className="inline-flex items-center gap-2.5">
-              <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg ring-1 ring-white/10">
-                <video
-                  src="/Vectormail-logo.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="h-full w-full scale-[1.4] object-cover"
-                />
-              </div>
-              <span className="text-lg font-semibold tracking-tight text-white">
-                VectorMail
-              </span>
-            </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-zinc-500">
-              AI-powered email that saves you hours every week. Smart search,
-              instant summaries, and replies that sound like you.
-            </p>
-
-            <div className="mt-8">
-              <p className="mb-3 text-sm font-medium text-white">
-                Stay updated
-              </p>
-              <form onSubmit={handleSubscribe} className="flex gap-2">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500/50"
-                />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
-                >
-                  Subscribe
-                </button>
-              </form>
-            </div>
-
-            <div className="mt-8 flex items-center gap-3">
-              {socials.map((social) => (
-                <Link
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
-                  aria-label={social.label}
-                >
-                  <social.icon className="h-4 w-4" />
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-wider text-zinc-500">
-              Product
-            </h3>
-            <ul className="space-y-3">
-              {links.product.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-zinc-400 transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-wider text-zinc-500">
-              Resources
-            </h3>
-            <ul className="space-y-3">
-              {links.resources.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-zinc-400 transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-wider text-zinc-500">
-              Legal
-            </h3>
-            <ul className="space-y-3">
-              {links.legal.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-zinc-400 transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-8">
-              <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-zinc-500">
-                Contact
-              </h3>
-              <a
-                href="mailto:parbhat@parbhat.dev"
-                className="inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white"
-              >
-                <Mail className="h-4 w-4" />
-                parbhat@parbhat.dev
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 flex flex-col items-center justify-between gap-6 border-t border-white/5 pt-8 sm:flex-row">
-          <div className="flex items-center gap-2 text-sm text-zinc-600">
-            <span>© {currentYear} VectorMail.</span>
-            <span className="hidden sm:inline">·</span>
-            <span>All rights reserved.</span>
-          </div>
-
-          <div className="flex items-center gap-6 text-sm">
-            <span className="flex items-center gap-2 text-zinc-600">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-              </span>
-              All systems operational
-            </span>
-          </div>
-        </div>
+      <div
+        className="mx-auto mt-16 flex max-w-[1280px] flex-wrap items-center justify-between gap-3 pt-6 text-[13px]"
+        style={{
+          borderTop: "1px solid rgba(0,0,0,0.08)",
+          color: "var(--vmx-ink-3, #767676)",
+        }}
+      >
+        <span>© {year} VectorMail, Inc.</span>
+        <span style={{ fontFamily: "var(--vmx-mono)", fontSize: 11.5 }}>
+          v2.4 · all systems operational
+        </span>
       </div>
     </footer>
   );

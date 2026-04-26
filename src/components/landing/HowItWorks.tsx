@@ -1,235 +1,389 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Mail, Zap, CheckCircle2 } from "lucide-react";
 
-const steps = [
+const STEPS = [
   {
-    number: "01",
-    title: "Connect Your Email",
-    description:
-      "Link your Gmail account securely. We use enterprise-grade encryption to keep your data safe.",
-    icon: Mail,
-    color: "from-blue-500 to-cyan-500",
+    h: "Connect",
+    p: "One-click Gmail or Outlook OAuth. No SMTP, no IMAP gymnastics, no boilerplate.",
   },
   {
-    number: "02",
-    title: "AI Analyzes Everything",
-    description:
-      "Our AI instantly processes your inbox, understanding context, priority, and relationships.",
-    icon: Mail,
-    color: "from-purple-500 to-pink-500",
+    h: "Learn",
+    p: "VectorMail indexes your threads, contacts, and writing style - then keeps learning.",
   },
   {
-    number: "03",
-    title: "Work Smarter",
-    description:
-      "Get intelligent suggestions, auto-replies, and find any email in seconds with semantic search.",
-    icon: Zap,
-    color: "from-yellow-500 to-red-500",
+    h: "Brief",
+    p: "Wake up to a prioritized digest. The 5 emails that matter, summarized with action items.",
+  },
+  {
+    h: "Reply",
+    p: "Drafts that sound like you. Approve in one keystroke. Inbox zero by 9 AM.",
   },
 ];
 
 export function HowItWorks() {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActive((a) => (a + 1) % STEPS.length);
+    }, 2400);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <section className="relative overflow-hidden bg-black py-32">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)]"></div>
-
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="mb-20 text-center"
+    <section className="vmx-halftone relative px-5 py-[120px] md:px-8">
+      <div className="relative mx-auto max-w-[1180px]">
+        <p
+          className="mb-2"
+          style={{
+            fontSize: 18,
+            color: "var(--vmx-ink-3, #767676)",
+            fontWeight: 400,
+            letterSpacing: "-0.005em",
+          }}
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            viewport={{ once: true }}
-            className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-xl"
+          How it works
+        </p>
+        <h2
+          className="mb-16 max-w-[900px]"
+          style={{
+            fontSize: "clamp(32px, 4vw, 56px)",
+            lineHeight: 1.05,
+            letterSpacing: "-0.04em",
+            fontWeight: 600,
+            color: "var(--vmx-ink, #0a0a0a)",
+            fontFamily: "var(--vmx-sans)",
+          }}
+        >
+          Connect your inbox.{" "}
+          <span
+            style={{
+              fontFamily: "var(--vmx-serif)",
+              fontStyle: "italic",
+              fontWeight: 400,
+            }}
           >
-            <CheckCircle2 className="h-4 w-4 text-blue-400" />
-            <span className="text-sm font-medium text-gray-300">
-              Simple process
-            </span>
-          </motion.div>
+            VectorMail learns the rest.
+          </span>
+        </h2>
 
-          <h2 className="mb-6 text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
-            Get started in minutes
-          </h2>
-          <p className="mx-auto max-w-3xl text-xl text-gray-400">
-            No complex setup. No learning curve. Just intelligent email
-            management from day one.
-          </p>
-        </motion.div>
-
-        <div className="space-y-24">
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.number}
-              initial={{ opacity: 0, y: 60 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: index * 0.2 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <div
-                className={`grid grid-cols-1 items-center gap-12 lg:grid-cols-2 ${index % 2 === 1 ? "lg:flex-row-reverse" : ""
-                  }`}
+        <div
+          className="grid grid-cols-1 overflow-hidden md:grid-cols-[380px_1fr]"
+          style={{
+            background: "var(--vmx-paper, #ffffff)",
+            border: "1px solid var(--vmx-line, #e5e0ee)",
+            borderRadius: "var(--vmx-r-lg, 20px)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div
+            className="relative px-7 py-8"
+            style={{
+              background: "var(--vmx-paper-2, #faf9fc)",
+              borderRight: "1px solid var(--vmx-line, #e5e0ee)",
+            }}
+          >
+            <span
+              aria-hidden
+              className="absolute"
+              style={{
+                left: 38,
+                top: 50,
+                bottom: 50,
+                width: 1,
+                background:
+                  "linear-gradient(180deg, var(--vmx-lav-deep, #c0a8f5), transparent)",
+              }}
+            />
+            {STEPS.map((s, i) => (
+              <button
+                key={s.h}
+                type="button"
+                onClick={() => setActive(i)}
+                className={`relative block w-full cursor-pointer py-[18px] pl-9 pr-0 text-left ${active === i ? "vmx-step-active" : ""}`}
               >
-                <motion.div
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.2 + 0.2 }}
-                  viewport={{ once: true }}
-                  className={index % 2 === 1 ? "lg:order-2" : ""}
-                >
-                  <div className="mb-6 flex items-center gap-4">
-                    <motion.div
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      className={`relative h-20 w-20 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-2xl`}
-                    >
-                      <span className="text-3xl font-bold text-white">
-                        {step.number}
-                      </span>
-                      <div
-                        className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${step.color} opacity-50 blur-xl`}
-                      ></div>
-                    </motion.div>
-                    <div
-                      className={`h-1 flex-1 bg-gradient-to-r ${step.color} rounded-full opacity-20`}
-                    ></div>
-                  </div>
-
-                  <h3 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                    {step.title}
-                  </h3>
-                  <p className="mb-6 text-xl leading-relaxed text-gray-400">
-                    {step.description}
-                  </p>
-
-                  <div className="space-y-3">
-                    {[
-                      "Works with any email provider",
-                      "Set up in under 2 minutes",
-                      "No technical knowledge required",
-                    ]
-                      .slice(0, index + 1)
-                      .map((feature, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.2 + 0.4 + i * 0.1 }}
-                          viewport={{ once: true }}
-                          className="flex items-center gap-3 text-gray-300"
-                        >
-                          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-blue-400" />
-                          <span>{feature}</span>
-                        </motion.div>
-                      ))}
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{
-                    opacity: 0,
-                    scale: 0.8,
-                    x: index % 2 === 0 ? 40 : -40,
+                <span className="vmx-step-dot" />
+                <div
+                  className="mb-1.5"
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 600,
+                    color: "var(--vmx-ink, #0a0a0a)",
+                    letterSpacing: "-0.018em",
+                    fontFamily: "var(--vmx-sans)",
                   }}
-                  whileInView={{ opacity: 1, scale: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.2 + 0.3 }}
-                  viewport={{ once: true }}
-                  className={index % 2 === 1 ? "lg:order-1" : ""}
                 >
-                  <motion.div
-                    whileHover={{
-                      scale: 1.05,
-                      rotate: index % 2 === 0 ? 2 : -2,
-                    }}
-                    transition={{ duration: 0.3 }}
-                    className="relative flex aspect-square items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-12 backdrop-blur-xl"
-                  >
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${step.color} opacity-10 blur-2xl`}
-                    ></div>
+                  {s.h}
+                </div>
+                <p
+                  className="max-w-[240px]"
+                  style={{
+                    fontSize: 14,
+                    color: "var(--vmx-ink-3, #767676)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {s.p}
+                </p>
+              </button>
+            ))}
+          </div>
 
-                    <motion.div
-                      animate={{
-                        rotate: [0, 10, -10, 0],
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className={`relative rounded-full bg-gradient-to-br p-12 ${step.color} shadow-2xl`}
-                    >
-                      <step.icon className="h-24 w-24 text-white" />
-                      <div
-                        className={`absolute inset-0 rounded-full bg-gradient-to-br ${step.color} opacity-60 blur-3xl`}
-                      ></div>
-                    </motion.div>
-
-                    {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute h-2 w-2 rounded-full bg-white"
-                        animate={{
-                          y: [0, -30, 0],
-                          opacity: [0.2, 1, 0.2],
-                          scale: [0.5, 1, 0.5],
-                        }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                          delay: i * 0.6,
-                        }}
-                        style={{
-                          left: `${20 + i * 15}%`,
-                          top: `${50 + (i % 2 === 0 ? 10 : -10)}%`,
-                        }}
-                      />
-                    ))}
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              {index < steps.length - 1 && (
-                <motion.div
-                  initial={{ scaleY: 0 }}
-                  whileInView={{ scaleY: 1 }}
-                  transition={{ duration: 0.8, delay: index * 0.2 + 0.5 }}
-                  viewport={{ once: true }}
-                  className="absolute left-1/2 mt-12 h-24 w-0.5 origin-top -translate-x-1/2 bg-gradient-to-b from-blue-500/50 to-transparent"
-                />
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          viewport={{ once: true }}
-          className="mt-24 text-center"
-        >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="group inline-flex items-center gap-3 rounded-2xl bg-white px-10 py-6 text-lg font-bold text-black shadow-2xl transition-all hover:shadow-[0_20px_80px_-20px_rgba(255,255,255,0.5)]"
+          <motion.div
+            className="vmx-dotted-light relative flex min-h-[460px] flex-col gap-3 p-9"
+            style={{
+              background:
+                "linear-gradient(135deg, #d8c3fa 0%, #b090f5 100%)",
+              willChange: "transform",
+            }}
           >
-            <span>Start Your Free Trial</span>
-            <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-2" />
-          </motion.button>
-          <p className="mt-4 text-sm text-gray-500">
-            Free during beta · No credit card required
-          </p>
-        </motion.div>
+            <motion.div
+              className="relative z-[1] mr-auto max-w-[85%] rounded-[18px] px-[18px] py-[14px]"
+              style={{
+                background: "rgba(255,255,255,0.92)",
+                fontSize: 14,
+                color: "var(--vmx-ink-1, #1f1f1f)",
+                lineHeight: 1.5,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -2, 0],
+                x: [0, 1, 0],
+              }}
+              transition={{
+                duration: 4.8,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              Can you pull only investor emails from this week and summarize?
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] inline-flex items-center gap-1.5 self-center rounded-full px-3 py-1 text-[13px] font-medium"
+              style={{
+                background: "rgba(255,255,255,0.4)",
+                color: "var(--vmx-ink, #0a0a0a)",
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -1.5, 0],
+                opacity: [0.9, 1, 0.9],
+              }}
+              transition={{
+                duration: 3.2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              <motion.svg
+                width="11"
+                height="11"
+                viewBox="0 0 12 12"
+                fill="none"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 1.4 }}
+              >
+                <path
+                  d="M2 6l3 3 5-7"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </motion.svg>
+              Inbox memory updated
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] ml-auto max-w-[85%] rounded-[18px] px-[18px] py-[14px]"
+              style={{
+                background: "white",
+                fontSize: 14,
+                color: "var(--vmx-ink-1, #1f1f1f)",
+                lineHeight: 1.5,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -2.2, 0],
+                x: [0, -1, 0],
+              }}
+              transition={{
+                duration: 5.2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.2,
+              }}
+            >
+              Also draft a follow-up for everyone who has not replied.
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] flex items-center gap-2 rounded-[14px] px-4 py-3"
+              style={{
+                background: "rgba(255,255,255,0.3)",
+                color: "var(--vmx-ink-1, #1f1f1f)",
+                fontSize: 13,
+                fontWeight: 500,
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -1.2, 0],
+                opacity: [0.88, 0.98, 0.88],
+              }}
+              transition={{
+                duration: 3.8,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.4,
+              }}
+            >
+              <span
+                className="grid shrink-0 place-items-center rounded-full"
+                style={{
+                  width: 18,
+                  height: 18,
+                  background: "var(--vmx-ink, #0a0a0a)",
+                  color: "var(--vmx-lav-bright, #9d7af3)",
+                }}
+              >
+                <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                  <path
+                    d="M2 5l2 2 4-5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span style={{ color: "rgba(0,0,0,0.6)" }}>From memory:</span>
+              <span>Priority: investor threads, Tone: concise, SLA: same-day…</span>
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] mr-auto max-w-[85%] rounded-[18px] px-[18px] py-[14px]"
+              style={{
+                background: "white",
+                fontSize: 14,
+                color: "var(--vmx-ink-1, #1f1f1f)",
+                lineHeight: 1.5,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -2, 0],
+                x: [0, 0.8, 0],
+              }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.6,
+              }}
+            >
+              <strong>Done.</strong> 14 investor threads surfaced, 5 high-priority
+              replies drafted, and non-responders queued for follow-up.
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-[12.5px] font-medium"
+              style={{
+                background: "rgba(255,255,255,0.36)",
+                color: "var(--vmx-ink, #0a0a0a)",
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -1.2, 0],
+                opacity: [0.88, 0.98, 0.88],
+              }}
+              transition={{
+                duration: 3.4,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.9,
+              }}
+            >
+              <span
+                className="block rounded-full"
+                style={{ width: 6, height: 6, background: "#1f1bea" }}
+              />
+              Follow-up queue synced · 9:41 AM
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] ml-auto max-w-[82%] rounded-[18px] px-[18px] py-[14px]"
+              style={{
+                background: "white",
+                fontSize: 14,
+                color: "var(--vmx-ink-1, #1f1f1f)",
+                lineHeight: 1.5,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -2, 0],
+                x: [0, -0.8, 0],
+              }}
+              transition={{
+                duration: 4.6,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1.2,
+              }}
+            >
+              Sent the first 3 replies now - want me to queue the remaining 2
+              for post-lunch follow-up?
+            </motion.div>
+
+            <motion.div
+              className="relative z-[1] flex items-center gap-2 rounded-[14px] px-4 py-3"
+              style={{
+                background: "rgba(255,255,255,0.28)",
+                color: "var(--vmx-ink-1, #1f1f1f)",
+                fontSize: 13,
+                fontWeight: 500,
+                willChange: "transform, opacity",
+              }}
+              animate={{
+                y: [0, -1.2, 0],
+                opacity: [0.86, 0.98, 0.86],
+              }}
+              transition={{
+                duration: 3.9,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1.5,
+              }}
+            >
+              <span
+                className="grid shrink-0 place-items-center rounded-full"
+                style={{
+                  width: 18,
+                  height: 18,
+                  background: "var(--vmx-ink, #0a0a0a)",
+                  color: "var(--vmx-lav-bright, #9d7af3)",
+                }}
+              >
+                <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                  <path
+                    d="M2 5l2 2 4-5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span style={{ color: "rgba(0,0,0,0.6)" }}>Execution state:</span>
+              <span>Replies drafted, queued, and tracked by thread priority.</span>
+            </motion.div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

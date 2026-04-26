@@ -283,7 +283,7 @@ export function AutomationOutcomeBanner({
                       )}
                     </div>
                     <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-[#52525b] dark:text-[#a1a1aa]">
-                      {row.lastErrorTruncated || row.lastError || "—"}
+                      {row.lastErrorTruncated || row.lastError || "-"}
                     </p>
                   </li>
                 ))}

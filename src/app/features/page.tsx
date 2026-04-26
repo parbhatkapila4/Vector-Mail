@@ -39,38 +39,38 @@ export default function FeaturesPage() {
 
   const stats = [
     {
-      value: "+70%",
-      label: "Faster Email Processing",
+      value: "Semantic",
+      label: "Search by Meaning",
       color: "from-slate-400 to-slate-500",
       icon: Zap,
     },
     {
-      value: "-85%",
-      label: "Time Spent Searching",
+      value: "Threaded",
+      label: "Context-Aware Retrieval",
       color: "from-slate-400 to-slate-500",
       icon: Search,
     },
     {
-      value: "<50ms",
-      label: "Search Latency (p99)",
+      value: "Briefs",
+      label: "Action-Oriented Summaries",
       color: "from-emerald-500 to-emerald-600",
       icon: TrendingUp,
     },
     {
-      value: "99.9%",
-      label: "Uptime Reliability",
+      value: "Typed",
+      label: "End-to-End Type Safety",
       color: "from-blue-500 to-blue-600",
       icon: Shield,
     },
     {
-      value: "94%",
-      label: "Embedding Cache Hit Rate",
+      value: "Cached",
+      label: "Warm Query Paths",
       color: "from-slate-500 to-slate-600",
       icon: Database,
     },
     {
-      value: "100/min",
-      label: "Email Batch Processing",
+      value: "Live",
+      label: "Incremental Sync Pipeline",
       color: "from-slate-400 to-slate-500",
       icon: Activity,
     },
@@ -102,7 +102,7 @@ export default function FeaturesPage() {
         "Natural language queries - no more keyword guessing",
         "Vector embeddings cached in-memory (94% hit rate)",
         "Hybrid search combining vector + BM25 algorithms",
-        "Sub-50ms p99 latency on 100k+ emails",
+        "Low-latency retrieval for large inboxes",
         "Smart indexing - only re-embeds changed content",
         "Find similar conversations automatically",
       ],
@@ -139,22 +139,22 @@ export default function FeaturesPage() {
       icon: Layers,
       title: "Infrastructure & Deployment",
       list: [
-        "Vercel Edge Functions in 10+ regions",
+        "Vercel deployment for global delivery",
         "70% reduction in cold starts",
         "Automatic global CDN distribution",
         "Native streaming for AI responses",
-        "99.9% uptime with monitoring",
+        "Operational monitoring and alerting",
       ],
     },
     {
       icon: Lock,
       title: "Security & Compliance",
       list: [
-        "Zero-knowledge encryption architecture",
+        "Security-focused architecture",
         "Strict CSP headers for XSS prevention",
         "Rate limiting with exponential backoff",
-        "SOC 2 compliance ready infrastructure",
-        "GDPR-compliant data export/deletion",
+        "Scoped access and operational controls",
+        "Data management workflows for user requests",
       ],
     },
     {
@@ -330,17 +330,17 @@ export default function FeaturesPage() {
             </h1>
 
             <p className="mx-auto mb-6 w-full max-w-3xl break-words text-sm font-semibold text-white sm:text-base md:text-lg lg:text-xl">
-              Traditional email clients use 1995 keyword search. VectorMail uses
-              semantic vector embeddings and AI to understand what you actually
-              mean.
+              Traditional email relies on keyword search. VectorMail combines
+              semantic retrieval and AI workflows for execution-focused inbox
+              operations.
             </p>
 
             <div className="flex w-full flex-wrap items-center justify-center gap-2 text-xs text-white sm:gap-4 sm:text-sm">
-              <span className="whitespace-nowrap">🚀 Open Source</span>
+              <span className="whitespace-nowrap">🚀 Semantic Retrieval</span>
               <span className="hidden sm:inline">•</span>
-              <span className="whitespace-nowrap">⚡ Sub-50ms Search</span>
+              <span className="whitespace-nowrap">⚡ Action Briefs</span>
               <span className="hidden sm:inline">•</span>
-              <span className="whitespace-nowrap">🔒 Zero-Knowledge</span>
+              <span className="whitespace-nowrap">🔒 Security-Focused</span>
               <span className="hidden sm:inline">•</span>
               <span className="whitespace-nowrap">🏗️ Production Grade</span>
             </div>
@@ -358,11 +358,11 @@ export default function FeaturesPage() {
             className="mb-16 text-center"
           >
             <h2 className="mb-4 text-4xl font-black text-white sm:text-5xl">
-              Measured Performance Impact
+              Product Capabilities
             </h2>
             <p className="mx-auto max-w-3xl text-xl font-semibold text-white">
-              Real metrics from production deployment showing quantifiable
-              improvements in email workflow efficiency.
+              Core signals from the production architecture behind search,
+              summarization, drafting, and sync.
             </p>
           </motion.div>
 
@@ -421,8 +421,8 @@ export default function FeaturesPage() {
                 key={feature.id}
                 onClick={() => setActiveTab(feature.id)}
                 className={`rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${activeTab === feature.id
-                    ? "bg-slate-800 text-white shadow-lg border border-slate-700"
-                    : "border border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-lg border border-slate-700"
+                  : "border border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-800/50 hover:text-white"
                   }`}
               >
                 {feature.title}

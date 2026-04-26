@@ -1757,7 +1757,7 @@ export const accountRouter = createTRPCRouter({
             throw new TRPCError({
               code: "UNAUTHORIZED",
               message:
-                "Gmail access expired. Use Reconnect once — you stay signed in to VectorMail.",
+                "Gmail access expired. Use Reconnect once - you stay signed in to VectorMail.",
             });
           }
         }
@@ -2653,7 +2653,7 @@ export const accountRouter = createTRPCRouter({
                 accountId: account.id,
                 durationMs,
               },
-              "Aurinko sync token invalid; cleared delta — user can retry Sync",
+              "Aurinko sync token invalid; cleared delta - user can retry Sync",
             );
             return {
               success: false,

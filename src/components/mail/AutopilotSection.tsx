@@ -34,7 +34,7 @@ type Mode = "manual" | "assist" | "auto";
 
 function ConfidenceTag({ value }: { value: number | null }) {
   const pct = value == null ? null : Math.round(value * 100);
-  const label = value == null ? "—" : `${pct}%`;
+  const label = value == null ? "-" : `${pct}%`;
   const tone =
     value != null && value >= 0.85 ? "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
       : value != null && value >= 0.6 ? "bg-amber-500/10 text-amber-400 ring-amber-500/20"
@@ -754,7 +754,7 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
                         <p className="text-[13px] font-semibold text-white">
                           {selectedDetailQuery.data.thread?.subject ?? "(No subject)"}
                         </p>
-                        <p className="text-[11px] text-zinc-400">Thread: {selectedDetailQuery.data.thread?.id ?? "—"}</p>
+                        <p className="text-[11px] text-zinc-400">Thread: {selectedDetailQuery.data.thread?.id ?? "-"}</p>
                       </div>
                       <Button
                         type="button"
@@ -771,7 +771,7 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
                       <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">Status: <span className="font-semibold">{selectedDetailQuery.data.status}</span></div>
                       <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">Retries: <span className="font-semibold">{selectedDetailQuery.data.retryCount}</span></div>
                       <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">Mode: <span className="font-semibold">{selectedDetailQuery.data.dryRun ? "dry-run" : "real-send"}</span></div>
-                      <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">Confidence: <span className="font-semibold">{selectedDetailQuery.data.confidence == null ? "—" : `${Math.round(selectedDetailQuery.data.confidence * 100)}%`}</span></div>
+                      <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">Confidence: <span className="font-semibold">{selectedDetailQuery.data.confidence == null ? "-" : `${Math.round(selectedDetailQuery.data.confidence * 100)}%`}</span></div>
                     </div>
                     {selectedDetailQuery.data.reason && (
                       <p className="mb-3 text-[11px] text-zinc-300">Reason: {selectedDetailQuery.data.reason}</p>

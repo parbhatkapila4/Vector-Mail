@@ -3,7 +3,7 @@ import "@/lib/suppress-console-errors";
 
 import { type Metadata } from "next";
 import Script from "next/script";
-import { Inter, Oswald } from "next/font/google";
+import { Inter, Oswald, Newsreader, JetBrains_Mono } from "next/font/google";
 
 import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -55,11 +55,27 @@ const oswald = Oswald({
   variable: "--font-oswald",
 });
 
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
+  display: "swap",
+  adjustFontFallback: false,
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${oswald.variable} ${newsreader.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Script
           id="chunk-load-recovery"

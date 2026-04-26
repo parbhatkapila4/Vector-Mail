@@ -240,7 +240,7 @@ export class Account {
       if (!warnedMissingRefreshTokenAccountIds.has(this.id)) {
         warnedMissingRefreshTokenAccountIds.add(this.id);
         console.warn(
-          `[accounts] No refresh token in DB for account ${this.id} — silent renewal disabled; reconnect Gmail if the mailbox stops syncing.`,
+          `[accounts] No refresh token in DB for account ${this.id} - silent renewal disabled; reconnect Gmail if the mailbox stops syncing.`,
         );
       }
       return false;

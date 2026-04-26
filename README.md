@@ -126,7 +126,7 @@ Natural-language **find + summarize** over the connected inbox (drafting/sending
 
 ### Inbox Brain product analytics (optional)
 
-When `NEXT_PUBLIC_ANALYTICS_ENABLED="true"`, the client posts privacy-safe events to `POST /api/analytics/inbox-brain`. The route validates event names, strips unknown property shapes, and **logs only** (structured JSON in production, `console.info` in development)—no database writes. Properties are limited to coarse strings (e.g. filter keys), booleans, and counts—never subject, body, or email addresses.
+When `NEXT_PUBLIC_ANALYTICS_ENABLED="true"`, the client posts privacy-safe events to `POST /api/analytics/inbox-brain`. The route validates event names, strips unknown property shapes, and **logs only** (structured JSON in production, `console.info` in development)-no database writes. Properties are limited to coarse strings (e.g. filter keys), booleans, and counts-never subject, body, or email addresses.
 
 | Event                                 | When it fires                                                        | Typical properties                                                                                  |
 | ------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
