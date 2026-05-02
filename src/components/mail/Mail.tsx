@@ -92,6 +92,7 @@ interface MailLayoutProps {
 
 
 const THREAD_LIST_WIDTH_PCT = { min: 20, max: 55, fallback: 52 } as const;
+const AI_PANEL_WIDTH_PX = { min: 320, max: 620, fallback: 360 } as const;
 
 function threadListWidthPctDefault(
   defaultLayout?: number[] | readonly number[] | undefined,
@@ -131,12 +132,19 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isAiResizing, setIsAiResizing] = useState(false);
+  const [aiPanelWidthPx, setAiPanelWidthPx] = useLocalStorage<number>(
+    "mail-ai-panel-width-px",
+    AI_PANEL_WIDTH_PX.fallback,
+  );
   const signOutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resizeStartRef = useRef<{ x: number; pct: number; finalPct: number } | null>(null);
+  const aiResizeStartRef = useRef<{ x: number; widthPx: number; finalWidthPx: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const threadListRef = useRef<ThreadListRef>(null);
   const rafRef = useRef<number | null>(null);
+  const aiRafRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
   const isMacOS =
     typeof window !== "undefined" &&
@@ -175,6 +183,20 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
       resizeStartRef.current = { x: e.clientX, pct: sidebarWidthPct, finalPct: sidebarWidthPct };
     },
     [sidebarWidthPct],
+  );
+
+  const handleAiResizeStart = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      setIsAiResizing(true);
+      aiResizeStartRef.current = {
+        x: e.clientX,
+        widthPx: aiPanelWidthPx,
+        finalWidthPx: aiPanelWidthPx,
+      };
+    },
+    [aiPanelWidthPx],
   );
 
   useEffect(() => {
@@ -224,6 +246,53 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, [isResizing, setSidebarWidthPct]);
+
+  useEffect(() => {
+    if (!isAiResizing) return;
+    const pendingRef = { current: null as number | null };
+    const flush = () => {
+      aiRafRef.current = null;
+      const x = pendingRef.current;
+      pendingRef.current = null;
+      if (x === null) return;
+      const start = aiResizeStartRef.current;
+      if (!start) return;
+      const delta = start.x - x;
+      let next = start.widthPx + delta;
+      next = Math.max(AI_PANEL_WIDTH_PX.min, Math.min(AI_PANEL_WIDTH_PX.max, next));
+      aiResizeStartRef.current = { ...start, finalWidthPx: next };
+      setAiPanelWidthPx(next);
+    };
+    const onMove = (e: PointerEvent) => {
+      pendingRef.current = e.clientX;
+      if (aiRafRef.current === null) aiRafRef.current = requestAnimationFrame(flush);
+    };
+    const onUp = () => {
+      if (aiRafRef.current !== null) {
+        cancelAnimationFrame(aiRafRef.current);
+        aiRafRef.current = null;
+      }
+      const start = aiResizeStartRef.current;
+      if (start) {
+        const widthChanged = Math.abs(start.finalWidthPx - start.widthPx) >= 1;
+        setAiPanelWidthPx(start.finalWidthPx);
+        if (widthChanged) {
+          setSelectedThread(null);
+        }
+      }
+      aiResizeStartRef.current = null;
+      setIsAiResizing(false);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      if (aiRafRef.current !== null) cancelAnimationFrame(aiRafRef.current);
+    };
+  }, [isAiResizing, setAiPanelWidthPx]);
 
   const focusSearch = useCallback(() => {
     document.getElementById("mail-search-input")?.focus();
@@ -669,7 +738,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
 
               <button
                 type="button"
-                title="Open AI Inbox Brain"
+                title="Open VectorMail Inbox Brain"
                 onClick={() => {
                   if (isDemo) {
                     setRequestAccessOpen(true);
@@ -691,7 +760,13 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                     : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]",
                 )}
               >
-                <MessageCircle className="h-[18px] w-[18px] shrink-0" />
+                <span className="h-[18px] w-[18px] shrink-0 overflow-hidden rounded-full">
+                  <img
+                    src="/Opus-B.png"
+                    alt="Inbox brain"
+                    className="h-full w-full object-cover"
+                  />
+                </span>
                 <span className="flex-1 text-left">Inbox brain</span>
                 {isDemo && (
                   <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
@@ -763,7 +838,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
             ref={containerRef}
             className={cn(
               "flex flex-1 overflow-hidden",
-              isResizing && "select-none cursor-col-resize",
+              (isResizing || isAiResizing) && "select-none cursor-col-resize",
             )}
           >
             <aside
@@ -822,8 +897,8 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
             <main
               className={cn(
                 "flex min-w-0 flex-1 flex-col bg-white dark:bg-[#111113]",
-                showAIPanel && "mr-[360px]",
               )}
+              style={{ marginRight: showAIPanel ? aiPanelWidthPx : 0 }}
             >
               <ThreadDisplay threadId={selectedThread} onClose={handleThreadClose} />
             </main>
@@ -831,19 +906,35 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
 
             <aside
               className={cn(
-                "fixed right-0 z-40 w-[360px] border-l border-[#e5e7eb] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.04)] transition-transform duration-300 ease-out dark:border-[#1a1a23] dark:bg-[#111113] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
+                "fixed right-0 z-40 border-l border-[#e5e7eb] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.04)] transition-transform duration-300 ease-out dark:border-[#1a1a23] dark:bg-[#111113] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
                 isDemo ? "top-[2.25rem] h-[calc(100vh-2.25rem)]" : "top-0 h-screen",
                 showAIPanel ? "translate-x-0" : "translate-x-full",
               )}
+              style={{ width: aiPanelWidthPx }}
             >
+              <div
+                role="separator"
+                aria-label="Resize AI Inbox Brain panel"
+                onPointerDown={handleAiResizeStart}
+                className={cn(
+                  "absolute left-0 top-0 z-50 h-full w-[6px] -translate-x-1/2 cursor-col-resize",
+                  "bg-transparent hover:bg-[#3b82f6]/20 dark:hover:bg-[#3b82f6]/20",
+                  isAiResizing && "bg-[#3b82f6]/30 dark:bg-[#3b82f6]/30",
+                )}
+                style={{ touchAction: "none" }}
+              />
               <div className="flex h-full flex-col">
                 <div className="border-b border-[#e5e7eb] px-4 py-3.5 dark:border-[#1a1a23]">
                   <div className="flex items-center justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3b82f6]">
-                        <MessageCircle className="h-4 w-4 text-white" />
+                      <div className="-mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#111113] ring-1 ring-white/10">
+                        <img
+                          src="/Opus-B.png"
+                          alt="Inbox Brain"
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 py-0.5">
                         <div className="flex items-center gap-2">
                           <span className="truncate text-[14px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
                             AI Inbox Brain
@@ -854,24 +945,12 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                             </span>
                           )}
                         </div>
-                        {!isMobile ? (
-                          <p className="mt-0.5 truncate text-[10px] text-[#9ca3af] dark:text-[#71717a]">
-                            <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                              g
-                            </kbd>
-                            <span className="mx-0.5">then</span>
-                            <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                              b
-                            </kbd>
-                            <span className="mx-1 text-[#d1d5db] dark:text-[#52525b]">·</span>
+                        {!isMobile && (
+                          <p className="mt-1 text-[10px] leading-4 text-[#9ca3af] dark:text-[#71717a]">
                             <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
                               {isMacOS ? "⌘↵" : "Ctrl+Enter"}
                             </kbd>
                             <span className="ml-1">send</span>
-                          </p>
-                        ) : (
-                          <p className="mt-0.5 text-[10px] text-[#9ca3af] dark:text-[#71717a]">
-                            Keyboard shortcuts on desktop
                           </p>
                         )}
                       </div>

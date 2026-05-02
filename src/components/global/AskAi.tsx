@@ -657,7 +657,13 @@ export default function EmailSearchAssistant({
                       {message.role === "assistant" ? (
                         <div className="space-y-2">
                           <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">
-                            <MessageCircle className="h-3 w-3" />
+                            <span className="h-3 w-3 overflow-hidden rounded-full">
+                              <img
+                                src="/Opus-B.png"
+                                alt="Inbox Brain"
+                                className="h-full w-full object-cover"
+                              />
+                            </span>
                             Inbox brain
                           </div>
                           {isStreamingAssistant ? (
@@ -785,8 +791,12 @@ export default function EmailSearchAssistant({
               >
                 <div className="rounded-xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06]">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1a73e8]/80 dark:bg-[#8ab4f8]/80">
-                      <MessageCircle className="h-3 w-3 text-white dark:text-[#202124]" />
+                    <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-[#111113] ring-1 ring-white/10">
+                      <img
+                        src="/Opus-B.png"
+                        alt="Inbox Brain"
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5f6368] [animation-delay:-0.3s]" />

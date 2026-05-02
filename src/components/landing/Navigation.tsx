@@ -88,6 +88,7 @@ export function Navigation() {
   const { signOut } = useClerk();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [authFallbackReady, setAuthFallbackReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -106,6 +107,17 @@ export function Navigation() {
     if (!isLoaded || !isSignedIn) return;
     router.prefetch("/mail");
   }, [isLoaded, isSignedIn, router]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      setAuthFallbackReady(false);
+      return;
+    }
+    const t = window.setTimeout(() => setAuthFallbackReady(true), 1500);
+    return () => window.clearTimeout(t);
+  }, [isLoaded]);
+
+  const canRenderAuthState = isLoaded || authFallbackReady;
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -189,7 +201,7 @@ export function Navigation() {
         </div>
 
         <div className="flex items-center gap-2">
-          {!isLoaded ? (
+          {!canRenderAuthState ? (
             <div className="hidden items-center gap-2 md:flex" aria-hidden>
               <div className="h-9 w-44 animate-pulse rounded-[8px] bg-[#efece5]" />
             </div>
@@ -309,10 +321,10 @@ export function Navigation() {
               </Link>
             ))}
             <div className="my-2 border-t border-[#e5e0ee]" />
-            {!isLoaded ? (
+            {!canRenderAuthState ? (
               <div className="h-10 animate-pulse rounded-[8px] bg-[#efece5]" />
             ) : isSignedIn ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2"> 
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

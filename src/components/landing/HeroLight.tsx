@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
-import { useMailNavigation } from "@/components/mail-navigation-loader";
 
 const ARROW_PATH = "M3 6h6M6 3l3 3-3 3";
 
@@ -235,16 +233,13 @@ const EMAILS: EmailItem[] = [
 ];
 
 export function HeroLight() {
-  const { isSignedIn } = useUser();
-  const { navigateToMail } = useMailNavigation();
   const [activeId, setActiveId] = useState<string>(EMAILS[0]?.id ?? "");
 
   const activeEmail =
     EMAILS.find((e) => e.id === activeId) ?? (EMAILS[0] as EmailItem);
 
   const onPrimaryCta = () => {
-    if (isSignedIn) navigateToMail();
-    else window.location.href = "/sign-up";
+    window.location.href = "/api/demo/enter";
   };
 
   return (
@@ -310,11 +305,12 @@ export function HeroLight() {
             production.
           </p>
 
-          {!isSignedIn && (
-            <div className="mb-[72px] inline-flex items-center gap-3">
-              <PrimaryCta label="Get Started" onClick={onPrimaryCta} />
-            </div>
-          )}
+          <div className="mb-[72px] inline-flex items-center gap-3">
+            <PrimaryCta
+              label="See your inbox gonna look..."
+              onClick={onPrimaryCta}
+            />
+          </div>
 
           <div
             className="relative mx-auto max-w-[1080px] overflow-hidden text-left"

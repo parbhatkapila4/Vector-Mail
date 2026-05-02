@@ -189,7 +189,6 @@ The assistant is allowed to:
 The assistant is NOT allowed to:
 - write/compose/generate emails
 - send emails
-- do unrelated general tasks
 
 Be robust to broken English, slang, mixed language, shorthand, and implicit references like "that failed one on march 17".
 
@@ -228,6 +227,55 @@ Context:
     return null;
   } catch (error) {
     console.warn("[Chat] Scope classification failed:", error);
+    return null;
+  }
+}
+
+async function generateGeneralAssistanceReply(
+  query: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  userId: string,
+  accountId: string | null,
+): Promise<string | null> {
+  if (!env.OPENROUTER_API_KEY) return null;
+
+  try {
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
+        "X-Title": "VectorMail AI",
+      },
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "anthropic/claude-3.5-haiku",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are Inbox Brain, a helpful assistant inside an email product. Answer user requests directly and clearly. Refuse only if the user asks you to draft/compose/write/send an email. Keep answers practical and concise.",
+        },
+        ...messages.slice(-8),
+        { role: "user", content: query },
+      ],
+      max_tokens: 500,
+      temperature: 0.6,
+    });
+
+    recordUsage({
+      userId,
+      accountId: accountId ?? undefined,
+      operation: "chat",
+      inputTokens: completion.usage?.prompt_tokens ?? 0,
+      outputTokens: completion.usage?.completion_tokens ?? 0,
+      model: completion.model ?? undefined,
+    });
+
+    return completion.choices[0]?.message?.content?.trim() ?? null;
+  } catch (error) {
+    console.warn("[Chat] General fallback response failed:", error);
     return null;
   }
 }
@@ -513,18 +561,16 @@ async function chatPostHandler(req: Request) {
         hasStoredResults,
       );
       const shouldRedirect =
-        llmDecision === "out_of_scope" ||
         llmDecision === "compose_or_send_email" ||
-        (llmDecision === null && !heuristicAllowsSearch) ||
         isExplicitComposeOrSendRequest(userQuery);
 
       if (shouldRedirect) {
         const redirectMessage =
-          "I can only help you find and summarize emails. For email writing/sending or other tasks, please use AI Buddy.";
+          "I can help with everything here except writing or sending emails. For drafting/sending, please use AI Buddy.";
 
         return structuredPlainResponse(redirectMessage, {
-          summary: "This panel only searches and summarizes your inbox",
-          actions: ["Use AI Buddy in the sidebar to draft or send email."],
+          summary: "Drafting and sending are handled by AI Buddy",
+          actions: ["Use AI Buddy in the sidebar to draft or send emails."],
           threads: [],
         });
       }
@@ -1677,19 +1723,20 @@ If NONE are relevant, return: 0`;
     }));
 
     if (filteredEmails.length === 0) {
-      if (
-        !userQuery.toLowerCase().includes("email") &&
-        !userQuery.toLowerCase().includes("mail") &&
-        !userQuery.toLowerCase().includes("search") &&
-        !userQuery.toLowerCase().includes("find") &&
-        !userQuery.toLowerCase().includes("show")
-      ) {
-        const redirectMessage =
-          "I can only help you find and summarize emails. For other tasks like generating emails, answering general questions, or coding help, please use AI Buddy - he'll surely help you with this. I can't do that here.";
-
-        return structuredPlainResponse(redirectMessage, {
-          summary: "That request is outside inbox search",
-          actions: ["Use AI Buddy for general questions or drafting email."],
+      const generalReply = await generateGeneralAssistanceReply(
+        userQuery,
+        messages,
+        userId,
+        accountId,
+      );
+      if (generalReply) {
+        const cleaned = removeAllSymbols(generalReply);
+        const headline =
+          cleaned.split(/\n/)[0]?.trim().slice(0, 180) ||
+          "Answered your request";
+        return structuredPlainResponse(cleaned, {
+          summary: headline,
+          actions: [],
           threads: [],
         });
       }
