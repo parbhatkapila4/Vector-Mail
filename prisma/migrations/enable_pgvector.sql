@@ -1,5 +1,4 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 ALTER TABLE "Email" DROP COLUMN IF EXISTS "embedding";
-ALTER TABLE "Email" ADD COLUMN "embedding" vector(768);
-
-
+ALTER TABLE "Email"
+ADD COLUMN "embedding" vector(768);

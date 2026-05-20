@@ -1,1 +1,2 @@
-ALTER TABLE "Account" ADD COLUMN "lastInboxSyncAt" TIMESTAMP(3);
+ALTER TABLE "Account"
+ADD COLUMN "lastInboxSyncAt" TIMESTAMP(3);
