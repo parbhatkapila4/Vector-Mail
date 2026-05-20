@@ -4,9 +4,9 @@
 
 # VectorMail
 
-**AI-powered email client with semantic search and smart composition.**
+**An email client for Gmail with semantic search and replies trained on your sent mail.**
 
-One app: connect Gmail (via Aurinko), sync threads, search by meaning (pgvector), and compose or reply with AI. Built for developers who want a single codebase for inbox, search, and AI without a separate vector store.
+Connect Gmail through Aurinko, sync threads into Postgres, search by meaning with pgvector, and draft replies through OpenRouter. One stack, one database, no separate vector store.
 
 [Demo](https://vectormail.space) · [Documentation](#quick-start) · [API](#api-reference)
 
@@ -104,10 +104,6 @@ Summaries and classifications (e.g. promotions, social) stored on `Email`; optio
 - **Search:** `GET /api/email/search?q=<query>&accountId=<id>`: Clerk auth; same vector + text search as tRPC, returns results and timing.
 - **Suggest reply:** `POST /api/generate-reply`: Clerk auth; body `{ threadId, accountId }`; returns AI-suggested subject and body for the thread (rate-limited, subject to AI daily cap).
 
-**Dodo Payments (billing)**
-
-- **Features:** Optional subscriptions via Dodo Payments; `create-checkout` API (Dodo checkout), Dodo webhook at `/api/webhook/dodo` for payment/subscription events; subscription status stored in DB. Clerk webhook for user sync is separate. Billing data uses legacy table/field names in the schema (`StripeSubscription`, `User.stripeSubscriptionId`).
-
 ---
 
 ## AI Search (mail assistant)
@@ -138,6 +134,30 @@ When `NEXT_PUBLIC_ANALYTICS_ENABLED="true"`, the client posts privacy-safe event
 | `thread_brain_expanded`               | Mobile: user toggles Thread Brain section expand/collapse            | `expanded` (boolean), `surface`: `mobile`                                                           |
 
 **HTTP:** `POST /api/chat` with `{ messages, accountId, explainableMode?, founderDemo? }` streams `text/plain`; append `explainableMode: false` to hide the sources block.
+
+---
+
+## Buddy (AI drafting assistant)
+
+Buddy lives at `/buddy`. It's the drafting/sending half of the AI surface — AI Search reads the inbox, Buddy writes outward. Scoped strictly to email work; anything else is refused with a single sentence.
+
+| Capability                       | Behavior                                                                                                                                                                                                                                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Email-only topic gate**        | `/api/buddy` runs a regex blacklist on the user's original (pre-augmentation) message. Math (`table of N`, `solve`, `factorial`), code (`write a function`, `python …`), recipes, trivia (`capital of X`), entertainment (`tell me a joke`), weather/news/stock prices all bounce with a polite refusal. Everything else passes. |
+| **Outbound content moderation**  | Right before `Account.sendEmail`, subject + body run through `containsOutgoingViolation()`. Word-boundary regex catches slurs, direct threats (`kill yourself`, `bomb threat`), sexual violence, CSAM, hard-drug trade, hitman/fake-passport phrases. Violations short-circuit with a 200 explaining the category to fix.         |
+| **Tone picker**                  | 10 presets (Professional, Friendly, Formal, Casual, Persuasive, Concise, Urgent, Apologetic, Confident, Enthusiastic). Persists per-user in `localStorage["buddy-tone"]`. Picking a tone on an existing draft auto-regenerates.                                                                                                   |
+| **Language picker**              | 13 languages (English, Spanish, French, German, Italian, Portuguese, Dutch, Hindi, Japanese, Chinese, Korean, Arabic, Russian). Persists in `localStorage["buddy-language"]`. The directive is appended to the API request, never shown in the chat bubble.                                                                      |
+| **@ Mention / recipient picker** | Reuses `account.getEmailSuggestions` for contacts. Strict ASCII-only email regex on custom adds (no Unicode tricks like `□□□@yuluy.zed`); invalid entries are visibly disabled in the picker. Adding a recipient surfaces it as a chip in the email card's `To` row.                                                              |
+| **Inline edit**                  | Each draft card has an `Edit` button that turns subject (Fraunces input) + body (multi-line textarea) editable. `Save` commits back into the message's `emailData` directly and re-snapshots the chat into `savedChats` so the edit survives a page reload. Cancel discards the buffer.                                          |
+| **Regenerate**                   | Sends a regen prompt with the user's active tone/language preserved. The visible chat bubble just says "Regenerate"; the API receives a detailed re-write instruction.                                                                                                                                                            |
+| **Alternative drafts**           | The model returns up to 2 alternatives alongside the primary. Clicking an alternative promotes it to the main slot and demotes the current primary into the alternatives list — you can swing back without re-prompting.                                                                                                          |
+| **Open in Gmail**                | Opens `mail.google.com/mail/?view=cm&fs=1` in a new tab with `to`, `su`, and `body` populated from the active draft + recipient chips. No backend round-trip.                                                                                                                                                                     |
+| **Send via Buddy**               | Typing "send this mail" / "send it" / "please send" + having a recipient + having a prior draft → inline confirmation card appears in the chat-stream (not a browser `confirm()`) showing To/Subject + Send/Cancel. Confirm synthesises a `Send to addr@x.com` API call that flows through `Account.sendEmail`.                   |
+| **HTML body conversion**         | The plain-text body is converted to inline-styled HTML before send: `\n\n` → `<p>` with margin/line-height, numbered paragraphs → `<ol>`, `**bold**` → `<strong>`, lone `\n` → `<br>`. Without this, Gmail collapsed the whole message into a single wall of text.                                                                |
+| **Auto-saved chat history**      | After every successful response, the conversation is written into `localStorage["buddy-saved-chats"]` (capped at 20). The "Recent drafts" rail on the Buddy home shows the latest 6. Subsequent messages update the same entry (keyed by `activeChat`) instead of creating duplicates.                                            |
+| **Display vs API prompt split**  | The user's typed text shows in the chat bubble; the tone/language/mention directives are appended only on the wire. `stripAugmentation()` reverses any legacy localStorage entries that have the suffix baked in, so old chats render cleanly after the upgrade.                                                                  |
+
+**HTTP:** `POST /api/buddy` with `{ messages: [{ role, content, emailData? }] }`. Returns `{ subject, body, suggestions[] }` for email generation, `{ type: "conversation", message }` for chat/refusal, or `{ type: "conversation", emailSent: true, recipient }` for send confirmations. Same Clerk auth, per-user rate limit, and daily AI cap as the rest of the AI surface.
 
 ---
 
@@ -264,7 +284,7 @@ All of the above use only demo data and safe guards so the app does not crash in
 
 ## Data Model
 
-Core models (Prisma): `User`, `Account` (per-provider token and delta token), `Thread` (inbox/sent/draft/snooze/remind flags), `Email` (labels, summary, optional `vector(768)` embedding), `EmailAddress`, `EmailAttachment`, `ScheduledSend`, `EmailOpen` (open tracking: trackingId, messageId, openedAt, userAgent, ip). Optional billing (Dodo Payments): `StripeSubscription`, `User.stripeSubscriptionId` (legacy/internal names); optional usage: `ChatbotInteraction`.
+Core models (Prisma): `User`, `Account` (per-provider token and delta token), `Thread` (inbox/sent/draft/snooze/remind flags), `Email` (labels, summary, optional `vector(768)` embedding), `EmailAddress`, `EmailAttachment`, `ScheduledSend`, `EmailOpen` (open tracking: trackingId, messageId, openedAt, userAgent, ip), optional usage: `ChatbotInteraction`.
 
 ```prisma
 model Account {
@@ -445,7 +465,6 @@ All variables the app reads are listed below. Required vs optional is for a mini
 | `NODE_ENV`                          | No       | `development` \| `test` \| `production`; defaults to `development`.                                                                                                                                                                                                                                                                                                                                                                                |
 | `SKIP_ENV_VALIDATION`               | No       | Set to `"1"` to skip env schema validation (e.g. CI).                                                                                                                                                                                                                                                                                                                                                                                              |
 | `NEXT_PUBLIC_ANALYTICS_ENABLED`     | No       | Set to `"true"` to enable Inbox Brain client analytics (`POST /api/analytics/inbox-brain`). Omit or any other value disables tracking (no-op). See [Inbox Brain product analytics](#inbox-brain-product-analytics-optional).                                                                                                                                                                                                                       |
-| `DODO_WEBHOOK_SECRET`               | No       | Optional secret for Dodo webhook integration.                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 **How to run the stack**
 
@@ -722,173 +741,6 @@ The `email/analyze` Inngest function has 5 retries. If the job still fails after
 
 ---
 
-## Impact on Engineering Teams
-
-**Onboarding:** One README and one stack (Next, tRPC, Prisma, Clerk, Aurinko). New devs run `db:push`, set env, and hit `/mail`; no separate vector service or auth server to run.
-
-**Code reviews:** tRPC procedures and types are in one place; reviewers can follow account scoping and sync flow without hunting across services. Bulk actions and first-sync logic live in a few files (ThreadList, account router).
-
-**Documentation:** This README doubles as a technical spec: data model, auth, sync strategy, and tradeoffs are explicit. Design philosophy and production lessons reduce “why did we do it this way?” questions.
-
----
-
-## The Problem We Solve
-
-> **The average professional spends 28% of their workweek on email.** That's 11+ hours searching, reading, writing, and organizing. Time that should go to actual work.
-
-Traditional email clients were built for the 1990s. VectorMail is built for how we work today.
-
----
-
-## Why VectorMail?
-
-<table>
-<tr>
-<td width="50%">
-
-### Semantic Search That Actually Works
-
-Search by **meaning**, not just keywords. Ask "emails about the budget meeting last month" and actually find them. Powered by vector embeddings and pgvector.
-
-</td>
-<td width="50%">
-
-### AI That Understands Context
-
-Every email gets an intelligent summary, automatic categorization, and smart tagging. Know what's important at a glance without reading everything.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Write Emails in Seconds
-
-Describe what you want to say, and our AI composes it with the right tone, context from previous conversations, and your writing style.
-
-</td>
-<td width="50%">
-
-### Chat With Your Inbox
-
-"Show me all receipts from last quarter" or "Find the email where John mentioned the deadline." Natural language meets your inbox.
-
-</td>
-</tr>
-</table>
-
----
-
-## Key Features
-
-<details open>
-<summary><strong> AI-Powered Intelligence</strong></summary>
-<br />
-
-| Feature                 | Description                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| **Smart Summaries**     | Every email automatically summarized with key points, action items, and context |
-| **Intelligent Tagging** | AI categorizes emails as urgent, informational, promotional, or action-required |
-| **Vector Embeddings**   | 768-dimensional embeddings for each email enable true semantic understanding    |
-| **Priority Detection**  | Automatically surfaces what matters and deprioritizes noise                     |
-
-</details>
-
-<details open>
-<summary><strong> Next-Gen Search</strong></summary>
-<br />
-
-| Feature               | Description                                           |
-| --------------------- | ----------------------------------------------------- |
-| **Semantic Search**   | Find emails by meaning, not exact words               |
-| **Natural Language**  | Search like you'd ask a colleague                     |
-| **Relevance Scoring** | Results ranked by actual importance, not just recency |
-| **Instant Results**   | Sub-100ms search across thousands of emails           |
-
-</details>
-
-<details open>
-<summary><strong> AI Composition</strong></summary>
-<br />
-
-| Feature                   | Description                                                                                         |
-| ------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Suggest reply**         | AI suggests a full reply (subject + body) for the open thread; one click to use it in the reply box |
-| **Context-Aware Writing** | AI reads the thread and writes appropriate responses                                                |
-| **Tone Adjustment**       | Professional, casual, or custom. Match any situation                                                |
-| **One-Click Replies**     | Generate complete, thoughtful responses instantly                                                   |
-| **Smart Suggestions**     | Real-time writing assistance as you type                                                            |
-
-</details>
-
-<details>
-<summary><strong>Productivity & UX</strong></summary>
-<br />
-
-| Feature                 | Description                                                                 |
-| ----------------------- | --------------------------------------------------------------------------- |
-| **Keyboard shortcuts**  | j/k, e, #, c, r, /, g+i/s, ?, x (select); help modal with `?`               |
-| **Undo send**           | Cancel a send within a few seconds via toast action                         |
-| **Forward**             | Forward with optional schedule send and open tracking                       |
-| **Snooze & remind**     | Presets (Later today, Tomorrow, Next week; 1/3/5/7 days) + custom date/time |
-| **Email open tracking** | Optional pixel in sent emails; first open recorded (time, user-agent, IP)   |
-| **Dark / light theme**  | System-aware theme via next-themes                                          |
-| **Account switcher**    | Multi-account UI to switch between connected mailboxes                      |
-
-</details>
-
-<details>
-<summary><strong>Productivity Dashboard</strong></summary>
-<br />
-
-| Feature                    | Description                                      |
-| -------------------------- | ------------------------------------------------ |
-| **Communication Insights** | Understand who you email most and when (planned) |
-| **Action Item Tracking**   | Never miss a follow-up or commitment (planned)   |
-
-_Email analytics (response times, volume patterns) is planned and not yet available._
-
-</details>
-
-<details>
-<summary><strong>Enterprise-Ready Security</strong></summary>
-<br />
-
-| Feature                  | Description                                          |
-| ------------------------ | ---------------------------------------------------- |
-| **Clerk Authentication** | Enterprise-grade auth with MFA, SSO support          |
-| **Data Encryption**      | Encryption for stored data                           |
-| **Privacy First**        | Your data stays yours. We don't train on your emails |
-| **SOC 2 Ready**          | Built with compliance requirements in mind           |
-
-</details>
-
----
-
-## Tech Stack
-
-| Category     | Technologies                                                            |
-| ------------ | ----------------------------------------------------------------------- |
-| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS, Framer Motion, Radix UI |
-| **Backend**  | tRPC, Prisma ORM, PostgreSQL 16+, pgvector                              |
-| **AI/ML**    | Google Gemini (embeddings), OpenRouter (chat/compose)                   |
-| **Auth**     | Clerk (OAuth, MFA, Session Management)                                  |
-| **Email**    | Aurinko API (Google, Microsoft 365)                                     |
-| **Testing**  | Jest, React Testing Library, Playwright                                 |
-| **DevOps**   | Docker, GitHub Actions                                                  |
-
----
-
-## Docker Deployment
-
-```bash
-docker-compose up -d
-```
-
-This spins up PostgreSQL with pgvector and the VectorMail application with auto-configured networking.
-
----
-
 ## Available Scripts
 
 | Command                       | Description                                     |
@@ -906,15 +758,9 @@ This spins up PostgreSQL with pgvector and the VectorMail application with auto-
 
 ---
 
-## Pricing
+## License & cost
 
-| Plan           | Price  | Features                                                    |
-| -------------- | ------ | ----------------------------------------------------------- |
-| **Basic**      | Free   | 5 AI summaries/day, basic search, single account            |
-| **Pro**        | $13/mo | Unlimited AI, advanced search, 5 accounts, priority support |
-| **Enterprise** | $60/mo | Everything + custom AI training, SSO, dedicated support     |
-
-[View Full Pricing →](https://vectormail.space/pricing)
+VectorMail is open source and free to self-host. Bring your own Aurinko, Clerk, OpenRouter, and Gemini keys; you pay only the providers' usage. No subscription, no paywall, no feature gate.
 
 ---
 
@@ -951,28 +797,23 @@ Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of
 
 ## Acknowledgments
 
-- [T3 Stack](https://create.t3.gg/) - Full-stack TypeScript starter
-- [shadcn/ui](https://ui.shadcn.com/) - Accessible components
-- [Aurinko](https://www.aurinko.io/) - Unified email API
-- [OpenAI](https://openai.com/) & [Google Gemini](https://deepmind.google/technologies/gemini/) - AI capabilities
+- [T3 Stack](https://create.t3.gg/) - Full-stack TypeScript starter that seeded the auth/tRPC/Prisma wiring.
+- [shadcn/ui](https://ui.shadcn.com/) - Component primitives behind the inbox UI.
+- [Aurinko](https://www.aurinko.io/) - Unified email API (Gmail/M365 OAuth, delta sync, send).
+- [OpenRouter](https://openrouter.ai/) - Single client for the AI chat/compose models we use.
+- [Google Gemini](https://ai.google.dev/) - 768-dim embeddings (`gemini-embedding-001`).
 
 ---
 
 ## License
 
-VectorMail is open-source software licensed under the [MIT License](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 ---
 
 <div align="center">
 
-**VectorMail** - Email, reimagined with AI
-
-Built by [Parbhat Kapila](https://github.com/parbhatkapila4)
-
-[Website](https://vectormail.space/) · [GitHub](https://github.com/parbhatkapila4/Vector-Mail) · [Twitter](https://x.com/Parbhat03)
-
-If VectorMail helped you, consider giving it a star on GitHub.
+Built by [Parbhat Kapila](https://github.com/parbhatkapila4) · [Website](https://vectormail.space/) · [GitHub](https://github.com/parbhatkapila4/Vector-Mail) · [Twitter](https://x.com/Parbhat03)
 
 [![GitHub Stars](https://img.shields.io/github/stars/parbhatkapila4/Vector-Mail?style=flat-square&logo=github&color=yellow)](https://github.com/parbhatkapila4/Vector-Mail)
 

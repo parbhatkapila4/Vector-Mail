@@ -9,6 +9,10 @@ export default tseslint.config(
   {
     ignores: [
       ".next/**",
+      "coverage/**",
+      "node_modules/**",
+      "public/**",
+      "scripts/**",
       "**/*.test.ts",
       "**/*.test.tsx",
       "**/*.spec.ts",
@@ -22,9 +26,16 @@ export default tseslint.config(
       "**/*.lock",
       "**/*.prisma",
       "prisma/**",
+      "next-env.d.ts",
+      "**/*.d.ts",
     ],
   },
   ...compat.extends("next/core-web-vitals"),
+  {
+    rules: {
+      "@next/next/no-duplicate-head": "off",
+    },
+  },
   {
     files: ["**/*.ts", "**/*.tsx"],
     extends: [...tseslint.configs.recommended],
@@ -42,6 +53,26 @@ export default tseslint.config(
       "jsx-a11y/alt-text": "warn",
       "import/no-anonymous-default-export": "warn",
       "react/display-name": "warn",
+      "@next/next/no-duplicate-head": "off",
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/components/providers/ProvidersWrapper.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@clerk/nextjs",
+              importNames: ["ClerkProvider"],
+              message:
+                "ClerkProvider must only be imported in src/components/providers/ProvidersWrapper.tsx (Server Component). Putting it under \"use client\" drops SSR auth hydration.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
@@ -50,6 +81,10 @@ export default tseslint.config(
     },
     languageOptions: {
       parserOptions: {
+        // `projectService: true` auto-discovers every tsconfig.*.json in
+        // the project root. Test files live in tsconfig.test.json so the
+        // parser can find them even though they're excluded from the
+        // main tsconfig.json (which keeps `tsc --noEmit` fast for CI).
         projectService: true,
       },
     },

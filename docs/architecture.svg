@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" fill="none">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fbf8f1"/>
+      <stop offset="100%" stop-color="#f4ede0"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e2a4a"/>
+      <stop offset="100%" stop-color="#0d1530"/>
+    </linearGradient>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#faf5e9"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5b554c"/>
+    </marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#b88a3f"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#8a8278"/>
+    </marker>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1200" height="740" fill="url(#paper)"/>
+
+  <!-- ============ TITLE ============ -->
+  <text x="40" y="44" font-size="11" font-weight="700" letter-spacing="0.22em" fill="#1a1612" font-family="ui-monospace, monospace">VECTORMAIL  ·  SYSTEM ARCHITECTURE</text>
+  <text x="40" y="62" font-size="11" fill="#8a8278" font-style="italic">data + control flow across a single Next.js deployment</text>
+  <line x1="40" y1="78" x2="1160" y2="78" stroke="#d8cfb9" stroke-width="1"/>
+
+  <!-- ============ TIER LABELS (left rail) ============ -->
+  <g font-family="ui-monospace, monospace" font-size="9" letter-spacing="0.22em" fill="#a89e89">
+    <text x="40" y="148">CLIENT</text>
+    <text x="40" y="305">APPLICATION</text>
+    <text x="40" y="478">DATA  ·  JOBS</text>
+    <text x="40" y="628">EXTERNAL</text>
+  </g>
+
+  <!-- Vertical hairline aligning tier labels with the layout grid -->
+  <line x1="156" y1="100" x2="156" y2="700" stroke="#e5dcc6" stroke-width="0.5"/>
+
+  <!-- ============ DEMO RUNTIME (top-left, parallel to Browser) ============ -->
+  <g>
+    <rect x="180" y="100" width="280" height="100" rx="10" fill="url(#paper)" stroke="#b88a3f" stroke-width="1" stroke-dasharray="5 3"/>
+    <text x="320" y="124" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#b88a3f" font-weight="700">DEMO RUNTIME</text>
+    <line x1="200" y1="137" x2="440" y2="137" stroke="#e0d4b3" stroke-width="0.5"/>
+    <text x="320" y="158" text-anchor="middle" font-size="12" fill="#1a1612" font-weight="600">Cookie-bounded path</text>
+    <text x="320" y="176" text-anchor="middle" font-size="10" fill="#5b554c">isDemoCall · seed-demo-data</text>
+    <text x="320" y="191" text-anchor="middle" font-size="10" fill="#5b554c" font-style="italic">no DB writes · no external calls</text>
+  </g>
+
+  <!-- ============ BROWSER (top-center) ============ -->
+  <g>
+    <rect x="540" y="100" width="300" height="100" rx="10" fill="url(#cream)" stroke="#c9bf9f" stroke-width="1"/>
+    <text x="690" y="124" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#a89e89" font-weight="700">BROWSER</text>
+    <line x1="560" y1="137" x2="820" y2="137" stroke="#e5dcc6" stroke-width="0.5"/>
+    <text x="690" y="158" text-anchor="middle" font-size="13" fill="#1a1612" font-weight="600">React 19 client</text>
+    <text x="690" y="176" text-anchor="middle" font-size="10" fill="#5b554c">Mail UI · Buddy · Inbox Brain</text>
+    <text x="690" y="191" text-anchor="middle" font-size="10" fill="#5b554c" font-style="italic">tRPC client · streaming chat</text>
+  </g>
+
+  <!-- Inline session annotation to the right of Browser -->
+  <g font-family="ui-monospace, monospace" font-size="9" fill="#a89e89">
+    <text x="880" y="152" letter-spacing="0.14em">CLERK SESSION</text>
+    <text x="880" y="170" font-style="italic" fill="#8a8278" letter-spacing="0.04em" font-family="ui-sans-serif, system-ui">cookie · session JWT</text>
+  </g>
+
+  <!-- ============ APPLICATION TIER (mid-band) ============ -->
+  <g>
+    <rect x="180" y="260" width="900" height="170" rx="10" fill="url(#navy)" stroke="#b88a3f" stroke-width="1.5"/>
+    <text x="630" y="286" text-anchor="middle" font-size="9" letter-spacing="0.24em" font-family="ui-monospace, monospace" fill="#b88a3f" font-weight="700">NEXT.JS  ·  tRPC  ·  CLERK</text>
+    <line x1="220" y1="298" x2="1040" y2="298" stroke="#b88a3f" stroke-width="0.5" opacity="0.4"/>
+
+    <!-- Three logical columns of capability inside the app box -->
+    <g font-family="ui-sans-serif, system-ui" fill="#f5ebd9">
+      <text x="380" y="322" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Routes &amp; routers</text>
+      <text x="380" y="342" text-anchor="middle" font-size="10" opacity="0.78">account router · email/send</text>
+      <text x="380" y="358" text-anchor="middle" font-size="10" opacity="0.78">chat · buddy · search · health</text>
+      <text x="380" y="374" text-anchor="middle" font-size="10" opacity="0.78">aurinko/callback · admin</text>
+      <text x="380" y="395" text-anchor="middle" font-size="10" opacity="0.55" font-style="italic">— accountId-scoped procedures —</text>
+    </g>
+    <line x1="495" y1="312" x2="495" y2="404" stroke="#b88a3f" stroke-width="0.5" opacity="0.3"/>
+
+    <g font-family="ui-sans-serif, system-ui" fill="#f5ebd9">
+      <text x="630" y="322" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Cross-cutting</text>
+      <text x="630" y="342" text-anchor="middle" font-size="10" opacity="0.78">rate-limit · 60/min search</text>
+      <text x="630" y="358" text-anchor="middle" font-size="10" opacity="0.78">100/min AI · daily token cap</text>
+      <text x="630" y="374" text-anchor="middle" font-size="10" opacity="0.78">audit log · CSP / HSTS</text>
+      <text x="630" y="395" text-anchor="middle" font-size="10" opacity="0.55" font-style="italic">— per-user, before procedure —</text>
+    </g>
+    <line x1="765" y1="312" x2="765" y2="404" stroke="#b88a3f" stroke-width="0.5" opacity="0.3"/>
+
+    <g font-family="ui-sans-serif, system-ui" fill="#f5ebd9">
+      <text x="900" y="322" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Authorisation</text>
+      <text x="900" y="342" text-anchor="middle" font-size="10" opacity="0.78">Clerk auth() · session JWT</text>
+      <text x="900" y="358" text-anchor="middle" font-size="10" opacity="0.78">authoriseAccountAccess</text>
+      <text x="900" y="374" text-anchor="middle" font-size="10" opacity="0.78">Zod schemas at the edge</text>
+      <text x="900" y="395" text-anchor="middle" font-size="10" opacity="0.55" font-style="italic">— no cross-tenant leakage —</text>
+    </g>
+  </g>
+
+  <!-- ============ POSTGRES (left, data tier) ============ -->
+  <g>
+    <rect x="180" y="480" width="280" height="120" rx="10" fill="url(#cream)" stroke="#b88a3f" stroke-width="1.5"/>
+    <text x="320" y="506" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#a89e89" font-weight="700">POSTGRESQL  +  PGVECTOR</text>
+    <line x1="200" y1="518" x2="440" y2="518" stroke="#e5dcc6" stroke-width="0.5"/>
+    <text x="320" y="540" text-anchor="middle" font-size="11" fill="#1a1612" font-weight="600">Threads · Emails · Embeddings</text>
+    <text x="320" y="558" text-anchor="middle" font-size="10" fill="#5b554c">ScheduledSend · EmailOpen · AiUsage</text>
+    <text x="320" y="578" text-anchor="middle" font-size="10" fill="#5b554c" font-style="italic">vector(768) on Email.embedding</text>
+    <text x="320" y="595" text-anchor="middle" font-size="9" fill="#a89e89" font-style="italic" font-family="ui-monospace, monospace">distance: cosine via &lt;=&gt;</text>
+  </g>
+
+  <!-- ============ INNGEST (right, jobs tier) ============ -->
+  <g>
+    <rect x="800" y="480" width="280" height="120" rx="10" fill="url(#cream)" stroke="#c9bf9f" stroke-width="1"/>
+    <text x="940" y="506" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#a89e89" font-weight="700">INNGEST  ·  WORKERS</text>
+    <line x1="820" y1="518" x2="1060" y2="518" stroke="#e5dcc6" stroke-width="0.5"/>
+    <text x="940" y="540" text-anchor="middle" font-size="11" fill="#1a1612" font-weight="600">email/analyze · summary</text>
+    <text x="940" y="558" text-anchor="middle" font-size="10" fill="#5b554c">scheduled-send/process</text>
+    <text x="940" y="578" text-anchor="middle" font-size="10" fill="#5b554c" font-style="italic">5 retries · exp backoff</text>
+    <text x="940" y="595" text-anchor="middle" font-size="9" fill="#a89e89" font-style="italic" font-family="ui-monospace, monospace">DLQ in FailedJob</text>
+  </g>
+
+  <!-- ============ AURINKO (external, left) ============ -->
+  <g>
+    <rect x="200" y="650" width="240" height="60" rx="10" fill="url(#cream)" stroke="#c9bf9f" stroke-width="1"/>
+    <text x="320" y="674" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#a89e89" font-weight="700">AURINKO</text>
+    <text x="320" y="694" text-anchor="middle" font-size="10" fill="#5b554c">OAuth · delta sync · send · Gmail/M365</text>
+  </g>
+
+  <!-- ============ AI PROVIDERS (external, center-right) ============ -->
+  <g>
+    <rect x="500" y="650" width="280" height="60" rx="10" fill="url(#cream)" stroke="#c9bf9f" stroke-width="1"/>
+    <text x="640" y="674" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#a89e89" font-weight="700">OPENROUTER  ·  GEMINI</text>
+    <text x="640" y="694" text-anchor="middle" font-size="10" fill="#5b554c">chat · compose · summaries · embeddings (768-dim)</text>
+  </g>
+
+  <!-- ============ CLERK (external, right) ============ -->
+  <g>
+    <rect x="840" y="650" width="240" height="60" rx="10" fill="url(#cream)" stroke="#c9bf9f" stroke-width="1"/>
+    <text x="960" y="674" text-anchor="middle" font-size="9" letter-spacing="0.2em" font-family="ui-monospace, monospace" fill="#a89e89" font-weight="700">CLERK</text>
+    <text x="960" y="694" text-anchor="middle" font-size="10" fill="#5b554c">OAuth · MFA · session verification</text>
+  </g>
+
+  <!-- ============ ARROWS ============ -->
+
+  <!-- Browser ↔ App (vertical, bidirectional, single line + both arrow heads) -->
+  <line x1="690" y1="200" x2="690" y2="260" stroke="#5b554c" stroke-width="1.5"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="700" y="234" font-size="9" fill="#8a8278" font-style="italic">tRPC · HTTPS</text>
+
+  <!-- Demo runtime → App (gold dashed, intercepts at tRPC context) -->
+  <path d="M 460 165 Q 510 165 540 215 L 540 260" stroke="#b88a3f" stroke-width="1.2" stroke-dasharray="4 3" fill="none" marker-end="url(#arrowGold)"/>
+  <text x="472" y="252" font-size="9" fill="#b88a3f" font-style="italic">intercepts at tRPC context</text>
+
+  <!-- App ↔ Postgres (short vertical, bidirectional) -->
+  <line x1="340" y1="430" x2="340" y2="480" stroke="#5b554c" stroke-width="1.5"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="354" y="460" font-size="9" fill="#8a8278" font-style="italic">SQL · pgvector</text>
+
+  <!-- App ↔ Inngest (short vertical, bidirectional) -->
+  <line x1="940" y1="430" x2="940" y2="480" stroke="#5b554c" stroke-width="1.5"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="850" y="460" font-size="9" fill="#8a8278" font-style="italic">enqueue · webhook</text>
+
+  <!-- App ↔ AI providers (gold dashed, vertical through gap, bidirectional) -->
+  <line x1="640" y1="430" x2="640" y2="650" stroke="#b88a3f" stroke-width="1.4" stroke-dasharray="5 3"
+        marker-start="url(#arrowGold)" marker-end="url(#arrowGold)"/>
+  <text x="655" y="546" font-size="9" fill="#b88a3f" font-style="italic">embed · chat · summarise</text>
+
+  <!-- App ↔ Aurinko (L-path that routes around Postgres on the right) -->
+  <path d="M 500 430 L 500 625 L 320 625 L 320 650" stroke="#5b554c" stroke-width="1.5" fill="none"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="500" y="645" font-size="9" fill="#8a8278" font-style="italic" text-anchor="end">sync · send</text>
+
+  <!-- App ↔ Clerk (L-path that routes around Inngest on the left through the gap) -->
+  <path d="M 760 430 L 760 625 L 960 625 L 960 650" stroke="#8a8278" stroke-width="1.2" stroke-dasharray="3 3" fill="none"
+        marker-start="url(#arrowMuted)" marker-end="url(#arrowMuted)"/>
+  <text x="800" y="619" font-size="9" fill="#8a8278" font-style="italic">verify · OAuth</text>
+
+  <!-- Inngest → Aurinko (cross-link for scheduled sends, dashed). Enters
+       Aurinko at x=400 (right portion of the box) so it doesn't collide
+       with the App↔Aurinko terminus at x=320. -->
+  <path d="M 880 600 L 880 635 L 400 635 L 400 650" stroke="#8a8278" stroke-width="1.2" stroke-dasharray="4 3" fill="none" marker-end="url(#arrowMuted)"/>
+  <text x="600" y="631" font-size="9" fill="#8a8278" font-style="italic" text-anchor="middle">scheduled-send dispatch</text>
+
+  <!-- ============ LEGEND (footer) ============ -->
+  <g transform="translate(40, 728)" font-family="ui-monospace, monospace" font-size="9" fill="#8a8278">
+    <text x="0" y="0" letter-spacing="0.2em" fill="#a89e89" font-weight="700">LEGEND</text>
+
+    <line x1="68" y1="-3" x2="104" y2="-3" stroke="#5b554c" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <text x="110" y="0" font-family="ui-sans-serif, system-ui" font-style="italic">primary data flow</text>
+
+    <line x1="240" y1="-3" x2="276" y2="-3" stroke="#b88a3f" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#arrowGold)"/>
+    <text x="282" y="0" font-family="ui-sans-serif, system-ui" font-style="italic">AI / optional</text>
+
+    <text x="380" y="0" font-family="ui-sans-serif, system-ui" font-style="italic">───── async / verify / cross-link (muted dashed)</text>
+
+    <text x="760" y="0" font-style="italic" font-family="ui-sans-serif, system-ui" fill="#8a8278">single deploy · one Postgres · cookie-bounded demo · audit-logged</text>
+  </g>
+</svg>

@@ -17,8 +17,8 @@ const customJestConfig = {
     "!src/**/__tests__/**",
   ],
   testMatch: [
-    "**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)",
-    "**/*.(test|spec).(js|jsx|ts|tsx)",
+    "**/__tests__/**/*.(test|spec|eval).(js|jsx|ts|tsx)",
+    "**/*.(test|spec|eval).(js|jsx|ts|tsx)",
   ],
   testPathIgnorePatterns: ["/node_modules/", "/.next/", "/e2e/"],
   coverageThreshold: {
