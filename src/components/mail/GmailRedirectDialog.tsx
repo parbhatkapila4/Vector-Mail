@@ -59,7 +59,7 @@ export function GmailRedirectDialog({
       <DialogContent
         showCloseButton={true}
         className={cn(
-          "max-w-[400px] border border-zinc-700 bg-black p-0 overflow-hidden",
+          "max-w-[400px] border border-zinc-700 bg-[#1e2a4a] p-0 overflow-hidden",
           "shadow-xl shadow-black/50",
         )}
       >
@@ -68,7 +68,6 @@ export function GmailRedirectDialog({
 
             <div className="flex justify-center">
               <div className="relative flex h-[96px] w-[96px] items-center justify-center">
-                {/* 5-second time circle bar around the logo */}
                 <svg
                   className="absolute inset-0 size-full -rotate-90"
                   aria-hidden

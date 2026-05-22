@@ -27,7 +27,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
   const isMobile = useIsMobile();
 
   const getIconColor = (link: NavProps["links"][0]) => {
-    if (link.variant === "default") return "text-yellow-500";
+    if (link.variant === "default") return "text-text-[#1e2a4a]";
     switch (link.title) {
       case "Inbox":
         return "text-blue-400";
@@ -36,7 +36,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
       case "Snoozed":
         return "text-slate-400";
       case "Reminders":
-        return "text-yellow-400";
+        return "text-text-[#1e2a4a]";
       case "Scheduled":
         return "text-slate-400";
       case "AI Buddy":
@@ -113,7 +113,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
                   className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-xl transition-all",
                     link.variant === "default"
-                      ? "bg-yellow-500/10 ring-1 ring-yellow-500/20"
+                      ? "bg-text-[#1e2a4a] ring-1 ring-text-[#1e2a4a]"
                       : "hover:bg-white/[0.04]",
                   )}
                 >
@@ -127,7 +127,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
               >
                 <span className="text-sm font-medium">{link.title}</span>
                 {link.comingSoon && (
-                  <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
+                  <span className="rounded-full bg-text-[#1e2a4a] px-2 py-0.5 text-[10px] font-medium text-text-[#1e2a4a]">
                     Soon
                   </span>
                 )}
@@ -145,7 +145,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all",
                 link.variant === "default"
-                  ? "bg-yellow-500/10 ring-1 ring-yellow-500/20"
+                  ? "bg-text-[#1e2a4a] ring-1 ring-text-[#1e2a4a]"
                   : "hover:bg-white/[0.04]",
                 isMobile && "py-3",
               )}
@@ -167,7 +167,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
                     {link.title}
                   </span>
                   {link.comingSoon && (
-                    <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
+                    <span className="rounded-full bg-text-[#1e2a4a] px-2 py-0.5 text-[10px] font-medium text-text-[#1e2a4a]">
                       Soon
                     </span>
                   )}
@@ -178,7 +178,7 @@ export function Nav({ links, isCollapsed }: NavProps) {
                     className={cn(
                       "text-xs font-medium tabular-nums",
                       link.variant === "default"
-                        ? "text-yellow-400"
+                        ? "text-text-[#1e2a4a]"
                         : "text-zinc-500",
                     )}
                   >

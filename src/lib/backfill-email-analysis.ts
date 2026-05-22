@@ -1,4 +1,4 @@
-import { db } from "@/server/db";
+﻿import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
 import { serverLog } from "./logging/server-logger";
 import { applyFilterRulesForThread } from "./apply-filter-rules";
@@ -9,7 +9,7 @@ export async function backfillEmailAnalysis(
   accountId: string,
   limit: number = 50,
 ) {
-  console.log(`Starting backfill for account ${accountId}`);
+  bfLog.log(`Starting backfill for account ${accountId}`);
 
   try {
     const emailsWithoutAnalysis = await db.email.findMany({
@@ -33,7 +33,7 @@ export async function backfillEmailAnalysis(
       },
     });
 
-    console.log(
+    bfLog.log(
       `Found ${emailsWithoutAnalysis.length} emails without analysis`,
     );
 
@@ -115,7 +115,7 @@ export async function backfillEmailAnalysis(
           )[],
         };
 
-        console.log(
+        bfLog.log(
           `Analyzing email ${processed + 1}/${emailsWithoutAnalysis.length}: ${email.subject}`,
         );
 
@@ -169,16 +169,16 @@ export async function backfillEmailAnalysis(
         });
 
         processed++;
-        console.log(`✓ Processed: ${email.subject.substring(0, 50)}...`);
+        bfLog.log(`âœ“ Processed: ${email.subject.substring(0, 50)}...`);
 
         await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
         failed++;
-        console.error(`✗ Failed to process email ${email.id}:`, error);
+        bfLog.error(`âœ- Failed to process email ${email.id}:`, error);
       }
     }
 
-    console.log(
+    bfLog.log(
       `\nBackfill complete: ${processed} processed, ${failed} failed`,
     );
 
@@ -188,7 +188,7 @@ export async function backfillEmailAnalysis(
       total: emailsWithoutAnalysis.length,
     };
   } catch (error) {
-    console.error("Error during backfill:", error);
+    bfLog.error("Error during backfill:", error);
     throw error;
   }
 }
@@ -205,3 +205,6 @@ export async function getEmailsNeedingAnalysisCount(
     },
   });
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const bfLog = makeTagLogger("backfill-analysis");

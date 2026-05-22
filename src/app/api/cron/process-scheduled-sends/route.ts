@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { env } from "@/env";
 import {
@@ -16,7 +16,7 @@ const LIMIT = 50;
 function isAuthorized(req: NextRequest): boolean {
   const secret = env.CRON_SECRET?.trim();
   if (!secret) {
-    console.warn(
+    apiLog.warn(
       "[process-scheduled-sends] CRON_SECRET not set; route should be protected",
     );
     return false;
@@ -83,7 +83,7 @@ async function processScheduledSends() {
     try {
       enqueued = await enqueueScheduledSendJobs(scheduledSendIds);
     } catch (err) {
-      console.warn(
+      apiLog.warn(
         "[process-scheduled-sends] Enqueue failed, running sends inline:",
         err,
       );
@@ -94,7 +94,7 @@ async function processScheduledSends() {
           const result = await runScheduledSend(id);
           if (result.ok) processedInline++;
         } catch (runErr) {
-          console.error("[process-scheduled-sends] Inline send failed:", id, runErr);
+          apiLog.error("[process-scheduled-sends] Inline send failed:", id, runErr);
         }
       }
     }
@@ -105,3 +105,6 @@ async function processScheduledSends() {
     { status: 200 },
   );
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.cron");

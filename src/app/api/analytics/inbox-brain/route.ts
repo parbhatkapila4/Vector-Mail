@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { z } from "zod";
 import { INBOX_BRAIN_ANALYTICS_EVENTS } from "@/lib/analytics/inbox-brain";
 
@@ -54,11 +54,11 @@ export async function POST(req: Request) {
   const properties = sanitizeProperties(parsed.data.properties);
 
   if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.info("[inbox-brain-analytics]", parsed.data.event, properties);
+
+    apiLog.info("[inbox-brain-analytics]", parsed.data.event, properties);
   } else {
-    // eslint-disable-next-line no-console
-    console.log(
+
+    apiLog.log(
       JSON.stringify({
         kind: "inbox_brain_analytics",
         event: parsed.data.event,
@@ -70,3 +70,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.analytics");

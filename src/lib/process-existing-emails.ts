@@ -1,19 +1,30 @@
-import { db } from "@/server/db";
+﻿import { db } from "@/server/db";
 import { analyzeEmail } from "./email-analysis";
 import { serverLog } from "./logging/server-logger";
 import { applyFilterRulesForThread } from "./apply-filter-rules";
+import { arrayToVector } from "./vector-utils";
 import type { EmailMessage } from "@/types";
 import { Prisma } from "@prisma/client";
+
+export type ProcessExistingEmailsResult = {
+  success: boolean;
+  totalProcessed: number;
+  totalFailed: number;
+  lastError?: string;
+  error?: string;
+};
 
 export async function processExistingEmails(
   accountId?: string,
   batchSize: number = 10,
-) {
+): Promise<ProcessExistingEmailsResult> {
   try {
-    console.log("Starting to process existing emails with AI analysis...");
+    procLog.log("Starting to process existing emails with AI analysis...");
 
     let processed = 0;
     let totalProcessed = 0;
+    let totalFailed = 0;
+    let lastError: string | undefined;
     let hasMore = true;
 
     while (hasMore) {
@@ -65,7 +76,7 @@ export async function processExistingEmails(
         break;
       }
 
-      console.log(`Processing batch of ${emails.length} emails...`);
+      procLog.log(`Processing batch of ${emails.length} emails...`);
 
       for (const email of emails) {
         try {
@@ -129,7 +140,7 @@ export async function processExistingEmails(
             omitted: email.omitted as EmailMessage["omitted"],
           };
 
-          console.log(`Analyzing email: ${email.subject}`);
+          procLog.log(`Analyzing email: ${email.subject}`);
           const embeddingStart = Date.now();
           let analysis;
           try {
@@ -157,13 +168,18 @@ export async function processExistingEmails(
             );
             throw embeddingErr;
           }
+          await db.email.update({
+            where: { id: email.id },
+            data: {
+              summary: analysis.summary,
+              keywords: analysis.tags,
+            },
+          });
 
+          const embeddingVector = arrayToVector(analysis.vectorEmbedding);
           await db.$executeRaw`
-            UPDATE "Email" 
-            SET 
-                "summary" = ${analysis.summary},
-                "keywords" = ${JSON.stringify(analysis.tags)}::text[],
-                "embedding" = ${JSON.stringify(analysis.vectorEmbedding)}::vector
+            UPDATE "Email"
+            SET "embedding" = ${embeddingVector}::vector
             WHERE id = ${email.id}
           `;
 
@@ -175,30 +191,44 @@ export async function processExistingEmails(
           processed++;
           totalProcessed++;
 
-          console.log(
-            `✓ Processed email: ${email.subject} (${totalProcessed} total)`,
+          procLog.log(
+            `âœ“ Processed email: ${email.subject} (${totalProcessed} total)`,
           );
 
           if (processed % 5 === 0) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         } catch (error) {
-          console.error(`Error processing email ${email.id}:`, error);
+          procLog.error(`Error processing email ${email.id}:`, error);
+          totalFailed += 1;
+          lastError = error instanceof Error ? error.message : String(error);
         }
       }
 
-      console.log(`Completed batch. Total processed: ${totalProcessed}`);
+      procLog.log(
+        `Completed batch. processed=${totalProcessed} failed=${totalFailed}`,
+      );
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
-    console.log(
-      `Finished processing emails. Total processed: ${totalProcessed}`,
+    procLog.log(
+      `Finished processing emails. processed=${totalProcessed} failed=${totalFailed}`,
     );
-    return { success: true, totalProcessed };
+    return {
+      success: true,
+      totalProcessed,
+      totalFailed,
+      lastError,
+    };
   } catch (error) {
-    console.error("Error processing existing emails:", error);
-    return { success: false, error: (error as Error).message };
+    procLog.error("Error processing existing emails:", error);
+    return {
+      success: false,
+      totalProcessed: 0,
+      totalFailed: 0,
+      error: (error as Error).message,
+    };
   }
 }
 
@@ -244,7 +274,10 @@ export async function getEmailProcessingStats(accountId?: string) {
           : 0,
     };
   } catch (error) {
-    console.error("Error getting email processing stats:", error);
+    procLog.error("Error getting email processing stats:", error);
     return null;
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const procLog = makeTagLogger("process-emails");

@@ -10,7 +10,6 @@ import {
   FlaskConical,
   Sparkles,
   XCircle,
-  Zap,
 } from "lucide-react";
 
 import { api } from "@/trpc/react";
@@ -46,8 +45,9 @@ export function AutomationOutcomeBanner({
     { accountId: trimmed },
     {
       enabled,
-      staleTime: isDemo ? 60_000 : 20_000,
-      refetchInterval: isDemo || !expanded ? false : 45_000,
+      staleTime: isDemo ? 60_000 : 8_000,
+      refetchInterval: isDemo ? false : expanded ? 30_000 : 60_000,
+      refetchOnWindowFocus: true,
     },
   );
 
@@ -55,8 +55,9 @@ export function AutomationOutcomeBanner({
     { accountId: trimmed },
     {
       enabled: enabled && expanded,
-      staleTime: isDemo ? 60_000 : 20_000,
-      refetchInterval: isDemo ? false : 60_000,
+      staleTime: isDemo ? 60_000 : 10_000,
+      refetchInterval: isDemo ? false : 30_000,
+      refetchOnWindowFocus: true,
     },
   );
 
@@ -85,39 +86,58 @@ export function AutomationOutcomeBanner({
       type="button"
       onClick={() => setExpanded((e) => !e)}
       className={cn(
-        "flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors",
-        "hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] rounded",
+        "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all",
+        "hover:bg-[#ffffff]/40 dark:hover:bg-[#1e2a4a]/[0.06]",
       )}
       aria-expanded={expanded}
     >
       {expanded ? (
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+        <ChevronDown className="h-3 w-3 shrink-0 text-[#b88a3f] dark:text-[#1e2a4a] transition-transform" />
       ) : (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+        <ChevronRight className="h-3 w-3 shrink-0 text-[#8a8278] transition-transform group-hover:text-[#b88a3f] dark:group-hover:text-[#1e2a4a]" />
       )}
-      <Zap
+      <span
         className={cn(
-          "h-3.5 w-3.5 shrink-0",
-          hasFailures
-            ? "text-amber-600 dark:text-amber-400"
-            : "text-[#5f6368] dark:text-[#9aa0a6]",
+          "flex-1 truncate text-[#8a8278] dark:text-[#8a8278]",
+          hasFailures && "text-text-[#1e2a4a] dark:text-text-[#1e2a4a]",
         )}
-      />
-      <span className="flex-1 truncate text-xs font-medium uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6]">
-        Autopilot today
+        style={{
+          fontFamily:
+            "var(--font-jetbrains-mono), ui-monospace, monospace",
+          fontSize: 9.5,
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+        }}
+      >
+        <span className="text-[#b88a3f] dark:text-[#1e2a4a]">✦</span>{" "}
+        AUTOPILOT
       </span>
       {hasFailures && !expanded ? (
-        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
-          {fail} failed
+        <span
+          className="rounded-full bg-text-[#1e2a4a] px-1.5 py-0.5 text-text-[#1e2a4a] dark:bg-text-[#1e2a4a] dark:text-text-[#1e2a4a]"
+          style={{
+            fontFamily:
+              "var(--font-jetbrains-mono), ui-monospace, monospace",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+          }}
+        >
+          {fail} FAILED
         </span>
       ) : (
         <span
-          className={cn(
-            "min-w-[20px] rounded-full px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums",
-            "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
-          )}
+          style={{
+            fontFamily:
+              "var(--font-jetbrains-mono), ui-monospace, monospace",
+            fontSize: 9.5,
+            color: expanded ? "#b88a3f" : "#8a8278",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+          }}
+          className="dark:text-[#1e2a4a]"
         >
-          {summaryQuery.isLoading && !s ? "…" : totalActions}
+          · {summaryQuery.isLoading && !s ? "…" : totalActions}
         </span>
       )}
     </button>
@@ -137,7 +157,7 @@ export function AutomationOutcomeBanner({
           <div className="mt-1 space-y-2 px-1 pb-1">
             {summaryQuery.isLoading && !s ? (
               <div className="flex items-center justify-center py-6">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#1e2a4a]" />
               </div>
             ) : (
               <>
@@ -162,7 +182,7 @@ export function AutomationOutcomeBanner({
                         className={cn(
                           "h-3.5 w-3.5",
                           hasFailures
-                            ? "text-amber-600 dark:text-amber-400"
+                            ? "text-text-[#1e2a4a] dark:text-text-[#1e2a4a]"
                             : "text-[#9aa0a6] dark:text-[#5f6368]",
                         )}
                       />
@@ -188,7 +208,7 @@ export function AutomationOutcomeBanner({
                   title="Handled % = real follow-ups sent / eligible needs-reply opportunities today. Time saved uses a ~3 min per handled thread heuristic."
                 >
                   <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#202124] dark:text-[#e8eaed]">
-                    <Sparkles className="h-3 w-3 text-[#1a73e8] dark:text-[#8ab4f8]" />
+                    <Sparkles className="h-3 w-3 text-[#1a73e8] dark:text-[#1e2a4a]" />
                     Inbox handled
                     <span className="tabular-nums">
                       {metricsQuery.isLoading && !m ? "…" : `${m?.autoHandledPercent ?? 0}%`}
@@ -219,8 +239,8 @@ export function AutomationOutcomeBanner({
                     onClick={() => setFailuresOpen(true)}
                     className={cn(
                       "h-8 w-full justify-center gap-1.5 rounded-md px-2 text-[11px] font-medium",
-                      "text-amber-700 hover:bg-amber-50 hover:text-amber-800",
-                      "dark:text-amber-300 dark:hover:bg-amber-500/10 dark:hover:text-amber-200",
+                      "text-text-[#1e2a4a] hover:bg-text-[#1e2a4a] hover:text-text-[#1e2a4a]",
+                      "dark:text-text-[#1e2a4a] dark:hover:bg-text-[#1e2a4a] dark:hover:text-text-[#1e2a4a]",
                     )}
                   >
                     <AlertTriangle className="h-3.5 w-3.5" />
@@ -243,7 +263,7 @@ export function AutomationOutcomeBanner({
         <DialogContent className="max-h-[85vh] max-w-md overflow-hidden border-[#e5e7eb] bg-white p-0 dark:border-[#27272a] dark:bg-[#18181b]">
           <DialogHeader className="border-b border-[#e5e7eb] px-4 py-3 dark:border-[#27272a]">
             <DialogTitle className="flex items-center gap-2 text-left text-[15px] text-[#111118] dark:text-[#f4f4f5]">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <AlertTriangle className="h-4 w-4 shrink-0 text-text-[#1e2a4a] dark:text-text-[#1e2a4a]" />
               Recent follow-up failures
             </DialogTitle>
           </DialogHeader>
@@ -272,7 +292,7 @@ export function AutomationOutcomeBanner({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 shrink-0 px-2 text-[11px] text-[#3b82f6] dark:text-[#8ab4f8]"
+                          className="h-7 shrink-0 px-2 text-[11px] text-[#1e2a4a] dark:text-[#1e2a4a]"
                           onClick={() => {
                             onOpenThread(row.thread!.id);
                             setFailuresOpen(false);
@@ -309,7 +329,7 @@ function StatTile({ icon, label, value, tone = "default" }: StatTileProps) {
       className={cn(
         "flex items-center gap-2 rounded-md border px-2 py-1.5",
         tone === "warning"
-          ? "border-amber-200/80 bg-amber-50/70 dark:border-amber-500/25 dark:bg-amber-500/[0.08]"
+          ? "border-text-[#1e2a4a] bg-text-[#1e2a4a] dark:border-text-[#1e2a4a] dark:bg-text-[#1e2a4a]"
           : "border-[#e5e7eb] bg-white dark:border-[#3c4043] dark:bg-[#2a2b2e]",
       )}
     >

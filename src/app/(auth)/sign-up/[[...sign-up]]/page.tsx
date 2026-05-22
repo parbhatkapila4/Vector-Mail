@@ -16,23 +16,23 @@ export default function Page() {
           animation: 'gradient 15s ease infinite',
         }}
       />
-      
+
 
       <div
         className="absolute top-0 left-0 w-96 h-96 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"
         style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
       />
-      <div 
+      <div
         className="absolute top-0 right-0 w-96 h-96 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"
         style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}
       />
-      <div 
+      <div
         className="absolute -bottom-8 left-20 w-96 h-96 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"
         style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}
       />
-      
 
-      <div 
+
+      <div
         className="absolute inset-0 opacity-20"
         style={{
           backgroundImage: `
@@ -42,9 +42,9 @@ export default function Page() {
           backgroundSize: '50px 50px',
         }}
       />
-      
+
       <div className="relative z-10">
-        <SignUp 
+        <SignUp
           appearance={{
             elements: {
               footer: "hidden",
@@ -52,7 +52,7 @@ export default function Page() {
           }}
         />
       </div>
-      
+
       <style jsx>{`
         @keyframes gradient {
           0% {

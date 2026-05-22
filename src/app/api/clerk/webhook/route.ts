@@ -1,13 +1,15 @@
-import { NextRequest } from "next/server";
+﻿import { NextRequest } from "next/server";
 import { db } from "@/server/db";
 import { Webhook } from "svix";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const clerkLog = makeTagLogger("api.clerk-webhook");
 
 export async function POST(request: NextRequest) {
   try {
     const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
     if (!WEBHOOK_SECRET) {
-      console.error("Missing CLERK_WEBHOOK_SECRET environment variable");
+      clerkLog.error("Missing CLERK_WEBHOOK_SECRET environment variable");
       return new Response("Webhook secret not configured", { status: 500 });
     }
 
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
     const svix_signature = headerPayload.get("svix-signature");
 
     if (!svix_id || !svix_timestamp || !svix_signature) {
-      console.error("Missing required svix headers");
+      clerkLog.error("Missing required svix headers");
       return new Response("Missing required headers", { status: 400 });
     }
 
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
         "svix-signature": svix_signature,
       });
     } catch (err) {
-      console.error("Error verifying webhook:", err);
+      clerkLog.error("Error verifying webhook:", err);
       return new Response("Webhook verification failed", { status: 400 });
     }
 
@@ -47,17 +49,17 @@ export async function POST(request: NextRequest) {
     const { data, type } = evt as { data: WebhookUserData; type: string };
 
     if (!data || !data.id) {
-      console.error("Invalid webhook data: missing data or id");
+      clerkLog.error("Invalid webhook data: missing data or id");
       return new Response("Invalid data", { status: 400 });
     }
 
     if (type === "user.created") {
-      console.log("Processing user.created webhook for user:", data.id);
+      clerkLog.log("Processing user.created webhook for user:", data.id);
 
       const emailAddress = data.email_addresses?.[0]?.email_address;
 
       if (!emailAddress) {
-        console.error("No email address found for user:", data.id);
+        clerkLog.error("No email address found for user:", data.id);
         return new Response("No email address", { status: 400 });
       }
 
@@ -66,7 +68,7 @@ export async function POST(request: NextRequest) {
       const imageUrl = data.image_url ?? null;
       const id = data.id;
 
-      console.log("User data:", { emailAddress, firstName, lastName, id });
+      clerkLog.log("User data:", { emailAddress, firstName, lastName, id });
 
       try {
         await db.user.upsert({
@@ -85,16 +87,16 @@ export async function POST(request: NextRequest) {
             id,
           },
         });
-        console.log("User upserted successfully:", id);
+        clerkLog.log("User upserted successfully:", id);
       } catch (dbError) {
-        console.error("Database error upserting user:", dbError);
+        clerkLog.error("Database error upserting user:", dbError);
         return new Response("Database error", { status: 500 });
       }
     }
 
     return new Response("OK");
   } catch (error) {
-    console.error("Webhook error:", error);
+    clerkLog.error("Webhook error:", error);
     return new Response("Internal server error", { status: 500 });
   }
 }

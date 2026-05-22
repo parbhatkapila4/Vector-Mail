@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/server/db";
+import {
+  getEmbeddingP95Ms,
+  getEmbeddingCallsCount,
+  getEmbeddingFailuresCount,
+  getRecentEmbeddingFailureCount,
+  getSearchP95Ms,
+  getAverageSearchTimeMs,
+  getRecentSyncFailureCount,
+  getLlmCallsCount,
+} from "@/lib/metrics/store";
 
 export const dynamic = "force-dynamic";
 
 const CHECK_TIMEOUT_MS = 4000;
+const STALE_SYNC_THRESHOLD_MIN = 60;
 
 type ComponentStatus = "ok" | "down" | "unconfigured";
 type OverallStatus = "ok" | "degraded" | "down";
@@ -46,10 +57,22 @@ async function checkRedis(): Promise<ComponentStatus> {
   }
 
   if (redisUrl) {
-    type RedisClient = { disconnect: () => void; set: (key: string, value: string, ...args: (string | number)[]) => Promise<unknown>; connect: () => Promise<void>; status: string };
+    type RedisClient = {
+      disconnect: () => void;
+      set: (
+        key: string,
+        value: string,
+        ...args: (string | number)[]
+      ) => Promise<unknown>;
+      connect: () => Promise<void>;
+      status: string;
+    };
     let client: RedisClient | null = null;
     try {
-      const Redis = (await import("ioredis")).default as unknown as new (url: string, opts?: object) => RedisClient;
+      const Redis = (await import("ioredis")).default as unknown as new (
+        url: string,
+        opts?: object,
+      ) => RedisClient;
       client = new Redis(redisUrl, {
         maxRetriesPerRequest: 1,
         connectTimeout: 3000,
@@ -88,36 +111,92 @@ function checkLlm(): ComponentStatus {
   return openRouter || gemini ? "ok" : "unconfigured";
 }
 
+async function getStaleSyncMinutes(): Promise<number | null> {
+  try {
+    const row = await withTimeout(
+      db.account.findFirst({
+        where: { lastInboxSyncAt: { not: null } },
+        orderBy: { lastInboxSyncAt: "desc" },
+        select: { lastInboxSyncAt: true },
+      }),
+      CHECK_TIMEOUT_MS,
+    );
+    if (!row?.lastInboxSyncAt) return null;
+    return Math.floor((Date.now() - row.lastInboxSyncAt.getTime()) / 60_000);
+  } catch {
+    return null;
+  }
+}
+
 function deriveStatus(
   database: ComponentStatus,
   redis: ComponentStatus,
   queue: ComponentStatus,
   llm: ComponentStatus,
+  recentEmbeddingFailures: number,
+  staleSyncMinutes: number | null,
 ): OverallStatus {
   if (database === "down") return "down";
-  const anyDown =
-    redis === "down" || queue === "down" || llm === "down";
-  return anyDown ? "degraded" : "ok";
+  const anyDown = redis === "down" || queue === "down" || llm === "down";
+  if (anyDown) return "degraded";
+  if (recentEmbeddingFailures > 5) return "degraded";
+  if (
+    staleSyncMinutes !== null &&
+    staleSyncMinutes > STALE_SYNC_THRESHOLD_MIN
+  ) {
+    return "degraded";
+  }
+  return "ok";
 }
 
 export async function GET() {
-  const [database, redis] = await Promise.all([
+  const [database, redis, staleSyncMinutes] = await Promise.all([
     checkDatabase(),
     checkRedis(),
+    getStaleSyncMinutes(),
   ]);
   const queue = checkQueue();
   const llm = checkLlm();
+  const recentEmbeddingFailures = getRecentEmbeddingFailureCount();
 
-  const status = deriveStatus(database, redis, queue, llm);
-
-  const body = {
-    status,
+  const status = deriveStatus(
     database,
     redis,
     queue,
     llm,
+    recentEmbeddingFailures,
+    staleSyncMinutes,
+  );
+
+  const body = {
+    status,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version ?? "0.1.0",
+    components: {
+      database,
+      redis,
+      queue,
+      llm,
+    },
+    metrics: {
+      search: {
+        p95Ms: getSearchP95Ms(),
+        avgMs: getAverageSearchTimeMs(),
+      },
+      embedding: {
+        p95Ms: getEmbeddingP95Ms(),
+        callsTotal: getEmbeddingCallsCount(),
+        failuresTotal: getEmbeddingFailuresCount(),
+        failuresLast5Min: recentEmbeddingFailures,
+      },
+      sync: {
+        recentFailures: getRecentSyncFailureCount(),
+        mostRecentSyncAgeMinutes: staleSyncMinutes,
+      },
+      llm: {
+        callsTotal: getLlmCallsCount(),
+      },
+    },
   };
 
   const httpStatus = status === "down" ? 503 : 200;

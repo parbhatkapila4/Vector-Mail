@@ -20,7 +20,6 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
@@ -152,7 +151,7 @@ export function FilterRulesSheet({
                 <Button
                   onClick={handleCreate}
                   disabled={!tagValue.trim() || !labelId || createMutation.isPending}
-                  className="h-9 w-full bg-[#1a73e8] hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                  className="h-9 w-full bg-[#1a73e8] hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
                 >
                   Add rule
                 </Button>

@@ -113,9 +113,12 @@ export function detectIntent(
   for (const pattern of SELECT_PATTERNS) {
     const match = query.match(pattern);
     if (match) {
-      const positionWord = match[1] || match[2] || match[3];
+      const positionWord = match
+        .slice(1)
+        .map((g) => (typeof g === "string" ? g.toLowerCase() : null))
+        .find((g) => g !== null && Object.prototype.hasOwnProperty.call(POSITION_MAP, g));
       if (positionWord) {
-        const position = POSITION_MAP[positionWord.toLowerCase()] ?? 0;
+        const position = POSITION_MAP[positionWord]!;
 
         return {
           intent: "SELECT",

@@ -5,7 +5,6 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import EmailEditor from "../editor/EmailEditor";
-import { useLocalStorage } from "usehooks-ts";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -128,7 +127,6 @@ const ReplyBox = ({
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [pendingScheduleBody, setPendingScheduleBody] = useState<string>("");
   const sendEmail = api.account.sendEmail.useMutation();
-  const utils = api.useUtils();
   const isDemo = useDemoMode() && accountId === DEMO_ACCOUNT_ID;
   const { isLoaded: authLoaded, userId } = useAuth();
   const { isPending: isPendingSend } = usePendingSend();
@@ -278,8 +276,8 @@ const ReplyBox = ({
       {!isInMobileDialog && (
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a73e8]/10 dark:bg-[#8ab4f8]/15">
-              <Reply className="h-4 w-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a73e8]/10 dark:bg-[#1e2a4a]/15">
+              <Reply className="h-4 w-4 text-[#1a73e8] dark:text-[#1e2a4a]" />
             </div>
             <div>
               <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Reply</span>
@@ -298,9 +296,9 @@ const ReplyBox = ({
             aria-label={isCollapsed ? "Expand reply box" : "Collapse reply box"}
           >
             {isCollapsed ? (
-              <ChevronUp className="h-4 w-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
+              <ChevronUp className="h-4 w-4 text-[#1a73e8] dark:text-[#1e2a4a]" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
+              <ChevronDown className="h-4 w-4 text-[#1a73e8] dark:text-[#1e2a4a]" />
             )}
           </Button>
         </div>
@@ -317,7 +315,7 @@ const ReplyBox = ({
                 checked={trackOpens}
                 onCheckedChange={(c) => setTrackOpens(c === true)}
                 disabled={sendEmail.isPending || isPendingSend}
-                className="mt-0.5 border-[#dadce0] data-[state=checked]:bg-[#1a73e8] data-[state=checked]:border-[#1a73e8] dark:border-[#3c4043] dark:data-[state=checked]:bg-[#8ab4f8] dark:data-[state=checked]:border-[#8ab4f8]"
+                className="mt-0.5 border-[#dadce0] data-[state=checked]:bg-[#1a73e8] data-[state=checked]:border-[#1a73e8] dark:border-[#3c4043] dark:data-[state=checked]:bg-[#1e2a4a] dark:data-[state=checked]:border-[#1e2a4a]"
               />
               <span className="text-[#5f6368] dark:text-[#9aa0a6]">
                 Track when this email is opened
@@ -402,7 +400,7 @@ const ReplyBox = ({
                         setIsCollapsed(false);
                         onApplySuggestedReply?.();
                       }}
-                      className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                      className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
                     >
                       Apply to draft
                     </Button>
@@ -450,7 +448,7 @@ const ReplyBox = ({
                   disabled={
                     scheduleSendMutation.isPending || !authLoaded || !userId
                   }
-                  className="w-full bg-[#1a73e8] py-2.5 font-medium text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                  className="w-full bg-[#1a73e8] py-2.5 font-medium text-white hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
                 >
                   {!authLoaded || !userId
                     ? "Loading..."

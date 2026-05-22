@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
-import { incrementLlmCall } from "@/lib/metrics/store";
+import {
+  incrementEmbeddingFailure,
+  incrementLlmCall,
+  recordEmbeddingLatency,
+} from "@/lib/metrics/store";
 import { recordUsage } from "@/lib/ai-usage";
+import { serverLog } from "@/lib/logging/server-logger";
 
 const genAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -8,6 +13,7 @@ export async function getGenerateEmbeddings(
   summary: string,
   options?: { userId?: string; accountId?: string },
 ) {
+  const start = Date.now();
   try {
     const response = await genAi.models.embedContent({
       model: "gemini-embedding-001",
@@ -17,7 +23,10 @@ export async function getGenerateEmbeddings(
       },
     });
 
-    if (!response?.embeddings) return [];
+    if (!response?.embeddings) {
+      incrementEmbeddingFailure();
+      return [];
+    }
 
     if (options?.userId) {
       recordUsage({
@@ -31,9 +40,14 @@ export async function getGenerateEmbeddings(
     }
 
     incrementLlmCall();
+    recordEmbeddingLatency(Date.now() - start);
     return response.embeddings[0]?.values;
   } catch (error) {
-    console.error("Embedding generation failed:", error);
+    incrementEmbeddingFailure();
+    serverLog.error(
+      { err: error instanceof Error ? error.message : String(error), accountId: options?.accountId },
+      "embedding: gemini embedContent failed",
+    );
     return [];
   }
 }

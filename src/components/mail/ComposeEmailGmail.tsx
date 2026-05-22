@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { TimeInput24 } from "@/components/ui/time-input-24";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
@@ -115,7 +114,8 @@ export default function ComposeEmailGmail({
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
-  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -279,8 +279,6 @@ export default function ComposeEmailGmail({
       toast.info("Generating a different, improved version...", {
         duration: 2000,
       });
-    } else {
-      toast.info("AI is thinking...", { duration: 2000 });
     }
 
     try {
@@ -728,66 +726,158 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         <Button
           variant="outline"
           disabled={isButtonDisabled}
-          className="rounded-full bg-[#1a73e8] px-6 py-2 text-[14px] font-medium text-white shadow-none transition-colors hover:bg-[#1765cc] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+          className="rounded-full bg-[#1a73e8] px-6 py-2 text-[14px] font-medium text-white shadow-none transition-colors hover:bg-[#1765cc] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
         >
           <Pencil className="mr-2 size-4" />
           Compose
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0c0e] p-0 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_32px_64px_-12px_rgba(0,0,0,0.5)] [-ms-overflow-style:none] [scrollbar-width:none] md:h-auto md:max-h-[85vh] md:max-w-[600px] [&::-webkit-scrollbar]:hidden [&>button]:hidden">
-
-
-        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
-          <span className="text-[15px] font-semibold tracking-tight text-white">New message</span>
-          <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-[#8e8e93] transition-colors hover:bg-white/[0.06] hover:text-white" aria-label="Close">
-            <X className="h-4 w-4" />
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0c] p-0 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_48px_-12px_rgba(0,0,0,0.6),0_48px_96px_-24px_rgba(0,0,0,0.5)] [-ms-overflow-style:none] [scrollbar-width:none] md:h-auto md:max-h-[85vh] md:max-w-[640px] [&::-webkit-scrollbar]:hidden [&>button]:hidden">
+        <div className="relative flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-gradient-to-b from-[#101013] to-[#0a0a0c] px-5 py-4">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-px"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(140,160,255,0.18), transparent)",
+            }}
+          />
+          <div className="flex flex-col">
+            <span className="text-[14.5px] font-semibold tracking-tight text-white leading-none">
+              New message
+            </span>
+            <span className="mt-1 text-[11px] tracking-tight text-[#7a7a85] leading-none">
+              Compose and send a fresh email
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[#8e8e93] transition-all hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+            aria-label="Close"
+          >
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
-
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] px-5 py-3">
-          <span className="w-6 shrink-0 text-[13px] text-[#8e8e93]">To</span>
+        <div className="group flex shrink-0 items-center gap-3 border-b border-white/[0.06] bg-transparent px-5 py-3 transition-colors focus-within:bg-white/[0.015]">
+          <span
+            className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73] transition-colors group-focus-within:text-[#afafb3]"
+            style={{
+              fontFamily:
+                "var(--font-jetbrains-mono), ui-monospace, monospace",
+            }}
+          >
+            To
+          </span>
           <Input
             id="to"
-            placeholder="Enter email"
+            placeholder="Enter email address"
             value={to}
             onChange={(e) => setTo(e.target.value)}
             disabled={isSending}
-            className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0"
+            className="vm-dark-autofill min-w-0 flex-1 rounded-md border-0 bg-transparent px-2 text-[14px] text-white placeholder:text-[#4a4a52] focus-visible:ring-0"
           />
-          <div className="flex shrink-0 items-center gap-2">
-            <button type="button" onClick={() => setShowCcBcc(!showCcBcc)} className="text-[13px] font-medium text-[#8e8e93] transition-colors hover:text-[#afafb3]">Cc</button>
-            <button type="button" onClick={() => setShowCcBcc(!showCcBcc)} className="text-[13px] font-medium text-[#8e8e93] transition-colors hover:text-[#afafb3]">Bcc</button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowCc(true)}
+              onDoubleClick={() => setShowCc(false)}
+              title={showCc ? "Double-click to hide Cc" : "Show Cc"}
+              className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${showCc ? "text-white bg-white/[0.06]" : "text-[#6e6e73] hover:text-[#afafb3]"}`}
+              style={{
+                fontFamily:
+                  "var(--font-jetbrains-mono), ui-monospace, monospace",
+              }}
+            >
+              Cc
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowBcc(true)}
+              onDoubleClick={() => setShowBcc(false)}
+              title={showBcc ? "Double-click to hide Bcc" : "Show Bcc"}
+              className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${showBcc ? "text-white bg-white/[0.06]" : "text-[#6e6e73] hover:text-[#afafb3]"}`}
+              style={{
+                fontFamily:
+                  "var(--font-jetbrains-mono), ui-monospace, monospace",
+              }}
+            >
+              Bcc
+            </button>
           </div>
         </div>
-        {showCcBcc && (
-          <>
-            <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-3">
-              <span className="w-12 shrink-0 text-[13px] text-[#8e8e93]">Cc</span>
-              <Input placeholder="Cc" value={cc} onChange={(e) => setCc(e.target.value)} disabled={isSending} className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0" />
-            </div>
-            <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-3">
-              <span className="w-12 shrink-0 text-[13px] text-[#8e8e93]">Bcc</span>
-              <Input placeholder="Bcc" value={bcc} onChange={(e) => setBcc(e.target.value)} disabled={isSending} className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0" />
-            </div>
-          </>
+        {showCc && (
+          <div className="group flex shrink-0 items-center gap-3 border-b border-white/[0.06] bg-transparent px-5 py-3 transition-colors focus-within:bg-white/[0.015]">
+            <span
+              className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73] transition-colors group-focus-within:text-[#afafb3]"
+              style={{
+                fontFamily:
+                  "var(--font-jetbrains-mono), ui-monospace, monospace",
+              }}
+            >
+              Cc
+            </span>
+            <Input
+              placeholder="Carbon copy recipients"
+              value={cc}
+              onChange={(e) => setCc(e.target.value)}
+              disabled={isSending}
+              className="vm-dark-autofill min-w-0 flex-1 rounded-md border-0 bg-transparent px-2 text-[14px] text-white placeholder:text-[#4a4a52] focus-visible:ring-0"
+            />
+          </div>
+        )}
+        {showBcc && (
+          <div className="group flex shrink-0 items-center gap-3 border-b border-white/[0.06] bg-transparent px-5 py-3 transition-colors focus-within:bg-white/[0.015]">
+            <span
+              className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73] transition-colors group-focus-within:text-[#afafb3]"
+              style={{
+                fontFamily:
+                  "var(--font-jetbrains-mono), ui-monospace, monospace",
+              }}
+            >
+              Bcc
+            </span>
+            <Input
+              placeholder="Blind carbon copy recipients"
+              value={bcc}
+              onChange={(e) => setBcc(e.target.value)}
+              disabled={isSending}
+              className="vm-dark-autofill min-w-0 flex-1 rounded-md border-0 bg-transparent px-2 text-[14px] text-white placeholder:text-[#4a4a52] focus-visible:ring-0"
+            />
+          </div>
         )}
 
-
-        <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-3">
-          <span className="w-12 shrink-0 text-[13px] text-[#8e8e93]">Subject</span>
+        <div className="group flex shrink-0 items-center gap-3 border-b border-white/[0.06] bg-transparent px-5 py-3 transition-colors focus-within:bg-white/[0.015]">
+          <span
+            className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73] transition-colors group-focus-within:text-[#afafb3]"
+            style={{
+              fontFamily:
+                "var(--font-jetbrains-mono), ui-monospace, monospace",
+            }}
+          >
+            Subject
+          </span>
           <Input
             id="subject"
-            placeholder="Re: Design review feedback"
+            placeholder="What's this about?"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             disabled={isSending}
-            className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-white placeholder:text-[#52525b] focus-visible:ring-0"
+            className="vm-dark-autofill min-w-0 flex-1 rounded-md border-0 bg-transparent px-2 text-[14px] font-medium tracking-tight text-white placeholder:text-[#4a4a52] focus-visible:ring-0"
           />
         </div>
 
 
         <div className="relative flex min-h-0 flex-1 flex-col">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-3"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, transparent 100%)",
+            }}
+          />
           <div
             ref={bodyEditableRef}
             contentEditable={!isSending && !isGenerating}
@@ -834,20 +924,71 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
                 }
               }
             }}
-            className="min-h-[280px] flex-1 overflow-y-auto bg-[#0c0c0e] px-5 py-5 text-[15px] leading-[1.6] text-[#e5e5e7] [-ms-overflow-style:none] [scrollbar-width:none] focus:outline-none [&::-webkit-scrollbar]:hidden [&_a]:text-[#5c9eff] [&_a]:underline [&_a]:decoration-[#5c9eff]/40"
+            className="min-h-[280px] flex-1 overflow-y-auto bg-transparent px-5 py-5 text-[14.5px] leading-[1.65] tracking-[-0.005em] text-[#e5e5e7] [-ms-overflow-style:none] [scrollbar-width:none] focus:outline-none [&::-webkit-scrollbar]:hidden [&_a]:text-[#5c9eff] [&_a]:underline [&_a]:decoration-[#5c9eff]/40"
             style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
           />
           {!body && !isGenerating && (
-            <div className="pointer-events-none absolute left-5 top-5 text-[15px] text-[#6e6e73]">
+            <div className="pointer-events-none absolute left-5 top-5 text-[14.5px] text-[#6e6e73]">
               Write your message…
             </div>
           )}
+
           {isGenerating && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0c0c0e]/98 backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/[0.1] border-t-[#5c9eff]" />
-                <span className="text-[14px] font-medium text-[#afafb3]">{isRegenerating ? "Regenerating…" : "Generating…"}</span>
-              </div>
+            <div
+              aria-hidden
+              className="pointer-events-none mt-1 select-none space-y-2 px-5 pb-4"
+            >
+              <div className="vm-skeleton-line-dark" style={{ width: "82%" }} />
+              <div className="vm-skeleton-line-dark" style={{ width: "94%" }} />
+              <div className="vm-skeleton-line-dark" style={{ width: "67%" }} />
+              <div className="vm-skeleton-line-dark" style={{ width: "78%" }} />
+              <div className="vm-skeleton-line-dark" style={{ width: "44%" }} />
+            </div>
+          )}
+
+          {isGenerating && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px] overflow-hidden"
+            >
+              <span
+                className="block h-full w-1/3"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(92,158,255,0.7) 50%, transparent 100%)",
+                  animation: "vm-shimmer 1.6s ease-in-out infinite",
+                }}
+              />
+            </span>
+          )}
+
+          {isGenerating && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute right-3 top-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/[0.10] bg-[#0a0a0c]/85 px-3 py-1.5 shadow-lg backdrop-blur-md"
+            >
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#5c9eff]/60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#5c9eff]" />
+              </span>
+              <span className="text-[11px] font-semibold tracking-tight text-white">
+                {isRegenerating ? "Regenerating draft" : "Drafting message"}
+              </span>
+              <span className="ml-0.5 inline-flex items-end gap-0.5">
+                <span
+                  className="block h-1 w-1 rounded-full bg-white/55"
+                  style={{ animation: "vm-bounce-dot 1.2s ease-in-out 0ms infinite" }}
+                />
+                <span
+                  className="block h-1 w-1 rounded-full bg-white/55"
+                  style={{ animation: "vm-bounce-dot 1.2s ease-in-out 150ms infinite" }}
+                />
+                <span
+                  className="block h-1 w-1 rounded-full bg-white/55"
+                  style={{ animation: "vm-bounce-dot 1.2s ease-in-out 300ms infinite" }}
+                />
+              </span>
             </div>
           )}
         </div>
@@ -869,7 +1010,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
         )}
 
 
-        <div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] px-5 py-3 max-md:overflow-x-auto max-md:flex-nowrap">
+        <div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] bg-gradient-to-t from-[#0c0c0e] to-[#0a0a0c] px-5 py-3.5 max-md:flex-nowrap max-md:overflow-x-auto">
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
           <input ref={folderInputRef} type="file" multiple className="hidden" onChange={handleFolderSelect}
             // @ts-expect-error - webkitdirectory is valid for folder selection
@@ -879,19 +1020,36 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" disabled={isSending || isGenerating} className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50">
-                <Plus className="h-4 w-4" /> Add
+              <button
+                type="button"
+                disabled={isSending || isGenerating}
+                className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-[12.5px] font-semibold tracking-tight text-[#afafb3] transition-all hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[180px] rounded-xl border-white/[0.08] bg-[#141416]">
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
-                <Paperclip className="mr-3 h-4 w-4" /> Attach files
+            <DropdownMenuContent
+              align="start"
+              sideOffset={6}
+              className="min-w-[200px] rounded-xl border border-white/[0.08] bg-[#101013] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.5),0_16px_48px_rgba(0,0,0,0.4)]"
+            >
+              <DropdownMenuItem
+                onClick={() => fileInputRef.current?.click()}
+                className="cursor-pointer rounded-md text-[13px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white"
+              >
+                <Paperclip className="mr-3 h-3.5 w-3.5" /> Attach files
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => folderInputRef.current?.click()} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
-                <Folder className="mr-3 h-4 w-4" /> Attach folder
+              <DropdownMenuItem
+                onClick={() => folderInputRef.current?.click()}
+                className="cursor-pointer rounded-md text-[13px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white"
+              >
+                <Folder className="mr-3 h-3.5 w-3.5" /> Attach folder
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLinkDialogOpen(true)} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
-                <Link className="mr-3 h-4 w-4" /> Insert link
+              <DropdownMenuItem
+                onClick={() => setLinkDialogOpen(true)}
+                className="cursor-pointer rounded-md text-[13px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white"
+              >
+                <Link className="mr-3 h-3.5 w-3.5" /> Insert link
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -921,9 +1079,9 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               toast.success("Signature inserted");
               bodyEditableRef.current?.focus();
             }}
-            className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#afafb3] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-[12.5px] font-semibold tracking-tight text-[#afafb3] transition-all hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <FileSignature className="h-4 w-4" /> Signature
+            <FileSignature className="h-3.5 w-3.5" /> Signature
           </button>
 
 
@@ -931,7 +1089,7 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             type="button"
             disabled={isSending || isGenerating}
             onClick={() => setEmojiPopoverOpen(true)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[18px] transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[16px] transition-all hover:bg-white/[0.06] hover:scale-110 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
             title="Insert emoji"
           >
             😊
@@ -946,36 +1104,70 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
               type="button"
               onClick={handleSend}
               disabled={isSending || isGenerating || isDemo}
-              className="flex h-9 items-center justify-center gap-2 rounded-l-lg rounded-r-none border-r border-white/20 bg-[#2c7ff6] px-4 text-[14px] font-semibold leading-none text-white transition-colors hover:bg-[#1a6fe8] disabled:opacity-50"
+              className="flex h-9 items-center justify-center gap-2 rounded-l-lg rounded-r-none border-r border-white/[0.18] px-4 text-[12.5px] font-semibold leading-none tracking-tight text-white transition-all hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, #3a86f7 0%, #2c7ff6 50%, #1f6cd9 100%)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(44,127,246,0.30)",
+              }}
             >
-              <Send className="h-4 w-4 shrink-0" />
-              <span className="leading-none">Send</span>
-              <kbd className="inline-flex translate-y-[1px] items-center justify-center text-[11px] font-normal leading-none opacity-75">⌘↵</kbd>
+              <Send className="h-3.5 w-3.5 shrink-0" />
+              <span className="leading-none">
+                {isSending ? "Sending…" : "Send"}
+              </span>
+              <kbd className="inline-flex translate-y-[1px] items-center justify-center rounded bg-white/[0.18] px-1 text-[10px] font-semibold leading-none">
+                ⌘↵
+              </kbd>
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   disabled={isSending || isGenerating}
-                  className="flex h-9 w-9 items-center justify-center rounded-r-lg bg-[#2c7ff6] text-white transition-colors hover:bg-[#1a6fe8] disabled:opacity-50"
+                  className="flex h-9 w-8 items-center justify-center rounded-l-none rounded-r-lg text-white transition-all hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                   aria-label="More send options"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, #3a86f7 0%, #2c7ff6 50%, #1f6cd9 100%)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(44,127,246,0.30)",
+                  }}
                 >
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3.5 w-3.5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl border-white/[0.08] bg-[#141416]">
+              <DropdownMenuContent
+                align="end"
+                sideOffset={6}
+                className="min-w-[220px] rounded-xl border border-white/[0.08] bg-[#101013] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.5),0_16px_48px_rgba(0,0,0,0.4)]"
+              >
                 {isMobile && (
-                  <DropdownMenuItem onClick={() => handleAIGenerate()} disabled={isSending || isGenerating} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
-                    <Wand2 className="mr-3 h-4 w-4" /> Generate with AI
+                  <DropdownMenuItem
+                    onClick={() => handleAIGenerate()}
+                    disabled={isSending || isGenerating}
+                    className="cursor-pointer rounded-md text-[13px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white"
+                  >
+                    <Wand2 className="mr-3 h-3.5 w-3.5" /> Generate with AI
                   </DropdownMenuItem>
                 )}
                 {isMobile && <div className="my-1 border-t border-white/[0.06]" />}
-                <DropdownMenuItem onClick={() => setScheduleSendOpen(true)} disabled={isSending || isGenerating} className="text-[14px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white">
-                  <Clock className="mr-3 h-4 w-4" /> Schedule send
+                <DropdownMenuItem
+                  onClick={() => setScheduleSendOpen(true)}
+                  disabled={isSending || isGenerating}
+                  className="cursor-pointer rounded-md text-[13px] text-[#e5e5e7] focus:bg-white/[0.06] focus:text-white"
+                >
+                  <Clock className="mr-3 h-3.5 w-3.5" /> Schedule send
                 </DropdownMenuItem>
                 <div className="my-1 border-t border-white/[0.06]" />
-                <label className="flex cursor-pointer items-center gap-3 px-2 py-2.5 text-[14px] text-[#e5e5e7] hover:bg-white/[0.06]">
-                  <input type="checkbox" checked={trackOpens} onChange={(e) => setTrackOpens(e.target.checked)} disabled={isSending || isGenerating} className="h-3.5 w-3.5 rounded border-[#3f3f46] bg-transparent text-[#3b82f6]" />
+                <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-[13px] text-[#e5e5e7] hover:bg-white/[0.06]">
+                  <input
+                    type="checkbox"
+                    checked={trackOpens}
+                    onChange={(e) => setTrackOpens(e.target.checked)}
+                    disabled={isSending || isGenerating}
+                    className="h-3.5 w-3.5 rounded border-[#3f3f46] bg-transparent accent-[#2c7ff6]"
+                  />
                   Track when opened
                 </label>
               </DropdownMenuContent>
@@ -987,9 +1179,9 @@ ${isRegeneration ? `\nGenerate a fresh, improved, and completely different versi
             type="button"
             onClick={handleAIGenerate}
             disabled={isSending || isGenerating}
-            className="ml-3 flex h-9 shrink-0 items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.02] px-4 text-[14px] font-semibold text-[#e5e5e7] transition-colors hover:border-white/[0.2] hover:bg-white/[0.06] disabled:opacity-50"
+            className="group ml-3 flex h-9 shrink-0 items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.025] px-3.5 text-[12.5px] font-semibold tracking-tight text-[#dcdce0] transition-all hover:-translate-y-px hover:border-white/[0.20] hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
           >
-            <Wand2 className="h-4 w-4" />
+            <Wand2 className="h-3.5 w-3.5 transition-transform group-hover:rotate-[-6deg]" />
             Generate
           </button>
         </div>

@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { cache } from "@/lib/cache";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.metrics");
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +33,7 @@ export async function GET() {
 
     return NextResponse.json(metrics);
   } catch (error) {
-    console.error("Failed to get metrics:", error);
+    apiLog.error("Failed to get metrics:", error);
     return NextResponse.json(
       { error: "Failed to retrieve metrics" },
       { status: 500 },

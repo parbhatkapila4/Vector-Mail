@@ -1,640 +1,1124 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Brain,
-  Zap,
+  ArrowUpRight,
+  Compass,
   Code,
-  Users,
-  Heart,
-  Target,
-  TrendingUp,
-  MessageCircle,
-  Clock,
-  AlertTriangle,
-  CheckCircle,
-  Rocket,
-  Shield,
-  Globe,
+  Database,
+  Lock,
+  Check,
+  Mail,
+  type LucideIcon,
 } from "lucide-react";
 
-export default function AboutPage() {
-  const problems = [
-    {
-      icon: Clock,
-      title: "Time Wasted Searching",
-      description:
-        "Spending 30+ minutes daily hunting for that one email from 3 weeks ago. Traditional keyword search just doesn't cut it in 2026.",
-    },
-    {
-      icon: AlertTriangle,
-      title: "Information Overload",
-      description:
-        "Drowning in 200+ daily emails. Important messages buried under newsletters, promotions, and spam.",
-    },
-    {
-      icon: Brain,
-      title: "Context Switching Kills Productivity",
-      description:
-        "Constant interruptions from email notifications destroying deep work sessions. Every ping is a productivity killer.",
-    },
-  ];
+const SERIF = "var(--font-newsreader), Georgia, serif";
+const MONO = "var(--font-jetbrains-mono), ui-monospace, monospace";
+const SANS = "var(--font-geist-sans), Inter, system-ui, sans-serif";
+const PAPER = "#fbf8f1";
+const PAPER_DEEP = "#f4ede0";
+const PAPER_SHADOW = "#efe5cf";
+const INK = "#1a1612";
+const INK_2 = "#5b554c";
+const INK_3 = "#8a8278";
+const LINE = "#d8cfb9";
+const LAV = "#5b4cf7";
+const LAV_DEEP = "#3d2fb8";
+const ROSE = "#b91c4b";
+const GREEN = "#15803d";
+const AMBER = "#a45a09";
 
-  const motivations = [
-    {
-      icon: Target,
-      title: "Built by Developers, for Developers",
-      description:
-        "We're engineers who live in our inboxes. We built the email client we always wanted - fast, intelligent, and keyboard-driven.",
-    },
-    {
-      icon: Code,
-      title: "Open Source Philosophy",
-      description:
-        "Email is too important to be locked in proprietary silos. We believe in transparency, community contributions, and owning your data.",
-    },
-    {
-      icon: MessageCircle,
-      title: "AI Should Work for You",
-      description:
-        "AI isn't a gimmick - it's a tool to save hours of manual work. We use it to summarize, search, and draft - not replace human communication.",
-    },
-  ];
+const ARROW_PATH = "M3 6h6M6 3l3 3-3 3";
 
-  const whyItMatters = [
-    {
-      icon: TrendingUp,
-      stat: "2.4 hours",
-      label: "Average time spent on email daily",
-      insight: "That's 600+ hours per year. VectorMail cuts this by 40-60%.",
-    },
-    {
-      icon: Users,
-      stat: "306 billion",
-      label: "Emails sent daily in 2026",
-      insight: "Yet email clients haven't fundamentally changed since 2004.",
-    },
-    {
-      icon: Brain,
-      stat: "23 minutes",
-      label: "To refocus after an interruption",
-      insight: "Smart filtering and AI summaries minimize context switching.",
-    },
-  ];
+type Section = {
+  anchor: string;
+  chapter: string;
+  label: string;
+  color: string;
+  tint: string;
+  icon: LucideIcon;
+  title: string;
+  accent: string;
+  lead: string;
+  bullets: string[];
+};
 
+const SECTIONS: Section[] = [
+  {
+    anchor: "what",
+    chapter: "I",
+    label: "PRODUCT",
+    color: LAV_DEEP,
+    tint: "rgba(91,76,247,0.10)",
+    icon: Compass,
+    title: "What VectorMail is",
+    accent: "an intelligence layer, not a replacement.",
+    lead:
+      "VectorMail sits next to the Gmail account you already use. It reads with you, drafts in your voice, and finds the thread you half-remember.",
+    bullets: [
+      "An email client that connects to Gmail through Aurinko",
+      "Threads sync into PostgreSQL with embeddings stored in pgvector",
+      "AI summaries, drafts, and search run against your own indexed mail",
+      "Works alongside Gmail; we don't replace your underlying account",
+    ],
+  },
+  {
+    anchor: "why",
+    chapter: "II",
+    label: "MOTIVATION",
+    color: ROSE,
+    tint: "rgba(185,28,75,0.10)",
+    icon: Code,
+    title: "Why we built it",
+    accent: "search is still keyword. AI is still over-eager.",
+    lead:
+      "Most email clients pretend it's 2008. Most AI features pretend you wanted them to send the email for you. We wanted neither.",
+    bullets: [
+      "Most email clients still treat search as keyword lookup",
+      "Most AI features replace the user instead of helping them decide",
+      "Sending and reading remain separate from organizing and finding",
+      "We wanted one workspace where all four happen at the same desk",
+    ],
+  },
+  {
+    anchor: "how",
+    chapter: "III",
+    label: "STACK",
+    color: AMBER,
+    tint: "rgba(164,90,9,0.10)",
+    icon: Database,
+    title: "How it's built",
+    accent: "small surface area, durable parts.",
+    lead:
+      "Next.js on the front. Postgres + pgvector for storage and recall. Aurinko for sync. Inngest for jobs. OpenRouter and Gemini for the AI. That's the whole picture.",
+    bullets: [
+      "Next.js 15, React 19, and Tailwind on the front end",
+      "tRPC and Prisma against PostgreSQL with pgvector for search",
+      "Aurinko for Gmail sync, Inngest for background jobs",
+      "OpenRouter for chat completions, Gemini for embeddings",
+    ],
+  },
+  {
+    anchor: "data",
+    chapter: "IV",
+    label: "DATA POLICY",
+    color: GREEN,
+    tint: "rgba(21,128,61,0.10)",
+    icon: Lock,
+    title: "How we handle your data",
+    accent: "account-scoped, encrypted, deletable.",
+    lead:
+      "Your mail is yours. Nothing crosses accounts, nothing trains shared models, and hard-deletes are real.",
+    bullets: [
+      "Mail is account-scoped; nothing crosses between users",
+      "Tokens are stored encrypted and revocable from Google",
+      "Embeddings and summaries are deleted when the account is removed",
+      "We do not use your mail to train shared or public models",
+    ],
+  },
+];
+
+function Sparkle({ size = 12, color = LAV }: { size?: number; color?: string }) {
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
-      <div className="fixed left-4 top-4 z-40 hidden sm:left-8 sm:top-6 sm:block">
-        <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
-            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-xs font-medium sm:text-sm">Back</span>
-          </button>
-        </Link>
-      </div>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      style={{ flexShrink: 0 }}
+    >
+      <path
+        d="M6 1l1.3 3.4 3.4 1.3-3.4 1.3L6 10.4 4.7 7l-3.4-1.3L4.7 4.4 6 1z"
+        fill={color}
+      />
+    </svg>
+  );
+}
 
-      <div className="px-4 pt-28 sm:hidden">
-        <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white transition-all hover:border-slate-700 hover:bg-slate-800/50">
-            <ArrowLeft className="h-3 w-3" />
-            <span className="text-xs font-medium">Back</span>
-          </button>
-        </Link>
-      </div>
+export default function AboutPage() {
+  return (
+    <main
+      className="relative min-h-screen w-full overflow-x-hidden"
+      style={{ background: PAPER, color: INK, fontFamily: SANS }}
+    >
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        @keyframes vmab-rise { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+        .vmab-index:hover .vmab-dot { transform: scale(1.5); }
+        .vmab-index:hover .vmab-label { color: ${INK}; }
+        .vmab-bullet:hover { background: ${PAPER_DEEP}; }
+        @media (prefers-reduced-motion: reduce) { [style*="animation"] { animation: none !important; } }
+      `,
+        }}
+      />
 
-      <section className="relative overflow-hidden bg-[#0a0a0a] pb-8 pt-16 sm:pb-12 sm:pt-20 lg:pb-16 lg:pt-24">
-        <div className="relative mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <motion.div className="mb-6 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/50 px-4 py-2">
-              <span className="text-sm font-semibold text-white">
-                Our Story
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          opacity: 0.09,
+          backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.50  0 0 0 0 0.42  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed"
+        style={{
+          right: -240,
+          top: -200,
+          width: 560,
+          height: 560,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(164,90,9,0.13) 0%, rgba(164,90,9,0) 70%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed"
+        style={{
+          left: -200,
+          bottom: -240,
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(91,76,247,0.12) 0%, rgba(91,76,247,0) 70%)",
+        }}
+      />
+
+      <Link
+        href="/"
+        className="fixed left-4 top-4 z-50 inline-flex items-center gap-1.5 transition-all hover:-translate-y-px md:left-6 md:top-6"
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          background: "#ffffff",
+          border: `1px solid ${LINE}`,
+          color: INK,
+          fontFamily: SANS,
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: "-0.005em",
+          boxShadow: `0 1px 0 rgba(26,22,18,0.06), 2px 2px 0 ${PAPER_SHADOW}`,
+        }}
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </Link>
+
+      <section className="relative z-10 mx-auto w-[95%] max-w-[1920px] px-2 pb-8 pt-20 md:pb-10 md:pt-24">
+        <div
+          className="mb-4 flex items-center gap-2"
+          style={{
+            fontFamily: MONO,
+            fontSize: 10,
+            color: LAV_DEEP,
+            letterSpacing: "0.22em",
+            fontWeight: 700,
+          }}
+        >
+          <Sparkle size={10} />
+          A FIELD NOTE · WHO WE ARE · WHAT WE&apos;RE BUILDING
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px] md:gap-12 lg:grid-cols-[1fr_440px]">
+          <div>
+            <h1
+              style={{
+                fontFamily: SERIF,
+                fontSize: "clamp(54px, 7.4vw, 132px)",
+                fontWeight: 500,
+                color: INK,
+                lineHeight: 0.92,
+                letterSpacing: "-0.045em",
+                margin: 0,
+              }}
+            >
+              An email client
+              <br />
+              <span style={{ fontStyle: "italic", fontWeight: 400 }}>
+                that reads with you.
               </span>
-            </motion.div>
-
-            <h1 className="mb-6 w-full break-words text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
-              <span className="block">Why We Built</span>
-              <span className="mt-2 block text-white">VectorMail</span>
             </h1>
-
-            <p className="mx-auto max-w-3xl text-lg font-semibold leading-relaxed text-white sm:text-xl lg:text-2xl">
-              Because email shouldn't feel like a second job. We built the email
-              client we always wanted -
-              <span className="font-bold">
-                {" "}
-                fast, intelligent, and respectful of your time.
+          </div>
+          <div className="flex flex-col justify-end gap-4">
+            <p
+              style={{
+                fontFamily: SERIF,
+                fontSize: 18,
+                lineHeight: 1.55,
+                color: INK_2,
+                letterSpacing: "-0.005em",
+                fontWeight: 400,
+                margin: 0,
+                maxWidth: 440,
+              }}
+            >
+              VectorMail is a thin intelligence layer over the Gmail
+              account you already have. It sits next to your inbox and
+              helps you decide{" "}
+              <span style={{ color: INK, fontWeight: 500 }}>
+                what to read, what to reply to, and what to ignore.
               </span>
             </p>
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] pb-16 pt-8 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-              The Problem We Faced
-            </h2>
-            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
-              Like millions of others, we were stuck with email clients built
-              for a different era.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
-            {problems.map((problem, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="group relative"
-              >
-                <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all group-hover:border-slate-700 sm:text-left">
-                  <div className="flex justify-center sm:justify-start">
-                    <problem.icon className="mb-4 h-10 w-10 text-white" />
-                  </div>
-                  <h3 className="mb-3 text-xl font-bold text-white">
-                    {problem.title}
-                  </h3>
-                  <p className="text-sm font-medium leading-relaxed text-white">
-                    {problem.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mx-auto mt-16 max-w-4xl"
-          >
-            <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
-              <div className="mb-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
-                  <Heart className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="mb-2 text-xl font-bold text-white sm:text-2xl">
-                    Why I Stopped Using Gmail
-                  </h3>
-                  <p className="text-sm font-medium leading-relaxed text-white sm:text-base">
-                    I was a power user of Gmail for over a decade. But as a
-                    developer, I needed something different. I needed{" "}
-                    <span className="font-bold">semantic search</span> that
-                    understood context, not just keywords. I needed{" "}
-                    <span className="font-bold">
-                      AI that actually saved time
-                    </span>
-                    , not just auto-suggested three-word responses. I needed{" "}
-                    <span className="font-bold">keyboard shortcuts</span> for
-                    everything, because every mouse movement is wasted time.
-                  </p>
-                  <p className="mt-4 text-sm font-medium leading-relaxed text-white sm:text-base">
-                    Gmail, Outlook, Apple Mail - they're all built for the
-                    average user. But developers, founders, and power users
-                    aren't average. We live in our inboxes.{" "}
-                    <span className="font-bold">
-                      We needed something built for us.
-                    </span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-              <span>What </span>
-              <span className="text-white">Motivated Us</span>
-            </h2>
-            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
-              Three core beliefs drive everything we build.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            {motivations.map((motivation, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
-                viewport={{ once: true }}
-                className="group relative"
-              >
-                <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all group-hover:border-slate-700 sm:text-left">
-                  <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-800 sm:mx-0">
-                    <motivation.icon className="h-7 w-7 text-white" />
-                  </div>
-                  <h3 className="mb-3 text-xl font-bold text-white">
-                    {motivation.title}
-                  </h3>
-                  <p className="text-sm font-medium leading-relaxed text-white">
-                    {motivation.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center sm:text-left"
-            >
-              <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-                Email Reimagined for 2026
-              </h2>
-              <div className="space-y-4 text-sm font-medium leading-relaxed text-white sm:text-base">
-                <p>
-                  VectorMail started as a frustration. A frustration with
-                  spending hours searching for emails. A frustration with
-                  missing important messages buried in noise. A frustration with
-                  email clients that felt like they were built in 2004 - because
-                  they were.
-                </p>
-                <p>
-                  We asked ourselves:{" "}
-                  <span className="font-bold">
-                    What if email understood you, instead of you having to
-                    understand it?
-                  </span>
-                </p>
-                <p>
-                  What if you could search by meaning, not keywords? What if AI
-                  could draft thoughtful responses, summarize 50-email threads
-                  instantly, and surface what actually matters? What if your
-                  inbox worked at the speed of thought, entirely from the
-                  keyboard?
-                </p>
-                <p className="font-bold">
-                  That's VectorMail. Email built for how we actually work in
-                  2026.
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="group relative"
-            >
-              <div className="absolute -inset-1 rounded-2xl opacity-0" />
-              <div className="relative rounded-2xl border border-slate-800 bg-[#0a0a0a] p-8 shadow-2xl">
-                <div className="space-y-6">
-                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
-                      <Rocket className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="mb-2 font-semibold text-white">
-                        Production-Grade from Day One
-                      </h4>
-                      <p className="text-sm font-medium text-white">
-                        Built with Next.js 14, tRPC, Prisma, and PostgreSQL.
-                        Enterprise architecture, open source.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
-                      <Brain className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="mb-2 font-semibold text-white">
-                        AI That Actually Works
-                      </h4>
-                      <p className="text-sm font-medium text-white">
-                        Vector embeddings with pgvector. Semantic search with
-                        sub-50ms latency. Multi-provider AI fallback.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800">
-                      <Shield className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="mb-2 font-semibold text-white">
-                        Privacy First
-                      </h4>
-                      <p className="text-sm font-medium text-white">
-                        Zero-knowledge architecture. Your data stays yours. Open
-                        source means full transparency.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-              <span>Why Email Needs to </span>
-              <span className="text-white">Evolve Now</span>
-            </h2>
-          </motion.div>
-
-          <div className="mb-16 grid gap-8 md:grid-cols-3">
-            {whyItMatters.map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full border border-slate-800 bg-slate-900/50">
-                  <item.icon className="h-8 w-8 text-white" />
-                </div>
-                <div className="mb-2 text-4xl font-black text-white sm:text-5xl">
-                  {item.stat}
-                </div>
-                <div className="mb-2 text-sm font-semibold text-white sm:text-base">
-                  {item.label}
-                </div>
-                <p className="text-xs font-medium text-white sm:text-sm">
-                  {item.insight}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mx-auto max-w-4xl"
-          >
-            <div className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 sm:p-8">
-              <h3 className="mb-6 text-center text-2xl font-black text-white sm:text-3xl">
-                Why This Matters to the Market
-              </h3>
-              <div className="space-y-4 text-center text-sm font-medium leading-relaxed text-white sm:text-left sm:text-base">
-                <p>
-                  <span className="font-bold">
-                    The email market is ripe for disruption.
-                  </span>{" "}
-                  While every other productivity tool has been transformed by AI
-                  - from IDEs (GitHub Copilot) to writing (Notion AI) to design
-                  (Figma AI) - email clients remain stuck in the past.
-                </p>
-                <p>
-                  Gmail hasn't fundamentally changed its search or organization
-                  in 15 years. Outlook is bloated with enterprise features
-                  nobody uses. Superhuman charges $30/month for keyboard
-                  shortcuts and basic AI.
-                  <span className="font-bold">
-                    {" "}
-                    There's a massive gap for a truly intelligent, open-source
-                    email client.
-                  </span>
-                </p>
-                <p>VectorMail fills that gap. We're building for:</p>
-                <ul className="ml-0 space-y-2 text-left sm:ml-4">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
-                    <span>
-                      <span className="font-bold">Developers</span> who want
-                      keyboard-first workflows and extensibility
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
-                    <span>
-                      <span className="font-bold">Founders</span> who process
-                      500+ emails daily and need intelligent triage
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
-                    <span>
-                      <span className="font-bold">Privacy-conscious users</span>{" "}
-                      who want transparency and control over their data
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
-                    <span>
-                      <span className="font-bold">Teams</span> who want modern
-                      collaboration without vendor lock-in
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-              Built Different
-            </h2>
-            <p className="mx-auto max-w-3xl text-base font-semibold text-white sm:text-lg">
-              Modern problems require modern solutions. Here's what makes
-              VectorMail different.
-            </p>
-          </motion.div>
-
-          <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center sm:text-left"
-            >
-              <h3 className="mb-4 flex flex-col items-center gap-3 text-xl font-bold text-white sm:flex-row">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50">
-                  <Zap className="h-5 w-5 text-white" />
-                </div>
-                Vector Search vs Keywords
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <div className="mb-1 font-semibold text-red-400">
-                    ❌ Traditional Email:
-                  </div>
-                  <p className="text-xs font-medium text-white">
-                    Search "flight booking" → only finds emails with those exact
-                    words
-                  </p>
-                </div>
-                <div>
-                  <div className="mb-1 font-semibold text-green-400">
-                    ✅ VectorMail:
-                  </div>
-                  <p className="text-xs font-medium text-white">
-                    Search "flight booking" → finds confirmations, itineraries,
-                    check-in reminders, even if they never mention "booking"
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center sm:text-left"
-            >
-              <h3 className="mb-4 flex flex-col items-center gap-3 text-xl font-bold text-white sm:flex-row">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50">
-                  <Brain className="h-5 w-5 text-white" />
-                </div>
-                AI That Saves Time
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <div className="mb-1 font-semibold text-red-400">
-                    ❌ Gmail Smart Compose:
-                  </div>
-                  <p className="text-xs font-medium text-white">
-                    "Thanks for reaching out!" - 3 word suggestions
-                  </p>
-                </div>
-                <div>
-                  <div className="mb-1 font-semibold text-green-400">
-                    ✅ VectorMail AI:
-                  </div>
-                  <p className="text-xs font-medium text-white">
-                    Full draft responses understanding context, tone, and your
-                    writing style. 50-email thread summaries in 2 seconds.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] py-16 sm:py-24 lg:py-32">
-        <div className="mx-auto w-full max-w-5xl px-4 text-center sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="mb-6 text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-              <span>What's </span>
-              <span className="text-white">Next?</span>
-            </h2>
-
-            <p className="mx-auto mb-12 max-w-3xl text-base font-semibold leading-relaxed text-white sm:text-lg">
-              VectorMail is just getting started. Here's what we're building
-              next.
-            </p>
-
-            <div className="mx-auto mb-12 grid max-w-3xl gap-6 sm:grid-cols-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               {[
-                {
-                  title: "Mobile Apps",
-                  description:
-                    "Native iOS & Android with offline-first architecture",
-                  icon: MessageCircle,
-                },
-                {
-                  title: "Team Collaboration",
-                  description:
-                    "Shared inboxes, @mentions, and real-time collaboration",
-                  icon: Users,
-                },
-                {
-                  title: "Advanced Workflows",
-                  description:
-                    "Custom automations, integrations, and AI-powered routing",
-                  icon: Zap,
-                },
-                {
-                  title: "Self-Hosting",
-                  description:
-                    "Deploy VectorMail on your own infrastructure with one command",
-                  icon: Globe,
-                },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  viewport={{ once: true }}
-                  className="rounded-xl border border-slate-800 bg-[#0a0a0a] p-6 text-center sm:text-left"
+                { k: "Chapters", v: String(SECTIONS.length) },
+                { k: "Status", v: "Beta" },
+                { k: "Response", v: "Same-week" },
+              ].map((s, i) => (
+                <div
+                  key={s.k}
+                  className="flex items-baseline gap-2"
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "#ffffff",
+                    border: `1px solid ${LINE}`,
+                    boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                    animation: `vmab-rise 380ms ${120 + i * 80}ms both ease-out`,
+                  }}
                 >
-                  <div className="flex justify-center sm:justify-start">
-                    <item.icon className="mb-3 h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="mb-2 font-bold text-white">{item.title}</h3>
-                  <p className="text-sm font-medium text-white">
-                    {item.description}
-                  </p>
-                </motion.div>
+                  <span
+                    style={{
+                      fontFamily: SERIF,
+                      fontSize: 22,
+                      fontWeight: 600,
+                      color: INK,
+                      letterSpacing: "-0.02em",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {s.v}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 9.5,
+                      color: INK_3,
+                      letterSpacing: "0.14em",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {s.k.toUpperCase()}
+                  </span>
+                </div>
               ))}
             </div>
+          </div>
+        </div>
 
-          </motion.div>
+        <div aria-hidden className="my-8 flex items-center gap-3 md:my-10">
+          <span style={{ flex: 1, height: 1, background: LINE }} />
+          <Sparkle size={10} color={LINE} />
+          <span style={{ flex: 1, height: 1, background: LINE }} />
         </div>
       </section>
-    </div>
+
+      <section className="relative z-10 mx-auto w-[95%] max-w-[1920px] px-2 pb-16 md:pb-24">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[260px_minmax(0,1fr)_360px] lg:gap-10 xl:grid-cols-[300px_minmax(0,1fr)_420px]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-6 flex flex-col gap-6">
+              <div>
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> TABLE OF CONTENTS
+                </div>
+                <ul
+                  className="relative flex flex-col"
+                  style={{ paddingLeft: 14 }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      left: 4,
+                      top: 8,
+                      bottom: 8,
+                      width: 1,
+                      background: `linear-gradient(180deg, ${LAV} 0%, ${LINE} 100%)`,
+                    }}
+                  />
+                  {SECTIONS.map((s, i) => (
+                    <li key={s.anchor} className="relative">
+                      <span
+                        aria-hidden
+                        className="vmab-dot absolute rounded-full"
+                        style={{
+                          left: -14,
+                          top: 14,
+                          width: i === 0 ? 8 : 5,
+                          height: i === 0 ? 8 : 5,
+                          background: i === 0 ? s.color : "#bcb09a",
+                          border: i === 0 ? "1.5px solid #fff" : "none",
+                          boxShadow:
+                            i === 0 ? `0 0 0 2px ${s.color}40` : "none",
+                          transition: "transform 200ms ease",
+                        }}
+                      />
+                      <Link
+                        href={`#${s.anchor}`}
+                        className="vmab-index block py-2.5"
+                        style={{
+                          borderBottom:
+                            i < SECTIONS.length - 1
+                              ? `1px dashed ${LINE}`
+                              : "none",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 9,
+                            color: s.color,
+                            fontWeight: 700,
+                            letterSpacing: "0.12em",
+                          }}
+                        >
+                          {s.chapter} · {s.label}
+                        </div>
+                        <div
+                          className="vmab-label mt-1 truncate"
+                          style={{
+                            fontFamily: SERIF,
+                            fontSize: 14,
+                            color: i === 0 ? INK : INK_2,
+                            fontWeight: i === 0 ? 600 : 500,
+                            letterSpacing: "-0.005em",
+                            transition: "color 200ms ease",
+                          }}
+                        >
+                          {s.title}
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div
+                style={{
+                  padding: "14px 16px",
+                  background: "#ffffff",
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 10,
+                  boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                }}
+              >
+                <div
+                  className="mb-2 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> COLOPHON
+                </div>
+                <dl className="flex flex-col gap-1.5">
+                  {[
+                    { k: "Updated", v: "May 2026" },
+                    { k: "Reachable at", v: "Web + mail" },
+                  ].map((row) => (
+                    <div
+                      key={row.k}
+                      className="flex items-baseline justify-between"
+                    >
+                      <dt
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 9.5,
+                          color: INK_3,
+                          letterSpacing: "0.08em",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {row.k.toUpperCase()}
+                      </dt>
+                      <dd
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: 12.5,
+                          color: INK,
+                          fontWeight: 500,
+                          letterSpacing: "-0.005em",
+                        }}
+                      >
+                        {row.v}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+          </aside>
+
+          <div className="flex flex-col gap-10 md:gap-14">
+            {SECTIONS.map((s, idx) => {
+              const Icon = s.icon;
+              return (
+                <article
+                  key={s.anchor}
+                  id={s.anchor}
+                  className="relative overflow-hidden scroll-mt-24"
+                  style={{
+                    background: PAPER,
+                    border: `1px solid ${LINE}`,
+                    borderRadius: 16,
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 1px rgba(124,90,250,0.04), 0 12px 24px -10px rgba(26,22,18,0.10), 0 32px 64px -20px rgba(26,22,18,0.08)",
+                    animation: `vmab-rise 420ms ${idx * 60}ms both ease-out`,
+                  }}
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      opacity: 0.06,
+                      backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.50  0 0 0 0 0.42  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute"
+                    style={{
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 4,
+                      background: `linear-gradient(180deg, ${s.color} 0%, ${LINE} 100%)`,
+                    }}
+                  />
+
+                  <div className="relative grid grid-cols-1 md:grid-cols-[200px_1fr] md:gap-8 lg:grid-cols-[240px_1fr] lg:gap-10">
+                    <div className="relative px-7 pt-7 md:pl-10 md:pr-0 md:pt-10">
+                      <div
+                        className="inline-flex items-center gap-2"
+                        style={{
+                          padding: "3px 9px",
+                          background: "#ffffff",
+                          border: `1px solid ${LINE}`,
+                          borderRadius: 4,
+                          transform: "rotate(-1.5deg)",
+                          boxShadow: "0 1px 2px rgba(26,22,18,0.06)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 10,
+                            color: INK,
+                            letterSpacing: "0.1em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          PART · {s.chapter}
+                        </span>
+                      </div>
+
+                      <div
+                        className="mt-4"
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: 64,
+                          fontWeight: 500,
+                          color: INK,
+                          letterSpacing: "-0.04em",
+                          lineHeight: 0.9,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        {s.chapter}
+                      </div>
+
+                      <div
+                        className="mt-5 inline-flex items-center gap-1.5"
+                        style={{
+                          padding: "5px 10px",
+                          background: s.tint,
+                          border: `1px solid ${s.color}33`,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Icon size={12} style={{ color: s.color }} />
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 9.5,
+                            color: s.color,
+                            letterSpacing: "0.14em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {s.label}
+                        </span>
+                      </div>
+
+                      <div
+                        className="mt-5 hidden md:block"
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 9.5,
+                          color: INK_3,
+                          letterSpacing: "0.12em",
+                          fontWeight: 600,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        <div>POINTS · {s.bullets.length}</div>
+                        <div>FILED · MAY 2026</div>
+                      </div>
+                    </div>
+
+                    <div className="px-7 pb-9 pt-2 md:py-10 md:pr-10 md:pl-0">
+                      <h2
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: "clamp(32px, 3.4vw, 48px)",
+                          fontWeight: 500,
+                          color: INK,
+                          lineHeight: 1.02,
+                          letterSpacing: "-0.034em",
+                          margin: 0,
+                        }}
+                      >
+                        {s.title}
+                        <span
+                          style={{
+                            fontStyle: "italic",
+                            fontWeight: 400,
+                            color: s.color,
+                          }}
+                        >
+                          {" - "}
+                          {s.accent}
+                        </span>
+                      </h2>
+
+                      <p
+                        className="mt-4 md:mt-5"
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: 17,
+                          color: INK_2,
+                          lineHeight: 1.62,
+                          letterSpacing: "-0.005em",
+                          maxWidth: 780,
+                        }}
+                      >
+                        {s.lead}
+                      </p>
+
+                      <div
+                        aria-hidden
+                        className="my-6 flex items-center gap-3 md:my-7"
+                      >
+                        <span
+                          style={{ flex: 1, height: 1, background: LINE }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 9.5,
+                            color: s.color,
+                            letterSpacing: "0.2em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✦ KEY POINTS · {s.bullets.length}
+                        </span>
+                        <span
+                          style={{ flex: 1, height: 1, background: LINE }}
+                        />
+                      </div>
+
+                      <ul className="flex flex-col gap-2">
+                        {s.bullets.map((b, i) => (
+                          <li
+                            key={b}
+                            className="vmab-bullet flex items-start gap-3 transition-colors"
+                            style={{
+                              padding: "10px 14px",
+                              border: `1px solid ${LINE}`,
+                              borderRadius: 8,
+                              background: "#ffffff",
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              className="grid shrink-0 place-items-center"
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 6,
+                                background: s.tint,
+                                border: `1px solid ${s.color}33`,
+                                color: s.color,
+                                marginTop: 1,
+                              }}
+                            >
+                              <Check size={12} strokeWidth={2.6} />
+                            </span>
+                            <div
+                              className="flex-1"
+                              style={{
+                                fontFamily: SERIF,
+                                fontSize: 15.5,
+                                color: INK,
+                                lineHeight: 1.5,
+                                fontWeight: 500,
+                                letterSpacing: "-0.005em",
+                              }}
+                            >
+                              {b}
+                            </div>
+                            <span
+                              aria-hidden
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 9,
+                                color: INK_3,
+                                letterSpacing: "0.1em",
+                                fontWeight: 700,
+                                flexShrink: 0,
+                                marginTop: 6,
+                              }}
+                            >
+                              {String(i + 1).padStart(2, "0")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div
+                    className="relative flex flex-wrap items-center justify-between gap-3 px-7 md:px-10"
+                    style={{
+                      height: 38,
+                      background: PAPER_DEEP,
+                      borderTop: `1px solid ${LINE}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 9.5,
+                        color: INK_3,
+                        letterSpacing: "0.12em",
+                        fontWeight: 600,
+                      }}
+                    >
+                      PART {s.chapter} · {s.label}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+
+            <section
+              id="where"
+              className="relative overflow-hidden scroll-mt-24"
+              style={{
+                background: PAPER_DEEP,
+                border: `1px solid ${LINE}`,
+                borderRadius: 16,
+                padding: "32px 28px 36px",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.6), 0 12px 24px -10px rgba(26,22,18,0.08)",
+              }}
+            >
+              <div
+                className="mb-4 flex items-center gap-2"
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  color: LAV_DEEP,
+                  letterSpacing: "0.22em",
+                  fontWeight: 700,
+                }}
+              >
+                <Sparkle size={10} />
+                LETTER FROM THE WORKBENCH · MAY 2026
+              </div>
+              <h3
+                style={{
+                  fontFamily: SERIF,
+                  fontSize: "clamp(28px, 3vw, 44px)",
+                  fontWeight: 500,
+                  color: INK,
+                  letterSpacing: "-0.034em",
+                  lineHeight: 1.02,
+                  margin: 0,
+                }}
+              >
+                Where we are -{" "}
+                <span style={{ fontStyle: "italic", fontWeight: 400 }}>
+                  honestly.
+                </span>
+              </h3>
+
+              <div
+                className="mt-5 max-w-[820px]"
+                style={{
+                  fontFamily: SERIF,
+                  fontSize: 17,
+                  color: INK,
+                  lineHeight: 1.72,
+                  letterSpacing: "-0.003em",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    float: "left",
+                    fontFamily: SERIF,
+                    fontSize: 78,
+                    lineHeight: 0.85,
+                    fontWeight: 600,
+                    color: INK,
+                    marginRight: 12,
+                    marginTop: 6,
+                    marginBottom: -2,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
+                  V
+                </span>
+                ectorMail is in active beta. The core sync, search, and
+                reply pipelines are stable; the daily brief and intent
+                classifier are still maturing.
+                <p className="mt-4" style={{ margin: "16px 0 0" }}>
+                  We ship behind a small, vetted user list while the
+                  product hardens. If you want access,{" "}
+                  <Link
+                    href="mailto:parbhat@parbhat.work"
+                    style={{
+                      color: LAV_DEEP,
+                      fontWeight: 600,
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    send a note
+                  </Link>
+                  . We&apos;ll get back the same week.
+                </p>
+                <p className="mt-4" style={{ margin: "16px 0 0" }}>
+                  Updates land in the{" "}
+                  <Link
+                    href="/changelog"
+                    style={{
+                      color: LAV_DEEP,
+                      fontWeight: 600,
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    changelog
+                  </Link>
+                  . Material changes to data handling go in the privacy
+                  policy with the date of the change.
+                </p>
+              </div>
+
+              <div
+                aria-hidden
+                className="my-7 flex items-center gap-3"
+              >
+                <span style={{ flex: 1, height: 1, background: LINE }} />
+                <Sparkle size={10} color={LINE} />
+                <span style={{ flex: 1, height: 1, background: LINE }} />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div
+                  style={{
+                    fontFamily: SERIF,
+                    fontStyle: "italic",
+                    fontSize: 15,
+                    color: INK_2,
+                    letterSpacing: "-0.005em",
+                  }}
+                >
+                  - signed,{" "}
+                  <span style={{ color: INK, fontWeight: 600 }}>
+                    the VectorMail team
+                  </span>
+                </div>
+                <div
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 10,
+                    color: INK_3,
+                    letterSpacing: "0.14em",
+                    fontWeight: 700,
+                  }}
+                >
+                  MAY 2026 · VECTORMAIL.APP
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside className="relative">
+            <div className="sticky top-6 flex flex-col gap-5">
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  background: "#ffffff",
+                  border: `1px solid ${INK}`,
+                  borderRadius: 14,
+                  padding: "20px 22px 22px",
+                  boxShadow: `2px 2px 0 ${PAPER_SHADOW}, 0 8px 24px -10px rgba(26,22,18,0.18)`,
+                }}
+              >
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute"
+                  style={{
+                    right: -40,
+                    top: -40,
+                    width: 140,
+                    height: 140,
+                    borderRadius: "50%",
+                    background:
+                      "radial-gradient(circle, rgba(91,76,247,0.18) 0%, rgba(91,76,247,0) 70%)",
+                  }}
+                />
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> GET IN TOUCH
+                </div>
+                <h3
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 24,
+                    fontWeight: 500,
+                    color: INK,
+                    letterSpacing: "-0.025em",
+                    lineHeight: 1.1,
+                    margin: 0,
+                  }}
+                >
+                  Bug, feature, or{" "}
+                  <span style={{ fontStyle: "italic" }}>access request?</span>
+                </h3>
+                <p
+                  className="mt-2"
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 13.5,
+                    color: INK_2,
+                    lineHeight: 1.5,
+                    letterSpacing: "-0.005em",
+                    margin: 0,
+                  }}
+                >
+                  Same inbox for all three. We read every message and reply
+                  within the same week.
+                </p>
+                <Link
+                  href="mailto:parbhat@parbhat.work"
+                  className="mt-4 inline-flex w-full items-center justify-between gap-2 transition-all hover:-translate-y-px"
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: PAPER,
+                    border: `1px solid ${INK}`,
+                    color: INK,
+                    fontFamily: SANS,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    letterSpacing: "-0.005em",
+                    boxShadow: `0 1px 0 rgba(26,22,18,0.10), 2px 2px 0 ${PAPER_SHADOW}`,
+                  }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" />
+                    parbhat@parbhat.work
+                  </span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  background: PAPER_DEEP,
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 14,
+                  padding: "18px 20px",
+                }}
+              >
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> WHERE WE STAND
+                </div>
+                <dl className="flex flex-col gap-2">
+                  {[
+                    {
+                      k: "Phase",
+                      v: "Active beta",
+                      color: AMBER,
+                    },
+                    {
+                      k: "Core",
+                      v: "Sync · Search · Reply",
+                      color: GREEN,
+                    },
+                    {
+                      k: "Maturing",
+                      v: "Brief · Intent",
+                      color: LAV_DEEP,
+                    },
+                    {
+                      k: "Access",
+                      v: "By request",
+                      color: ROSE,
+                    },
+                  ].map((row) => (
+                    <div key={row.k} className="flex items-baseline gap-2">
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: 999,
+                          background: row.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <dt
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 9.5,
+                          color: INK_3,
+                          letterSpacing: "0.1em",
+                          fontWeight: 700,
+                          width: 70,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {row.k.toUpperCase()}
+                      </dt>
+                      <dd
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: 13.5,
+                          color: INK,
+                          fontWeight: 500,
+                          letterSpacing: "-0.005em",
+                        }}
+                      >
+                        {row.v}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              <div
+                className="relative"
+                style={{
+                  background: "#ffffff",
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 14,
+                  padding: "18px 20px",
+                  boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                }}
+              >
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> THE BUILD LOG
+                </div>
+                <p
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 14,
+                    color: INK_2,
+                    lineHeight: 1.55,
+                    letterSpacing: "-0.005em",
+                    margin: 0,
+                  }}
+                >
+                  Every shipped release is filed in the changelog with a
+                  date, category, and{" "}
+                  <span style={{ fontStyle: "italic", color: INK }}>
+                    a short note on the why.
+                  </span>
+                </p>
+                <Link
+                  href="/changelog"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 transition-all hover:-translate-y-px"
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    background:
+                      "linear-gradient(180deg, #2a2520 0%, #1a1612 100%)",
+                    color: "#ffffff",
+                    fontFamily: SANS,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    letterSpacing: "-0.005em",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 12px rgba(26,22,18,0.32), 2px 2px 0 #c4b894",
+                  }}
+                >
+                  Read the changelog
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path
+                      d={ARROW_PATH}
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
   );
 }

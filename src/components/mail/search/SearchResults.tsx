@@ -14,7 +14,7 @@ import { motion } from "framer-motion";
 function HighlightedSnippet({ html }: { html: string }) {
   return (
     <span
-      className="[&_mark]:bg-[#fef7e0] [&_mark]:text-[#b36b00] dark:[&_mark]:bg-[#5c3317] dark:[&_mark]:text-[#fdd663] [&_mark]:rounded-sm [&_mark]:px-0.5"
+      className="[&_mark]:bg-[#ffffff] [&_mark]:text-[#b36b00] dark:[&_mark]:bg-[#5c3317] dark:[&_mark]:text-[#ffffff] [&_mark]:rounded-sm [&_mark]:px-0.5"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -40,7 +40,7 @@ export function SearchResults({
       <div className="border-t border-[#f1f3f4] bg-white dark:border-[#3c4043] dark:bg-[#202124]">
         <div className="p-4">
           <div className="mb-3 flex items-center gap-2">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#1e2a4a]" />
             <span className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">Searching…</span>
           </div>
           <div className="space-y-2">
@@ -103,7 +103,7 @@ export function SearchResults({
                         Keyword match
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]">
+                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#1e2a4a]">
                         Meaning match
                         {result.relevanceScorePercent != null && (
                           <span className="ml-1 opacity-90">

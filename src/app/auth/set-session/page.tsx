@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 export default function SetSessionPage() {
   const { getToken, isLoaded } = useAuth();
   const router = useRouter();
-  const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
+  const [, setStatus] = useState<"loading" | "done" | "error">("loading");
   const doneRef = useRef(false);
 
   useEffect(() => {

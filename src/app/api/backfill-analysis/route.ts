@@ -1,10 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
+﻿import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import {
   backfillEmailAnalysis,
   getEmailsNeedingAnalysisCount,
 } from "@/lib/backfill-email-analysis";
 import { db } from "@/server/db";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.backfill");
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
       ...result,
     });
   } catch (error) {
-    console.error("Error in backfill API:", error);
+    apiLog.error("Error in backfill API:", error);
     return NextResponse.json(
       { message: "Failed to backfill email analysis", error: String(error) },
       { status: 500 },
@@ -88,7 +90,7 @@ export async function GET(req: NextRequest) {
       emailsNeedingAnalysis: count,
     });
   } catch (error) {
-    console.error("Error in backfill count API:", error);
+    apiLog.error("Error in backfill count API:", error);
     return NextResponse.json(
       { message: "Failed to get count", error: String(error) },
       { status: 500 },

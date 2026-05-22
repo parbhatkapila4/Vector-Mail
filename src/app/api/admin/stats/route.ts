@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { env } from "@/env";
 import {
@@ -7,6 +7,8 @@ import {
   getLlmCallsCount,
 } from "@/lib/metrics/store";
 import { getFailedJobCount } from "@/lib/jobs/failed-job";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.admin.stats");
 
 const ADMIN_SECRET_HEADER = "x-admin-secret";
 
@@ -63,7 +65,7 @@ export async function GET(req: NextRequest) {
       dlqCount,
     });
   } catch (err) {
-    console.error("[admin/stats] Error computing stats:", err);
+    apiLog.error("[admin/stats] Error computing stats:", err);
     return NextResponse.json(
       { error: "Failed to compute stats" },
       { status: 500 },

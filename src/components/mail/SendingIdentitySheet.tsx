@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { Loader2, Mail, Shield, CheckCircle2 } from "lucide-react";
+import { Loader2, Shield, CheckCircle2 } from "lucide-react";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 
@@ -118,7 +118,7 @@ export function SendingIdentitySheet({
           </p>
         ) : loading ? (
           <div className="flex flex-1 items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-[#1a73e8] dark:text-[#8ab4f8]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#1a73e8] dark:text-[#1e2a4a]" />
           </div>
         ) : (
           <div className="mt-6 flex flex-1 flex-col gap-8">
@@ -166,7 +166,7 @@ export function SendingIdentitySheet({
               <Button
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
-                className="w-full bg-[#1a73e8] text-white hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                className="w-full bg-[#1a73e8] text-white hover:bg-[#1557b0] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
               >
                 {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
               </Button>
@@ -188,7 +188,7 @@ export function SendingIdentitySheet({
                       id="spf-done"
                       checked={spfDone}
                       onCheckedChange={(c) => handleChecklistChange("spf", !!c)}
-                      className="border-[#5f6368] data-[state=checked]:bg-[#1a73e8] dark:border-[#9aa0a6] dark:data-[state=checked]:bg-[#8ab4f8]"
+                      className="border-[#5f6368] data-[state=checked]:bg-[#1a73e8] dark:border-[#9aa0a6] dark:data-[state=checked]:bg-[#1e2a4a]"
                     />
                     <div className="min-w-0 flex-1">
                       <Label htmlFor="spf-done" className="cursor-pointer font-medium text-[#202124] dark:text-[#e8eaed]">SPF</Label>
@@ -203,7 +203,7 @@ export function SendingIdentitySheet({
                       id="dkim-done"
                       checked={dkimDone}
                       onCheckedChange={(c) => handleChecklistChange("dkim", !!c)}
-                      className="border-[#5f6368] data-[state=checked]:bg-[#1a73e8] dark:border-[#9aa0a6] dark:data-[state=checked]:bg-[#8ab4f8]"
+                      className="border-[#5f6368] data-[state=checked]:bg-[#1a73e8] dark:border-[#9aa0a6] dark:data-[state=checked]:bg-[#1e2a4a]"
                     />
                     <div className="min-w-0 flex-1">
                       <Label htmlFor="dkim-done" className="cursor-pointer font-medium text-[#202124] dark:text-[#e8eaed]">DKIM</Label>
@@ -215,7 +215,7 @@ export function SendingIdentitySheet({
                       id="dmarc-done"
                       checked={dmarcDone}
                       onCheckedChange={(c) => handleChecklistChange("dmarc", !!c)}
-                      className="border-[#5f6368] data-[state=checked]:bg-[#1a73e8] dark:border-[#9aa0a6] dark:data-[state=checked]:bg-[#8ab4f8]"
+                      className="border-[#5f6368] data-[state=checked]:bg-[#1a73e8] dark:border-[#9aa0a6] dark:data-[state=checked]:bg-[#1e2a4a]"
                     />
                     <div className="min-w-0 flex-1">
                       <Label htmlFor="dmarc-done" className="cursor-pointer font-medium text-[#202124] dark:text-[#e8eaed]">DMARC</Label>

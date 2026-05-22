@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { env } from "@/env.js";
 import { recordUsage } from "@/lib/ai-usage";
+import { serverLog } from "@/lib/logging/server-logger";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -135,7 +136,10 @@ Summary:`;
 
     return summary;
   } catch (error) {
-    console.error("Failed to generate conversational summary:", error);
+    serverLog.error(
+      { err: error instanceof Error ? error.message : String(error) },
+      "conversational-summary: generation failed",
+    );
     const fromStr = email.from.name || email.from.address;
     const dateStr = new Date(email.date).toLocaleDateString();
     return `This email from ${fromStr} dated ${dateStr} is about "${email.subject}". ${email.body.substring(0, 150)}...`;

@@ -2,87 +2,55 @@
 
 import Image from "next/image";
 import {
-  Cpu,
   Database,
   Zap,
   Lock,
   Brain,
   Search,
   Server,
-  Sparkles,
 } from "lucide-react";
 
 const techStack = [
   {
     icon: Brain,
-    title: "AI-Native Architecture",
+    title: "AI brief and reply",
     description:
-      "Built from the ground up with AI at its core. OpenAI & Anthropic integration for intelligent email processing.",
-    gradient: "from-amber-500 to-orange-600",
-    stats: [
-      { label: "Models", value: "GPT-4 & Claude" },
-      { label: "Response", value: "<2s" },
-    ],
+      "Daily summaries and reply drafts generated through OpenRouter. Streams into your editor; nothing sends without your press of send.",
     preview: "ai-compose",
   },
   {
     icon: Search,
-    title: "Semantic Vector Search",
+    title: "Semantic vector search",
     description:
-      "pgvector-powered embeddings that understand meaning, not just keywords. Find any email by describing it.",
-    gradient: "from-violet-500 to-purple-600",
-    stats: [
-      { label: "Latency", value: "50ms" },
-      { label: "Matching", value: "Meaning-first" },
-    ],
+      "pgvector embeddings stored alongside the messages they describe. Search by what an email means, not the words it happens to use.",
     preview: "search",
   },
   {
     icon: Database,
-    title: "Hybrid Search Engine",
+    title: "Inbox with intent",
     description:
-      "Combines vector embeddings with BM25 full-text search for unmatched accuracy and speed.",
-    gradient: "from-cyan-500 to-blue-600",
-    stats: [
-      { label: "Algorithm", value: "Vector + BM25" },
-      { label: "Indexing", value: "Real-time" },
-    ],
+      "Threads classified once, routed by intent, refreshed when the conversation changes. Your custom rules sit above the model.",
     preview: "inbox",
   },
   {
     icon: Zap,
-    title: "Redis Cache Layer",
+    title: "Cached query paths",
     description:
-      "Lightning-fast responses with intelligent caching. Most queries served directly from memory.",
-    gradient: "from-emerald-500 to-green-600",
-    stats: [
-      { label: "Cache", value: "Warm-path" },
-      { label: "Speed", value: "Low-latency" },
-    ],
+      "Repeat queries hit a cache so the second run is fast. Embeddings refresh as messages change; no full reindex.",
     preview: "cache",
   },
   {
     icon: Server,
-    title: "Real-time Sync",
+    title: "Aurinko delta sync",
     description:
-      "Delta sync with Aurinko API ensures your inbox is always up-to-date with zero manual refresh.",
-    gradient: "from-pink-500 to-rose-600",
-    stats: [
-      { label: "Sync", value: "Instant" },
-      { label: "30-day", value: "Auto window" },
-    ],
+      "Aurinko handles Gmail OAuth and message delivery. Delta sync per account; full sync only on first connect.",
     preview: "sync",
   },
   {
     icon: Lock,
-    title: "Privacy-First",
+    title: "Account-scoped access",
     description:
-      "Security-conscious architecture with scoped access patterns and production-ready defaults.",
-    gradient: "from-indigo-500 to-blue-600",
-    stats: [
-      { label: "Access", value: "Scoped" },
-      { label: "Data", value: "Your control" },
-    ],
+      "Authorization on every tRPC call. Tokens stored encrypted, revocable from Google. Hard delete on account removal.",
     preview: "privacy",
   },
 ];
@@ -305,20 +273,18 @@ const stack = [
 
 export function Testimonials() {
   return (
-    <section className="relative bg-[#fbfaf7] py-32">
+    <section className="relative py-32" style={{ background: "#f4ede0" }}>
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-20 text-center">
           <h2 className="-mt-2 mb-6 text-5xl font-medium tracking-[-0.025em] md:text-6xl lg:text-7xl" style={{ fontFamily: "var(--font-newsreader), Georgia, serif" }}>
-            <span className="text-[#1a1a17]">Built with</span>
+            <span className="text-[#1a1a17]">Built on a small,</span>
             <br />
-            <span className="italic text-[#1a1a17]">
-              production-grade tech
-            </span>
+            <span className="text-[#1a1a17]">durable stack</span>
           </h2>
 
           <p className="mx-auto max-w-2xl text-xl text-[#4a4943]">
-            Built as a production system with typed APIs, semantic retrieval,
-            and workflow-first email operations.
+            Typed APIs, semantic retrieval, and one backend. No separate
+            vector database; embeddings live next to the mail.
           </p>
         </div>
 
@@ -365,7 +331,7 @@ export function Testimonials() {
                           <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded">
                             <Image src="/VectorMail-New.png" alt="VectorMail" width={16} height={16} className="object-contain" />
                           </div>
-                          <span className="truncate text-[10px] font-medium text-[#4a4943]">Your inbox, reimagined</span>
+                          <span className="truncate text-[10px] font-medium text-[#4a4943]">VectorMail</span>
                         </div>
                         <nav className="mt-2 space-y-0.5 px-1.5 text-[10px]">
                           {["Inbox", "Drafts", "Sent", "Junk", "Trash", "Archive"].map((folder, i) => (
@@ -398,10 +364,10 @@ export function Testimonials() {
                         </div>
                         <div className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                           {[
-                            { from: "VectorMail", subj: "Find anything in plain language", snip: "Ask \"emails from Sarah about the Q3 budget\" or \"that thread where we discussed the launch date.\" Semantic search returns the right threads in one shot.", tags: ["search", "AI"], time: "2h ago" },
-                            { from: "VectorMail", subj: "AI summaries that actually help", snip: "Every thread gets a short summary so you can triage without opening. Catch up on long chains in seconds.", tags: ["summaries"], time: "5h ago" },
-                            { from: "VectorMail", subj: "Compose in seconds, not minutes", snip: "Draft and send from one place. AI can suggest replies; you stay in control. Built for people who ship.", tags: ["compose"], time: "1d ago" },
-                            { from: "VectorMail", subj: "Your data stays yours", snip: "We don't train on your email. Connect Gmail, get semantic search and AI. Self-hostable, built for teams who care about privacy.", tags: ["privacy"], time: "2d ago" },
+                            { from: "VectorMail", subj: "Find anything in plain language", snip: "Ask \"emails from Sarah about the Q3 budget\" or \"that thread where we discussed the launch date.\" Semantic search returns the right threads in one shot.", tags: ["search"], time: "2h ago" },
+                            { from: "VectorMail", subj: "Daily brief", snip: "A short read of what arrived overnight, what needs a reply, and what can wait. Refreshes through the day as you triage.", tags: ["brief"], time: "5h ago" },
+                            { from: "VectorMail", subj: "Reply in your voice", snip: "Drafts trained on your sent mail. Editable in your editor; nothing leaves until you press send.", tags: ["compose"], time: "1d ago" },
+                            { from: "VectorMail", subj: "Your data stays yours", snip: "We don't train shared models on your mail. Connect Gmail, get semantic search and a daily brief. Disconnect any time from Google.", tags: ["privacy"], time: "2d ago" },
                           ].map((mail, i) => (
                             <div key={`${mail.from}-${mail.subj}-${i}`} className={`rounded px-1.5 py-1 ${i === 0 ? "bg-[#ecebff] ring-1 ring-[#c8c6f5]" : ""}`}>
                               <div className="flex items-center justify-between">
@@ -435,9 +401,9 @@ export function Testimonials() {
                           </div>
                           <div className="mt-1.5 text-[9px] text-[#777269]">feature@vectormail.ai · March 2026</div>
                           <div className="mt-2 space-y-2 text-[10px] leading-relaxed text-[#2c2b27]">
-                            <p>The one feature that sets VectorMail apart: semantic search. You don&apos;t search by keyword. You ask in plain language.</p>
-                            <p>Type &ldquo;emails from Sarah about the Q3 budget&rdquo; or &ldquo;that thread where we discussed the launch date&rdquo; and get the right conversations in one shot. No scrolling, no guessing which words were in the subject.</p>
-                            <p>Combine that with AI summaries and fast compose, and you have an inbox built for how people really work.</p>
+                            <p>Semantic search is the part of VectorMail that changes the most. You ask in plain language; the right thread comes back.</p>
+                            <p>Type &ldquo;emails from Sarah about the Q3 budget&rdquo; or &ldquo;that thread where we discussed the launch date&rdquo; and the right conversations come back in one shot, without guessing which words landed in the subject.</p>
+                            <p>Combine that with a daily brief and fast compose, and the inbox runs at the speed of how you actually work.</p>
                           </div>
                         </div>
                         <div className="border-t border-[#e8e4db] p-2">

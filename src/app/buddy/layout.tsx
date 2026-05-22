@@ -1,3 +1,5 @@
+import "@/styles/buddy-home.css";
+
 import { ErrorBoundary } from "@/components/global/ErrorBoundary";
 
 export default function BuddyLayout({

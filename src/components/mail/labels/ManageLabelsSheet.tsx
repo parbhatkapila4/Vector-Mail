@@ -19,14 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const LABEL_COLORS = [
-  "#1a73e8",
-  "#ea4335",
-  "#f9ab00",
-  "#34a853",
-  "#9334e6",
-  "#e91e63",
-  "#00bcd4",
-  "#795548",
+  "#1e2a4a",
+  "#b91c4b",
+  "#d4a55b",
+  "#15803d",
+  "#7c3aed",
+  "#db2777",
+  "#0891b2",
+  "#92400e",
 ];
 
 interface ManageLabelsSheetProps {
@@ -41,7 +41,7 @@ export function ManageLabelsSheet({
   accountId,
 }: ManageLabelsSheetProps) {
   const [newName, setNewName] = useState("");
-  const [newColor, setNewColor] = useState<string>(LABEL_COLORS[0] ?? "#1a73e8");
+  const [newColor, setNewColor] = useState<string>(LABEL_COLORS[0] ?? "#1e2a4a");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
@@ -101,7 +101,7 @@ export function ManageLabelsSheet({
           : [{ ...newLabel, threadCount: 0 }]
       );
       setNewName("");
-      setNewColor(LABEL_COLORS[0] ?? "#1a73e8");
+      setNewColor(LABEL_COLORS[0] ?? "#1e2a4a");
       toast.success("Label created");
     },
     onError: (e, _variables, context) => {
@@ -145,7 +145,7 @@ export function ManageLabelsSheet({
   const startEdit = (id: string, name: string, color: string | null) => {
     setEditingId(id);
     setEditName(name);
-    setEditColor((color || LABEL_COLORS[0]) ?? "#1a73e8");
+    setEditColor((color || LABEL_COLORS[0]) ?? "#1e2a4a");
   };
 
   const saveEdit = () => {
@@ -160,38 +160,52 @@ export function ManageLabelsSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#202124] sm:max-w-[400px]">
-          <SheetHeader className="shrink-0 px-6 pt-6 pb-4 text-left">
-            <SheetTitle className="text-lg font-semibold text-[#202124] dark:text-[#e8eaed]">
+        <SheetContent className="flex flex-col gap-0 overflow-hidden bg-white p-0 dark:bg-[#202124] sm:max-w-[420px]">
+          <SheetHeader className="shrink-0 border-b border-[#eef0f4] px-6 py-5 text-left dark:border-[#3c4043]">
+            <SheetTitle className="text-[18px] font-semibold tracking-tight text-[#0e1729] dark:text-[#e8eaed]">
               Manage labels
             </SheetTitle>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-[#7a849a]">
+              Organize threads with custom labels. Use them in filter rules to
+              auto-tag incoming mail.
+            </p>
           </SheetHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 pb-6">
-            <section className="shrink-0 rounded-xl border border-[#e8eaed] bg-[#f8f9fa] p-4 dark:border-[#3c4043] dark:bg-[#292a2d]">
-              <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#5f6368] dark:text-[#9aa0a6]">
-                New label
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <section className="shrink-0 rounded-xl border border-[#e4e7ed] bg-[#fafbfc] p-4 shadow-[0_1px_2px_rgba(15,20,40,0.04)] dark:border-[#3c4043] dark:bg-[#292a2d]">
+              <p
+                className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a849a]"
+                style={{
+                  fontFamily:
+                    "var(--font-jetbrains-mono), ui-monospace, monospace",
+                }}
+              >
+                <span className="text-[#1e2a4a]">✦</span> New label
               </p>
               <div className="flex flex-col gap-3">
                 <Input
                   placeholder="Label name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="h-9 border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124] dark:text-[#e8eaed]"
+                  className="h-9 border-[#e4e7ed] bg-white text-[13px] text-[#0e1729] placeholder:text-[#a8b0c0] focus-visible:border-[#1e2a4a]/40 focus-visible:ring-2 focus-visible:ring-[#1e2a4a]/15 dark:border-[#3c4043] dark:bg-[#202124] dark:text-[#e8eaed]"
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}
                 />
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">Color</span>
-                  <div className="flex gap-2">
+                  <span className="text-[11px] font-medium text-[#7a849a]">
+                    Color
+                  </span>
+                  <div className="flex gap-1.5">
                     {LABEL_COLORS.map((c) => (
                       <button
                         key={c}
                         type="button"
-                        className={`h-7 w-7 rounded-full border-2 transition-all hover:scale-110 ${newColor === c
-                          ? "border-[#202124] ring-2 ring-[#202124]/20 dark:border-[#e8eaed] dark:ring-[#e8eaed]/20"
-                          : "border-transparent hover:border-[#5f6368] dark:hover:border-[#9aa0a6]"
-                          }`}
-                        style={{ backgroundColor: c }}
+                        className="h-6 w-6 rounded-full transition-all hover:scale-110"
+                        style={{
+                          backgroundColor: c,
+                          ...(newColor === c
+                            ? { boxShadow: `0 0 0 2px white, 0 0 0 4px ${c}` }
+                            : {}),
+                        }}
                         onClick={() => setNewColor(c)}
                         aria-label={`Color ${c}`}
                       />
@@ -201,73 +215,118 @@ export function ManageLabelsSheet({
                 <Button
                   onClick={handleCreate}
                   disabled={!newName.trim() || createMutation.isPending}
-                  className="h-9 w-full bg-[#1a73e8] hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                  className="h-9 w-full rounded-lg bg-[#1e2a4a] text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0d1530] disabled:opacity-60 dark:bg-[#1e2a4a] dark:text-white dark:hover:bg-[#0d1530]"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add label
+                  {createMutation.isPending ? "Creating…" : "Add label"}
                 </Button>
               </div>
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#e8eaed] bg-[#f8f9fa] p-4 dark:border-[#3c4043] dark:bg-[#292a2d]">
-              <p className="mb-3 shrink-0 text-xs font-medium uppercase tracking-wider text-[#5f6368] dark:text-[#9aa0a6]">
-                Your labels
-              </p>
+            <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#e4e7ed] bg-[#fafbfc] p-4 shadow-[0_1px_2px_rgba(15,20,40,0.04)] dark:border-[#3c4043] dark:bg-[#292a2d]">
+              <div className="mb-3 flex shrink-0 items-center justify-between">
+                <p
+                  className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a849a]"
+                  style={{
+                    fontFamily:
+                      "var(--font-jetbrains-mono), ui-monospace, monospace",
+                  }}
+                >
+                  <span className="text-[#1e2a4a]">✦</span> Your labels
+                </p>
+                {(labels ?? []).length > 0 && (
+                  <span
+                    className="rounded-full border border-[#e4e7ed] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#4a5572]"
+                    style={{
+                      fontFamily:
+                        "var(--font-jetbrains-mono), ui-monospace, monospace",
+                    }}
+                  >
+                    {(labels ?? []).length}
+                  </span>
+                )}
+              </div>
               {isLoading ? (
-                <div className="flex flex-1 items-center justify-center py-8">
-                  <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">Loading...</p>
+                <div className="flex flex-1 items-center justify-center py-10">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e4e7ed] border-t-[#1e2a4a]" />
                 </div>
               ) : (labels ?? []).length === 0 ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
-                  <div className="rounded-full bg-[#e8eaed] p-3 dark:bg-[#3c4043]">
-                    <Pencil className="h-5 w-5 text-[#5f6368] dark:text-[#9aa0a6]" />
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center">
+                  <div className="rounded-full bg-[#1e2a4a]/8 p-3">
+                    <Pencil className="h-5 w-5 text-[#1e2a4a]" />
                   </div>
-                  <p className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">No labels yet</p>
-                  <p className="max-w-[220px] text-xs text-[#5f6368] dark:text-[#9aa0a6]">
-                    Create one above to organize threads and use filter rules.
+                  <p className="text-[13.5px] font-semibold text-[#0e1729]">
+                    No labels yet
+                  </p>
+                  <p className="max-w-[240px] text-[12px] leading-relaxed text-[#7a849a]">
+                    Create one above to organize threads and power your filter
+                    rules.
                   </p>
                 </div>
               ) : (
-                <ul className="flex flex-col gap-2 overflow-y-auto pr-1">
+                <ul className="flex flex-col gap-2 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {(labels ?? []).map((label) => (
                     <li
                       key={label.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-[#e8eaed] bg-white px-3 py-2.5 dark:border-[#3c4043] dark:bg-[#202124]"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-[#e4e7ed] bg-white px-3 py-2.5 transition-colors hover:border-[#d0d5de] hover:shadow-[0_1px_2px_rgba(15,20,40,0.04)] dark:border-[#3c4043] dark:bg-[#202124]"
                     >
                       {editingId === label.id ? (
                         <>
                           <Input
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="h-8 flex-1 border-[#dadce0] dark:border-[#3c4043] dark:bg-[#292a2d] dark:text-[#e8eaed]"
+                            className="h-8 flex-1 border-[#e4e7ed] text-[13px] focus-visible:border-[#1e2a4a]/40 focus-visible:ring-2 focus-visible:ring-[#1e2a4a]/15 dark:border-[#3c4043] dark:bg-[#292a2d] dark:text-[#e8eaed]"
                             autoFocus
                           />
-                          <div className="flex gap-1.5">
-                            {LABEL_COLORS.slice(0, 4).map((c) => (
+                          <div className="flex gap-1">
+                            {LABEL_COLORS.map((c) => (
                               <button
                                 key={c}
                                 type="button"
-                                className={`h-6 w-6 rounded-full border-2 ${editColor === c ? "border-[#202124] dark:border-[#e8eaed]" : "border-transparent"}`}
-                                style={{ backgroundColor: c }}
+                                className="h-5 w-5 rounded-full transition-all hover:scale-110"
+                                style={{
+                                  backgroundColor: c,
+                                  ...(editColor === c
+                                    ? {
+                                      boxShadow: `0 0 0 2px white, 0 0 0 4px ${c}`,
+                                    }
+                                    : {}),
+                                }}
                                 onClick={() => setEditColor(c)}
                               />
                             ))}
                           </div>
-                          <Button size="sm" variant="ghost" className="h-8" onClick={saveEdit} disabled={updateMutation.isPending}>
+                          <Button
+                            size="sm"
+                            className="h-8 bg-[#1e2a4a] px-3 text-[12px] font-semibold text-white hover:bg-[#0d1530]"
+                            onClick={saveEdit}
+                            disabled={updateMutation.isPending}
+                          >
                             Save
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingId(null)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-[12px] text-[#4a5572] hover:bg-[#f4f5f8]"
+                            onClick={() => setEditingId(null)}
+                          >
                             Cancel
                           </Button>
                         </>
                       ) : (
                         <>
                           <span
-                            className="min-w-0 flex-1 truncate rounded-md px-2.5 py-1 text-sm font-medium"
+                            className="min-w-0 flex-1 truncate rounded-md px-2.5 py-1 text-[12.5px] font-semibold"
                             style={
                               label.color
-                                ? { backgroundColor: `${label.color}20`, color: label.color }
-                                : { backgroundColor: "#e8f0fe", color: "#1967d2" }
+                                ? {
+                                  backgroundColor: `${label.color}1a`,
+                                  color: label.color,
+                                }
+                                : {
+                                  backgroundColor: "rgba(30,42,74,0.08)",
+                                  color: "#1e2a4a",
+                                }
                             }
                           >
                             {label.name}
@@ -276,16 +335,20 @@ export function ManageLabelsSheet({
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-[#5f6368] hover:bg-[#f1f3f4] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043]"
-                              onClick={() => startEdit(label.id, label.name, label.color)}
+                              className="h-8 w-8 text-[#7a849a] hover:bg-[#f4f5f8] hover:text-[#1e2a4a] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043]"
+                              onClick={() =>
+                                startEdit(label.id, label.name, label.color)
+                              }
+                              title="Rename"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-[#d93025] hover:bg-[#fce8e6] dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
+                              className="h-8 w-8 text-[#7a849a] hover:bg-[#fef2f2] hover:text-[#b91c1c] dark:text-[#9aa0a6] dark:hover:bg-[#5f2120]"
                               onClick={() => setDeleteId(label.id)}
+                              title="Delete"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -302,19 +365,21 @@ export function ManageLabelsSheet({
       </Sheet>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogTitle>Delete label?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will remove the label from all threads and delete any filter rules that use it.
-          </AlertDialogDescription>
+        <AlertDialogContent className="border-[#e4e7ed] bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#0e1729]">Delete label?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[#4a5572]">
+              This will remove the label from all threads and delete any filter rules that use it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-[#e4e7ed] text-[#4a5572] hover:bg-[#f4f5f8]">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#d93025] hover:bg-[#b3261e] dark:bg-[#f28b82] dark:hover:bg-[#c5221f]"
+              className="bg-[#b91c1c] text-white hover:bg-[#991b1b]"
               onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })}
               disabled={deleteMutation.isPending}
             >
-              Delete
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

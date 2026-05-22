@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { env } from "@/env.js";
 import { incrementLlmCall } from "@/lib/metrics/store";
 import { recordUsage } from "@/lib/ai-usage";
+import { serverLog } from "@/lib/logging/server-logger";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -110,7 +111,10 @@ JSON response:`;
       location: parsed.location ? String(parsed.location).trim() : undefined,
     };
   } catch (err) {
-    console.error("Event extraction failed:", err);
+    serverLog.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      "event-extraction: parse failed",
+    );
     return null;
   }
 }

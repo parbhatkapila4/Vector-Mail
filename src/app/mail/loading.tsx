@@ -1,7 +1,7 @@
 export default function MailLoading() {
   return (
     <div
-      className="relative flex min-h-dvh h-dvh w-full items-center justify-center bg-[#09090b]"
+      className="relative flex min-h-dvh h-dvh w-full items-center justify-center bg-[#0e0c0a]"
       role="status"
       aria-live="polite"
       aria-label="Loading"

@@ -1,5 +1,6 @@
 import { Account } from "@/lib/accounts";
 import { db } from "@/server/db";
+import { serverLog } from "@/lib/logging/server-logger";
 
 export type InboxSyncStepResult = {
   ok: boolean;
@@ -215,7 +216,10 @@ export async function runInboxSyncOneStep(
 export async function finalizeInboxSync(accountId: string): Promise<void> {
   const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
   await recalculateAllThreadStatuses(accountId).catch((e) =>
-    console.error("[finalizeInboxSync] recalculateAllThreadStatuses:", e),
+    serverLog.error(
+      { err: e instanceof Error ? e.message : String(e), accountId },
+      "finalizeInboxSync: recalculateAllThreadStatuses failed",
+    ),
   );
   await db.account
     .update({

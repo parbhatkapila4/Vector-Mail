@@ -1,4 +1,5 @@
 import { inngest } from "./client";
+import { serverLog } from "@/lib/logging/server-logger";
 import { runEmailAnalysisForOne, runEmailAnalysisForMany } from "@/lib/jobs/run-email-analysis";
 import { runScheduledSend } from "@/lib/jobs/run-scheduled-send";
 import {
@@ -28,7 +29,7 @@ const AUTOMATION_EXECUTE_MAX_RETRIES = 3;
 
 //Just a reminder telling that this limit is according to the vercel hobby plan - To all who clone this repo - Author Parbhat kapila
 const CRON_STALE_INBOX_SYNC = "30 4 * * *";
-const CRON_AUTOMATION_DETECT_FOLLOWUPS = "0 5 * * *"; 
+const CRON_AUTOMATION_DETECT_FOLLOWUPS = "0 5 * * *";
 
 async function recordAndRethrow(
   jobType: string,
@@ -45,7 +46,10 @@ async function recordAndRethrow(
       errorMessage,
     });
   } catch (recordErr) {
-    console.error("[inngest] recordFailedJob error:", recordErr);
+    serverLog.error(
+      { err: recordErr instanceof Error ? recordErr.message : String(recordErr), jobType, resourceId },
+      "inngest: recordFailedJob persistence error",
+    );
   }
   throw err instanceof Error ? err : new Error(errorMessage);
 }

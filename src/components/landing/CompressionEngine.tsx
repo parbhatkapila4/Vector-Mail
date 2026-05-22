@@ -35,21 +35,10 @@ export function CompressionEngine() {
               fontFamily: "var(--vmx-sans)",
             }}
           >
-            Built for{" "}
-            <span
-              style={{
-                fontFamily: "var(--vmx-mono)",
-                color: "var(--vmx-lav-bright, #9d7af3)",
-                fontWeight: 500,
-              }}
-            >
-              &lt;builders&gt;
-            </span>
+            Many threads in.
             <br />
             <span style={{ color: "#6b6b6b", fontWeight: 400 }}>
-              who ship,
-              <br />
-              not promise
+              One brief out.
             </span>
           </h2>
           <p
@@ -62,8 +51,9 @@ export function CompressionEngine() {
               letterSpacing: "-0.005em",
             }}
           >
-            VectorMail compresses dozens of messages into a single actionable
-            brief. Less noise, fewer tokens, measurably faster decisions.
+            VectorMail reads the morning's threads and produces a short
+            brief. The decisions, the blockers, and the things that need a
+            reply today.
           </p>
         </div>
 
@@ -115,7 +105,7 @@ export function CompressionEngine() {
                 fontFamily: "var(--vmx-sans)",
               }}
             >
-              Thread Compression Engine
+              Overnight inbox
             </h3>
             <p
               className="mb-auto"
@@ -125,8 +115,9 @@ export function CompressionEngine() {
                 lineHeight: 1.6,
               }}
             >
-              Streams every message through a hierarchical retrieval model.
-              Preserves commitments, deadlines, and intent - drops the noise.
+              Threads scored for importance and grouped by intent.
+              Commitments, deadlines, and explicit asks for a reply are
+              kept; the rest is folded out of the way.
             </p>
 
             <div
@@ -165,7 +156,7 @@ export function CompressionEngine() {
               className="mt-3.5 flex justify-between"
               style={{ fontFamily: "var(--vmx-mono)", fontSize: 11 }}
             >
-              <span>
+              <span style={{ color: "#888" }}>
                 <span
                   style={{
                     color: "var(--vmx-signal, #ff5722)",
@@ -174,35 +165,16 @@ export function CompressionEngine() {
                 >
                   47
                 </span>{" "}
-                <span style={{ color: "#888" }}>messages in</span>
+                threads overnight
               </span>
-              <span style={{ color: "#888" }}>
-                <span
-                  style={{
-                    color: "var(--vmx-signal, #ff5722)",
-                    fontWeight: 600,
-                  }}
-                >
-                  14,328
-                </span>{" "}
-                tokens ·{" "}
-                <span
-                  style={{
-                    color: "var(--vmx-signal, #ff5722)",
-                    fontWeight: 600,
-                  }}
-                >
-                  38ms
-                </span>
-              </span>
+              <span style={{ color: "#888" }}>scored, grouped, summarized</span>
             </div>
           </div>
 
           <div
             className="relative flex flex-col justify-center p-8"
             style={{
-              background:
-                "radial-gradient(circle at 30% 20%, rgba(157,122,243,0.18), transparent 60%), #1a1a1a",
+              background: "#1a1a1a",
             }}
           >
             <span
@@ -260,17 +232,9 @@ export function CompressionEngine() {
                 letterSpacing: "-0.018em",
               }}
             >
-              William wants to{" "}
-              <em
-                style={{
-                  color: "var(--vmx-lav-bright, #9d7af3)",
-                  fontStyle: "italic",
-                }}
-              >
-                move Thursday&apos;s sync
-              </em>{" "}
-              to next week. Sequoia confirmed the Tuesday call. Alice needs
-              your call on the design merge.
+              William wants to move Thursday&apos;s sync to next week.
+              Sequoia confirmed the Tuesday call. Alice needs your call on
+              the design merge.
             </h3>
 
             <div
@@ -278,9 +242,9 @@ export function CompressionEngine() {
               style={{ borderTop: "1px solid #2a2a2a" }}
             >
               {[
-                { num: "98", delta: "↑ 2.4%", label: "Recall" },
-                { num: "312", delta: "↓ 97.8%", label: "Tokens out" },
-                { num: "38ms", label: "Latency" },
+                { label: "Reply needed", value: "3" },
+                { label: "Decisions pending", value: "2" },
+                { label: "FYI", value: "42" },
               ].map((s) => (
                 <div key={s.label} className="flex-1">
                   <div
@@ -292,15 +256,7 @@ export function CompressionEngine() {
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    {s.num}
-                    {s.delta && (
-                      <span
-                        className="ml-1"
-                        style={{ color: "#4ade80", fontSize: 12 }}
-                      >
-                        {s.delta}
-                      </span>
-                    )}
+                    {s.value}
                   </div>
                   <div
                     className="mt-0.5 uppercase"

@@ -3,7 +3,6 @@
 import { useSignIn } from "@clerk/nextjs";
 import type { OAuthStrategy } from "@clerk/types";
 import Link from "next/link";
-import { Mail } from "lucide-react";
 import { useState } from "react";
 import styles from "./page.module.css";
 

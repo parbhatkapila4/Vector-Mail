@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { env } from "@/env";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { enqueueBackfillEmbeddingJobs } from "@/lib/jobs/enqueue";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.admin.backfill");
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -45,7 +47,7 @@ export async function GET(req: NextRequest) {
     const count = Number(countResult[0]?.count ?? 0);
     return NextResponse.json({ count, accountId: accountId ?? null }, { status: 200 });
   } catch (err) {
-    console.error("[backfill-embeddings GET]", err);
+    apiLog.error("[backfill-embeddings GET]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Count failed" },
       { status: 500 },
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest) {
       { status: 200 },
     );
   } catch (err) {
-    console.error("[backfill-embeddings]", err);
+    apiLog.error("[backfill-embeddings]", err);
     return NextResponse.json(
       {
         error: err instanceof Error ? err.message : "Backfill enqueue failed",

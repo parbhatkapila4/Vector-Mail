@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+﻿import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { env } from "@/env";
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     env.ENABLE_EMAIL_SEND ?? process.env.ENABLE_EMAIL_SEND === "true";
 
   if (!enableEmailSend) {
-    console.log(
+    sendLog.log(
       "[EMAIL_SEND] Feature disabled - ENABLE_EMAIL_SEND:",
       process.env.ENABLE_EMAIL_SEND,
       "env.ENABLE_EMAIL_SEND:",
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       try {
         formData = await req.formData();
       } catch (formDataError) {
-        console.error("[EMAIL_SEND] Error parsing FormData:", formDataError);
+        sendLog.error("[EMAIL_SEND] Error parsing FormData:", formDataError);
         return NextResponse.json(
           {
             error: "Invalid request",
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
 
         if (file.size > maxSize) {
           const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-          console.error(
+          sendLog.error(
             `[EMAIL_SEND] File ${file.name} exceeds maximum size: ${file.size} bytes (${sizeMB} MB, max: 25 MB)`,
           );
           oversizedFiles.push(`${file.name} (${sizeMB} MB)`);
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       trackOpens = body.trackOpens === true;
     }
   } catch (error) {
-    console.error("[EMAIL_SEND] Error parsing request:", error);
+    sendLog.error("[EMAIL_SEND] Error parsing request:", error);
     return NextResponse.json(
       {
         error: "Invalid request",
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
       } as Record<string, boolean>,
     })) as AccountForSend | null;
   } catch (error) {
-    console.error("[EMAIL_SEND] Database error:", error);
+    sendLog.error("[EMAIL_SEND] Database error:", error);
     return NextResponse.json(
       {
         error: "Database error",
@@ -430,7 +430,7 @@ export async function POST(req: NextRequest) {
         pixelUrl,
       );
     } catch (trackErr) {
-      console.error("[EMAIL_SEND] Open tracking setup failed:", trackErr);
+      sendLog.error("[EMAIL_SEND] Open tracking setup failed:", trackErr);
     }
   }
 
@@ -465,7 +465,7 @@ export async function POST(req: NextRequest) {
                 contentType: file.type || "application/octet-stream",
               };
             } catch (fileError) {
-              console.error(
+              sendLog.error(
                 `[EMAIL_SEND] Error processing file ${file.name}:`,
                 fileError,
               );
@@ -476,7 +476,7 @@ export async function POST(req: NextRequest) {
           }),
         );
       } catch (attachmentError) {
-        console.error(
+        sendLog.error(
           "[EMAIL_SEND] Error processing attachments:",
           attachmentError,
         );
@@ -527,15 +527,15 @@ export async function POST(req: NextRequest) {
 
       aurinkoHeaders["Content-Type"] = "application/json";
 
-      console.log(
+      sendLog.log(
         "[EMAIL_SEND] Sending email with attachments via Aurinko API",
       );
-      console.log("[EMAIL_SEND] Attachments:", attachmentData.length);
-      console.log(
+      sendLog.log("[EMAIL_SEND] Attachments:", attachmentData.length);
+      sendLog.log(
         "[EMAIL_SEND] Attachment names:",
         attachmentData.map((a) => a.name),
       );
-      console.log(
+      sendLog.log(
         "[EMAIL_SEND] First attachment sample (first 100 chars of base64):",
         attachmentData[0]?.content?.substring(0, 100),
       );
@@ -556,13 +556,13 @@ export async function POST(req: NextRequest) {
           const errorStatus = aurinkoError.response?.status;
           const errorData = aurinkoError.response?.data;
 
-          console.error("[EMAIL_SEND] Aurinko API Error Details:");
-          console.error("[EMAIL_SEND] Status:", errorStatus);
-          console.error(
+          sendLog.error("[EMAIL_SEND] Aurinko API Error Details:");
+          sendLog.error("[EMAIL_SEND] Status:", errorStatus);
+          sendLog.error(
             "[EMAIL_SEND] Response Data:",
             JSON.stringify(errorData, null, 2),
           );
-          console.error("[EMAIL_SEND] Request Payload (sample):", {
+          sendLog.error("[EMAIL_SEND] Request Payload (sample):", {
             from: emailPayload.from,
             to: emailPayload.to,
             subject: emailPayload.subject,
@@ -575,7 +575,7 @@ export async function POST(req: NextRequest) {
             emailPayload.attachments &&
             emailPayload.attachments.length > 0
           ) {
-            console.warn(
+            sendLog.warn(
               "[EMAIL_SEND] Attempting to send email without attachments as fallback...",
             );
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -640,10 +640,10 @@ export async function POST(req: NextRequest) {
 
       aurinkoHeaders["Content-Type"] = "application/json";
 
-      console.log("[EMAIL_SEND] Sending email via Aurinko API");
-      console.log("[EMAIL_SEND] From:", fromEmail);
-      console.log("[EMAIL_SEND] To:", to);
-      console.log("[EMAIL_SEND] Subject:", subject);
+      sendLog.log("[EMAIL_SEND] Sending email via Aurinko API");
+      sendLog.log("[EMAIL_SEND] From:", fromEmail);
+      sendLog.log("[EMAIL_SEND] To:", to);
+      sendLog.log("[EMAIL_SEND] Subject:", subject);
 
       response = await axios.post(
         `https://api.aurinko.io/v1/email/messages`,
@@ -657,13 +657,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("[EMAIL_SEND] Success - Response:", response.data);
+    sendLog.log("[EMAIL_SEND] Success - Response:", response.data);
 
     if (trackingId && response.data?.id) {
       try {
         await updateTrackingMessageId(trackingId, String(response.data.id));
       } catch (updateErr) {
-        console.error("[EMAIL_SEND] Failed to link tracking to messageId:", updateErr);
+        sendLog.error("[EMAIL_SEND] Failed to link tracking to messageId:", updateErr);
       }
     }
 
@@ -676,15 +676,15 @@ export async function POST(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("[EMAIL_SEND] Error sending email:", error);
+    sendLog.error("[EMAIL_SEND] Error sending email:", error);
 
     try {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
         const errorData = error.response?.data;
 
-        console.error("[EMAIL_SEND] Axios error - Status:", status);
-        console.error(
+        sendLog.error("[EMAIL_SEND] Axios error - Status:", status);
+        sendLog.error(
           "[EMAIL_SEND] Axios error - Data:",
           JSON.stringify(errorData, null, 2),
         );
@@ -758,7 +758,7 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     } catch (jsonError) {
-      console.error(
+      sendLog.error(
         "[EMAIL_SEND] Critical error creating error response:",
         jsonError,
       );
@@ -775,3 +775,6 @@ export async function POST(req: NextRequest) {
     }
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const sendLog = makeTagLogger("api.email-send");

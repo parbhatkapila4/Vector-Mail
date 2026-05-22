@@ -1,5 +1,4 @@
 "use client";
-import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import React from "react";
 import useThreads from "@/hooks/use-threads";
@@ -111,30 +110,37 @@ const SearchBar = () => {
   }, [setSearchValue, setIsSearching, setSearchResults]);
 
   return (
-    <div className="relative min-w-0 flex-1">
-      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9ca3af] dark:text-[#71717a]" />
-      <Input
+    <div className="search-bar">
+      <Search className="h-[13px] w-[13px]" strokeWidth={1.6} aria-hidden />
+      <input
         ref={ref}
         id="mail-search-input"
-        placeholder="Search"
-        className="h-8 min-h-[44px] w-full rounded-lg border-0 bg-[#f3f4f6] pl-9 pr-16 text-[13px] text-[#111118] transition-colors placeholder:text-[#9ca3af] focus:bg-white focus-visible:ring-1 focus-visible:ring-[#3b82f6]/30 dark:bg-[#ffffff]/[0.04] dark:text-[#f4f4f5] dark:placeholder:text-[#71717a] dark:focus:bg-[#ffffff]/[0.06] dark:focus-visible:ring-[#3b82f6]/30 sm:min-h-0 [touch-action:manipulation]"
+        placeholder="ask anything · find what you need"
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         onFocus={() => setIsSearching(true)}
         onBlur={handleBlur}
       />
-      {!searchValue && (
-        <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded-md border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[10px] font-medium text-[#9ca3af] dark:border-[#1a1a23] dark:bg-[#18181b] dark:text-[#71717a] sm:flex">
-          Ctrl K
-        </kbd>
-      )}
+      {!searchValue && <span className="search-kbd">⌘K</span>}
       {searchValue && (
         <button
           type="button"
-          className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-[#e5e7eb] dark:hover:bg-[#ffffff]/[0.06]"
           onClick={handleClear}
+          aria-label="Clear search"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 18,
+            height: 18,
+            borderRadius: 999,
+            border: 0,
+            background: "transparent",
+            cursor: "pointer",
+            color: "var(--ink-3)",
+          }}
         >
-          <X className="h-3 w-3 text-[#6b7280] dark:text-[#a1a1aa]" />
+          <X className="h-3 w-3" />
         </button>
       )}
     </div>

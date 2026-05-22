@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import { Menu, X, Loader2 } from "lucide-react";
 import { useMailNavigation } from "@/components/mail-navigation-loader";
 
 const NAV_LINKS: { label: string; href: string; chev?: boolean }[] = [
   { label: "Product", href: "/features", chev: true },
-  { label: "Pricing", href: "/pricing" },
   { label: "Use Cases", href: "/about", chev: true },
   { label: "Resources", href: "/brief", chev: true },
   { label: "Changelog", href: "/changelog" },
@@ -19,22 +19,19 @@ function BrandMark({ size = 30 }: { size?: number }) {
   return (
     <span
       aria-hidden
-      className="grid place-items-center"
+      className="relative inline-grid shrink-0 place-items-center overflow-hidden rounded-[6px]"
       style={{ width: size, height: size }}
     >
-      <svg viewBox="0 0 30 30" fill="none" width={size} height={size}>
-        <rect x="3" y="6" width="24" height="18" rx="3" fill="#0a0a0a" />
-        <g
-          stroke="#9d7af3"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M7 11l3 4-3 4" />
-          <path d="M13 11l3 4-3 4" />
-          <path d="M19 11l3 4-3 4" />
-        </g>
-      </svg>
+      <Image
+        src="/VectorMail-New.png"
+        alt=""
+        width={size}
+        height={size}
+        className="object-contain"
+        sizes={`${size}px`}
+        unoptimized
+        priority
+      />
     </span>
   );
 }
@@ -84,7 +81,8 @@ function ArrowPill({ small }: { small?: boolean }) {
 }
 
 export function Navigation() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const { isLoaded: userLoaded, user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,20 +102,23 @@ export function Navigation() {
   }, [searchParams, signOut, router]);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!authLoaded || !isSignedIn) return;
     router.prefetch("/mail");
-  }, [isLoaded, isSignedIn, router]);
+  }, [authLoaded, isSignedIn, router]);
 
   useEffect(() => {
-    if (isLoaded) {
+    if (authLoaded) {
       setAuthFallbackReady(false);
       return;
     }
-    const t = window.setTimeout(() => setAuthFallbackReady(true), 1500);
+    const t = window.setTimeout(() => setAuthFallbackReady(true), 500);
     return () => window.clearTimeout(t);
-  }, [isLoaded]);
+  }, [authLoaded]);
 
-  const canRenderAuthState = isLoaded || authFallbackReady;
+
+  const canRenderAuthState =
+    authFallbackReady ||
+    (authLoaded && (!isSignedIn || userLoaded));
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -269,8 +270,8 @@ export function Navigation() {
               >
                 Sign in
               </Link>
-              <Link
-                href="/sign-in"
+              <a
+                href="/api/demo/enter"
                 className="inline-flex items-center gap-2 rounded-[8px] py-[10px] pl-[18px] pr-[14px] text-[14px] font-semibold text-white transition-all duration-150 hover:-translate-y-px"
                 style={{
                   background: "var(--vmx-ink, #0a0a0a)",
@@ -280,9 +281,9 @@ export function Navigation() {
                   fontFamily: "var(--vmx-sans)",
                 }}
               >
-                Get Started
+                See it in action
                 <ArrowPill />
-              </Link>
+              </a>
             </div>
           )}
 
@@ -324,7 +325,7 @@ export function Navigation() {
             {!canRenderAuthState ? (
               <div className="h-10 animate-pulse rounded-[8px] bg-[#efece5]" />
             ) : isSignedIn ? (
-              <div className="flex flex-col gap-2"> 
+              <div className="flex flex-col gap-2">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
@@ -363,8 +364,8 @@ export function Navigation() {
                 >
                   Sign in
                 </Link>
-                <Link
-                  href="/sign-in"
+                <a
+                  href="/api/demo/enter"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center justify-center gap-2 rounded-[8px] py-2.5 text-[13.5px] font-semibold text-white"
                   style={{
@@ -373,9 +374,9 @@ export function Navigation() {
                       "0 1px 0 rgba(255,255,255,0.08) inset, 0 2px 6px rgba(0,0,0,0.15)",
                   }}
                 >
-                  Get Started
+                  See it in action
                   <ArrowPill />
-                </Link>
+                </a>
               </div>
             )}
           </div>

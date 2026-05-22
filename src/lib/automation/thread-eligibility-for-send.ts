@@ -25,9 +25,6 @@ function threadHasTrashEmail(
   );
 }
 
-/**
- * Re-fetch thread + messages and match detect.ts-style eligibility before a real automation send.
- */
 export async function evaluateThreadEligibilityForAutoFollowUpSend(params: {
   threadId: string;
   accountId: string;
@@ -35,7 +32,6 @@ export async function evaluateThreadEligibilityForAutoFollowUpSend(params: {
   now: Date;
   expectedLastExternalEmailId: string;
   expectedInReplyToInternetMessageId: string;
-  /** When set to `unreplied_external`, align with detect.ts draft filter. */
   detectorReasonCode?: string | null;
 }): Promise<ThreadSendEligibility> {
   const thread = await withDbRetry(() =>

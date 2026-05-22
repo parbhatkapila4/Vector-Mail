@@ -9,6 +9,7 @@ import {
   blockReasonForSender,
   normalizeAutomationGuardrails,
 } from "@/lib/automation/guardrails";
+import { isNonRepliable } from "@/lib/automation/non-repliable-detector";
 
 import { AUTO_FOLLOW_UP_ACTION_TYPE } from "@/lib/automation/action-types";
 
@@ -19,6 +20,12 @@ const DETECTOR_VERSION = "followup-detector:v1";
 const NEEDS_REPLY_UNREPLIED_DAYS = 14;
 const FOLLOW_UP_OUTBOUND_COOLDOWN_HOURS = 8;
 const IDEMPOTENCY_WINDOW_HOURS = 6;
+
+type FilteredExample = {
+  subject: string;
+  sender: string;
+  reason: "non_repliable" | "promo";
+};
 
 type DetectResult = {
   accountId: string;
@@ -31,6 +38,14 @@ type DetectResult = {
   skippedRecentOutbound: number;
   skippedManualMode: number;
   enqueued: number;
+  skippedPromo: number;
+  skippedNonRepliable: number;
+  skippedSelfSent: number;
+  skippedMissingData: number;
+  skippedBlockedSender: number;
+  filteredExamples: FilteredExample[];
+  totalInboxThreads: number;
+  threadsInWindow: number;
 };
 
 function bucketKey(now: Date): string {
@@ -99,6 +114,20 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
     skippedRecentOutbound: 0,
     skippedManualMode: 0,
     enqueued: 0,
+    skippedPromo: 0,
+    skippedNonRepliable: 0,
+    skippedSelfSent: 0,
+    skippedMissingData: 0,
+    skippedBlockedSender: 0,
+    filteredExamples: [],
+    totalInboxThreads: 0,
+    threadsInWindow: 0,
+  };
+
+  const FILTERED_EXAMPLES_CAP = 5;
+  const recordFilteredExample = (ex: FilteredExample) => {
+    if (resultBase.filteredExamples.length >= FILTERED_EXAMPLES_CAP) return;
+    resultBase.filteredExamples.push(ex);
   };
 
   if (account.automationMode === "manual") {
@@ -116,6 +145,23 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
   const accountEmailLower = account.emailAddress.toLowerCase();
   const unrepliedCutoff = new Date(now);
   unrepliedCutoff.setDate(unrepliedCutoff.getDate() - NEEDS_REPLY_UNREPLIED_DAYS);
+
+  resultBase.totalInboxThreads = await withDbRetry(() =>
+    db.thread.count({
+      where: { accountId: account.id, inboxStatus: true },
+    }),
+  );
+  resultBase.threadsInWindow = await withDbRetry(() =>
+    db.thread.count({
+      where: {
+        accountId: account.id,
+        inboxStatus: true,
+        done: false,
+        draftStatus: false,
+        lastMessageDate: { gte: unrepliedCutoff },
+      },
+    }),
+  );
 
   const dueReminderThreads = await withDbRetry(() =>
     db.thread.findMany({
@@ -199,6 +245,15 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
     if (seenThreadIds.has(t.id)) continue;
     const sender = t.emails[0]?.from?.address ?? null;
     if (sender && blockReasonForSender(sender, guardrails)) continue;
+    const repliability = isNonRepliable({
+      senderAddress: sender,
+      subject: t.subject,
+      bodySnippet: null,
+    });
+    if (repliability.skip) {
+      resultBase.skippedNonRepliable += 1;
+      continue;
+    }
     candidates.push({
       threadId: t.id,
       subject: t.subject || "(No subject)",
@@ -211,9 +266,23 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
 
   for (const t of candidateUnreplied) {
     const latestEmail = t.emails[0];
-    if (!latestEmail?.from?.address) continue;
-    if (latestEmail.from.address.toLowerCase() === accountEmailLower) continue;
+    if (!latestEmail?.from?.address) {
+      resultBase.skippedMissingData += 1;
+      continue;
+    }
+    if (latestEmail.from.address.toLowerCase() === accountEmailLower) {
+      resultBase.skippedSelfSent += 1;
+      continue;
+    }
     if (seenThreadIds.has(t.id)) continue;
+    const senderBlockReason = blockReasonForSender(
+      latestEmail.from.address,
+      guardrails,
+    );
+    if (senderBlockReason) {
+      resultBase.skippedBlockedSender += 1;
+      continue;
+    }
 
     const sysC = (latestEmail.sysClassifications ?? []).map((c) =>
       String(c).toLowerCase(),
@@ -244,7 +313,30 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
       /\b(newsletter|promo|promotional|marketing|unsubscribe|sale|offer|discount|deal)\b/.test(
         blob,
       );
-    if (isPromoLike) continue;
+    if (isPromoLike) {
+      resultBase.skippedPromo += 1;
+      recordFilteredExample({
+        subject: t.subject || "(No subject)",
+        sender: latestEmail.from.address,
+        reason: "promo",
+      });
+      continue;
+    }
+
+    const repliability = isNonRepliable({
+      senderAddress: latestEmail.from.address,
+      subject: latestEmail.subject || t.subject,
+      bodySnippet: latestEmail.bodySnippet,
+    });
+    if (repliability.skip) {
+      resultBase.skippedNonRepliable += 1;
+      recordFilteredExample({
+        subject: t.subject || "(No subject)",
+        sender: latestEmail.from.address,
+        reason: "non_repliable",
+      });
+      continue;
+    }
 
     candidates.push({
       threadId: t.id,
@@ -386,6 +478,13 @@ export async function detectAndCreateFollowUpExecutionsForAccount(
     }
   }
 
+  detectLog.log(
+    `[detect] account=${account.id} mode=${account.automationMode} totalInbox=${resultBase.totalInboxThreads} threadsInWindow=${resultBase.threadsInWindow} scanned=${resultBase.scannedThreads} eligible=${resultBase.eligibleThreads} created=${resultBase.created} duplicates=${resultBase.duplicates} skippedPromo=${resultBase.skippedPromo} skippedNonRepliable=${resultBase.skippedNonRepliable} skippedSelfSent=${resultBase.skippedSelfSent} skippedMissingData=${resultBase.skippedMissingData} skippedBlockedSender=${resultBase.skippedBlockedSender} skippedRecentOutbound=${resultBase.skippedRecentOutbound} enqueued=${resultBase.enqueued}`,
+  );
+
   return resultBase;
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const detectLog = makeTagLogger("automation.detect");
 

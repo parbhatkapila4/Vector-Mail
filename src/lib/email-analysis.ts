@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
 import { env } from "@/env.js";
 import type { EmailMessage } from "@/types";
 import { getGenerateEmbeddings } from "./embedding";
@@ -86,7 +86,7 @@ Summary:`;
     incrementLlmCall();
     return summary;
   } catch (error) {
-    console.error("Failed to generate summary:", error);
+    eaLog.error("Failed to generate summary:", error);
     return `Email from ${email.from.name || email.from.address} regarding: ${email.subject}`;
   }
 }
@@ -145,7 +145,7 @@ Return only the tags as a comma-separated list, no other text.`;
       .map((tag: string) => tag.trim().toLowerCase())
       .filter(Boolean);
   } catch (error) {
-    console.error("Tag generation failed:", error);
+    eaLog.error("Tag generation failed:", error);
     const fallbackTags = [];
     if (email.sysLabels.includes("important")) fallbackTags.push("important");
     if (email.sysLabels.includes("junk")) fallbackTags.push("spam");
@@ -178,7 +178,7 @@ export async function generateEmailEmbedding(
 
     return embedding;
   } catch (error) {
-    console.error("Embedding generation failed:", error);
+    eaLog.error("Embedding generation failed:", error);
     return new Array(768).fill(0);
   }
 }
@@ -188,13 +188,13 @@ export async function analyzeEmail(
   options?: { userId?: string; accountId?: string },
 ): Promise<EmailAnalysis> {
   try {
-    console.log(`Analyzing: ${email.subject}`);
+    eaLog.log(`Analyzing: ${email.subject}`);
 
     const summary = await generateEmailSummary(email, options);
     const vectorEmbedding = await generateEmailEmbedding(summary, email, options);
     const tags = await generateEmailTags(email, options);
 
-    console.log(`Tags: ${tags.join(", ")}`);
+    eaLog.log(`Tags: ${tags.join(", ")}`);
 
     return {
       summary,
@@ -202,7 +202,7 @@ export async function analyzeEmail(
       vectorEmbedding,
     };
   } catch (error) {
-    console.error("Email analysis failed:", error);
+    eaLog.error("Email analysis failed:", error);
     return {
       summary: email.subject || "No summary available",
       tags: email.sysLabels.includes("important") ? ["important"] : ["normal"],
@@ -221,7 +221,7 @@ export async function generateQueryEmbedding(query: string): Promise<number[]> {
 
     return embedding;
   } catch (error) {
-    console.error("Query embedding failed:", error);
+    eaLog.error("Query embedding failed:", error);
     return new Array(768).fill(0);
   }
 }
@@ -252,3 +252,6 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
 
   return dotProduct / (normA * normB);
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const eaLog = makeTagLogger("email-analysis");

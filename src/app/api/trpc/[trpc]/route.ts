@@ -9,7 +9,10 @@ import {
 } from "@/lib/correlation";
 import { env } from "@/env";
 import { appRouter } from "@/server/api/root";
-import { createTRPCContext } from "@/server/api/trpc";
+import { createTRPCContext, isClientAbortError } from "@/server/api/trpc";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+
+const trpcLog = makeTagLogger("api.trpc-handler");
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -36,13 +39,19 @@ const handler = async (req: NextRequest) => {
             if (error.code === "UNAUTHORIZED") {
               return;
             }
-            console.error(
+            if (isClientAbortError(error)) {
+              trpcLog.warn(
+                `tRPC client aborted ${path ?? "<no-path>"} before body finished`,
+              );
+              return;
+            }
+            trpcLog.error(
               `tRPC failed on ${path ?? "<no-path>"}: ${error.message}`,
             );
             if (error.cause) {
               const c = error.cause;
               if (axios.isAxiosError(c)) {
-                console.error(
+                trpcLog.error(
                   "Error cause (Axios):",
                   c.code,
                   c.message,
@@ -50,11 +59,11 @@ const handler = async (req: NextRequest) => {
                   c.config?.url,
                 );
               } else if (c instanceof Error) {
-                console.error("Error cause:", c.message);
+                trpcLog.error("Error cause:", c.message);
               }
             }
             if (error.stack) {
-              console.error("Error stack:", error.stack);
+              trpcLog.error("Error stack:", error.stack);
             }
           }
           : undefined,

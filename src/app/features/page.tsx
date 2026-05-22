@@ -1,787 +1,1227 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  Zap,
-  Brain,
-  Search,
-  Keyboard,
-  Shield,
-  Clock,
-  TrendingUp,
-  MessageCircle,
-  Target,
-  BarChart,
-  Database,
-  Code,
-  Layers,
-  GitBranch,
-  Lock,
-  Users,
-  MessageSquare,
-  FileText,
-  Workflow,
-  Globe,
-  CheckCircle,
-  XCircle,
-  Filter,
-  Tags,
   ArrowLeft,
-  Gauge,
-  Webhook,
-  Activity,
+  ArrowUpRight,
+  Inbox,
+  PenLine,
+  Search,
+  Filter,
+  FileText,
+  Mail,
+  Database,
+  Layers,
+  Lock,
+  Check,
+  type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+
+const SERIF = "var(--font-newsreader), Georgia, serif";
+const MONO = "var(--font-jetbrains-mono), ui-monospace, monospace";
+const SANS = "var(--font-geist-sans), Inter, system-ui, sans-serif";
+
+const PAPER = "#fbf8f1";
+const PAPER_DEEP = "#f4ede0";
+const PAPER_SHADOW = "#efe5cf";
+const INK = "#1a1612";
+const INK_2 = "#5b554c";
+const INK_3 = "#8a8278";
+const LINE = "#d8cfb9";
+const LAV = "#5b4cf7";
+const LAV_DEEP = "#3d2fb8";
+const ROSE = "#b91c4b";
+const GREEN = "#15803d";
+const AMBER = "#a45a09";
+
+const ARROW_PATH = "M3 6h6M6 3l3 3-3 3";
+
+type Tone = "triage" | "compose" | "search" | "automation" | "intel" | "send";
+
+const TONES: Record<Tone, { label: string; color: string; tint: string }> = {
+  triage: { label: "TRIAGE", color: ROSE, tint: "rgba(185,28,75,0.10)" },
+  compose: { label: "COMPOSE", color: LAV_DEEP, tint: "rgba(91,76,247,0.10)" },
+  search: { label: "RETRIEVAL", color: AMBER, tint: "rgba(164,90,9,0.10)" },
+  automation: { label: "AUTOMATION", color: GREEN, tint: "rgba(21,128,61,0.10)" },
+  intel: { label: "INTELLIGENCE", color: LAV_DEEP, tint: "rgba(91,76,247,0.10)" },
+  send: { label: "SENDING", color: AMBER, tint: "rgba(164,90,9,0.10)" },
+};
+
+type Feature = {
+  anchor: string;
+  chapter: string;
+  tone: Tone;
+  icon: LucideIcon;
+  title: string;
+  accent: string;
+  description: string;
+  bullets: string[];
+};
+
+const FEATURES: Feature[] = [
+  {
+    anchor: "triage",
+    chapter: "CHAPTER 01",
+    tone: "triage",
+    icon: Inbox,
+    title: "Reach Inbox Zero",
+    accent: "without the dread.",
+    description:
+      "VectorMail surfaces what needs your attention so the rest can wait. Triage, archive, and snooze without leaving the keyboard.",
+    bullets: [
+      "Auto-organize messages into Promotions, Social, Updates, and Forums",
+      "Surface threads with explicit asks at the top of the list",
+      "Snooze, archive, or set a reminder with one shortcut",
+      "Carry inbox state forward day to day",
+    ],
+  },
+  {
+    anchor: "ai-reply",
+    chapter: "CHAPTER 02",
+    tone: "compose",
+    icon: PenLine,
+    title: "Reply in your voice",
+    accent: "not someone else's template.",
+    description:
+      "Reply suggestions trained on your sent mail. The draft is editable, the tone is yours, and nothing leaves the editor without you.",
+    bullets: [
+      "Drafts learn from your existing thread history",
+      "One shortcut to generate, one to insert, one to send",
+      "Streaming output so the first sentence shows in under two seconds",
+      "Never auto-sends. Every reply is reviewed",
+    ],
+  },
+  {
+    anchor: "search",
+    chapter: "CHAPTER 03",
+    tone: "search",
+    icon: Search,
+    title: "Find anything, fast",
+    accent: "by meaning, not just by words.",
+    description:
+      "Search by what an email means, not the words it happens to use. Falls back to keywords if embeddings aren't ready.",
+    bullets: [
+      "Vector search through pgvector for semantic relevance",
+      "Filters for sender, label, date, attachment, and read state",
+      "Cached query paths for repeated lookups",
+      "Hybrid scoring when both signals are available",
+    ],
+  },
+  {
+    anchor: "categorize",
+    chapter: "CHAPTER 04",
+    tone: "automation",
+    icon: Filter,
+    title: "Auto-triage by intent",
+    accent: "rules you actually wrote.",
+    description:
+      "Each thread is read once, classified by intent, and routed to the right place. You write the rules; the inbox follows.",
+    bullets: [
+      "Intent inferred from message content, not just headers",
+      "Built-in categories plus custom labels",
+      "Rule editor for sender, subject, and content overrides",
+      "Reclassification on every new message in the thread",
+    ],
+  },
+  {
+    anchor: "brief",
+    chapter: "CHAPTER 05",
+    tone: "intel",
+    icon: FileText,
+    title: "Daily AI Brief",
+    accent: "a one-page read of your morning.",
+    description:
+      "A short, prioritized read of what arrived overnight and what needs a reply today. Generated once, refreshed as the day moves.",
+    bullets: [
+      "Highlights decisions, blockers, and explicit asks",
+      "Collapses processed items as you move through the queue",
+      "Quoted-thread context preserved in summaries",
+      "Available in the inbox header and as a standalone view",
+    ],
+  },
+  {
+    anchor: "compose",
+    chapter: "CHAPTER 06",
+    tone: "send",
+    icon: Mail,
+    title: "Compose without friction",
+    accent: "keyboard-first, mouse-optional.",
+    description:
+      "A keyboard-first editor that stays out of your way. Templates, scheduling, and tracking are one shortcut away.",
+    bullets: [
+      "Schedule sends to land at a chosen time",
+      "Snippets and templates available from the editor",
+      "Open and click tracking on a per-thread basis",
+      "Multi-account from a single composer window",
+    ],
+  },
+];
+
+type StackItem = {
+  icon: LucideIcon;
+  title: string;
+  color: string;
+  tint: string;
+  list: string[];
+};
+
+const STACK: StackItem[] = [
+  {
+    icon: Database,
+    title: "Storage & search",
+    color: LAV_DEEP,
+    tint: "rgba(91,76,247,0.10)",
+    list: [
+      "PostgreSQL with pgvector for embedding storage",
+      "Prisma for typed queries against the email model",
+      "Embedding backfills run incrementally per account",
+      "Falls back to text search when embeddings are missing",
+    ],
+  },
+  {
+    icon: Layers,
+    title: "Sync & pipelines",
+    color: AMBER,
+    tint: "rgba(164,90,9,0.10)",
+    list: [
+      "Aurinko for Gmail OAuth and message delivery",
+      "Inngest for background jobs and retries",
+      "Delta sync per account; full sync only on first connect",
+      "One sync per account at a time, locked at the database",
+    ],
+  },
+  {
+    icon: Lock,
+    title: "Security & access",
+    color: GREEN,
+    tint: "rgba(21,128,61,0.10)",
+    list: [
+      "Account-scoped authorization on every tRPC call",
+      "Tokens stored encrypted; revocable from Google at any time",
+      "No shared embeddings or summaries across accounts",
+      "Hard delete on account removal, no retention",
+    ],
+  },
+];
+
+function Sparkle({ size = 12, color = LAV }: { size?: number; color?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      style={{ flexShrink: 0 }}
+    >
+      <path
+        d="M6 1l1.3 3.4 3.4 1.3-3.4 1.3L6 10.4 4.7 7l-3.4-1.3L4.7 4.4 6 1z"
+        fill={color}
+      />
+    </svg>
+  );
+}
 
 export default function FeaturesPage() {
-  const [activeTab, setActiveTab] = useState("ai-summaries");
-
-  const stats = [
-    {
-      value: "Semantic",
-      label: "Search by Meaning",
-      color: "from-slate-400 to-slate-500",
-      icon: Zap,
-    },
-    {
-      value: "Threaded",
-      label: "Context-Aware Retrieval",
-      color: "from-slate-400 to-slate-500",
-      icon: Search,
-    },
-    {
-      value: "Briefs",
-      label: "Action-Oriented Summaries",
-      color: "from-emerald-500 to-emerald-600",
-      icon: TrendingUp,
-    },
-    {
-      value: "Typed",
-      label: "End-to-End Type Safety",
-      color: "from-blue-500 to-blue-600",
-      icon: Shield,
-    },
-    {
-      value: "Cached",
-      label: "Warm Query Paths",
-      color: "from-slate-500 to-slate-600",
-      icon: Database,
-    },
-    {
-      value: "Live",
-      label: "Incremental Sync Pipeline",
-      color: "from-slate-400 to-slate-500",
-      icon: Activity,
-    },
-  ];
-
-  const features = [
-    {
-      id: "ai-summaries",
-      title: "AI-Powered Email Intelligence",
-      icon: Brain,
-      description:
-        "Contextual AI that understands your emails and helps you respond faster",
-      details: [
-        "Automatic thread summarization with key takeaways",
-        "Action item extraction and deadline detection",
-        "Sentiment analysis for tone understanding",
-        "Multi-provider AI fallback (OpenAI → Gemini → Claude)",
-        "Streaming responses with 3-4s time-to-first-token",
-        "Context window optimization for long threads",
-      ],
-    },
-    {
-      id: "semantic-search",
-      title: "Vector Search Engine",
-      icon: Search,
-      description:
-        "pgvector-powered semantic search that finds emails by meaning",
-      details: [
-        "Natural language queries - no more keyword guessing",
-        "Vector embeddings cached in-memory (94% hit rate)",
-        "Hybrid search combining vector + BM25 algorithms",
-        "Low-latency retrieval for large inboxes",
-        "Smart indexing - only re-embeds changed content",
-        "Find similar conversations automatically",
-      ],
-    },
-    {
-      id: "keyboard-first",
-      title: "Power User Interface",
-      icon: Keyboard,
-      description: "Built for developers who live in their keyboard",
-      details: [
-        "Complete keyboard navigation - never touch mouse",
-        "Command palette (⌘K) for instant actions",
-        "Vim-style shortcuts for navigation",
-        "Customizable hotkey bindings",
-        "Context-aware command suggestions",
-        "Keyboard shortcut cheat sheet overlay",
-      ],
-    },
-  ];
-
-  const technicalFeatures = [
-    {
-      icon: Database,
-      title: "Database & Caching",
-      list: [
-        "PostgreSQL with pgvector extension for semantic search",
-        "Redis for embedding cache (94% hit rate)",
-        "Prisma Data Proxy for connection pooling",
-        "Optimized indexes (ivfflat) for vector queries",
-        "CRDT-inspired conflict resolution",
-      ],
-    },
-    {
-      icon: Layers,
-      title: "Infrastructure & Deployment",
-      list: [
-        "Vercel deployment for global delivery",
-        "70% reduction in cold starts",
-        "Automatic global CDN distribution",
-        "Native streaming for AI responses",
-        "Operational monitoring and alerting",
-      ],
-    },
-    {
-      icon: Lock,
-      title: "Security & Compliance",
-      list: [
-        "Security-focused architecture",
-        "Strict CSP headers for XSS prevention",
-        "Rate limiting with exponential backoff",
-        "Scoped access and operational controls",
-        "Data management workflows for user requests",
-      ],
-    },
-    {
-      icon: Webhook,
-      title: "Email Synchronization",
-      list: [
-        "Dual-sync: Webhooks (real-time) + Polling (reliability)",
-        "Incremental sync - only process deltas",
-        "Provider abstraction (Gmail, Outlook, IMAP)",
-        "Handles 100+ emails/min batch processing",
-        "Automatic retry with intelligent backoff",
-      ],
-    },
-    {
-      icon: Code,
-      title: "Developer Experience",
-      list: [
-        "tRPC for end-to-end type safety",
-        "100% TypeScript codebase",
-        "Comprehensive API documentation",
-        "Self-hostable with Docker support",
-        "Extensible plugin architecture",
-      ],
-    },
-    {
-      icon: Gauge,
-      title: "Performance Monitoring",
-      list: [
-        "Sentry integration for error tracking",
-        "Datadog APM with distributed tracing",
-        "Structured logging with correlation IDs",
-        "PagerDuty alerts for critical paths",
-        "Real-time performance dashboards",
-      ],
-    },
-  ];
-
-  const aiFeatures = [
-    {
-      icon: Brain,
-      title: "Multi-Model AI System",
-      description:
-        "Intelligent routing across OpenAI, Google Gemini, and Claude with automatic failover.",
-    },
-    {
-      icon: MessageCircle,
-      title: "Custom Voice Training",
-      description:
-        "Fine-tuned on your sent emails to generate responses that sound authentically like you.",
-    },
-    {
-      icon: Target,
-      title: "Priority Scoring",
-      description:
-        "ML model learns from your behavior to predict which emails need immediate attention.",
-    },
-    {
-      icon: MessageSquare,
-      title: "Thread Intelligence",
-      description:
-        "Deep learning models understand conversation context and suggest relevant actions.",
-    },
-    {
-      icon: Filter,
-      title: "Smart Categorization",
-      description:
-        "Automated email classification into meaningful categories beyond folders.",
-    },
-    {
-      icon: Tags,
-      title: "Auto-Tagging",
-      description:
-        "NLP-powered tag suggestions based on content analysis and your patterns.",
-    },
-  ];
-
-  const productivityFeatures = [
-    {
-      icon: Workflow,
-      title: "Custom Automation",
-      description:
-        "Build no-code workflows to automate repetitive email tasks and save hours weekly.",
-    },
-    {
-      icon: Clock,
-      title: "Send Later",
-      description:
-        "Schedule emails for optimal send times based on recipient timezone and behavior.",
-    },
-    {
-      icon: Users,
-      title: "Team Collaboration",
-      description:
-        "Shared drafts, internal comments, and collaborative inbox management.",
-    },
-    {
-      icon: BarChart,
-      title: "Email Analytics (planned)",
-      description:
-        "Planned: track response times, email volume, and productivity patterns. Not yet available.",
-    },
-    {
-      icon: Globe,
-      title: "Multi-Account Management",
-      description:
-        "Unified interface for Gmail, Outlook, and custom IMAP accounts.",
-    },
-    {
-      icon: FileText,
-      title: "Smart Attachments",
-      description:
-        "AI-powered file organization, preview, and search across all attachments.",
-    },
-  ];
-
-  const comparisonPoints = {
-    traditional: [
-      {
-        icon: XCircle,
-        text: "Basic keyword search - no semantic understanding",
-      },
-      { icon: XCircle, text: "Manual sorting and filing - time-consuming" },
-      { icon: XCircle, text: "No AI help - you're completely on your own" },
-      { icon: XCircle, text: "Cluttered UI from the 2000s era" },
-      { icon: XCircle, text: "Mouse-dependent - slow workflow" },
-      { icon: XCircle, text: "Data mining for ads and tracking" },
-    ],
-    vectormail: [
-      { icon: CheckCircle, text: "Vector semantic search - finds by meaning" },
-      { icon: CheckCircle, text: "AI auto-organizes everything for you" },
-      { icon: CheckCircle, text: "Personal AI copilot assists 24/7" },
-      { icon: CheckCircle, text: "Modern, distraction-free design" },
-      { icon: CheckCircle, text: "Keyboard-first - lightning fast" },
-      { icon: CheckCircle, text: "Zero-knowledge - your data stays private" },
-    ],
-  };
+  const lastUpdated = "May 2026";
+  const totalBullets = FEATURES.reduce((s, f) => s + f.bullets.length, 0);
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0a0a]">
+    <main
+      className="relative min-h-screen w-full overflow-x-hidden"
+      style={{ background: PAPER, color: INK, fontFamily: SANS }}
+    >
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        @keyframes vmft-rise { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+        .vmft-index:hover .vmft-index-dot { transform: scale(1.5); }
+        .vmft-index:hover .vmft-index-label { color: ${INK}; }
+        .vmft-bullet:hover { background: ${PAPER_DEEP}; }
+        @media (prefers-reduced-motion: reduce) { [style*="animation"] { animation: none !important; } }
+      `,
+        }}
+      />
 
-      <div className="fixed left-4 top-4 z-40 hidden sm:left-8 sm:top-6 sm:block">
-        <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white backdrop-blur-sm transition-all hover:scale-105 hover:border-slate-700 hover:bg-slate-800/50 sm:px-4">
-            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-xs font-medium sm:text-sm">Back</span>
-          </button>
-        </Link>
-      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          opacity: 0.09,
+          backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.50  0 0 0 0 0.42  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed"
+        style={{
+          right: -240,
+          top: -200,
+          width: 560,
+          height: 560,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(91,76,247,0.14) 0%, rgba(91,76,247,0) 70%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed"
+        style={{
+          left: -200,
+          bottom: -240,
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(185,28,75,0.10) 0%, rgba(185,28,75,0) 70%)",
+        }}
+      />
 
-      <div className="px-4 pt-4 sm:hidden">
-        <Link href="/">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-white backdrop-blur-sm transition-all hover:border-slate-700 hover:bg-slate-800/50">
-            <ArrowLeft className="h-3 w-3" />
-            <span className="text-xs font-medium">Back</span>
-          </button>
-        </Link>
-      </div>
+      <Link
+        href="/"
+        className="fixed left-4 top-4 z-50 inline-flex items-center gap-1.5 transition-all hover:-translate-y-px md:left-6 md:top-6"
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          background: "#ffffff",
+          border: `1px solid ${LINE}`,
+          color: INK,
+          fontFamily: SANS,
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: "-0.005em",
+          boxShadow: `0 1px 0 rgba(26,22,18,0.06), 2px 2px 0 ${PAPER_SHADOW}`,
+        }}
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </Link>
 
-      <section className="relative overflow-hidden bg-[#0a0a0a] pb-12 pt-16 sm:pb-20 sm:pt-20 lg:pb-32 lg:pt-24">
+      <section className="relative z-10 mx-auto w-[95%] max-w-[1920px] px-2 pb-8 pt-20 md:pb-10 md:pt-24">
+        <div
+          className="mb-4 flex items-center gap-2"
+          style={{
+            fontFamily: MONO,
+            fontSize: 10,
+            color: LAV_DEEP,
+            letterSpacing: "0.22em",
+            fontWeight: 700,
+          }}
+        >
+          <Sparkle size={10} />
+          THE PRODUCT · SIX SURFACES · ONE INBOX
+        </div>
 
-        <div className="relative mx-auto w-full max-w-7xl px-4 text-center sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="w-full"
-          >
-            <h1 className="mb-6 w-full break-words text-3xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
-              <span className="block text-white">Email Reinvented with</span>
-              <span className="mt-2 block text-white">
-                Vector AI Technology
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px] md:gap-12 lg:grid-cols-[1fr_440px]">
+          <div>
+            <h1
+              style={{
+                fontFamily: SERIF,
+                fontSize: "clamp(54px, 7.4vw, 132px)",
+                fontWeight: 500,
+                color: INK,
+                lineHeight: 0.92,
+                letterSpacing: "-0.045em",
+                margin: 0,
+              }}
+            >
+              Inbox velocity,
+              <br />
+              <span style={{ fontStyle: "italic", fontWeight: 400 }}>
+                without the noise.
               </span>
             </h1>
-
-            <p className="mx-auto mb-6 w-full max-w-3xl break-words text-sm font-semibold text-white sm:text-base md:text-lg lg:text-xl">
-              Traditional email relies on keyword search. VectorMail combines
-              semantic retrieval and AI workflows for execution-focused inbox
-              operations.
-            </p>
-
-            <div className="flex w-full flex-wrap items-center justify-center gap-2 text-xs text-white sm:gap-4 sm:text-sm">
-              <span className="whitespace-nowrap">🚀 Semantic Retrieval</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="whitespace-nowrap">⚡ Action Briefs</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="whitespace-nowrap">🔒 Security-Focused</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="whitespace-nowrap">🏗️ Production Grade</span>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-[#0a0a0a] py-12 sm:py-20">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-4xl font-black text-white sm:text-5xl">
-              Product Capabilities
-            </h2>
-            <p className="mx-auto max-w-3xl text-xl font-semibold text-white">
-              Core signals from the production architecture behind search,
-              summarization, drafting, and sync.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {stats.map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="group relative"
-              >
-                <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                <div className="relative rounded-2xl border border-slate-800 bg-[#0a0a0a] p-8 text-center transition-all hover:border-slate-700">
-                  <stat.icon className="mx-auto mb-4 h-12 w-12 text-white" />
-                  <div
-                    className="text-6xl font-black text-white mb-3"
-                  >
-                    {stat.value}
-                  </div>
-                  <p className="text-sm font-semibold text-white">
-                    {stat.label}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
           </div>
-        </div>
-      </section>
-
-      <section className="relative bg-[#0a0a0a] py-32">
-        <div className="mx-auto max-w-7xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-5xl font-black sm:text-6xl">
-              <span className="text-white">AI-Powered </span>
-              <span className="text-white">
-                Core Engine
+          <div className="flex flex-col justify-end gap-4">
+            <p
+              style={{
+                fontFamily: SERIF,
+                fontSize: 18,
+                lineHeight: 1.55,
+                color: INK_2,
+                letterSpacing: "-0.005em",
+                fontWeight: 400,
+                margin: 0,
+                maxWidth: 440,
+              }}
+            >
+              Six surfaces, one product. Each is built around a single
+              decision you actually make in email:{" "}
+              <span style={{ color: INK, fontWeight: 500 }}>
+                read, reply, find, sort, plan, and write.
               </span>
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
-              Deep dive into the three pillars that make VectorMail
-              fundamentally different.
             </p>
-          </motion.div>
-
-          <div className="mb-12 flex flex-wrap justify-center gap-4">
-            {features.map((feature) => (
-              <button
-                key={feature.id}
-                onClick={() => setActiveTab(feature.id)}
-                className={`rounded-lg px-6 py-3 text-center text-sm font-semibold transition-all ${activeTab === feature.id
-                  ? "bg-slate-800 text-white shadow-lg border border-slate-700"
-                  : "border border-slate-800 bg-slate-900/50 text-slate-300 hover:bg-slate-800/50 hover:text-white"
-                  }`}
-              >
-                {feature.title}
-              </button>
-            ))}
-          </div>
-
-          {features.map(
-            (feature) =>
-              activeTab === feature.id && (
-                <motion.div
-                  key={feature.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="grid items-center gap-12 lg:grid-cols-2"
+            <div className="flex flex-wrap items-center gap-2.5">
+              {[
+                { k: "Surfaces", v: String(FEATURES.length) },
+                { k: "Capabilities", v: String(totalBullets) },
+                { k: "Updated", v: lastUpdated.replace(" 2026", "") },
+              ].map((s, i) => (
+                <div
+                  key={s.k}
+                  className="flex items-baseline gap-2"
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "#ffffff",
+                    border: `1px solid ${LINE}`,
+                    boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                    animation: `vmft-rise 380ms ${120 + i * 80}ms both ease-out`,
+                  }}
                 >
-                  <div className="group relative">
-                    <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                    <div className="relative flex items-center justify-center rounded-2xl border border-slate-800 bg-[#0a0a0a] p-16">
-                      <div className="relative">
-                        <div className="absolute inset-0 rounded-full opacity-0" />
-                        <feature.icon
-                          className="relative z-10 h-32 w-32 text-white"
-                          strokeWidth={1.5}
+                  <span
+                    style={{
+                      fontFamily: SERIF,
+                      fontSize: 22,
+                      fontWeight: 600,
+                      color: INK,
+                      letterSpacing: "-0.02em",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {s.v}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 9.5,
+                      color: INK_3,
+                      letterSpacing: "0.14em",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {s.k.toUpperCase()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div aria-hidden className="my-8 flex items-center gap-3 md:my-10">
+          <span style={{ flex: 1, height: 1, background: LINE }} />
+          <Sparkle size={10} color={LINE} />
+          <span style={{ flex: 1, height: 1, background: LINE }} />
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto w-[95%] max-w-[1920px] px-2 pb-16 md:pb-24">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[260px_minmax(0,1fr)_360px] lg:gap-10 xl:grid-cols-[300px_minmax(0,1fr)_420px]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-6 flex flex-col gap-6">
+              <div>
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> TABLE OF CONTENTS
+                </div>
+                <ul
+                  className="relative flex flex-col"
+                  style={{ paddingLeft: 14 }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      left: 4,
+                      top: 8,
+                      bottom: 8,
+                      width: 1,
+                      background: `linear-gradient(180deg, ${LAV} 0%, ${LINE} 100%)`,
+                    }}
+                  />
+                  {FEATURES.map((f, i) => {
+                    const meta = TONES[f.tone];
+                    return (
+                      <li key={f.anchor} className="relative">
+                        <span
+                          aria-hidden
+                          className="vmft-index-dot absolute rounded-full"
+                          style={{
+                            left: -14,
+                            top: 14,
+                            width: i === 0 ? 8 : 5,
+                            height: i === 0 ? 8 : 5,
+                            background: i === 0 ? meta.color : "#bcb09a",
+                            border: i === 0 ? "1.5px solid #fff" : "none",
+                            boxShadow:
+                              i === 0
+                                ? `0 0 0 2px ${meta.color}40`
+                                : "none",
+                            transition: "transform 200ms ease",
+                          }}
+                        />
+                        <Link
+                          href={`#${f.anchor}`}
+                          className="vmft-index block py-2.5"
+                          style={{
+                            borderBottom:
+                              i < FEATURES.length - 1
+                                ? `1px dashed ${LINE}`
+                                : "none",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: MONO,
+                              fontSize: 9,
+                              color: meta.color,
+                              fontWeight: 700,
+                              letterSpacing: "0.12em",
+                            }}
+                          >
+                            {f.chapter} · {meta.label}
+                          </div>
+                          <div
+                            className="vmft-index-label mt-1 truncate"
+                            style={{
+                              fontFamily: SERIF,
+                              fontSize: 14,
+                              color: i === 0 ? INK : INK_2,
+                              fontWeight: i === 0 ? 600 : 500,
+                              letterSpacing: "-0.005em",
+                              transition: "color 200ms ease",
+                            }}
+                          >
+                            {f.title}
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <div
+                style={{
+                  padding: "14px 16px",
+                  background: "#ffffff",
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 10,
+                  boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                }}
+              >
+                <div
+                  className="mb-2 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> AT A GLANCE
+                </div>
+                <dl className="flex flex-col gap-1.5">
+                  {[
+                    { k: "Chapters", v: String(FEATURES.length) },
+                    { k: "Stack", v: `${STACK.length} pillars` },
+                    { k: "Backend", v: "single" },
+                    { k: "Vector DB", v: "pgvector" },
+                  ].map((row) => (
+                    <div
+                      key={row.k}
+                      className="flex items-baseline justify-between"
+                    >
+                      <dt
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 9.5,
+                          color: INK_3,
+                          letterSpacing: "0.08em",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {row.k.toUpperCase()}
+                      </dt>
+                      <dd
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: 12.5,
+                          color: INK,
+                          fontWeight: 500,
+                          letterSpacing: "-0.005em",
+                        }}
+                      >
+                        {row.v}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+          </aside>
+
+          <div className="flex flex-col gap-10 md:gap-14">
+            {FEATURES.map((f, idx) => {
+              const meta = TONES[f.tone];
+              const Icon = f.icon;
+              return (
+                <article
+                  key={f.anchor}
+                  id={f.anchor}
+                  className="relative overflow-hidden scroll-mt-24"
+                  style={{
+                    background: PAPER,
+                    border: `1px solid ${LINE}`,
+                    borderRadius: 16,
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 1px rgba(124,90,250,0.04), 0 12px 24px -10px rgba(26,22,18,0.10), 0 32px 64px -20px rgba(26,22,18,0.08)",
+                    animation: `vmft-rise 420ms ${idx * 60}ms both ease-out`,
+                  }}
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      opacity: 0.06,
+                      backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.50  0 0 0 0 0.42  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute"
+                    style={{
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 4,
+                      background: `linear-gradient(180deg, ${meta.color} 0%, ${LINE} 100%)`,
+                    }}
+                  />
+
+                  <div className="relative grid grid-cols-1 md:grid-cols-[200px_1fr] md:gap-8 lg:grid-cols-[240px_1fr] lg:gap-10">
+                    <div className="relative px-7 pt-7 md:pl-10 md:pr-0 md:pt-10">
+                      <div
+                        className="inline-flex items-center gap-2"
+                        style={{
+                          padding: "3px 9px",
+                          background: "#ffffff",
+                          border: `1px solid ${LINE}`,
+                          borderRadius: 4,
+                          transform: "rotate(-1.5deg)",
+                          boxShadow: "0 1px 2px rgba(26,22,18,0.06)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 10,
+                            color: INK,
+                            letterSpacing: "0.1em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {f.chapter}
+                        </span>
+                      </div>
+
+                      <div
+                        className="mt-4 grid place-items-center"
+                        style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: 14,
+                          background: meta.tint,
+                          border: `1px solid ${meta.color}33`,
+                          color: meta.color,
+                          boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                        }}
+                      >
+                        <Icon className="h-7 w-7" />
+                      </div>
+
+                      <div
+                        className="mt-5 inline-flex items-center gap-1.5"
+                        style={{
+                          padding: "4px 10px",
+                          background: meta.tint,
+                          border: `1px solid ${meta.color}33`,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <span
+                          aria-hidden
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            background: meta.color,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 9.5,
+                            color: meta.color,
+                            letterSpacing: "0.14em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {meta.label}
+                        </span>
+                      </div>
+
+                      <div
+                        className="mt-5 hidden md:block"
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 9.5,
+                          color: INK_3,
+                          letterSpacing: "0.12em",
+                          fontWeight: 600,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        <div>CAPABILITIES · {f.bullets.length}</div>
+                        <div>
+                          STATUS ·{" "}
+                          <span style={{ color: GREEN, fontWeight: 700 }}>
+                            SHIPPED
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-7 pb-9 pt-2 md:py-10 md:pr-10 md:pl-0">
+                      <h2
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: "clamp(32px, 3.4vw, 48px)",
+                          fontWeight: 500,
+                          color: INK,
+                          lineHeight: 1.02,
+                          letterSpacing: "-0.034em",
+                          margin: 0,
+                        }}
+                      >
+                        {f.title}
+                        <span
+                          style={{
+                            fontStyle: "italic",
+                            fontWeight: 400,
+                            color: meta.color,
+                          }}
+                        >
+                          {" - "}
+                          {f.accent}
+                        </span>
+                      </h2>
+
+                      <p
+                        className="mt-4 md:mt-5"
+                        style={{
+                          fontFamily: SERIF,
+                          fontSize: 17,
+                          color: INK_2,
+                          lineHeight: 1.62,
+                          letterSpacing: "-0.005em",
+                          maxWidth: 780,
+                        }}
+                      >
+                        {f.description}
+                      </p>
+
+                      <div
+                        aria-hidden
+                        className="my-6 flex items-center gap-3 md:my-7"
+                      >
+                        <span
+                          style={{ flex: 1, height: 1, background: LINE }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 9.5,
+                            color: meta.color,
+                            letterSpacing: "0.2em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✦ CAPABILITIES · {f.bullets.length}
+                        </span>
+                        <span
+                          style={{ flex: 1, height: 1, background: LINE }}
                         />
                       </div>
+
+                      <ul className="flex flex-col gap-2">
+                        {f.bullets.map((b, i) => (
+                          <li
+                            key={b}
+                            className="vmft-bullet flex items-start gap-3 transition-colors"
+                            style={{
+                              padding: "10px 14px",
+                              border: `1px solid ${LINE}`,
+                              borderRadius: 8,
+                              background: "#ffffff",
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              className="grid shrink-0 place-items-center"
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 6,
+                                background: meta.tint,
+                                border: `1px solid ${meta.color}33`,
+                                color: meta.color,
+                                marginTop: 1,
+                              }}
+                            >
+                              <Check size={12} strokeWidth={2.6} />
+                            </span>
+                            <div
+                              className="flex-1"
+                              style={{
+                                fontFamily: SERIF,
+                                fontSize: 15.5,
+                                color: INK,
+                                lineHeight: 1.5,
+                                fontWeight: 500,
+                                letterSpacing: "-0.005em",
+                              }}
+                            >
+                              {b}
+                            </div>
+                            <span
+                              aria-hidden
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 9,
+                                color: INK_3,
+                                letterSpacing: "0.1em",
+                                fontWeight: 700,
+                                flexShrink: 0,
+                                marginTop: 6,
+                              }}
+                            >
+                              {String(i + 1).padStart(2, "0")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
 
-                  <div className="space-y-6 text-center sm:text-left">
-                    <h3 className="text-3xl font-black text-white">
-                      {feature.title}
-                    </h3>
-                    <p className="text-xl font-semibold text-white">
-                      {feature.description}
-                    </p>
-
-                    <ul className="space-y-4">
-                      {feature.details.map((detail, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-700">
-                            <CheckCircle className="h-4 w-4 text-white" />
-                          </div>
-                          <span className="font-semibold text-white">{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div
+                    className="relative flex flex-wrap items-center justify-between gap-3 px-7 md:px-10"
+                    style={{
+                      height: 38,
+                      background: PAPER_DEEP,
+                      borderTop: `1px solid ${LINE}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 9.5,
+                        color: INK_3,
+                        letterSpacing: "0.12em",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {f.chapter} · {meta.label}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 9.5,
+                        color: GREEN,
+                        letterSpacing: "0.12em",
+                        fontWeight: 700,
+                      }}
+                    >
+                      SHIPPED
+                    </span>
                   </div>
-                </motion.div>
-              ),
-          )}
-        </div>
-      </section>
-
-      <section className="relative bg-[#0a0a0a] py-32">
-        <div className="mx-auto max-w-7xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 w-full break-words px-2 text-3xl font-black sm:text-4xl md:text-5xl lg:text-6xl">
-              <span className="text-white">Technical </span>
-              <span className="text-white">
-                Infrastructure
-              </span>
-            </h2>
-            <p className="mx-auto w-full max-w-2xl px-2 text-base font-semibold text-white sm:text-lg">
-              Enterprise-grade architecture with modern tooling. Built to scale
-              from 1 to 1 million users.
-            </p>
-          </motion.div>
-
-          <div className="mb-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {technicalFeatures.map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="group relative"
+                </article>
+              );
+            })}
+            <section
+              id="stack"
+              className="relative overflow-hidden scroll-mt-24"
+              style={{
+                background: PAPER_DEEP,
+                border: `1px solid ${LINE}`,
+                borderRadius: 16,
+                padding: "32px 28px 36px",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.6), 0 12px 24px -10px rgba(26,22,18,0.08)",
+              }}
+            >
+              <div
+                className="mb-3 flex items-center gap-2"
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  color: LAV_DEEP,
+                  letterSpacing: "0.22em",
+                  fontWeight: 700,
+                }}
               >
-                <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-8 text-center transition-all hover:border-slate-700 sm:text-left">
-                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-slate-800 sm:mx-0">
-                    <feature.icon className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="mb-4 text-xl font-bold text-white">
-                    {feature.title}
-                  </h3>
-                  <ul className="space-y-2 text-sm font-medium text-white">
-                    {feature.list.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h3 className="mb-6 text-2xl font-bold text-white">
-              Powered By Modern Stack
-            </h3>
-            <div className="flex flex-wrap justify-center gap-3">
-              {[
-                "Next.js 14",
-                "TypeScript",
-                "tRPC",
-                "PostgreSQL",
-                "pgvector",
-                "Prisma",
-                "Redis",
-                "Clerk Auth",
-                "OpenAI API",
-                "Vercel Edge",
-                "Tailwind CSS",
-                "Framer Motion",
-                "BullMQ",
-                "Sentry",
-                "Datadog",
-              ].map((tech, i) => (
-                <span
-                  key={i}
-                  className="rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-2 text-sm font-medium text-white transition-all hover:border-slate-700 hover:bg-slate-800/50"
-                >
-                  {tech}
+                <Sparkle size={10} />
+                APPENDIX · THE STACK
+              </div>
+              <h3
+                style={{
+                  fontFamily: SERIF,
+                  fontSize: "clamp(28px, 3vw, 44px)",
+                  fontWeight: 500,
+                  color: INK,
+                  letterSpacing: "-0.034em",
+                  lineHeight: 1.02,
+                  margin: 0,
+                }}
+              >
+                Built on a small, durable stack -{" "}
+                <span style={{ fontStyle: "italic", fontWeight: 400 }}>
+                  one backend, no separate vector DB.
                 </span>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="relative bg-[#0a0a0a] py-32">
-        <div className="mx-auto max-w-7xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-5xl font-black sm:text-6xl">
-              <span className="text-white">Advanced AI </span>
-              <span className="text-white">
-                Capabilities
-              </span>
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
-              Machine learning and natural language processing at the core of
-              every feature.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {aiFeatures.map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="group relative"
+              </h3>
+              <p
+                className="mt-3"
+                style={{
+                  fontFamily: SERIF,
+                  fontSize: 15.5,
+                  color: INK_2,
+                  lineHeight: 1.55,
+                  letterSpacing: "-0.005em",
+                  maxWidth: 720,
+                  margin: 0,
+                }}
               >
-                <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all hover:border-slate-700 sm:text-left">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800 sm:mx-0">
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="mb-3 text-xl font-bold text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed font-medium text-white">
-                    {feature.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
+                Embeddings live next to the messages they describe. The
+                surface area is small on purpose - fewer parts to break.
+              </p>
+
+              <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {STACK.map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <div
+                      key={s.title}
+                      className="relative overflow-hidden"
+                      style={{
+                        background: "#ffffff",
+                        border: `1px solid ${LINE}`,
+                        borderRadius: 12,
+                        padding: "18px 18px 16px",
+                        boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                      }}
+                    >
+                      <div className="mb-3 flex items-center gap-2.5">
+                        <span
+                          className="grid place-items-center"
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 9,
+                            background: s.tint,
+                            border: `1px solid ${s.color}33`,
+                            color: s.color,
+                          }}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <h4
+                          style={{
+                            fontFamily: SERIF,
+                            fontSize: 18,
+                            fontWeight: 600,
+                            color: INK,
+                            letterSpacing: "-0.02em",
+                            lineHeight: 1.1,
+                            margin: 0,
+                          }}
+                        >
+                          {s.title}
+                        </h4>
+                      </div>
+                      <ul className="flex flex-col gap-2">
+                        {s.list.map((line) => (
+                          <li
+                            key={line}
+                            className="flex items-start gap-2"
+                            style={{
+                              fontFamily: SERIF,
+                              fontSize: 13.5,
+                              color: INK_2,
+                              lineHeight: 1.5,
+                              letterSpacing: "-0.005em",
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              style={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: 999,
+                                background: s.color,
+                                marginTop: 8,
+                                flexShrink: 0,
+                              }}
+                            />
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           </div>
-        </div>
-      </section>
 
-      <section className="relative bg-[#0a0a0a] py-32">
-        <div className="mx-auto max-w-7xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-4 text-5xl font-black sm:text-6xl">
-              <span className="text-white">Productivity </span>
-              <span className="text-white">
-                Multipliers
-              </span>
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
-              Features designed to save you hours every week and eliminate email
-              overhead.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {productivityFeatures.map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="group relative"
+          <aside className="relative">
+            <div className="sticky top-6 flex flex-col gap-5">
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  background: "#ffffff",
+                  border: `1px solid ${INK}`,
+                  borderRadius: 14,
+                  padding: "20px 22px 22px",
+                  boxShadow: `2px 2px 0 ${PAPER_SHADOW}, 0 8px 24px -10px rgba(26,22,18,0.18)`,
+                }}
               >
-                <div className="absolute -inset-1 rounded-2xl opacity-0" />
-                <div className="relative h-full rounded-2xl border border-slate-800 bg-[#0a0a0a] p-6 text-center transition-all hover:border-slate-700 sm:text-left">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800 sm:mx-0">
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="mb-3 text-xl font-bold text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed font-medium text-white">
-                    {feature.description}
-                  </p>
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute"
+                  style={{
+                    right: -40,
+                    top: -40,
+                    width: 140,
+                    height: 140,
+                    borderRadius: "50%",
+                    background:
+                      "radial-gradient(circle, rgba(91,76,247,0.18) 0%, rgba(91,76,247,0) 70%)",
+                  }}
+                />
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> TRY IT
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="relative bg-[#0a0a0a] py-32">
-        <div className="mx-auto max-w-7xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-16 text-center"
-          >
-            <h2 className="mb-6 text-5xl font-black sm:text-6xl">
-              <span className="text-white">The Difference is </span>
-              <span className="text-white">
-                Clear
-              </span>
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg font-semibold text-white">
-              Side-by-side comparison of fundamental approaches to email
-              management.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-12 lg:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="space-y-4"
-            >
-              <div className="mb-8 flex items-center justify-center gap-3 sm:justify-start">
-                <div className="h-3 w-3 rounded-full bg-red-500" />
-                <h3 className="text-3xl font-bold text-white">
-                  Traditional Email
+                <h3
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 24,
+                    fontWeight: 500,
+                    color: INK,
+                    letterSpacing: "-0.025em",
+                    lineHeight: 1.1,
+                    margin: 0,
+                  }}
+                >
+                  See VectorMail{" "}
+                  <span style={{ fontStyle: "italic" }}>in your inbox.</span>
                 </h3>
+                <p
+                  className="mt-2"
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 13.5,
+                    color: INK_2,
+                    lineHeight: 1.5,
+                    letterSpacing: "-0.005em",
+                    margin: 0,
+                  }}
+                >
+                  Connect your Gmail account and watch six surfaces wake up
+                  against your real mail. No card, no commitment.
+                </p>
+                <Link
+                  href="/api/demo/enter"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 transition-all hover:-translate-y-px"
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    background:
+                      "linear-gradient(180deg, #2a2520 0%, #1a1612 100%)",
+                    color: "#ffffff",
+                    fontFamily: SANS,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    letterSpacing: "-0.005em",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 12px rgba(26,22,18,0.32), 2px 2px 0 #c4b894",
+                  }}
+                >
+                  Open the demo
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path
+                      d={ARROW_PATH}
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
               </div>
-              <div className="space-y-3">
-                {comparisonPoints.traditional.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-center sm:text-left"
-                  >
-                    <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
-                    <span className="text-sm font-semibold text-white">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="space-y-4"
-            >
-              <div className="mb-8 flex items-center justify-center gap-3 sm:justify-start">
-                <div className="h-3 w-3 rounded-full bg-white" />
-                <h3 className="text-3xl font-bold text-white">VectorMail</h3>
-              </div>
-              <div className="space-y-3">
-                {comparisonPoints.vectormail.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 rounded-lg border border-slate-800 bg-[#0a0a0a] p-4 text-center transition-colors hover:border-slate-700 sm:text-left"
-                  >
-                    <item.icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-white" />
-                    <span className="text-sm font-semibold text-white">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative bg-[#0a0a0a] py-32">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <div className="mb-8">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 shadow-lg">
-                <MessageCircle className="h-10 w-10 text-white" />
-              </div>
-            </div>
-            <h2 className="mb-6 text-5xl font-black sm:text-6xl">
-              <span className="text-white">Experience Email</span>
-              <br />
-              <span className="text-white">
-                Reimagined
-              </span>
-            </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-xl font-semibold text-white">
-              Stop fighting your inbox. Let AI handle the heavy lifting while
-              you focus on what matters.
-            </p>
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="https://github.com/parbhatkapila4/Vector-Mail"
-                target="_blank"
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  background: PAPER_DEEP,
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 14,
+                  padding: "18px 20px",
+                }}
               >
-                <button className="inline-flex items-center gap-3 rounded-xl bg-slate-800 border border-slate-700 px-12 py-5 text-lg font-bold text-white transition-all hover:scale-105 hover:shadow-lg hover:bg-slate-700">
-                  View on GitHub
-                  <GitBranch className="h-5 w-5" />
-                </button>
-              </Link>
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> JUMP TO STACK
+                </div>
+                <p
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 14,
+                    color: INK_2,
+                    lineHeight: 1.55,
+                    letterSpacing: "-0.005em",
+                    margin: 0,
+                  }}
+                >
+                  Want the underlying stack - storage, sync, security?
+                  The appendix sits below the chapters.
+                </p>
+                <Link
+                  href="#stack"
+                  className="mt-4 inline-flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 10,
+                    color: INK,
+                    letterSpacing: "0.14em",
+                    fontWeight: 700,
+                    textDecoration: "underline",
+                    textUnderlineOffset: 4,
+                  }}
+                >
+                  → READ THE APPENDIX
+                </Link>
+              </div>
+
+              <div
+                className="relative"
+                style={{
+                  background: "#ffffff",
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 14,
+                  padding: "18px 20px",
+                  boxShadow: `2px 2px 0 ${PAPER_SHADOW}`,
+                }}
+              >
+                <div
+                  className="mb-3 flex items-center gap-1.5"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9.5,
+                    color: LAV_DEEP,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  <Sparkle size={9} /> FEATURE REQUEST?
+                </div>
+                <p
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 14,
+                    color: INK_2,
+                    lineHeight: 1.55,
+                    letterSpacing: "-0.005em",
+                    margin: 0,
+                  }}
+                >
+                  Tell us what you&apos;d want from your inbox.{" "}
+                  <span style={{ fontStyle: "italic", color: INK }}>
+                    We read every message.
+                  </span>
+                </p>
+                <Link
+                  href="mailto:parbhat@parbhat.work"
+                  className="mt-4 inline-flex w-full items-center justify-between gap-2 transition-all hover:-translate-y-px"
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    background: PAPER,
+                    border: `1px solid ${INK}`,
+                    color: INK,
+                    fontFamily: SANS,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    letterSpacing: "-0.005em",
+                    boxShadow: `0 1px 0 rgba(26,22,18,0.10), 2px 2px 0 ${PAPER_SHADOW}`,
+                  }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" />
+                    parbhat@parbhat.work
+                  </span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+
+              <div
+                style={{
+                  padding: "14px 16px",
+                  background: "transparent",
+                  border: `1px dashed ${LINE}`,
+                  borderRadius: 10,
+                  fontFamily: SERIF,
+                  fontStyle: "italic",
+                  fontSize: 13,
+                  color: INK_3,
+                  lineHeight: 1.5,
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                Behavior may change as the product matures.{" "}
+                <Link
+                  href="/changelog"
+                  style={{
+                    color: LAV_DEEP,
+                    fontStyle: "normal",
+                    fontWeight: 600,
+                    textDecoration: "underline",
+                    textUnderlineOffset: 3,
+                  }}
+                >
+                  Check the changelog →
+                </Link>
+              </div>
             </div>
-          </motion.div>
+          </aside>
         </div>
       </section>
-
-    </div>
+    </main>
   );
 }

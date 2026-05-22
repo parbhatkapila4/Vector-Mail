@@ -34,7 +34,6 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
           !(acc as { needsReconnection?: boolean }).needsReconnection,
         )?.id ??
         accounts[0]!.id;
-      const currentAccount = accounts.find((acc) => acc.id === accountId);
       const isCurrentAccountValid =
         isUnified || (accountId && accounts.some((acc: { id: string }) => acc.id === accountId));
       if (!isCurrentAccountValid) {
@@ -78,7 +77,7 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-xl text-xs font-semibold text-white ring-1 ring-white/[0.08]",
               isDemoAccount
-                ? "bg-gradient-to-br from-amber-500 to-amber-600"
+                ? "bg-gradient-to-br from-text-[#1e2a4a] to-text-[#1e2a4a]"
                 : "bg-gradient-to-br from-zinc-700 to-zinc-800",
             )}
           >
@@ -115,7 +114,7 @@ export function AccountSwitcher({ isCollapsed }: AccountSwitcherProps) {
               <div className="flex items-center gap-3 py-0.5">
                 <span className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-white",
-                  isDemo ? "bg-gradient-to-br from-amber-500 to-amber-600" : "bg-gradient-to-br from-yellow-500 to-yellow-600",
+                  isDemo ? "bg-gradient-to-br from-text-[#1e2a4a] to-text-[#1e2a4a]" : "bg-gradient-to-br from-text-[#1e2a4a] to-text-[#1e2a4a]",
                 )}>
                   {isDemo ? "D" : account.emailAddress[0]?.toUpperCase()}
                 </span>

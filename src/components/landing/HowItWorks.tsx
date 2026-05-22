@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 
 const STEPS = [
@@ -10,36 +10,32 @@ const STEPS = [
   },
   {
     h: "Learn",
-    p: "VectorMail indexes your threads, contacts, and writing style - then keeps learning.",
+    p: "VectorMail indexes your threads, contacts, and writing style, and keeps learning as you send.",
   },
   {
     h: "Brief",
-    p: "Wake up to a prioritized digest. The 5 emails that matter, summarized with action items.",
+    p: "Wake up to a prioritized digest. The threads that need a decision, summarized with action items.",
   },
   {
     h: "Reply",
-    p: "Drafts that sound like you. Approve in one keystroke. Inbox zero by 9 AM.",
+    p: "Drafts that sound like you. Approve in one keystroke. Inbox zero, end of day.",
   },
 ];
 
 export function HowItWorks() {
   const [active, setActive] = useState(0);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setActive((a) => (a + 1) % STEPS.length);
-    }, 2400);
-    return () => clearInterval(id);
-  }, []);
-
   return (
-    <section className="vmx-halftone relative px-5 py-[120px] md:px-8">
+    <section
+      className="vmx-dotted-dark relative overflow-hidden px-5 py-[120px] md:px-8"
+      style={{ background: "#0a0a0a" }}
+    >
       <div className="relative mx-auto max-w-[1180px]">
         <p
           className="mb-2"
           style={{
             fontSize: 18,
-            color: "var(--vmx-ink-3, #767676)",
+            color: "rgba(255,255,255,0.55)",
             fontWeight: 400,
             letterSpacing: "-0.005em",
           }}
@@ -53,20 +49,11 @@ export function HowItWorks() {
             lineHeight: 1.05,
             letterSpacing: "-0.04em",
             fontWeight: 600,
-            color: "var(--vmx-ink, #0a0a0a)",
+            color: "#ffffff",
             fontFamily: "var(--vmx-sans)",
           }}
         >
-          Connect your inbox.{" "}
-          <span
-            style={{
-              fontFamily: "var(--vmx-serif)",
-              fontStyle: "italic",
-              fontWeight: 400,
-            }}
-          >
-            VectorMail learns the rest.
-          </span>
+          Connect your inbox. VectorMail learns the rest.
         </h2>
 
         <div

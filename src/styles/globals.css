@@ -65,7 +65,7 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -733,16 +733,9 @@
   overflow: hidden;
 }
 
+
 .vmx-halftone::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 50% 40% at 15% 25%, rgba(220, 140, 100, 0.18) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 50% at 85% 70%, rgba(140, 100, 200, 0.14) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 35% at 50% 100%, rgba(200, 120, 80, 0.10) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .vmx-halftone::after {
@@ -768,14 +761,7 @@
 }
 
 .vmx-halftone-cream::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(180, 120, 60, 0.20) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 50% at 20% 75%, rgba(160, 100, 180, 0.12) 0%, transparent 65%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .vmx-halftone-cream::after {
@@ -796,19 +782,12 @@
 
 .vmx-halftone-usecases {
   position: relative;
-  background: #ece1c8;
+  background: #f4ede0;
   overflow: hidden;
 }
 
 .vmx-halftone-usecases::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 50% 45% at 20% 25%, rgba(180, 100, 60, 0.18) 0%, transparent 65%),
-    radial-gradient(ellipse 55% 50% at 85% 75%, rgba(160, 100, 180, 0.14) 0%, transparent 65%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .vmx-halftone-usecases::after {
@@ -834,13 +813,7 @@
 }
 
 .vmx-halftone-quote::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 55% 50% at 80% 30%, rgba(180, 100, 60, 0.22) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 45% at 15% 80%, rgba(140, 90, 180, 0.16) 0%, transparent 65%);
-  pointer-events: none;
+  display: none;
 }
 
 .vmx-halftone-quote::after {
@@ -1049,4 +1022,16 @@
 .vmx-stream-mask::after {
   bottom: 0;
   background: linear-gradient(0deg, #141414, transparent);
+}
+
+.vm-dark-autofill:-webkit-autofill,
+.vm-dark-autofill:-webkit-autofill:hover,
+.vm-dark-autofill:-webkit-autofill:focus,
+.vm-dark-autofill:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  background-clip: content-box !important;
 }

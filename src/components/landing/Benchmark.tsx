@@ -95,16 +95,7 @@ export function Benchmark() {
           fontFamily: "var(--vmx-sans)",
         }}
       >
-        Operational.{" "}
-        <span
-          style={{
-            fontFamily: "var(--vmx-serif)",
-            fontStyle: "italic",
-            fontWeight: 400,
-          }}
-        >
-          Not just marketed.
-        </span>
+        Shipped. Not pitched.
       </h2>
       <p
         className="mx-auto mb-[60px] max-w-[540px]"
@@ -114,8 +105,8 @@ export function Benchmark() {
           lineHeight: 1.5,
         }}
       >
-        Built for founder-speed execution: retrieval, briefing, drafting, and
-        automation in one integrated inbox workflow.
+        Search, briefs, drafting, and automation in one inbox. Each
+        capability is in the product today, not a roadmap promise.
       </p>
 
       <div className="mx-auto mb-12 grid max-w-[1100px] grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
@@ -254,7 +245,7 @@ export function Benchmark() {
           letterSpacing: "-0.005em",
         }}
       >
-        Explore Product Architecture
+        See the features
         <ArrowPill />
       </Link>
     </section>

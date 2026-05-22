@@ -1,4 +1,4 @@
-import { inngest } from "@/lib/inngest/client";
+﻿import { inngest } from "@/lib/inngest/client";
 import {
   EMAIL_ANALYZE_EVENT,
   SCHEDULED_SEND_PROCESS_EVENT,
@@ -28,7 +28,7 @@ export async function enqueueEmailAnalysisJobs(
       ),
     );
   } catch (err) {
-    console.error("[enqueueEmailAnalysisJobs]", err);
+    enqueueLog.error("[enqueueEmailAnalysisJobs]", err);
   }
 }
 
@@ -48,7 +48,7 @@ export async function enqueueScheduledSendJobs(
     );
     return scheduledSendIds.length;
   } catch (err) {
-    console.error("[enqueueScheduledSendJobs]", err);
+    enqueueLog.error("[enqueueScheduledSendJobs]", err);
     throw err;
   }
 }
@@ -69,7 +69,7 @@ export async function enqueueBackfillEmbeddingJobs(
       enqueued++;
     }
   } catch (err) {
-    console.error("[enqueueBackfillEmbeddingJobs]", err);
+    enqueueLog.error("[enqueueBackfillEmbeddingJobs]", err);
     throw err;
   }
   return enqueued;
@@ -86,7 +86,7 @@ export async function enqueueEmbeddingJobsForAccount(
       data: { accountId, limit },
     });
   } catch (err) {
-    console.error("[enqueueEmbeddingJobsForAccount]", err);
+    enqueueLog.error("[enqueueEmbeddingJobsForAccount]", err);
   }
 }
 
@@ -103,7 +103,7 @@ export async function enqueueAccountMailSync(
     });
     return true;
   } catch (err) {
-    console.error("[enqueueAccountMailSync]", err);
+    enqueueLog.error("[enqueueAccountMailSync]", err);
     return false;
   }
 }
@@ -121,7 +121,10 @@ export async function enqueueAutomationExecution(
     });
     return true;
   } catch (err) {
-    console.error("[enqueueAutomationExecution]", err);
+    enqueueLog.error("[enqueueAutomationExecution]", err);
     return false;
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const enqueueLog = makeTagLogger("jobs.enqueue");

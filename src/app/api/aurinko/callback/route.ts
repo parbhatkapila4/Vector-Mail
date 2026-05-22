@@ -1,4 +1,4 @@
-import { exchangeAurinkoCodeForToken, getAccountInfo } from "@/lib/aurinko";
+﻿import { exchangeAurinkoCodeForToken, getAccountInfo } from "@/lib/aurinko";
 import { db } from "@/server/db";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const authResult = await auth();
     existingUserId = authResult.userId;
   } catch (e) {
-    console.error("[CALLBACK] auth() failed:", e);
+    cbLog.error("[CALLBACK] auth() failed:", e);
     return NextResponse.json(
       { message: "Authentication check failed" },
       { status: 500 },
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "No code provided" }, { status: 401 });
   }
 
-  console.log("[CALLBACK] ========== STARTING OAUTH CALLBACK ==========", existingUserId ? "(existing session)" : "(one-click sign-in)");
+  cbLog.log("[CALLBACK] ========== STARTING OAUTH CALLBACK ==========", existingUserId ? "(existing session)" : "(one-click sign-in)");
 
   try {
 
@@ -60,10 +60,10 @@ export async function GET(req: NextRequest) {
     try {
       token = await exchangeAurinkoCodeForToken(code);
       if (!token || !token.accessToken || !token.accountId) {
-        console.error(
-          "[CALLBACK] ✗ Token exchange failed - missing required fields",
+        cbLog.error(
+          "[CALLBACK] âœ- Token exchange failed - missing required fields",
         );
-        console.error(
+        cbLog.error(
           "[CALLBACK] Token received:",
           token ? Object.keys(token) : "null",
         );
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
       }
 
     } catch (error: unknown) {
-      console.error("[CALLBACK] ✗ Token exchange threw error:", error);
+      cbLog.error("[CALLBACK] âœ- Token exchange threw error:", error);
 
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
         }
         : null;
 
-      console.error("[CALLBACK] Error details:", errorDetails);
+      cbLog.error("[CALLBACK] Error details:", errorDetails);
 
       return NextResponse.json(
         {
@@ -103,8 +103,8 @@ export async function GET(req: NextRequest) {
     }
 
     const accountIdStr = token.accountId.toString();
-    console.log(
-      "[CALLBACK] ✓ Token exchange successful - accountId:",
+    cbLog.log(
+      "[CALLBACK] âœ“ Token exchange successful - accountId:",
       accountIdStr,
     );
 
@@ -112,16 +112,16 @@ export async function GET(req: NextRequest) {
     try {
       const info = await getAccountInfo(token.accessToken, accountIdStr);
       if (!info || !info.email) {
-        console.error("[CALLBACK] ✗ Account verification returned invalid data");
+        cbLog.error("[CALLBACK] âœ- Account verification returned invalid data");
         return NextResponse.json(
           { message: "Failed to verify account" },
           { status: 401 },
         );
       }
       accountInfo = info;
-      console.log("[CALLBACK] ✓ Account verified - email:", accountInfo.email);
+      cbLog.log("[CALLBACK] âœ“ Account verified - email:", accountInfo.email);
     } catch (error) {
-      console.error("[CALLBACK] ✗ Account verification failed:", error);
+      cbLog.error("[CALLBACK] âœ- Account verification failed:", error);
       return NextResponse.json(
         { message: "Failed to verify account" },
         { status: 401 },
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
       const clerkUser = await client.users.getUser(userId);
       const primaryEmail = clerkUser.primaryEmailAddress?.emailAddress?.trim().toLowerCase();
       if (primaryEmail && gmailEmail !== primaryEmail) {
-        console.warn("[CALLBACK] ✗ Account mismatch - Gmail email does not match sign-in Google account");
+        cbLog.warn("[CALLBACK] âœ- Account mismatch - Gmail email does not match sign-in Google account");
         const mailUrl = new URL("/mail", baseUrl);
         mailUrl.searchParams.set("error", "account_mismatch");
         return NextResponse.redirect(mailUrl);
@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
         select: { id: true, emailAddress: true },
       });
       if (existingAccount && existingAccount.emailAddress.trim().toLowerCase() !== gmailEmail) {
-        console.warn("[CALLBACK] ✗ User already has a connected account; cannot connect a different Google account");
+        cbLog.warn("[CALLBACK] âœ- User already has a connected account; cannot connect a different Google account");
         const mailUrl = new URL("/mail", baseUrl);
         mailUrl.searchParams.set("error", "one_account_only");
         return NextResponse.redirect(mailUrl);
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
       });
       if (existingUsers && existingUsers.length > 0) {
         userId = existingUsers[0]!.id;
-        console.log("[CALLBACK] ✓ Found existing Clerk user:", userId);
+        cbLog.log("[CALLBACK] âœ“ Found existing Clerk user:", userId);
       } else {
         const nameParts = (accountInfo.name ?? "").trim().split(/\s+/);
         const newUser = await client.users.createUser({
@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
           skipPasswordRequirement: true,
         });
         userId = newUser.id;
-        console.log("[CALLBACK] ✓ Created Clerk user:", userId);
+        cbLog.log("[CALLBACK] âœ“ Created Clerk user:", userId);
       }
     }
 
@@ -183,9 +183,9 @@ export async function GET(req: NextRequest) {
           emailAddress: accountInfo.email,
         },
       });
-      console.log("[CALLBACK] ✓ User upserted");
+      cbLog.log("[CALLBACK] âœ“ User upserted");
     } catch (error) {
-      console.error("[CALLBACK] ✗ User upsert failed:", error);
+      cbLog.error("[CALLBACK] âœ- User upsert failed:", error);
       const errMessage = error instanceof Error ? error.message : String(error);
       const errCode = error && typeof error === "object" && "code" in error ? String((error as { code: string }).code) : undefined;
       return NextResponse.json(
@@ -227,7 +227,7 @@ export async function GET(req: NextRequest) {
           tokenExpiresAt,
         },
       });
-      console.log("[CALLBACK] ✓ Account upserted");
+      cbLog.log("[CALLBACK] âœ“ Account upserted");
       auditLog({
         userId,
         action: "account_connected",
@@ -237,7 +237,7 @@ export async function GET(req: NextRequest) {
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : String(error);
       const errCode = error && typeof error === "object" && "code" in error ? String((error as { code: string }).code) : undefined;
-      console.error("[CALLBACK] ✗ Account upsert failed:", errMessage, errCode ? `(code: ${errCode})` : "", error);
+      cbLog.error("[CALLBACK] âœ- Account upsert failed:", errMessage, errCode ? `(code: ${errCode})` : "", error);
       return NextResponse.json(
         {
           message: "Failed to save account. Please try signing in again or contact support.",
@@ -247,7 +247,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log("[CALLBACK] Fast first batch (show inbox in 1-3s), then redirect…");
+    cbLog.log("[CALLBACK] Fast first batch (show inbox in 1-3s), then redirectâ€¦");
     try {
       const account = new Account(accountIdStr, tokenToStore);
 
@@ -272,10 +272,10 @@ export async function GET(req: NextRequest) {
                 needsReconnection: false,
               },
             });
-            console.log("[CALLBACK] ✓ Delta token saved (background)");
+            cbLog.log("[CALLBACK] âœ“ Delta token saved (background)");
           }
         } catch (e) {
-          console.warn("[CALLBACK] Delta token fetch failed (non-blocking):", e);
+          cbLog.warn("[CALLBACK] Delta token fetch failed (non-blocking):", e);
         }
       };
 
@@ -285,31 +285,31 @@ export async function GET(req: NextRequest) {
           setTimeout(() => reject(new Error("Fast first sync timeout")), FAST_FIRST_SYNC_TIMEOUT_MS),
         ),
       ]).catch((err) => {
-        console.warn("[CALLBACK] Fast first batch timeout or error:", err);
+        cbLog.warn("[CALLBACK] Fast first batch timeout or error:", err);
         return { count: 0 };
       });
 
       void getDeltaTokenAndSave();
       const firstResult = await fastFirstSync;
-      console.log("[CALLBACK] ✓ First batch:", firstResult.count, "emails (rest will sync in background on /mail)");
+      cbLog.log("[CALLBACK] âœ“ First batch:", firstResult.count, "emails (rest will sync in background on /mail)");
 
 
       void (async () => {
         try {
           const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
           await recalculateAllThreadStatuses(accountIdStr);
-          console.log("[CALLBACK] ✓ Thread statuses recalculated (background)");
+          cbLog.log("[CALLBACK] âœ“ Thread statuses recalculated (background)");
         } catch (recalcErr) {
-          console.warn("[CALLBACK] Thread status recalculation failed (background):", recalcErr);
+          cbLog.warn("[CALLBACK] Thread status recalculation failed (background):", recalcErr);
         }
       })();
     } catch (error) {
-      console.error("[CALLBACK] ✗ Post-reconnection sync failed:", error);
+      cbLog.error("[CALLBACK] âœ- Post-reconnection sync failed:", error);
 
       const is401 =
         axios.isAxiosError(error) && error.response?.status === 401;
       if (is401 && existingUserId) {
-        console.warn("[CALLBACK] 401 on first sync after reconnect; leaving needsReconnection false, redirecting to /mail");
+        cbLog.warn("[CALLBACK] 401 on first sync after reconnect; leaving needsReconnection false, redirecting to /mail");
       }
       if (existingUserId) {
         const mailUrl = new URL("/mail", baseUrl);
@@ -327,18 +327,18 @@ export async function GET(req: NextRequest) {
       const callbackUrl = new URL("/auth/callback", baseUrl);
       callbackUrl.searchParams.set("ticket", signInToken);
       callbackUrl.searchParams.set("accountId", accountIdStr);
-      console.log("[CALLBACK] ========== REDIRECTING TO AUTH CALLBACK (one-click) ==========");
+      cbLog.log("[CALLBACK] ========== REDIRECTING TO AUTH CALLBACK (one-click) ==========");
       return NextResponse.redirect(callbackUrl);
     }
 
-    console.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");
+    cbLog.log("[CALLBACK] ========== REDIRECTING TO MAIL ==========");
     const mailUrl = new URL("/mail", baseUrl);
     if (existingUserId) {
       mailUrl.searchParams.set("reconnected", "1");
     }
     return NextResponse.redirect(mailUrl);
   } catch (err) {
-    console.error("[CALLBACK] Unhandled error:", err);
+    cbLog.error("[CALLBACK] Unhandled error:", err);
     return NextResponse.json(
       { message: "Callback failed" },
       { status: 500 },
@@ -349,3 +349,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   return GET(req);
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const cbLog = makeTagLogger("api.aurinko-callback");

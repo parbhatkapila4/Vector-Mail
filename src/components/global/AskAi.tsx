@@ -6,11 +6,14 @@ import {
   Send,
   Bot,
   Loader2,
-  MessageCircle,
   Sparkles,
   ArrowRight,
   SkipForward,
   X,
+  CornerUpLeft,
+  CalendarDays,
+  Search,
+  type LucideIcon,
 } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 import { cn } from "@/lib/utils";
@@ -26,6 +29,11 @@ import {
   stripJsonFenceFromDisplay,
 } from "@/lib/inbox-chat-structured";
 import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
+import {
+  ASK_AI_GUIDED_STEPS,
+  buildAskAiDemoMessages,
+  getDemoAskAiResponse,
+} from "@/lib/demo/ask-ai-demo";
 
 interface ChatMessage {
   id: string;
@@ -46,109 +54,59 @@ const animationConfig: Transition = {
   duration: 0.2,
 };
 
-const suggestedQueries = [
+type SuggestedQuery = {
+  label: string;
+  query: string;
+  icon: LucideIcon;
+};
+
+const suggestedQueries: ReadonlyArray<SuggestedQuery> = [
   {
     label: "Needs reply",
     query: "What in my inbox still needs a reply?",
-    icon: "↩️",
+    icon: CornerUpLeft,
   },
   {
     label: "What matters today",
     query: "What should I prioritize in my inbox today?",
-    icon: "✨",
+    icon: Sparkles,
   },
   {
     label: "Last 7 days",
     query: "Summarize my email from the last 7 days in short bullets.",
-    icon: "📅",
+    icon: CalendarDays,
   },
   {
     label: "Find a topic",
     query: "Find emails about hiring, candidates, or recruiting.",
-    icon: "🔎",
+    icon: Search,
   },
-] as const;
+];
 
-const founderDemoQueries = [
+const founderDemoQueries: ReadonlyArray<SuggestedQuery> = [
   {
     label: "Reply queue",
     query: "What threads are waiting on me for a reply?",
-    icon: "↩️",
+    icon: CornerUpLeft,
   },
   {
     label: "Today’s stack rank",
     query: "Rank what matters in my inbox today: founder view, 5 bullets max.",
-    icon: "✨",
+    icon: Sparkles,
   },
   {
     label: "Month in review",
     query: "Summarize my mail themes from the last 30 days.",
-    icon: "📅",
+    icon: CalendarDays,
   },
   {
     label: "Topic sweep",
     query:
       "Find every thread about contracts, MSAs, or legal in the last 90 days.",
-    icon: "🔎",
-  },
-] as const;
-
-const GUIDED_DEMO_STEPS = [
-  "What needs my attention today?",
-  "Who haven’t I replied to?",
-  "Summarize last week in 5 bullets",
-] as const;
-
-const DEMO_CHAT_MESSAGES: ChatMessage[] = [
-  {
-    id: "demo-1",
-    role: "user",
-    content: "What meetings do I have coming up?",
-    timestamp: Date.now() - 120000,
-  },
-  {
-    id: "demo-2",
-    role: "assistant",
-    content: `Here’s what’s coming up from your inbox:
-
-Today
-1. Product sync - 2:00 PM with Sarah (Calendar invite received)
-2. 1:1 with Alex - 4:30 PM (confirmed)
-
-This week
-3. Q4 planning - Wednesday 10:00 AM (tentative)
-4. Design review - Thursday 3:00 PM
-
-I found these from your recent emails and calendar-related threads. Request access to connect your Gmail and I’ll search your real inbox and keep this up to date.
-
-\`\`\`json
-{"summary":"Four meeting-related threads in your demo inbox","actions":["Confirm Product sync at 2:00 PM","Prep for Q4 planning Wednesday"],"threads":[{"threadId":"demo-thread-6","label":"Product sync"},{"threadId":"demo-thread-17","label":"Sprint planning"},{"threadId":"demo-thread-12","label":"Design review"}]}
-\`\`\``,
-    timestamp: Date.now() - 115000,
-  },
-  {
-    id: "demo-3",
-    role: "user",
-    content: "Show me emails about orders",
-    timestamp: Date.now() - 60000,
-  },
-  {
-    id: "demo-4",
-    role: "assistant",
-    content: `Here are the order-related emails I found:
-
-1. Order #2847 - Shipped (tracking in email from support@store.com)
-2. Order #2901 - Delivered yesterday
-3. Subscription renewal - Billing next week (reminder from payments@service.com)
-
-In the full version, I’ll search your connected inbox and surface the exact threads, so you can open them with one click. Request access above to use this with your own emails.
-
-\`\`\`json
-{"summary":"Three order and billing threads matched your search","actions":["Track shipment for order #2847","Confirm renewal date for subscription"],"threads":[{"threadId":"demo-thread-3","label":"Order #2847 shipped"},{"threadId":"demo-thread-13","label":"Subscription renewal"}]}
-\`\`\``,
-    timestamp: Date.now() - 55000,
+    icon: Search,
   },
 ];
+
 
 export default function EmailSearchAssistant({
   isCollapsed,
@@ -213,28 +171,48 @@ export default function EmailSearchAssistant({
   const showDemoUI = isDemo && (isDemoAccount || !hasValidAccount);
 
   const processEmailsMutation = api.account.processEmailsForAI.useMutation({
-    onSuccess: () => {
-      console.log("Email processing completed");
+    onSuccess: (result) => {
+      const processed = (result as { totalProcessed?: number } | undefined)
+        ?.totalProcessed ?? 0;
+      const failed = (result as { totalFailed?: number } | undefined)
+        ?.totalFailed ?? 0;
+      const lastError = (result as { lastError?: string | null } | undefined)
+        ?.lastError;
+      if (failed > 0 && processed === 0) {
+        toast.error(`${failed} emails failed to process`, {
+          description: lastError
+            ? `Last error: ${lastError.slice(0, 200)}`
+            : "Check your dev terminal for details.",
+          duration: 10000,
+        });
+      } else if (failed > 0) {
+        toast.warning(
+          `Processed ${processed} but ${failed} failed`,
+          {
+            description: lastError
+              ? `Last error: ${lastError.slice(0, 200)}`
+              : "Check your dev terminal for details.",
+            duration: 8000,
+          },
+        );
+      } else if (processed > 0) {
+        toast.success(`Processed ${processed} email${processed === 1 ? "" : "s"} for AI`);
+      } else {
+        toast.info("No new emails to process.");
+      }
     },
     onError: (error) => {
       console.error("Processing failed:", error);
-      toast.error("Failed to process emails. Please try again.");
+      toast.error("Failed to process emails", {
+        description: error.message?.slice(0, 200) ?? "Please try again.",
+        duration: 8000,
+      });
     },
   });
 
-  const { data: debugData } = api.account.debugEmails.useQuery(
-    { accountId: hasValidAccount ? validAccountId : "" },
-    {
-      enabled: hasValidAccount,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      retry: false,
-    },
-  );
-
   useEffect(() => {
     if (showDemoUI && !demoSeededRef.current) {
-      setMessages(DEMO_CHAT_MESSAGES);
+      setMessages(buildAskAiDemoMessages(Date.now()));
       demoSeededRef.current = true;
     }
   }, [showDemoUI]);
@@ -263,18 +241,11 @@ export default function EmailSearchAssistant({
         };
         setMessages((prev) => [...prev, newMessage]);
         setIsLoading(true);
-        toast.info(
-          "Request access via the banner above to connect your Gmail and search your own emails. We’ll get back to you once your account is enabled.",
-        );
         setTimeout(() => {
           const demoReply: ChatMessage = {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content: `In the full version, I’ll search your inbox and summarize results here. Request access above to connect your Gmail. We'll reply once your account is enabled.
-
-\`\`\`json
-{"summary":"Demo mode: connect Gmail to use AI Inbox Brain on your mail","actions":["Use the banner above to request access when you are ready."],"threads":[]}
-\`\`\``,
+            content: getDemoAskAiResponse(messageText),
             timestamp: Date.now(),
           };
           setMessages((prev) => [...prev, demoReply]);
@@ -487,11 +458,11 @@ export default function EmailSearchAssistant({
   })();
 
   const canShowGuidedDemoEntry = showDemoUI || messages.length === 0;
-  const hasNextGuidedStep = guidedStepIndex < GUIDED_DEMO_STEPS.length - 1;
+  const hasNextGuidedStep = guidedStepIndex < ASK_AI_GUIDED_STEPS.length - 1;
 
   const runGuidedStep = useCallback(
     (stepIndex: number) => {
-      const query = GUIDED_DEMO_STEPS[stepIndex];
+      const query = ASK_AI_GUIDED_STEPS[stepIndex];
       if (!query || isLoading) return;
       setGuidedStepIndex(stepIndex);
       setInput("");
@@ -518,14 +489,14 @@ export default function EmailSearchAssistant({
     return (
       <div className="flex h-full flex-col p-3">
         <motion.div
-          className="flex h-full flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-[#0A0A0A] p-4"
+          className="flex h-full flex-col items-center justify-center rounded-xl border border-[#e4e7ed] bg-white p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
-            <span className="text-sm text-zinc-400">Loading...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-[#1e2a4a]" />
+            <span className="text-sm text-[#4a5572]">Loading...</span>
           </div>
         </motion.div>
       </div>
@@ -536,20 +507,20 @@ export default function EmailSearchAssistant({
     return (
       <div className="flex h-full flex-col p-3">
         <motion.div
-          className="flex h-full flex-col rounded-xl border border-white/[0.06] bg-[#0A0A0A] p-4"
+          className="flex h-full flex-col rounded-xl border border-[#e4e7ed] bg-white p-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
           <div className="flex items-center gap-3 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1e2a4a]">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-medium text-white">
+              <p className="text-sm font-medium text-[#0e1729]">
                 No account connected
               </p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-[#7a849a]">
                 Connect your Google account
               </p>
             </div>
@@ -557,7 +528,7 @@ export default function EmailSearchAssistant({
           <div className="mt-4">
             <button
               onClick={handleAccountConnection}
-              className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-yellow-500/20"
+              className="w-full rounded-xl bg-gradient-to-r from-[#2d3d6b] to-[#1e2a4a] px-4 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-[#1e2a4a]/20"
             >
               Connect your Google account
             </button>
@@ -570,8 +541,8 @@ export default function EmailSearchAssistant({
   return (
     <div className="flex h-full flex-col">
       {!showDemoUI && hasValidAccount && (
-        <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2.5">
-          <span className="text-[11px] leading-snug text-zinc-500">
+        <div className="flex items-center justify-between gap-2 border-b border-[#e4e7ed] px-3 py-2.5">
+          <span className="text-[11px] leading-snug text-[#7a849a]">
             Show grounded sources
           </span>
           <div className="flex items-center gap-2">
@@ -601,15 +572,15 @@ export default function EmailSearchAssistant({
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-3 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3"
+                className="mb-3 rounded-xl border border-[#1e2a4a]/15 bg-[#1e2a4a]/5 p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-300/90">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#1e2a4a]/90">
                       <Sparkles className="h-3.5 w-3.5" />
                       Founder demo
                     </p>
-                    <p className="mt-1 text-xs text-zinc-300">
+                    <p className="mt-1 text-xs text-[#1e2a44]">
                       Try a guided 30-sec walkthrough: attention, replies, and
                       weekly summary.
                     </p>
@@ -618,7 +589,7 @@ export default function EmailSearchAssistant({
                     <button
                       type="button"
                       onClick={startGuidedDemo}
-                      className="shrink-0 rounded-md bg-amber-400 px-2.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-amber-300"
+                      className="shrink-0 rounded-md bg-[#1e2a4a] px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#2d3d6b]"
                     >
                       Try 30-sec demo
                     </button>
@@ -626,7 +597,7 @@ export default function EmailSearchAssistant({
                     <button
                       type="button"
                       onClick={exitGuidedDemo}
-                      className="shrink-0 rounded-md border border-white/10 px-2 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                      className="shrink-0 rounded-md border border-[#e4e7ed] px-2 py-1.5 text-xs text-[#1e2a44] transition-colors hover:bg-[#f4f5f8]"
                     >
                       Exit
                     </button>
@@ -644,10 +615,10 @@ export default function EmailSearchAssistant({
                   <motion.div
                     key={message.id}
                     layout="position"
-                    className={cn("z-10 mb-3 break-words rounded-xl", {
-                      "ml-auto max-w-[85%] bg-amber-400 px-4 py-2.5 rounded-2xl rounded-br-sm shadow-lg":
+                    className={cn("z-10 mb-3 break-words rounded-3xl", {
+                      "ml-auto max-w-[85%] bg-[#1e2a4a] px-5 py-3 shadow-lg":
                         message.role === "user",
-                      "mr-auto max-w-[90%] bg-white/[0.03] ring-1 ring-white/[0.06]":
+                      "mr-auto max-w-[90%] bg-[#fafbfc] ring-1 ring-[#e4e7ed]":
                         message.role === "assistant",
                     })}
                     layoutId={`container-[${messages.length - 1}]`}
@@ -658,6 +629,7 @@ export default function EmailSearchAssistant({
                         <div className="space-y-2">
                           <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">
                             <span className="h-3 w-3 overflow-hidden rounded-full">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src="/Opus-B.png"
                                 alt="Inbox Brain"
@@ -667,7 +639,7 @@ export default function EmailSearchAssistant({
                             Inbox brain
                           </div>
                           {isStreamingAssistant ? (
-                            <div className="whitespace-pre-wrap text-sm text-zinc-300">
+                            <div className="whitespace-pre-wrap text-sm text-[#1e2a44]">
                               {stripJsonFenceFromDisplay(message.content) ||
                                 "\u00a0"}
                             </div>
@@ -676,24 +648,35 @@ export default function EmailSearchAssistant({
                               const { turn, detailProse } = getInboxAssistantView(
                                 message.content,
                               );
+                              const hasProseBody =
+                                typeof detailProse === "string" &&
+                                detailProse.trim().length > 0;
                               return (
                                 <div className="space-y-3">
-                                  <p className="text-sm font-semibold leading-snug text-zinc-100">
-                                    {turn.summary}
-                                  </p>
-                                  {turn.actions.length > 0 && (
-                                    <ul className="list-decimal space-y-1 pl-4 text-sm text-zinc-300">
-                                      {turn.actions.map((a, i) => (
-                                        <li key={i}>{a}</li>
-                                      ))}
-                                    </ul>
+                                  {hasProseBody ? (
+                                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-[#1e2a44]">
+                                      {detailProse}
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <p className="text-sm font-semibold leading-snug text-[#0e1729]">
+                                        {turn.summary}
+                                      </p>
+                                      {turn.actions.length > 0 && (
+                                        <ul className="list-decimal space-y-1 pl-4 text-sm text-[#1e2a44]">
+                                          {turn.actions.map((a, i) => (
+                                            <li key={i}>{a}</li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </>
                                   )}
                                   {turn.threads.length > 0 && (
                                     <div className="flex flex-wrap gap-2">
                                       {turn.threads.map((t, chipIndex) => (
                                         <div
                                           key={`${message.id}-${t.threadId}`}
-                                          className="max-w-full rounded-lg border border-amber-400/25 bg-amber-400/5 px-2.5 py-2"
+                                          className="max-w-full rounded-lg border border-[#1e2a4a]/15 bg-[#1e2a4a]/5 px-2.5 py-2"
                                         >
                                           <button
                                             type="button"
@@ -709,7 +692,7 @@ export default function EmailSearchAssistant({
                                               );
                                               onOpenThread?.(t.threadId);
                                             }}
-                                            className="max-w-full truncate rounded-full border border-amber-400/35 bg-amber-400/10 px-3 py-1 text-left text-xs font-medium text-amber-100 transition-colors hover:bg-amber-400/20 disabled:opacity-50"
+                                            className="max-w-full truncate rounded-full border border-[#1e2a4a]/20 bg-[#1e2a4a]/10 px-3 py-1 text-left text-xs font-medium text-[#1e2a4a] transition-colors hover:bg-[#1e2a4a]/15 disabled:opacity-50"
                                             disabled={!onOpenThread}
                                             title={
                                               onOpenThread
@@ -723,14 +706,14 @@ export default function EmailSearchAssistant({
                                             <div className="mt-1.5 flex items-center gap-1.5">
                                               {t.reason && (
                                                 <span
-                                                  className="max-w-[240px] truncate text-[10px] text-zinc-400 underline decoration-dotted underline-offset-2"
+                                                  className="max-w-[240px] truncate text-[10px] text-[#4a5572] underline decoration-dotted underline-offset-2"
                                                   title={`Why this? ${t.reason}`}
                                                 >
                                                   Why this? {t.reason}
                                                 </span>
                                               )}
                                               {t.confidence && (
-                                                <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-medium text-indigo-200">
+                                                <span className="rounded-full bg-[#1e2a4a]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#1e2a4a]">
                                                   {t.confidence}
                                                 </span>
                                               )}
@@ -758,25 +741,20 @@ export default function EmailSearchAssistant({
                                             );
                                             onOpenThread(turn.threads[0]!.threadId);
                                           }}
-                                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]"
+                                          className="inline-flex items-center gap-1 rounded-md border border-[#e4e7ed] bg-[#f4f5f8] px-2.5 py-1 text-[11px] font-medium text-[#0e1729] transition-colors hover:bg-[#ebedf2]"
                                         >
                                           Open top thread
                                           <ArrowRight className="h-3 w-3" />
                                         </button>
                                       </div>
                                     )}
-                                  {detailProse ? (
-                                    <div className="whitespace-pre-wrap border-t border-white/[0.06] pt-2 text-xs leading-relaxed text-zinc-400">
-                                      {detailProse}
-                                    </div>
-                                  ) : null}
                                 </div>
                               );
                             })()
                           )}
                         </div>
                       ) : (
-                        <span className="text-black">{message.content}</span>
+                        <span className="text-white">{message.content}</span>
                       )}
                     </div>
                   </motion.div>
@@ -789,9 +767,10 @@ export default function EmailSearchAssistant({
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-3 mr-auto max-w-[90%]"
               >
-                <div className="rounded-xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06]">
+                <div className="rounded-xl bg-[#fafbfc] px-4 py-3 ring-1 ring-[#e4e7ed]">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-[#111113] ring-1 ring-white/10">
+                    <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-[#f4f5f8] ring-1 ring-[#e4e7ed]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src="/Opus-B.png"
                         alt="Inbox Brain"
@@ -811,16 +790,16 @@ export default function EmailSearchAssistant({
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"
+                className="mt-2 rounded-xl border border-[#e4e7ed] bg-[#fafbfc] p-3"
               >
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-[11px] text-zinc-400">
-                    Step {guidedStepIndex + 1} of {GUIDED_DEMO_STEPS.length}
+                  <span className="text-[11px] text-[#4a5572]">
+                    Step {guidedStepIndex + 1} of {ASK_AI_GUIDED_STEPS.length}
                   </span>
                   <button
                     type="button"
                     onClick={exitGuidedDemo}
-                    className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200"
+                    className="inline-flex items-center gap-1 text-[11px] text-[#4a5572] hover:text-[#0e1729]"
                   >
                     <X className="h-3 w-3" />
                     Exit demo
@@ -832,7 +811,7 @@ export default function EmailSearchAssistant({
                       <button
                         type="button"
                         onClick={() => runGuidedStep(guidedStepIndex + 1)}
-                        className="inline-flex items-center gap-1 rounded-md bg-amber-400 px-2.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-amber-300"
+                        className="inline-flex items-center gap-1 rounded-md bg-[#1e2a4a] px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#2d3d6b]"
                       >
                         Next step
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -840,7 +819,7 @@ export default function EmailSearchAssistant({
                       <button
                         type="button"
                         onClick={() => runGuidedStep(guidedStepIndex + 1)}
-                        className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                        className="inline-flex items-center gap-1 rounded-md border border-[#e4e7ed] px-2.5 py-1.5 text-xs text-[#1e2a44] transition-colors hover:bg-[#f4f5f8]"
                       >
                         <SkipForward className="h-3.5 w-3.5" />
                         Skip
@@ -850,7 +829,7 @@ export default function EmailSearchAssistant({
                     <button
                       type="button"
                       onClick={exitGuidedDemo}
-                      className="inline-flex items-center gap-1 rounded-md bg-emerald-400/90 px-2.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-emerald-300"
+                      className="inline-flex items-center gap-1 rounded-md bg-emerald-400/90 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-300"
                     >
                       Demo complete
                     </button>
@@ -870,7 +849,7 @@ export default function EmailSearchAssistant({
                         );
                         onOpenThread(lastAssistantTurn.threads[0]!.threadId);
                       }}
-                      className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                      className="inline-flex items-center gap-1 rounded-md border border-[#e4e7ed] px-2.5 py-1.5 text-xs text-[#1e2a44] transition-colors hover:bg-[#f4f5f8]"
                     >
                       Open top thread
                     </button>
@@ -888,19 +867,19 @@ export default function EmailSearchAssistant({
                   onClick={startGuidedDemo}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="w-full rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2.5 text-left transition-colors hover:bg-amber-400/20"
+                  className="w-full rounded-xl border border-[#1e2a4a]/15 bg-[#1e2a4a]/10 px-3 py-2.5 text-left transition-colors hover:bg-[#1e2a4a]/15"
                 >
-                  <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300/90">
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#1e2a4a]/90">
                     <Sparkles className="h-3.5 w-3.5" />
                     Try a 30-sec demo
                   </span>
-                  <span className="mt-1 block text-[12px] text-zinc-300">
+                  <span className="mt-1 block text-[12px] text-[#1e2a44]">
                     Guided walkthrough in 3 steps. You can skip or exit anytime.
                   </span>
                 </motion.button>
               )}
               <div className="text-center px-1">
-                <p className="text-[13px] leading-snug text-zinc-300 dark:text-zinc-400">
+                <p className="text-[13px] leading-snug text-[#1e2a44] dark:text-[#4a5572]">
                   {showDemoUI
                     ? "Ask in plain English: get a structured answer and open real demo threads."
                     : "Ask in plain English: get a structured answer and jump to real threads."}
@@ -908,13 +887,13 @@ export default function EmailSearchAssistant({
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {suggestedQueries.map(({ label, query, icon }) => (
+                {suggestedQueries.map(({ label, query, icon: Icon }) => (
                   <button
                     key={label}
                     onClick={() => handleQuerySuggestion(query)}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-[11px] font-medium leading-tight text-zinc-200 transition-all hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-white"
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-[#e4e7ed] bg-[#fafbfc] px-3 py-2.5 text-[11px] font-medium leading-tight text-[#0e1729] transition-all hover:border-[#1e2a4a]/25 hover:bg-[#1e2a4a]/10 hover:text-[#1e2a4a]"
                   >
-                    <span>{icon}</span>
+                    <Icon className="h-3.5 w-3.5 text-[#4a5572]" strokeWidth={1.75} />
                     <span>{label}</span>
                   </button>
                 ))}
@@ -922,18 +901,18 @@ export default function EmailSearchAssistant({
 
               {founderDemo && !showDemoUI && (
                 <div>
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-amber-400/85">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[#1e2a4a]/85">
                     Founder demo flows
                   </p>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {founderDemoQueries.map(({ label, query, icon }) => (
+                    {founderDemoQueries.map(({ label, query, icon: Icon }) => (
                       <button
                         key={label}
                         type="button"
                         onClick={() => void sendMessage(query)}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-2.5 text-[11px] font-medium leading-tight text-zinc-200 transition-all hover:border-amber-400/45 hover:bg-amber-400/10"
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-[#1e2a4a]/15 bg-[#1e2a4a]/5 px-3 py-2.5 text-[11px] font-medium leading-tight text-[#0e1729] transition-all hover:border-[#1e2a4a]/30 hover:bg-[#1e2a4a]/10"
                       >
-                        <span>{icon}</span>
+                        <Icon className="h-3.5 w-3.5 text-[#1e2a4a]" strokeWidth={1.75} />
                         <span className="text-left leading-tight">{label}</span>
                       </button>
                     ))}
@@ -945,37 +924,22 @@ export default function EmailSearchAssistant({
                 <button
                   onClick={handleProcessEmails}
                   disabled={processEmailsMutation.isPending || !validAccountId}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-medium text-black transition-all hover:bg-amber-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e2a4a] px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#0d1530] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Bot className="h-4 w-4 text-black" />
+                  <Bot className="h-4 w-4 text-white" />
                   {processEmailsMutation.isPending
                     ? "Processing..."
                     : "Process Emails for AI"}
                 </button>
               )}
 
-              {!showDemoUI && debugData && (
-                <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                  <div className="mb-1.5 text-xs font-medium text-zinc-400">
-                    Status
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    Total: {debugData.totalEmails} | Processed:{" "}
-                    {debugData.processedEmails ??
-                      debugData.emails.filter((e) => e.hasEmbedding).length}
-                  </div>
-                  <div className="mt-1 truncate text-xs text-zinc-500">
-                    Latest: {debugData.emails[0]?.subject || "None"}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         <form
           onSubmit={handleSubmit}
-          className="mt-auto flex w-full gap-2 border-t border-white/[0.06] p-3.5"
+          className="mt-auto flex w-full gap-2 border-t border-[#e4e7ed] p-3.5"
         >
           <div className="relative flex-1">
             <input
@@ -984,7 +948,7 @@ export default function EmailSearchAssistant({
               onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
               value={input}
-              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-sm text-white outline-none transition-all placeholder:text-zinc-500 focus:border-amber-400/40 focus:ring-1 focus:ring-amber-400/30 disabled:opacity-50"
+              className="h-10 w-full rounded-xl border border-[#e4e7ed] bg-[#fafbfc] px-4 text-sm text-[#0e1729] outline-none transition-all placeholder:text-[#a8b0c0] focus:border-[#1e2a4a]/30 focus:ring-1 focus:ring-[#1e2a4a]/30 disabled:opacity-50"
               placeholder={
                 showDemoUI
                   ? "Try a question… request access to use Inbox brain on your mail."
@@ -997,7 +961,7 @@ export default function EmailSearchAssistant({
           </div>
           <button
             type="submit"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-black transition-all hover:bg-amber-500 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1e2a4a] text-white transition-all hover:bg-[#0d1530] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading || !input.trim() || (!hasValidAccount && !showDemoUI)}
           >
             {isLoading ? (

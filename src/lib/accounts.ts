@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   EmailAddress,
   EmailMessage,
   syncResponse,
@@ -10,11 +10,15 @@ import { refreshAurinkoToken } from "./aurinko";
 import { syncEmailsToDatabase } from "./sync-to-db";
 import { withLock } from "./sync-lock";
 import { db } from "@/server/db";
+import { serverLog } from "@/lib/logging/server-logger";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+
+const accountsLog = makeTagLogger("accounts");
 
 const SYNC_LOCK_TTL_MS = 30 * 60 * 1000;
 const DEBUG_EMAIL = process.env.DEBUG_EMAIL_SYNC === "true";
 function debugLog(...args: unknown[]) {
-  if (DEBUG_EMAIL) console.log(...args);
+  if (DEBUG_EMAIL) serverLog.debug({ args }, "accounts: debug");
 }
 
 const SYNC_WINDOW_DAYS = 60;
@@ -42,7 +46,7 @@ function warnWithCooldown(key: string, message: string): void {
   const lastAt = lastAuthWarnAtByKey.get(key) ?? 0;
   if (now - lastAt < AUTH_WARN_COOLDOWN_MS) return;
   lastAuthWarnAtByKey.set(key, now);
-  console.warn(message);
+  serverLog.warn({ key }, message);
 }
 
 function isRateLimitError(error: unknown): boolean {
@@ -142,7 +146,7 @@ async function withTransientRetries<T>(
         throw error;
       }
       const delay = 1200 * (attempt + 1);
-      console.warn(
+      accountsLog.warn(
         `[accounts] Transient mail-provider error (attempt ${attempt + 1}/${maxExtraAttempts + 1}), retrying in ${delay}ms...`,
       );
       await sleep(delay);
@@ -182,7 +186,7 @@ async function with401Retry<T>(
         break;
       }
       const delay = AURINKO_401_RETRY_DELAY_MS * (attempt + 1);
-      console.warn(
+      accountsLog.warn(
         `[accounts] 401 on attempt ${attempt + 1}/${AURINKO_401_RETRIES + 1} for account ${accountId}, retrying in ${delay}ms...`,
       );
       await sleep(delay);
@@ -216,7 +220,7 @@ async function with401Retry<T>(
     if (shouldMarkNeedsReconnection) {
       await db.account
         .update({ where: { id: accountId }, data: { needsReconnection: true } })
-        .catch((err) => console.error(`[accounts] Failed to update needsReconnection:`, err));
+        .catch((err) => accountsLog.error(`[accounts] Failed to update needsReconnection:`, err));
     }
   }
   throw lastError;
@@ -239,7 +243,7 @@ export class Account {
     if (!account?.refreshToken) {
       if (!warnedMissingRefreshTokenAccountIds.has(this.id)) {
         warnedMissingRefreshTokenAccountIds.add(this.id);
-        console.warn(
+        accountsLog.warn(
           `[accounts] No refresh token in DB for account ${this.id} - silent renewal disabled; reconnect Gmail if the mailbox stops syncing.`,
         );
       }
@@ -247,7 +251,7 @@ export class Account {
     }
     const result = await refreshAurinkoToken(this.id, account.refreshToken);
     if (!result) {
-      console.warn(`[accounts] Aurinko refresh API failed for account ${this.id}`);
+      accountsLog.warn(`[accounts] Aurinko refresh API failed for account ${this.id}`);
       return false;
     }
     const newToken = result.accountToken ?? result.accessToken;
@@ -307,25 +311,25 @@ export class Account {
       await db.account.update({
         where: { id: this.id },
         data: { needsReconnection: false },
-      }).catch(err => console.error(`[validateToken] Failed to update needsReconnection:`, err));
+      }).catch(err => accountsLog.error(`[validateToken] Failed to update needsReconnection:`, err));
 
       return response.status === 200;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-          console.warn(
+          accountsLog.warn(
             `[validateToken] Token validation timed out for account ${this.id} - treating as temporary network issue`,
           );
           return true;
         }
       }
       if (is401Error(error)) {
-        console.error(
+        accountsLog.error(
           `[validateToken] Token validation failed after retries for account ${this.id}`,
         );
         return false;
       }
-      console.warn(
+      accountsLog.warn(
         `[validateToken] Token validation check failed with non-401 error (network/timeout):`,
         error,
       );
@@ -423,7 +427,7 @@ export class Account {
             }
           } catch {
           }
-          console.warn(
+          accountsLog.warn(
             "[Initial Sync] No inbox messages found - account may be empty, or check Aurinko/Gmail connection",
           );
           return { emails: [], deltaToken: storedDeltaToken };
@@ -456,7 +460,7 @@ export class Account {
             );
           }
         } catch (syncError) {
-          console.warn(
+          accountsLog.warn(
             "[Initial Sync] Could not get delta token for first batch, continuing without it:",
             syncError,
           );
@@ -499,7 +503,7 @@ export class Account {
           );
         }
       } catch (syncError) {
-        console.warn(
+        accountsLog.warn(
           "[Initial Sync] Could not get delta token, continuing without it:",
           syncError,
         );
@@ -511,13 +515,13 @@ export class Account {
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.error(
+        accountsLog.error(
           "[Initial Sync] API error:",
           error.response?.status,
           error.response?.data,
         );
       } else {
-        console.error("[Initial Sync] Error:", error);
+        accountsLog.error("[Initial Sync] Error:", error);
       }
       throw error;
     }
@@ -783,7 +787,7 @@ export class Account {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.error(
+        accountsLog.error(
           "Error sending email:",
           JSON.stringify(error.response?.data, null, 2),
         );
@@ -804,7 +808,7 @@ export class Account {
         ).response = error.response?.data;
         throw enhancedError;
       } else {
-        console.error("Error sending email:", error);
+        accountsLog.error("Error sending email:", error);
         throw error;
       }
     }
@@ -836,9 +840,9 @@ export class Account {
         }
         if (!isRateLimit) {
           if (axios.isAxiosError(error)) {
-            console.error(`Error fetching email ${emailId}:`, error.response?.status, error.response?.data);
+            accountsLog.error(`Error fetching email ${emailId}:`, error.response?.status, error.response?.data);
           } else {
-            console.error(`Error fetching email ${emailId}:`, error);
+            accountsLog.error(`Error fetching email ${emailId}:`, error);
           }
         }
         return null;
@@ -963,12 +967,12 @@ export class Account {
       },
     });
     if (!account) {
-      console.error(`[_performSync] Account ${this.id} not found in database`);
+      accountsLog.error(`[_performSync] Account ${this.id} not found in database`);
       throw new Error("Account not found");
     }
 
     if (!account.token) {
-      console.error(`[_performSync] Account ${this.id} has no token stored`);
+      accountsLog.error(`[_performSync] Account ${this.id} has no token stored`);
       throw new Error(
         "Account token is missing. Please reconnect your account.",
       );
@@ -986,20 +990,20 @@ export class Account {
         const fetchPromise = this.fetchEmailsByFolder(folder);
         const folderEmails = await fetchPromise;
 
-        debugLog(`[syncEmails] ✓ Fetched ${folderEmails.length} ${folder} emails`);
+        debugLog(`[syncEmails] âœ“ Fetched ${folderEmails.length} ${folder} emails`);
 
         if (folderEmails.length > 0) {
           await syncEmailsToDatabase(folderEmails, account.id, {
             skipRecalculate: options?.skipRecalculate,
           });
-          debugLog(`[syncEmails] ✓ Synced ${folderEmails.length} ${folder} emails to database`);
+          debugLog(`[syncEmails] âœ“ Synced ${folderEmails.length} ${folder} emails to database`);
         } else {
           debugLog(`[syncEmails] No ${folder} emails found to sync`);
         }
 
         return;
       } catch (folderError) {
-        console.error(`[syncEmails] Folder-specific sync failed:`, folderError);
+        accountsLog.error(`[syncEmails] Folder-specific sync failed:`, folderError);
         throw folderError;
       }
     }
@@ -1012,12 +1016,12 @@ export class Account {
         });
         const allEmails = initialSyncResult?.emails ?? [];
         const storedDeltaToken = initialSyncResult?.deltaToken ?? "";
-        debugLog(`[syncEmails] ✓ performInitialSync completed: ${allEmails.length} emails`);
+        debugLog(`[syncEmails] âœ“ performInitialSync completed: ${allEmails.length} emails`);
         if (allEmails.length > 0) {
           await syncEmailsToDatabase(allEmails, account.id, {
             skipRecalculate: options?.skipRecalculate,
           });
-          debugLog(`[syncEmails] ✓ Synced ${allEmails.length} emails to database`);
+          debugLog(`[syncEmails] âœ“ Synced ${allEmails.length} emails to database`);
         }
         await db.account.update({
           where: { id: account.id },
@@ -1028,10 +1032,10 @@ export class Account {
         });
         return;
       } catch (fullSyncError) {
-        console.error(`[syncEmails] performInitialSync failed, trying direct inbox fetch:`, fullSyncError);
+        accountsLog.error(`[syncEmails] performInitialSync failed, trying direct inbox fetch:`, fullSyncError);
         try {
           const inboxOnly = await this.fetchEmailsByFolder("inbox");
-          debugLog(`[syncEmails] ✓ Direct inbox fetch: ${inboxOnly.length} emails`);
+          debugLog(`[syncEmails] âœ“ Direct inbox fetch: ${inboxOnly.length} emails`);
           if (inboxOnly.length > 0) {
             await syncEmailsToDatabase(inboxOnly, account.id, {
               skipRecalculate: options?.skipRecalculate,
@@ -1040,11 +1044,11 @@ export class Account {
               where: { id: account.id },
               data: { lastInboxSyncAt: new Date() },
             });
-            debugLog(`[syncEmails] ✓ Synced ${inboxOnly.length} inbox emails (fallback path)`);
+            debugLog(`[syncEmails] âœ“ Synced ${inboxOnly.length} inbox emails (fallback path)`);
           }
           return;
         } catch (inboxFallbackError) {
-          console.error(`[syncEmails] Direct inbox fallback also failed:`, inboxFallbackError);
+          accountsLog.error(`[syncEmails] Direct inbox fallback also failed:`, inboxFallbackError);
         }
       }
     }
@@ -1150,12 +1154,12 @@ export class Account {
             await syncEmailsToDatabase(records, account.id);
             consecutiveEmptyPages = 0;
             debugLog(
-              `[syncEmails] ✓ Sync API page ${syncPageCount}: ${records.length} emails synced to DB, total: ${syncEmails.length}`,
+              `[syncEmails] âœ“ Sync API page ${syncPageCount}: ${records.length} emails synced to DB, total: ${syncEmails.length}`,
             );
           } else {
             consecutiveEmptyPages++;
-            console.warn(
-              `[syncEmails] ⚠ Sync API page ${syncPageCount} returned 0 emails (consecutive: ${consecutiveEmptyPages})`,
+            accountsLog.warn(
+              `[syncEmails] âš  Sync API page ${syncPageCount} returned 0 emails (consecutive: ${consecutiveEmptyPages})`,
             );
           }
 
@@ -1177,7 +1181,7 @@ export class Account {
           }
 
           if (consecutiveEmptyPages >= maxConsecutiveEmpty) {
-            console.warn(
+            accountsLog.warn(
               `[syncEmails] Stopping after ${consecutiveEmptyPages} consecutive empty pages`,
             );
             break;
@@ -1199,7 +1203,7 @@ export class Account {
         }
 
         debugLog(
-          `[syncEmails] ✓ Fetched ${syncEmails.length} emails from sync API (already synced per page)`,
+          `[syncEmails] âœ“ Fetched ${syncEmails.length} emails from sync API (already synced per page)`,
         );
 
         await db.account.update({
@@ -1211,14 +1215,14 @@ export class Account {
         });
 
         debugLog(
-          `[syncEmails] ✓ ${SYNC_WINDOW_DAYS}-day window sync completed using sync API for account ${account.id}. Synced ${syncEmails.length} emails.`,
+          `[syncEmails] âœ“ ${SYNC_WINDOW_DAYS}-day window sync completed using sync API for account ${account.id}. Synced ${syncEmails.length} emails.`,
         );
         return;
       } catch (syncApiError) {
-        console.error("[syncEmails] ✗ Sync API failed:", syncApiError);
+        accountsLog.error("[syncEmails] âœ- Sync API failed:", syncApiError);
 
         if (is401Error(syncApiError)) {
-          console.error(
+          accountsLog.error(
             `[syncEmails] Authentication failed (401) after retries for account ${this.id}`,
           );
           throw new Error(
@@ -1320,7 +1324,7 @@ export class Account {
           if (!isInvalidAurinkoSyncTokenError(deltaOrPageErr)) {
             throw deltaOrPageErr;
           }
-          console.warn(
+          accountsLog.warn(
             `[_performSync] Aurinko sync token invalid for account ${this.id} (delta or page); clearing and running initial sync`,
           );
           await db.account.update({
@@ -1346,7 +1350,7 @@ export class Account {
     debugLog(`[syncEmails] Total emails to sync: ${allEmails.length}`);
 
     if (allEmails.length === 0) {
-      console.error(`[syncEmails] ⚠ CRITICAL: No emails to sync for account ${account.id} after all sync methods. This indicates:
+      accountsLog.error(`[syncEmails] âš  CRITICAL: No emails to sync for account ${account.id} after all sync methods. This indicates:
       1. Account has no emails
       2. API authentication/authorization failed
       3. Query format is incorrect
@@ -1402,7 +1406,7 @@ export class Account {
         `[syncEmails] Verification: ${inboxThreadCount} inbox threads in database for account ${account.id}`,
       );
     } catch (error) {
-      console.error("[syncEmails] Error syncing emails to database:", error);
+      accountsLog.error("[syncEmails] Error syncing emails to database:", error);
       throw error;
     }
 
@@ -1458,7 +1462,7 @@ export class Account {
       );
       return true;
     } catch (error) {
-      console.error("[shouldRefresh30DayWindow] Error checking window:", error);
+      accountsLog.error("[shouldRefresh30DayWindow] Error checking window:", error);
       return false;
     }
   }
@@ -1474,7 +1478,7 @@ export class Account {
       },
     });
     if (!account) {
-      console.error(
+      accountsLog.error(
         `[syncLatestEmails] Account ${this.id} not found in database`,
       );
       throw new Error("Account not found");
@@ -1486,7 +1490,7 @@ export class Account {
         `[syncLatestEmails] Using token from database for account ${this.id}`,
       );
     } else {
-      console.error(
+      accountsLog.error(
         `[syncLatestEmails] Account ${this.id} has no token stored`,
       );
       return { success: false, count: 0, authError: true };
@@ -1494,7 +1498,7 @@ export class Account {
 
     const isTokenValid = await this.validateToken();
     if (!isTokenValid) {
-      console.error(
+      accountsLog.error(
         `[syncLatestEmails] Token validation failed for account ${this.id}`,
       );
       return { success: false, count: 0, authError: true };
@@ -1509,7 +1513,7 @@ export class Account {
         await this.syncEmails(true);
         return { success: true, count: 0, authError: false };
       } catch (error) {
-        console.error(`[Latest Sync] Full sync failed:`, error);
+        accountsLog.error(`[Latest Sync] Full sync failed:`, error);
         const isAuthError =
           axios.isAxiosError(error) && error.response?.status === 401;
         return { success: false, count: 0, authError: isAuthError };
@@ -1584,7 +1588,7 @@ export class Account {
         return { success: true, count: 0, authError: false };
       }
     } catch (error) {
-      console.error(
+      accountsLog.error(
         `[Latest Sync] Error caught for account ${account.id}:`,
         error,
       );
@@ -1603,14 +1607,14 @@ export class Account {
       const isAuthError = is401Error || isAuthErrorMessage;
 
       if (isAuthError) {
-        console.error(
+        accountsLog.error(
           `[Latest Sync] Authentication failed for account ${account.id} after retries`,
         );
         return { success: false, count: 0, authError: true };
       }
 
       if (isInvalidAurinkoSyncTokenError(error)) {
-        console.warn(
+        accountsLog.warn(
           `[Latest Sync] Delta/page token invalid for account ${account.id}, resetting nextDeltaToken`,
         );
         await db.account.update({
@@ -1627,13 +1631,13 @@ export class Account {
         const status = error.response?.status;
         const errorData = error.response?.data;
 
-        console.error(`[Latest Sync] API error for account ${account.id}:`, {
+        accountsLog.error(`[Latest Sync] API error for account ${account.id}:`, {
           status,
           statusText: error.response?.statusText,
           data: errorData,
         });
       } else {
-        console.error(
+        accountsLog.error(
           `[Latest Sync] Non-axios error syncing latest emails for account ${account.id}:`,
           error,
         );
@@ -1706,7 +1710,7 @@ export class Account {
         nextPageToken: listResponse.data.nextPageToken,
       };
     } catch (error) {
-      console.error("[fetchInboxEmails] Failed:", error);
+      accountsLog.error("[fetchInboxEmails] Failed:", error);
       throw error;
     }
   }
@@ -1731,7 +1735,7 @@ export class Account {
       );
       return { count: result.emails.length };
     } catch (error) {
-      console.warn("[fetchAndSyncLatestInboxPage] Failed (inbox will use existing DB):", error);
+      accountsLog.warn("[fetchAndSyncLatestInboxPage] Failed (inbox will use existing DB):", error);
       return { count: 0 };
     }
   }
@@ -1838,8 +1842,8 @@ export class Account {
 
     const total = inboxEmails.length;
     const elapsed = Date.now() - start;
-    console.log(
-      `[syncFirstBatchQuick] ✓ inbox ${total} (latest first-batch) in ${elapsed}ms`,
+    accountsLog.log(
+      `[syncFirstBatchQuick] âœ“ inbox ${total} (latest first-batch) in ${elapsed}ms`,
     );
     return { count: total };
   }
@@ -1910,7 +1914,7 @@ export class Account {
     await syncEmailsToDatabase(valid, this.id, { writeConcurrency: 30 });
     const elapsed = Date.now() - start;
     debugLog(
-      `[syncAllEmailsInstant] ✓ Synced ${valid.length} emails in ${elapsed}ms`,
+      `[syncAllEmailsInstant] âœ“ Synced ${valid.length} emails in ${elapsed}ms`,
     );
     return { count: valid.length };
   }
@@ -1930,17 +1934,17 @@ export class Account {
         { tryRefresh: () => this.refreshTokenIfPossible() },
       );
       debugLog(
-        `[fetchAllEmailsDirectly] ✓ API connection verified for account ${this.id}`,
+        `[fetchAllEmailsDirectly] âœ“ API connection verified for account ${this.id}`,
       );
 
 
       debugLog("[fetchAllEmailsDirectly] Step 1: Fetching INBOX emails...");
       const inboxEmails = await this.fetchEmailsByFolder("inbox");
-      debugLog(`[fetchAllEmailsDirectly] ✓ Fetched ${inboxEmails.length} inbox emails`);
+      debugLog(`[fetchAllEmailsDirectly] âœ“ Fetched ${inboxEmails.length} inbox emails`);
 
       debugLog("[fetchAllEmailsDirectly] Step 2: Fetching SENT emails...");
       const sentEmails = await this.fetchEmailsByFolder("sent");
-      debugLog(`[fetchAllEmailsDirectly] ✓ Fetched ${sentEmails.length} sent emails`);
+      debugLog(`[fetchAllEmailsDirectly] âœ“ Fetched ${sentEmails.length} sent emails`);
 
 
       const emailMap = new Map<string, EmailMessage>();
@@ -1950,18 +1954,18 @@ export class Account {
         }
       }
       const allEmails = Array.from(emailMap.values());
-      debugLog(`[fetchAllEmailsDirectly] ✓ Total unique emails: ${allEmails.length} (Inbox: ${inboxEmails.length}, Sent: ${sentEmails.length})`);
+      debugLog(`[fetchAllEmailsDirectly] âœ“ Total unique emails: ${allEmails.length} (Inbox: ${inboxEmails.length}, Sent: ${sentEmails.length})`);
 
       return allEmails;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.error(
+        accountsLog.error(
           "[fetchAllEmailsDirectly] API error:",
           error.response?.status,
           error.response?.data,
         );
       } else {
-        console.error("[fetchAllEmailsDirectly] Error:", error);
+        accountsLog.error("[fetchAllEmailsDirectly] Error:", error);
       }
       throw error;
     }
@@ -2166,7 +2170,7 @@ export class Account {
           }
           return folderEmails;
         } catch (err) {
-          console.warn("[fetchEmailsByFolder:sent] Folder-based fetch failed, falling back to q/labelIds:", err);
+          accountsLog.warn("[fetchEmailsByFolder:sent] Folder-based fetch failed, falling back to q/labelIds:", err);
         }
       }
     }
@@ -2232,7 +2236,7 @@ export class Account {
           break;
         } catch (listErr) {
           if (isRateLimitError(listErr) && listAttempt < listMaxRetries - 1) {
-            console.warn(`[fetchEmailsByFolder:${folder}] List page ${pageCount} rate limited, waiting ${RATE_LIMIT_WAIT_MS / 1000}s then retry (${listAttempt + 1}/${listMaxRetries})`);
+            accountsLog.warn(`[fetchEmailsByFolder:${folder}] List page ${pageCount} rate limited, waiting ${RATE_LIMIT_WAIT_MS / 1000}s then retry (${listAttempt + 1}/${listMaxRetries})`);
             await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
             continue;
           }
@@ -2317,7 +2321,7 @@ export class Account {
         const batchSize = EMAIL_FETCH_BATCH_SIZE;
         for (let i = 0; i < messageIds.length; i += batchSize) {
           const batch = messageIds.slice(i, i + batchSize);
-          let batchEmails = await Promise.all(
+          const batchEmails = await Promise.all(
             batch.map((id) => this.getEmailById(id)),
           );
 
@@ -2354,12 +2358,12 @@ export class Account {
         }
       } catch (pageError) {
         if (isRateLimitError(pageError)) {
-          console.warn(`[fetchEmailsByFolder:${folder}] Page ${pageCount} rate limited (Gmail quota), waiting ${RATE_LIMIT_WAIT_MS / 1000}s before retry...`);
+          accountsLog.warn(`[fetchEmailsByFolder:${folder}] Page ${pageCount} rate limited (Gmail quota), waiting ${RATE_LIMIT_WAIT_MS / 1000}s before retry...`);
           await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
           pageCount--;
           continue;
         }
-        console.error(`[fetchEmailsByFolder:${folder}] Error on page ${pageCount}:`, axios.isAxiosError(pageError) ? pageError.response?.status : pageError);
+        accountsLog.error(`[fetchEmailsByFolder:${folder}] Error on page ${pageCount}:`, axios.isAxiosError(pageError) ? pageError.response?.status : pageError);
 
         if (axios.isAxiosError(pageError)) {
           const status = pageError.response?.status;
@@ -2369,13 +2373,13 @@ export class Account {
           }
         }
 
-        console.warn(`[fetchEmailsByFolder:${folder}] Breaking due to error on page ${pageCount}`);
+        accountsLog.warn(`[fetchEmailsByFolder:${folder}] Breaking due to error on page ${pageCount}`);
         break;
       }
     }
 
     if (pageCount >= maxPages) {
-      console.warn(
+      accountsLog.warn(
         `[fetchEmailsByFolder:${folder}] Reached max pages limit (${maxPages}), stopping. Total fetched: ${allEmails.length}`,
       );
     }

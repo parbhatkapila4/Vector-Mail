@@ -119,7 +119,7 @@ export function SnoozeMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="min-w-[180px] border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
+          className="min-w-[180px] border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#1e2a4a]"
           onClick={(e) => e.stopPropagation()}
         >
           {isSnoozedTab && (
@@ -170,7 +170,7 @@ export function SnoozeMenu({
 
       <Dialog open={customPickerOpen} onOpenChange={setCustomPickerOpen}>
         <DialogContent
-          className="z-[100] border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:max-w-[400px]"
+          className="z-[100] border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-[#1e2a4a] sm:max-w-[400px]"
           onClick={(e) => e.stopPropagation()}
         >
           <DialogHeader className="pb-1">
@@ -183,7 +183,7 @@ export function SnoozeMenu({
               <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 Date
               </Label>
-              <div className="flex justify-center rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="flex justify-center rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#1e2a4a]">
                 <Calendar
                   mode="single"
                   selected={pickedDate}
@@ -199,11 +199,12 @@ export function SnoozeMenu({
               <Label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 Time
               </Label>
-              <TimeInput24
-                value={pickedTime}
-                onChange={setPickedTime}
-                className="w-full"
-              />
+              <div className="flex justify-center">
+                <TimeInput24
+                  value={pickedTime}
+                  onChange={setPickedTime}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter className="flex flex-row justify-end gap-2 pt-4">

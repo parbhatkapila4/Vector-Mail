@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { format, formatDistanceToNow } from "date-fns";
 import EmailDisplay from "./EmailDisplay";
@@ -6,15 +6,22 @@ import useThreads from "@/hooks/use-threads";
 import { useAtom } from "jotai";
 import { isSearchingAtom } from "../search/SearchBar";
 import ReplyBox from "./ReplyBox";
-import { Mail, Forward, Reply, X, Clock, Bell, Tag, ChevronDown, ChevronLeft, ChevronRight, Loader2, CalendarPlus, MessageCircle } from "lucide-react";
+import { Mail, Forward, Reply, X, Clock, Bell, Tag, ChevronDown, Loader2, CalendarPlus, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getQueryKey } from "@trpc/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ForwardEmailDialog } from "./ForwardEmailDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -101,7 +108,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
   );
   const thread = (_thread ?? foundThread) as ThreadWithLabels & { account?: { id: string; emailAddress: string; name: string } } | undefined;
 
-  const { data: threadEvent, isLoading: isLoadingEvent } = api.account.getEventForThread.useQuery(
+  const { data: threadEvent } = api.account.getEventForThread.useQuery(
     { threadId: threadId ?? "" },
     { enabled: !!threadId && !!thread },
   );
@@ -120,16 +127,11 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
 
   if (!thread) {
     return (
-      <div className="flex h-full flex-col items-center justify-center bg-white p-10 dark:bg-[#111113]">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f4f4f5] dark:bg-[#18181b]">
-          <Mail className="h-8 w-8 text-[#9ca3af] dark:text-[#71717a]" />
+      <div className="flex h-full items-center justify-center bg-white dark:bg-[#ffffff]">
+        <div className="flex items-center gap-2.5 text-[#a89b86] dark:text-[#5b554c]">
+          <Mail className="h-4 w-4" strokeWidth={1.5} />
+          <span className="text-[13px]">No conversation selected</span>
         </div>
-        <h3 className="mb-1.5 text-[22px] font-normal text-[#6b7280] dark:text-[#a1a1aa]">
-          Select an email
-        </h3>
-        <p className="max-w-sm text-center text-[14px] text-[#9ca3af] dark:text-[#71717a]">
-          Choose a conversation from the list to view its contents
-        </p>
       </div>
     );
   }
@@ -175,13 +177,13 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
         <DialogContent className="max-w-lg border-[#e5e7eb] bg-white p-6 dark:border-[#3c4043] dark:bg-[#202124]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 pr-8 text-left text-[#111118] dark:text-[#f4f4f5]">
-              <MessageCircle className="h-5 w-5 shrink-0 text-[#3b82f6] dark:text-[#8ab4f8]" />
+              <MessageCircle className="h-5 w-5 shrink-0 text-[#1e2a4a] dark:text-[#1e2a4a]" />
               <span className="whitespace-nowrap">Suggest reply</span>
             </DialogTitle>
           </DialogHeader>
           {suggestReplyStep === "loading" && (
             <div className="flex flex-col items-center gap-4 py-6">
-              <Loader2 className="h-10 w-10 animate-spin text-[#3b82f6] dark:text-[#8ab4f8]" />
+              <Loader2 className="h-10 w-10 animate-spin text-[#1e2a4a] dark:text-[#1e2a4a]" />
               <p className="text-center text-sm text-[#5f6368] dark:text-[#9aa0a6]">
                 {suggestReplyStatus}
               </p>
@@ -231,7 +233,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                     setSuggestReplyResult(null);
                     requestAnimationFrame(() => window.dispatchEvent(new CustomEvent("focus-reply")));
                   }}
-                  className="border-[#3b82f6] text-[#3b82f6] hover:bg-[#3b82f6]/10 dark:border-[#8ab4f8] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/10"
+                  className="border-[#1e2a4a] text-[#1e2a4a] hover:bg-[#1e2a4a]/10 dark:border-[#1e2a4a] dark:text-[#1e2a4a] dark:hover:bg-[#1e2a4a]/10"
                 >
                   Edit
                 </Button>
@@ -264,7 +266,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                       toast.error("Failed to send reply");
                     }
                   }}
-                  className="bg-[#3b82f6] text-white hover:bg-[#2563eb] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                  className="bg-[#1e2a4a] text-white hover:bg-[#b88a3f] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
                 >
                   Send
                 </Button>
@@ -291,184 +293,260 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
           )}
         </DialogContent>
       </Dialog>
-      <div className="flex min-h-0 h-full flex-col bg-white dark:bg-[#111113]">
+      <div className="flex min-h-0 h-full flex-col bg-white dark:bg-[#ffffff]">
 
-        <div className="relative z-10 shrink-0 border-b border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]">
-          <div className="hidden w-full min-w-0 flex-col gap-2 px-4 py-2 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-3 md:gap-y-2 md:px-6">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-              {threadId && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onClose?.();
-                  }}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                  aria-label="Close email"
-                  title="Close email"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-              {showSnooze && (
-                <SnoozeMenu
-                  threadId={threadId ?? ""}
-                  accountId={accountForActions ?? ""}
-                  isSnoozedTab={currentTab === "snoozed"}
-                >
-                  <button
-                    type="button"
-                    className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                  >
-                    <Clock className="h-3.5 w-3.5 shrink-0" />
-                    Snooze
-                  </button>
-                </SnoozeMenu>
-              )}
-              {showRemind && (
-                <RemindMenu
-                  threadId={threadId ?? ""}
-                  accountId={accountForActions ?? ""}
-                  isRemindersTab={currentTab === "reminders"}
-                >
-                  <button
-                    type="button"
-                    className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-                  >
-                    <Bell className="h-3.5 w-3.5 shrink-0" />
-                    Remind me
-                  </button>
-                </RemindMenu>
-              )}
-              <button
-                type="button"
-                onClick={() => setForwardDialogOpen(true)}
-                className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-              >
-                <Forward className="h-3.5 w-3.5 shrink-0" />
-                Forward
+        <div className="reader-toolbar hidden md:flex shrink-0">
+          {threadId && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose?.();
+              }}
+              className="tool-btn tool-close"
+              aria-label="Close email"
+              title="Close email"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {threadId && <div className="tool-divider" aria-hidden />}
+          {showSnooze && (
+            <SnoozeMenu
+              threadId={threadId ?? ""}
+              accountId={accountForActions ?? ""}
+              isSnoozedTab={currentTab === "snoozed"}
+            >
+              <button type="button" className="tool-btn">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                Snooze
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const event = threadEvent ?? {
-                    title: firstEmail?.subject || "Event from email",
-                    startAt: new Date().toISOString(),
-                    endAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                  };
-                  const url = buildGoogleCalendarUrl(event, {
-                    description: typeof window !== "undefined" ? `From email - Vector Mail\n${window.location.href}` : undefined,
+            </SnoozeMenu>
+          )}
+          {showRemind && (
+            <RemindMenu
+              threadId={threadId ?? ""}
+              accountId={accountForActions ?? ""}
+              isRemindersTab={currentTab === "reminders"}
+            >
+              <button type="button" className="tool-btn">
+                <Bell className="h-3.5 w-3.5 shrink-0" />
+                Remind me
+              </button>
+            </RemindMenu>
+          )}
+          <button
+            type="button"
+            onClick={() => setForwardDialogOpen(true)}
+            className="tool-btn"
+          >
+            <Forward className="h-3.5 w-3.5 shrink-0" />
+            Forward
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const event = threadEvent ?? {
+                title: firstEmail?.subject || "Event from email",
+                startAt: new Date().toISOString(),
+                endAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+              };
+              const url = buildGoogleCalendarUrl(event, {
+                description: typeof window !== "undefined" ? `From email - Vector Mail\n${window.location.href}` : undefined,
+              });
+              window.open(url, "_blank", "noopener,noreferrer");
+              if (accountForActions && threadId) {
+                saveToCalendarList.mutate({
+                  accountId: accountForActions,
+                  threadId,
+                  title: event.title,
+                  startAt: event.startAt,
+                  endAt: event.endAt,
+                });
+              }
+            }}
+            className="tool-btn"
+          >
+            <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
+            Add to calendar
+          </button>
+          <div className="tool-spacer" />
+          {threadId && effectiveAccountId && !isDemo && (
+            <button
+              type="button"
+              disabled={suggestReplyStep === "loading"}
+              onClick={async () => {
+                if (!threadId || !effectiveAccountId) return;
+                setSuggestReplyModalOpen(true);
+                setSuggestReplyStep("loading");
+                setSuggestReplyError(null);
+                setSuggestReplyResult(null);
+                setSuggestReplyStatus("Reading your email and thread...");
+                const statusTimer = setTimeout(() => {
+                  setSuggestReplyStatus("Writing your reply in your voice...");
+                }, 1200);
+                try {
+                  const res = await fetch("/api/generate-reply", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ threadId, accountId: effectiveAccountId }),
+                    credentials: "include",
                   });
-                  window.open(url, "_blank", "noopener,noreferrer");
-                  if (accountForActions && threadId) {
-                    saveToCalendarList.mutate({
-                      accountId: accountForActions,
-                      threadId,
-                      title: event.title,
-                      startAt: event.startAt,
-                      endAt: event.endAt,
-                    });
+                  const data = await res.json().catch(() => ({}));
+                  clearTimeout(statusTimer);
+                  if (!res.ok) {
+                    setSuggestReplyStep("error");
+                    const msg =
+                      data.message ??
+                      data.error ??
+                      (res.status === 504
+                        ? "Reply took too long. Try again."
+                        : res.status === 401
+                          ? "Your session may have expired. Refresh the page or sign in again."
+                          : res.status === 403
+                            ? "Connect your account to use Suggest reply."
+                            : "Failed to suggest reply");
+                    setSuggestReplyError(msg);
+                    return;
                   }
-                }}
-                className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] font-medium leading-none text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.06] dark:hover:text-[#f4f4f5]"
-              >
-                <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
-                Add to calendar
-              </button>
-            </div>
-            <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 md:w-auto">
-              {threadId && effectiveAccountId && !isDemo && (
-                <button
-                  type="button"
-                  disabled={suggestReplyStep === "loading"}
-                  onClick={async () => {
-                    if (!threadId || !effectiveAccountId) return;
-                    setSuggestReplyModalOpen(true);
-                    setSuggestReplyStep("loading");
-                    setSuggestReplyError(null);
-                    setSuggestReplyResult(null);
-                    setSuggestReplyStatus("Reading your email and thread...");
-                    const statusTimer = setTimeout(() => {
-                      setSuggestReplyStatus("Writing your reply in your voice...");
-                    }, 1200);
-                    try {
-                      const res = await fetch("/api/generate-reply", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ threadId, accountId: effectiveAccountId }),
-                        credentials: "include",
-                      });
-                      const data = await res.json().catch(() => ({}));
-                      clearTimeout(statusTimer);
-                      if (!res.ok) {
-                        setSuggestReplyStep("error");
-                        const msg =
-                          data.message ??
-                          data.error ??
-                          (res.status === 504
-                            ? "Reply took too long. Try again."
-                            : res.status === 401
-                              ? "Your session may have expired. Refresh the page or sign in again."
-                              : res.status === 403
-                                ? "Connect your account to use Suggest reply."
-                                : "Failed to suggest reply");
-                        setSuggestReplyError(msg);
-                        return;
-                      }
-                      setSuggestReplyResult({ subject: data.subject ?? "", body: data.body ?? "" });
-                      setSuggestReplyStep("ready");
-                    } catch (e) {
-                      clearTimeout(statusTimer);
-                      setSuggestReplyStep("error");
-                      setSuggestReplyError("Failed to suggest reply");
-                      toast.error("Failed to suggest reply");
-                    }
-                  }}
-                  className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-[#3b82f6] bg-transparent px-3.5 text-[12px] font-medium leading-none text-[#3b82f6] transition-colors hover:bg-[#3b82f6]/10 dark:border-[#8ab4f8] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/10 disabled:opacity-60 sm:px-4"
+                  setSuggestReplyResult({ subject: data.subject ?? "", body: data.body ?? "" });
+                  setSuggestReplyStep("ready");
+                } catch {
+                  clearTimeout(statusTimer);
+                  setSuggestReplyStep("error");
+                  setSuggestReplyError("Failed to suggest reply");
+                  toast.error("Failed to suggest reply");
+                }
+              }}
+              className="tool-btn gold-suggest"
+            >
+              {suggestReplyStep === "loading" ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              ) : (
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  aria-hidden
+                  style={{ flexShrink: 0 }}
                 >
-                  {suggestReplyStep === "loading" ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                  ) : (
-                    <MessageCircle className="h-3.5 w-3.5 shrink-0" />
-                  )}
-                  Suggest reply
-                </button>
+                  <path
+                    d="M7 2l1.4 3.6L12 7l-3.6 1.4L7 12l-1.4-3.6L2 7l3.6-1.4L7 2z"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReplyBox(true);
-                  requestAnimationFrame(() => {
-                    window.dispatchEvent(new CustomEvent("focus-reply"));
-                  });
-                }}
-                className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-[#3b82f6] px-3.5 text-[12px] font-medium leading-none text-white transition-colors hover:bg-[#2563eb] sm:px-4"
-              >
-                <Reply className="h-3.5 w-3.5 shrink-0" />
-                Reply
-              </button>
-            </div>
-          </div>
+              Suggest reply
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setShowReplyBox(true);
+              requestAnimationFrame(() => {
+                window.dispatchEvent(new CustomEvent("focus-reply"));
+              });
+            }}
+            className="tool-btn gold-cta"
+          >
+            <Reply className="h-3.5 w-3.5 shrink-0" />
+            Reply <span className="kbd">R</span>
+          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto scroll-smooth pb-20 text-base md:pb-0 md:text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="px-4 pb-6 pt-4 md:px-6 md:pt-0">
+          <div className="px-4 pb-6 pt-4 md:px-6 md:pt-6">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h1 className="text-[18px] font-normal leading-tight text-[#111118] dark:text-[#f4f4f5] md:text-[22px]">
+              <h1
+                className="text-[22px] font-medium leading-[1.15] text-[#111118] dark:text-[#f5ebd9] md:text-[28px]"
+                style={{
+                  fontFamily: "var(--font-newsreader), Georgia, serif",
+                  letterSpacing: "-0.025em",
+                }}
+              >
                 {firstEmail?.subject || "(No subject)"}
               </h1>
               {(() => {
                 const lastEmailInThread = thread?.emails?.[thread.emails.length - 1] as { from?: { address?: string }; sysClassifications?: string[] } | undefined;
                 const accountEmail = (thread as { account?: { emailAddress?: string } })?.account?.emailAddress ?? (account as { emailAddress?: string } | undefined)?.emailAddress ?? "";
-                const lastFromOther = lastEmailInThread?.from?.address && accountEmail && lastEmailInThread.from.address.toLowerCase() !== accountEmail.toLowerCase();
+                const lastFromAddr = lastEmailInThread?.from?.address ?? "";
+                const lastFromOther = !!lastFromAddr && !!accountEmail && lastFromAddr.toLowerCase() !== accountEmail.toLowerCase();
                 const allClassifications = (thread?.emails ?? []).flatMap((e) => (e as { sysClassifications?: string[] }).sysClassifications ?? []);
                 const raw = allClassifications.map((c) => String(c).toLowerCase());
                 const isPromoOrMarketing = raw.includes("promotions") || raw.includes("social") || raw.includes("updates") || raw.includes("forums");
-                const showNeedsReply = lastFromOther && !isPromoOrMarketing;
+                const isAutomatedSender = (() => {
+                  const local = (lastFromAddr.split("@")[0] ?? "")
+                    .toLowerCase()
+                    .replace(/[._-]/g, "");
+                  if (!local) return false;
+                  const automatedPrefixes = [
+                    "noreply",
+                    "donotreply",
+                    "donotrespond",
+                    "notifications",
+                    "notification",
+                    "notify",
+                    "alerts",
+                    "alert",
+                    "statements",
+                    "statement",
+                    "billing",
+                    "receipts",
+                    "receipt",
+                    "invoice",
+                    "invoices",
+                    "mailer",
+                    "mailservice",
+                    "system",
+                    "automated",
+                    "autoreply",
+                    "news",
+                    "newsletter",
+                    "digest",
+                    "reminder",
+                    "reminders",
+                    "instaalerts",
+                    "smartstatement",
+                  ];
+                  return automatedPrefixes.some((p) => local === p || local.startsWith(p));
+                })();
+                const showNeedsReply =
+                  lastFromOther && !isPromoOrMarketing && !isAutomatedSender;
                 return showNeedsReply ? (
-                  <span className="rounded-md bg-[#e8f0fe] px-2 py-0.5 text-[11px] font-medium text-[#1967d2] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]">
-                    Needs reply
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px]"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(212,169,85,0.11) 0%, rgba(212,169,85,0.05) 100%)",
+                      border: "0.5px solid rgba(212,169,85,0.28)",
+                      boxShadow:
+                        "0 0 0 0.5px rgba(212,169,85,0.06), inset 0 0.5px 0 rgba(255,255,255,0.04)",
+                      fontFamily:
+                        "var(--font-jetbrains-mono), ui-monospace, monospace",
+                      fontSize: 9.5,
+                      color: "#b88a3f",
+                      fontWeight: 600,
+                      letterSpacing: "0.16em",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className="block rounded-full"
+                      style={{
+                        width: 5,
+                        height: 5,
+                        background:
+                          "radial-gradient(circle at 30% 30%, #e0b46a 0%, #a67627 75%)",
+                        boxShadow:
+                          "0 0 0 2px rgba(212,169,85,0.14), 0 0 6px rgba(212,169,85,0.32)",
+                      }}
+                    />
+                    NEEDS REPLY
                   </span>
                 ) : null;
               })()}
@@ -511,39 +589,110 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
               />
             )}
 
-            <div className="mb-6 flex items-center gap-4">
-              <Avatar className="h-11 w-11 border border-[#e5e7eb] dark:border-[#1a1a23]">
-                <AvatarImage alt={senderName} />
-                <AvatarFallback className="bg-[#3b82f6] text-[14px] font-medium text-white">
-                  {senderName
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex-1">
-                <div className="mb-1 flex items-center gap-2.5">
-                  <span className="text-[14px] font-semibold text-[#111118] dark:text-[#f4f4f5]">
-                    {senderName}
-                  </span>
-                  <span className="rounded-md bg-[#f3f4f6] px-2 py-0.5 text-[12px] text-[#6b7280] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                    Details
-                  </span>
-                  {firstEmail?.sentAt && (
-                    <span className="ml-auto text-[12px] text-[#9ca3af] dark:text-[#71717a]">
-                      {format(
-                        new Date(firstEmail.sentAt),
-                        "MMM d, yyyy 'at' h:mm a",
-                      )}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[13px] text-[#9ca3af] dark:text-[#71717a]">
-                  To: You
-                </p>
+            <div className="reader-sender-row">
+              <div className="reader-avatar">
+                {senderName
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
               </div>
+
+              <div className="reader-sender-info">
+                <div className="reader-sender-name">
+                  <span className="reader-sender-name-text">{senderName}</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="details-link">
+                        DETAILS
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="bottom"
+                      align="start"
+                      className="w-[360px] max-w-[90vw] border-[#e4e7ed] bg-white p-0 text-[#0e1729] shadow-md"
+                    >
+                      <div className="border-b border-[#eef0f4] px-4 py-3">
+                        <p
+                          className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a849a]"
+                          style={{
+                            fontFamily:
+                              "var(--font-jetbrains-mono), ui-monospace, monospace",
+                          }}
+                        >
+                          MESSAGE DETAILS
+                        </p>
+                      </div>
+                      <dl className="grid grid-cols-[64px_1fr] gap-x-3 gap-y-2 px-4 py-3 text-[13px] leading-relaxed">
+                        <dt className="text-[#7a849a]">From</dt>
+                        <dd className="min-w-0 break-words">
+                          <span className="font-medium text-[#0e1729]">
+                            {senderName}
+                          </span>
+                          {senderEmail && (
+                            <span className="ml-1 text-[#4a5572]">
+                              &lt;{senderEmail}&gt;
+                            </span>
+                          )}
+                        </dd>
+                        <dt className="text-[#7a849a]">To</dt>
+                        <dd className="min-w-0 break-words text-[#1e2a44]">
+                          {(firstEmail?.to ?? [])
+                            .map(
+                              (r) =>
+                                (r as { name?: string | null; address?: string })
+                                  .address ?? "",
+                            )
+                            .filter(Boolean)
+                            .join(", ") || "you"}
+                        </dd>
+                        {(firstEmail?.cc?.length ?? 0) > 0 && (
+                          <>
+                            <dt className="text-[#7a849a]">Cc</dt>
+                            <dd className="min-w-0 break-words text-[#1e2a44]">
+                              {(firstEmail?.cc ?? [])
+                                .map(
+                                  (r) =>
+                                    (r as { address?: string }).address ?? "",
+                                )
+                                .filter(Boolean)
+                                .join(", ")}
+                            </dd>
+                          </>
+                        )}
+                        <dt className="text-[#7a849a]">Subject</dt>
+                        <dd className="min-w-0 break-words text-[#1e2a44]">
+                          {originalSubject}
+                        </dd>
+                        <dt className="text-[#7a849a]">Date</dt>
+                        <dd
+                          className="min-w-0 break-words text-[#4a5572]"
+                          style={{
+                            fontFamily:
+                              "var(--font-jetbrains-mono), ui-monospace, monospace",
+                            fontSize: 12,
+                          }}
+                        >
+                          {firstEmail?.sentAt
+                            ? format(
+                              new Date(firstEmail.sentAt),
+                              "EEE, MMM d yyyy · h:mm a",
+                            )
+                            : "-"}
+                        </dd>
+                      </dl>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="reader-to">to you</div>
+              </div>
+
+              {firstEmail?.sentAt && (
+                <div className="reader-time">
+                  {format(new Date(firstEmail.sentAt), "MMM d · h:mm a")}
+                </div>
+              )}
             </div>
           </div>
 
@@ -601,7 +750,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
         </div>
 
         {showReplyBox && (
-          <div className="hidden shrink-0 border-t border-[#e5e7eb] dark:border-[#1a1a23] md:block">
+          <div className="hidden shrink-0 border-t border-[#e5e7eb] dark:border-[#ffffff] md:block">
             <ReplyBox
               suggestedReply={suggestedReply}
               autoApplySuggestedReply={autoApplySuggestedReply}
@@ -615,7 +764,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
           <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2 border-t border-[#3c4043] bg-[#202124] px-4 py-3 [touch-action:manipulation] md:hidden [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
             <Button
               onClick={() => setReplyDialogOpen(true)}
-              className="min-h-[44px] flex-1 rounded-full bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa] [touch-action:manipulation]"
+              className="min-h-[44px] flex-1 rounded-full bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa] [touch-action:manipulation]"
             >
               <Reply className="mr-2 h-4 w-4" />
               Reply
@@ -635,8 +784,8 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
           <div className="fixed inset-0 z-[60] flex flex-col bg-[#202124] md:hidden">
             <div className="flex items-center justify-between border-b border-[#3c4043] px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8]/20 dark:bg-[#8ab4f8]/20">
-                  <Reply className="h-4 w-4 text-[#8ab4f8]" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8]/20 dark:bg-[#1e2a4a]/20">
+                  <Reply className="h-4 w-4 text-[#1e2a4a]" />
                 </div>
                 <h2 className="text-lg font-medium text-[#e8eaed]">Reply</h2>
               </div>
@@ -666,6 +815,34 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
   );
 }
 
+type LabelLite = { id: string; name: string; color: string | null };
+type ThreadOptimisticState = {
+  added: LabelLite[];
+  removedIds: Set<string>;
+};
+const threadLabelOptimisticStore: Map<string, ThreadOptimisticState> =
+  new Map();
+
+function readThreadOptimistic(threadId: string): ThreadOptimisticState {
+  return (
+    threadLabelOptimisticStore.get(threadId) ?? {
+      added: [],
+      removedIds: new Set(),
+    }
+  );
+}
+
+function writeThreadOptimistic(
+  threadId: string,
+  next: ThreadOptimisticState,
+): void {
+  if (next.added.length === 0 && next.removedIds.size === 0) {
+    threadLabelOptimisticStore.delete(threadId);
+    return;
+  }
+  threadLabelOptimisticStore.set(threadId, next);
+}
+
 function ThreadLabelsBar({
   threadId,
   accountId,
@@ -673,51 +850,218 @@ function ThreadLabelsBar({
 }: {
   threadId: string;
   accountId: string;
-  labels: Array<{ id: string; name: string; color: string | null }>;
+  labels: LabelLite[];
 }) {
   const utils = api.useUtils();
+  const queryClient = useQueryClient();
   const [pendingAddId, setPendingAddId] = useState<string | null>(null);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [optimisticAdded, setOptimisticAdded] = useState<LabelLite[]>(
+    () => readThreadOptimistic(threadId).added,
+  );
+  const [optimisticRemovedIds, setOptimisticRemovedIds] = useState<Set<string>>(
+    () => new Set(readThreadOptimistic(threadId).removedIds),
+  );
+
   const { data: allLabels } = api.account.getLabels.useQuery(
     { accountId: accountId || "placeholder" },
     { enabled: !!accountId },
   );
+
+  const patchThreadsCacheLabels = (
+    updater: (
+      labels: Array<{ label: LabelLite }>,
+    ) => Array<{ label: LabelLite }>,
+  ) => {
+    type ThreadShape = { id: string; threadLabels?: Array<{ label: LabelLite }> };
+    type InfiniteShape = { pages?: Array<{ threads?: ThreadShape[] }> };
+    const snapshots: Array<{ key: readonly unknown[]; data: unknown }> = [];
+
+    const keys = [
+      getQueryKey(api.account.getThreads, undefined, "infinite"),
+      getQueryKey(api.account.getUnifiedThreads, undefined, "infinite"),
+    ];
+    keys.forEach((key) => {
+      const matches = queryClient.getQueriesData<InfiniteShape>({
+        queryKey: key,
+      });
+      matches.forEach(([qKey, oldData]) => {
+        if (!oldData?.pages) return;
+        let touched = false;
+        const newPages = oldData.pages.map((page) => {
+          if (!page.threads) return page;
+          const newThreads = page.threads.map((t) => {
+            if (t.id !== threadId) return t;
+            const next = updater(t.threadLabels ?? []);
+            if (next === (t.threadLabels ?? [])) return t;
+            touched = true;
+            return { ...t, threadLabels: next };
+          });
+          return { ...page, threads: newThreads };
+        });
+        if (!touched) return;
+        snapshots.push({ key: qKey, data: oldData });
+        queryClient.setQueryData(qKey, { ...oldData, pages: newPages });
+      });
+    });
+    return snapshots;
+  };
+
+  const restoreThreadsCacheLabels = (
+    snapshots: Array<{ key: readonly unknown[]; data: unknown }>,
+  ) => {
+    snapshots.forEach(({ key, data }) => {
+      queryClient.setQueryData(key, data);
+    });
+  };
+
+  useEffect(() => {
+    const stored = readThreadOptimistic(threadId);
+    setOptimisticAdded(stored.added);
+    setOptimisticRemovedIds(new Set(stored.removedIds));
+  }, [threadId]);
+
+  useEffect(() => {
+    writeThreadOptimistic(threadId, {
+      added: optimisticAdded,
+      removedIds: optimisticRemovedIds,
+    });
+  }, [threadId, optimisticAdded, optimisticRemovedIds]);
+
+  useEffect(() => {
+    const propIds = new Set(labels.map((l) => l.id));
+    setOptimisticAdded((prev) => prev.filter((l) => !propIds.has(l.id)));
+  }, [labels]);
+
+  const displayLabels: LabelLite[] = useMemo(() => {
+    const visible = labels.filter((l) => !optimisticRemovedIds.has(l.id));
+    return [...visible, ...optimisticAdded];
+  }, [labels, optimisticRemovedIds, optimisticAdded]);
+
   const addLabelMutation = api.account.addLabelToThread.useMutation({
-    onMutate: ({ labelId }) => setPendingAddId(labelId),
-    onSuccess: async () => {
-      await Promise.all([
-        utils.account.getThreadById.invalidate({ threadId }),
-        utils.account.getThreads.invalidate(),
-        utils.account.getNumThreads.invalidate(),
-        utils.account.getLabelsWithCounts.invalidate({ accountId: accountId || "placeholder" }),
-      ]);
+    onMutate: ({ labelId }) => {
+      setPendingAddId(labelId);
+      const labelToAdd = (allLabels ?? []).find((l) => l.id === labelId);
+      let cacheSnapshots: Array<{ key: readonly unknown[]; data: unknown }> =
+        [];
+      let restoredFromRemoved = false;
+      setOptimisticRemovedIds((prev) => {
+        if (!prev.has(labelId)) return prev;
+        restoredFromRemoved = true;
+        const next = new Set(prev);
+        next.delete(labelId);
+        return next;
+      });
+      if (labelToAdd) {
+        setOptimisticAdded((prev) =>
+          prev.some((l) => l.id === labelId) ? prev : [...prev, labelToAdd],
+        );
+        cacheSnapshots = patchThreadsCacheLabels((existing) => {
+          if (existing.some((tl) => tl.label.id === labelId)) return existing;
+          return [...existing, { label: labelToAdd }];
+        });
+      }
+      return { labelId, cacheSnapshots, restoredFromRemoved };
+    },
+    onError: (e, _vars, context) => {
+      if (context?.labelId) {
+        setOptimisticAdded((prev) =>
+          prev.filter((l) => l.id !== context.labelId),
+        );
+        if (context.restoredFromRemoved) {
+          setOptimisticRemovedIds((prev) => {
+            if (prev.has(context.labelId)) return prev;
+            const next = new Set(prev);
+            next.add(context.labelId);
+            return next;
+          });
+        }
+      }
+      if (context?.cacheSnapshots?.length) {
+        restoreThreadsCacheLabels(context.cacheSnapshots);
+      }
+      toast.error(e.message ?? "Failed to add label");
+    },
+    onSuccess: () => {
       toast.success("Label added");
     },
-    onError: (e) => toast.error(e.message ?? "Failed to add label"),
-    onSettled: () => setPendingAddId(null),
-  });
-  const removeLabelMutation = api.account.removeLabelFromThread.useMutation({
-    onMutate: ({ labelId }) => setPendingRemoveId(labelId),
-    onSuccess: async () => {
+    onSettled: async () => {
+      setPendingAddId(null);
       await Promise.all([
         utils.account.getThreadById.invalidate({ threadId }),
         utils.account.getThreads.invalidate(),
         utils.account.getNumThreads.invalidate(),
-        utils.account.getLabelsWithCounts.invalidate({ accountId: accountId || "placeholder" }),
+        utils.account.getLabelsWithCounts.invalidate({
+          accountId: accountId || "placeholder",
+        }),
       ]);
     },
-    onError: (e) => toast.error(e.message ?? "Failed to remove label"),
-    onSettled: () => setPendingRemoveId(null),
   });
-  const currentIds = new Set(labels.map((l) => l.id));
+
+  const removeLabelMutation = api.account.removeLabelFromThread.useMutation({
+    onMutate: ({ labelId }) => {
+      setPendingRemoveId(labelId);
+      const wasOptimisticOnly = optimisticAdded.some((l) => l.id === labelId);
+      if (wasOptimisticOnly) {
+        setOptimisticAdded((prev) => prev.filter((l) => l.id !== labelId));
+      } else {
+        setOptimisticRemovedIds((prev) => {
+          if (prev.has(labelId)) return prev;
+          const next = new Set(prev);
+          next.add(labelId);
+          return next;
+        });
+      }
+      const cacheSnapshots = patchThreadsCacheLabels((existing) =>
+        existing.filter((tl) => tl.label.id !== labelId),
+      );
+      return { labelId, wasOptimisticOnly, cacheSnapshots };
+    },
+    onError: (e, _vars, context) => {
+      if (context?.labelId) {
+        if (context.wasOptimisticOnly) {
+          const lbl = (allLabels ?? []).find((l) => l.id === context.labelId);
+          if (lbl) {
+            setOptimisticAdded((prev) =>
+              prev.some((p) => p.id === lbl.id) ? prev : [...prev, lbl],
+            );
+          }
+        } else {
+          setOptimisticRemovedIds((prev) => {
+            if (!prev.has(context.labelId)) return prev;
+            const next = new Set(prev);
+            next.delete(context.labelId);
+            return next;
+          });
+        }
+      }
+      if (context?.cacheSnapshots?.length) {
+        restoreThreadsCacheLabels(context.cacheSnapshots);
+      }
+      toast.error(e.message ?? "Failed to remove label");
+    },
+    onSettled: async () => {
+      setPendingRemoveId(null);
+      await Promise.all([
+        utils.account.getThreadById.invalidate({ threadId }),
+        utils.account.getThreads.invalidate(),
+        utils.account.getNumThreads.invalidate(),
+        utils.account.getLabelsWithCounts.invalidate({
+          accountId: accountId || "placeholder",
+        }),
+      ]);
+    },
+  });
+
+  const currentIds = new Set(displayLabels.map((l) => l.id));
   const availableToAdd = (allLabels ?? []).filter((l) => !currentIds.has(l.id));
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
-      {labels.map((lbl) => (
+      {displayLabels.map((lbl) => (
         <span
           key={lbl.id}
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium bg-[#e8f0fe] text-[#1967d2] dark:bg-[#174ea6]/40 dark:text-[#8ab4f8]"
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium bg-[#e8f0fe] text-[#b88a3f] dark:bg-[#174ea6]/40 dark:text-[#1e2a4a]"
           style={lbl.color ? { backgroundColor: `${lbl.color}20`, color: lbl.color } : undefined}
         >
           {lbl.name}
@@ -725,7 +1069,7 @@ function ThreadLabelsBar({
             type="button"
             onClick={() => removeLabelMutation.mutate({ threadId, labelId: lbl.id })}
             disabled={removeLabelMutation.isPending}
-            className="rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-70"
+            className="rounded-full p-0.5 hover:bg-[#1e2a4a]/10 dark:hover:bg-white/10 disabled:opacity-70"
             aria-label={`Remove ${lbl.name}`}
           >
             {pendingRemoveId === lbl.id ? (
@@ -743,7 +1087,7 @@ function ThreadLabelsBar({
               variant="ghost"
               size="sm"
               disabled={addLabelMutation.isPending}
-              className="h-7 gap-1 rounded-full border border-dashed border-[#dadce0] px-2.5 text-[12px] text-[#5f6368] hover:border-[#1a73e8] hover:text-[#1a73e8] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:border-[#8ab4f8] dark:hover:text-[#8ab4f8] disabled:opacity-70"
+              className="h-7 gap-1 rounded-full border border-dashed border-[#dadce0] px-2.5 text-[12px] text-[#5f6368] hover:border-[#1a73e8] hover:text-[#1a73e8] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:border-[#1e2a4a] dark:hover:text-[#1e2a4a] disabled:opacity-70"
             >
               {addLabelMutation.isPending && pendingAddId ? (
                 <Loader2 className="h-3 w-3 animate-spin" />

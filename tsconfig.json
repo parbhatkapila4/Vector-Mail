@@ -34,10 +34,6 @@
     "dist",
     "build",
     "playwright-report",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
     "e2e"
   ]
 }

@@ -28,9 +28,7 @@ export const createTRPCContext = async (opts: {
     : await auth();
   const cookieUserId = getSessionCookieUserId(opts.req);
   const demoCookie = getDemoCookie(opts.req);
-  const clerkSignedIn = Boolean(user?.userId && user.userId !== DEMO_USER_ID);
-  const isDemo =
-    !clerkSignedIn && (demoCookie === "1" || cookieUserId === DEMO_USER_ID);
+  const isDemo = demoCookie === "1" || cookieUserId === DEMO_USER_ID;
   const effectiveAuth =
     isDemo
       ? { ...user, userId: DEMO_USER_ID }
@@ -49,12 +47,38 @@ export const createTRPCContext = async (opts: {
   };
 };
 
+function isClientAbortError(error: { message?: string; cause?: unknown }): boolean {
+  const msg = error.message ?? "";
+  if (/Unexpected end of JSON input/i.test(msg)) return true;
+  if (/Unexpected token .* JSON/i.test(msg)) return true;
+  if (
+    typeof error.cause === "object" &&
+    error.cause !== null &&
+    "message" in error.cause &&
+    typeof (error.cause as { message: unknown }).message === "string" &&
+    /Unexpected end of JSON input/i.test(
+      (error.cause as { message: string }).message,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
     if (error.code === "UNAUTHORIZED") {
+    } else if (isClientAbortError(error)) {
+      serverLog.warn(
+        { code: error.code, message: error.message },
+        "trpc: client aborted request before body finished",
+      );
     } else {
-      console.error(`[TRPC Error] ${error.code}:`, error.message);
+      serverLog.error(
+        { code: error.code, message: error.message, stack: error.stack },
+        "trpc: procedure failed",
+      );
     }
 
     return {
@@ -68,6 +92,8 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
+export { isClientAbortError };
+
 export const createCallerFactory = t.createCallerFactory;
 
 export const createTRPCRouter = t.router;
@@ -75,15 +101,10 @@ export const createTRPCRouter = t.router;
 const timingMiddleware = t.middleware(async ({ next, path }) => {
   const start = Date.now();
 
-  if (t._config.isDev) {
-    const waitMs = Math.floor(Math.random() * 400) + 100;
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
-  }
-
   const result = await next();
 
   const end = Date.now();
-  console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
+  serverLog.debug({ path, durationMs: end - start }, "trpc: procedure timing");
 
   return result;
 });

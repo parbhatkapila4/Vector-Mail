@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { Account } from "@/lib/accounts";
@@ -112,10 +112,10 @@ export async function POST(req: NextRequest) {
 
     const lastEmail = thread.emails[0] as
       | {
-          internetMessageId: string;
-          from: { address: string; name: string | null };
-          replyTo: Array<{ address: string; name: string | null }>;
-        }
+        internetMessageId: string;
+        from: { address: string; name: string | null };
+        replyTo: Array<{ address: string; name: string | null }>;
+      }
       | undefined;
 
     if (!lastEmail) {
@@ -136,13 +136,13 @@ export async function POST(req: NextRequest) {
 
     const from = account.customFromAddress
       ? {
-          address: account.customFromAddress,
-          name: account.customFromName ?? account.name ?? undefined,
-        }
+        address: account.customFromAddress,
+        name: account.customFromName ?? account.name ?? undefined,
+      }
       : {
-          address: account.emailAddress,
-          name: account.name ?? undefined,
-        };
+        address: account.emailAddress,
+        name: account.name ?? undefined,
+      };
 
     const bodyWithSignature = appendVectorMailSignature(draftBody.trim(), true);
 
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in send-reply:", error);
+    apiLog.error("Error in send-reply:", error);
     const message =
       error instanceof Error ? error.message : "Failed to send reply";
     return NextResponse.json(
@@ -174,3 +174,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.send-reply");

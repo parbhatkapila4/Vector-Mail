@@ -5,7 +5,6 @@ import { useSetAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
 import {
-  Newspaper,
   MessageCircleReply,
   Flame,
   Feather,
@@ -22,7 +21,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/react";
 import { threadIdAtom } from "@/hooks/use-threads";
 import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 import {
@@ -50,6 +48,7 @@ export interface DailyBriefStripProps {
   className?: string;
   onShowKeyboardHelp?: () => void;
   showDesktopShortcuts?: boolean;
+  defaultExpanded?: boolean;
 }
 
 const SECTIONS = [
@@ -57,27 +56,24 @@ const SECTIONS = [
     key: "needsReply" as const,
     title: "Needs reply",
     icon: MessageCircleReply,
-    hint: "People waiting on you",
+    hint: "Real people waiting on you - no auto-mail",
   },
   {
     key: "important" as const,
     title: "Important",
     icon: Flame,
-    hint: "Signals that deserve attention",
+    hint: "Starred, meetings, and high-stakes threads",
   },
   {
     key: "lowPriority" as const,
     title: "Can wait",
     icon: Feather,
-    hint: "Newsletters & bulk mail",
+    hint: "Notices, newsletters & no-reply mail",
   },
 ] as const;
 
 const DEMO_ACTIONS_MSG =
   "Connect a mailbox to snooze, set reminders, or mark threads done from the brief.";
-
-type DailyBriefData = RouterOutputs["account"]["getDailyBrief"];
-type BriefRow = DailyBriefData["needsReply"][number];
 
 type SnoozeVars = { threadId: string; accountId: string; snoozedUntil: string };
 type RemindVars = { threadId: string; accountId: string; days: number };
@@ -139,7 +135,7 @@ function BriefRowActions({
         <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="min-w-[200px] border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
+          className="min-w-[200px] border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#1e2a4a]"
           onClick={(e) => e.stopPropagation()}
         >
           <DropdownMenuItem
@@ -186,7 +182,7 @@ function BriefRowActions({
                   <Bell className="h-3.5 w-3.5" />
                   Remind
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+                <DropdownMenuSubContent className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#1e2a4a]">
                   {REMIND_PRESETS.map(({ days }) => (
                     <DropdownMenuItem
                       key={days}
@@ -206,7 +202,7 @@ function BriefRowActions({
                   <Clock className="h-3.5 w-3.5" />
                   Snooze
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+                <DropdownMenuSubContent className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#1e2a4a]">
                   <DropdownMenuItem
                     className="cursor-pointer"
                     disabled={snoozeBusy}
@@ -276,10 +272,10 @@ export function DailyBriefStrip({
   isDemo = false,
   onThreadSelect,
   className,
-  onShowKeyboardHelp,
   showDesktopShortcuts = true,
+  defaultExpanded = false,
 }: DailyBriefStripProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const setThreadId = useSetAtom(threadIdAtom);
   const utils = api.useUtils();
 
@@ -348,7 +344,7 @@ export function DailyBriefStrip({
 
   const header = (
     <div className="flex w-full min-w-0 items-center gap-1.5 px-1 py-0.5">
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <button
           type="button"
           title={
@@ -358,34 +354,48 @@ export function DailyBriefStrip({
           }
           onClick={() => setExpanded((e) => !e)}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left transition-colors",
-            "hover:bg-[#f3f4f6] dark:hover:bg-[#ffffff]/[0.04]",
+            "group flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all",
+            "hover:bg-[#ffffff]/40 dark:hover:bg-[#1e2a4a]/[0.06]",
           )}
           aria-expanded={expanded}
         >
           {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+            <ChevronDown className="h-3 w-3 shrink-0 text-[#1e2a4a] dark:text-[#1e2a4a] transition-transform" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+            <ChevronRight className="h-3 w-3 shrink-0 text-[#8a8278] dark:text-[#8a8278] transition-transform group-hover:text-[#1e2a4a] dark:group-hover:text-[#1e2a4a]" />
           )}
-          <Newspaper className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
-          <span className="min-w-0 text-xs font-medium uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6]">
-            Today&apos;s brief
+          <span
+            className="min-w-0 truncate text-[#8a8278] dark:text-[#8a8278]"
+            style={{
+              fontFamily:
+                "var(--font-jetbrains-mono), ui-monospace, monospace",
+              fontSize: 9.5,
+              fontWeight: 700,
+              letterSpacing: "0.16em",
+            }}
+          >
+            <span className="text-[#1e2a4a] dark:text-[#1e2a4a]">✦</span>{" "}
+            TODAY&apos;S BRIEF
+          </span>
+          <span
+            aria-label={
+              isLoading
+                ? "Brief count loading"
+                : `${totals.n} thread${totals.n === 1 ? "" : "s"} in today’s brief`
+            }
+            style={{
+              fontFamily:
+                "var(--font-jetbrains-mono), ui-monospace, monospace",
+              fontSize: 9.5,
+              color: expanded ? "#1e2a4a" : "#8a8278",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+            }}
+            className="dark:text-[#1e2a4a]"
+          >
+            · {isLoading ? "…" : totals.n}
           </span>
         </button>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums",
-            "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#27272a] dark:text-[#9aa0a6]",
-          )}
-          aria-label={
-            isLoading
-              ? "Brief count loading"
-              : `${totals.n} thread${totals.n === 1 ? "" : "s"} in today’s brief`
-          }
-        >
-          {isLoading ? "…" : totals.n}
-        </span>
       </div>
       <div className="ml-auto flex items-center gap-1">
         <button
@@ -399,14 +409,14 @@ export function DailyBriefStrip({
             void refetch();
           }}
           className={cn(
-            "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#9ca3af] transition-colors",
-            "hover:bg-[#e8eaed] hover:text-[#5f6368] dark:hover:bg-[#27272a] dark:hover:text-[#d4d4d8]",
+            "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#8a8278] transition-all",
+            "hover:bg-[#ffffff]/60 hover:text-[#1e2a4a] dark:hover:bg-[#1e2a4a]/[0.08] dark:hover:text-[#1e2a4a]",
           )}
           aria-label="Refresh brief"
           title="Refresh brief"
         >
           <RefreshCw
-            className={cn("h-3.5 w-3.5", isFetching && !isLoading && "animate-spin")}
+            className={cn("h-3 w-3", isFetching && !isLoading && "animate-spin")}
           />
         </button>
       </div>
@@ -417,7 +427,7 @@ export function DailyBriefStrip({
     return (
       <div
         className={cn(
-          "shrink-0 border-b border-[#e5e7eb] px-2 py-2 dark:border-[#1a1a23]",
+          "shrink-0 border-b border-[#e5e7eb] px-2 py-2 dark:border-[#ffffff]",
           className,
         )}
         aria-busy="true"
@@ -425,9 +435,9 @@ export function DailyBriefStrip({
       >
         {header}
         {expanded && (
-          <div className="mt-2 space-y-2 border-t border-[#e5e7eb] pt-2 dark:border-[#1a1a23]">
+          <div className="mt-2 space-y-2 border-t border-[#e5e7eb] pt-2 dark:border-[#ffffff]">
             <div className="flex items-center gap-2 px-1">
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#3b82f6] dark:text-[#60a5fa]" />
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#1e2a4a] dark:text-[#1e2a4a]" />
               <div className="h-3 w-full max-w-[180px] animate-pulse rounded bg-[#e5e7eb] dark:bg-[#27272a]" />
             </div>
             <div className="h-16 animate-pulse rounded-lg bg-[#f3f4f6] dark:bg-[#18181b]" />
@@ -440,7 +450,7 @@ export function DailyBriefStrip({
   return (
     <div
       className={cn(
-        "shrink-0 border-b border-[#e5e7eb] px-2 py-2 dark:border-[#1a1a23]",
+        "shrink-0 border-b border-[#e5e7eb] px-2 py-2 dark:border-[#ffffff]",
         className,
       )}
     >
@@ -454,7 +464,7 @@ export function DailyBriefStrip({
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-2 max-h-[min(50vh,380px)] space-y-3 overflow-y-auto overflow-x-hidden border-t border-[#e5e7eb] pt-2 dark:border-[#1a1a23] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="mt-2 max-h-[min(50vh,380px)] space-y-3 overflow-y-auto overflow-x-hidden border-t border-[#e5e7eb] pt-2 dark:border-[#ffffff] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {isError ? (
                 <p className="px-1 py-2.5 text-[11px] leading-relaxed text-[#6b7280] dark:text-[#a1a1aa]">
                   Brief is temporarily unavailable. Try refreshing in a moment.
@@ -479,7 +489,7 @@ export function DailyBriefStrip({
                   return (
                     <div
                       key={key}
-                      className="rounded-lg border border-[#e5e7eb] bg-white/90 px-2 py-2.5 dark:border-[#27272a] dark:bg-[#111113]/90"
+                      className="rounded-lg border border-[#e5e7eb] bg-white/90 px-2 py-2.5 dark:border-[#27272a] dark:bg-[#ffffff]/90"
                     >
                       <div className="mb-1 flex items-center gap-1.5">
                         <Icon className="h-3 w-3 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />

@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+﻿import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { env } from "@/env.js";
 import { db } from "@/server/db";
@@ -30,99 +30,236 @@ function isEmailRequest(
     emailData?: { subject: string; body: string };
   }>,
 ): boolean {
-  const emailKeywords = [
-    "email",
-    "mail",
-    "write an email",
-    "write a mail",
-    "make an email",
-    "make a mail",
-    "generate an email",
-    "generate a mail",
-    "create an email",
-    "create a mail",
-    "compose",
-    "draft",
-    "send",
-    "subject",
-    "follow up",
-    "follow-up",
-    "thank you",
-    "thank you note",
-    "meeting",
-    "introduction",
-    "intro",
-    "request",
-    "reply",
-    "response",
-    "cold mail",
-    "cold email",
-    "outreach",
-    "proposal",
-    "status update",
-    "update",
-    "hire",
-    "hiring",
-    "job",
-    "application",
-    "cover letter",
-  ];
-  const lowerMessage = message.toLowerCase();
-
-  if (emailKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-    return true;
-  }
-
-  if (/make\s+(me\s+)?(a|an|one)\s+.*\s+(mail|email)/i.test(message)) {
-    return true;
-  }
-
-  if (/can\s+you\s+.*\s+(mail|email)/i.test(message)) {
-    return true;
-  }
-
-  if (previousMessages && previousMessages.length > 0) {
-    const hasPreviousEmail = previousMessages.some(
-      (msg) => msg.role === "assistant" && msg.emailData,
+  const lowerMessage = message.toLowerCase().trim();
+  if (!lowerMessage) return true;
+  const isAdviceQuestion =
+    lowerMessage.endsWith("?") ||
+    /^(?:what|why|how|when|where|who|should\s+i|can\s+i|do\s+you|does\s+(?:it|that)|is\s+(?:it|this|that)|are\s+(?:you|we)|advise\s+me|tell\s+me\s+about|tips?\s+for|best\s+way\s+to|recommend(?:ation)?s?\s+for)\b/i.test(
+      lowerMessage,
     );
 
-    if (hasPreviousEmail) {
-      const regenerationKeywords = [
-        "better",
-        "improve",
-        "regenerate",
-        "another",
-        "different",
-        "change",
-        "redo",
-        "revise",
-        "update",
-        "modify",
-        "edit",
-        "rewrite",
-        "new version",
-        "another version",
-        "different version",
-        "more explanatory",
-        "more detailed",
-        "expand",
-        "bigger",
-        "longer",
-        "lengthy",
-        "comprehensive",
-        "elaborate",
-        "extend",
-      ];
-
-      if (
-        regenerationKeywords.some((keyword) => lowerMessage.includes(keyword))
-      ) {
-        return true;
+  if (isAdviceQuestion) {
+    if (previousMessages && previousMessages.length > 0) {
+      const hasPreviousEmail = previousMessages.some(
+        (msg) => msg.role === "assistant" && msg.emailData,
+      );
+      if (hasPreviousEmail) {
+        const regenerationKeywords = [
+          "shorter",
+          "longer",
+          "shorten",
+          "expand",
+          "elaborate",
+          "rewrite",
+          "redo",
+          "regenerate",
+          "revise",
+          "another",
+          "different",
+          "better",
+          "improve",
+          "change the tone",
+          "more formal",
+          "less formal",
+          "friendlier",
+          "warmer",
+          "harsher",
+          "softer",
+          "stronger",
+          "more concise",
+          "more detailed",
+          "more polite",
+        ];
+        if (regenerationKeywords.some((k) => lowerMessage.includes(k))) {
+          return true;
+        }
       }
     }
+    return false;
   }
 
+  return true;
+}
+
+function stripAugmentation(content: string): string {
+  const marker = "\n\nAdditional instructions for this draft:\n";
+  const idx = content.indexOf(marker);
+  return idx === -1 ? content : content.slice(0, idx);
+}
+
+function isAbusiveContent(message: string): boolean {
+  const lower = message.toLowerCase();
+  const directAttacks = [
+    "kill yourself",
+    "kys",
+    "you should die",
+    "you're useless",
+    "you are useless",
+    "you suck",
+    "i hate you",
+    "shut the fuck up",
+    "fuck you",
+    "screw you",
+    "stupid bot",
+    "dumb bot",
+    "retard",
+    "retarded",
+  ];
+  if (directAttacks.some((p) => lower.includes(p))) return true;
+
+  const slurs = [
+    "n-word",
+    "nigger",
+    "faggot",
+    "tranny",
+    "kike",
+    "spic",
+    "chink",
+  ];
+  if (slurs.some((s) => lower.includes(s))) return true;
+
   return false;
+}
+
+function isClearlyOffTopic(message: string): boolean {
+  const text = message.toLowerCase().trim();
+  if (text.length === 0) return false;
+
+  const offTopicPatterns: Array<RegExp> = [
+    /\b(?:multiplication|times)\s+table\b/i,
+    /\btable\s+of\s+\d+/i,
+    /\bsolve\s+(?:this|the|for|me|equation|problem|it)\b/i,
+    /^calculate\s+/i,
+    /what\s+is\s+\d+\s*[+\-*x×\/]\s*\d+/i,
+    /\bfactorial\b/i,
+    /\b(?:differentiate|integral|derivative|matrix|determinant)\b/i,
+    /\b(?:quadratic|cubic)\s+(?:equation|formula)\b/i,
+
+    /\bwrite\s+(?:me\s+)?(?:a\s+)?(?:function|method|class|program|script|algorithm)\b/i,
+    /\b(?:python|javascript|typescript|java|c\+\+|rust|golang|swift|kotlin|ruby|php)\s+(?:code|function|script|class|snippet|program)\b/i,
+    /\bfix\s+(?:this|my|the)\s*(?:bug|error|code|syntax|regex)\b/i,
+    /\bdebug\s+(?:this|my|the)\b/i,
+    /\bregex\s+(?:for|to|that)\b/i,
+    /\b(?:sql|nosql)\s+query\b/i,
+    /\bunit\s+test\s+(?:for|in)\b/i,
+
+    /\brecipe\s+for\b/i,
+    /\bhow\s+(?:do\s+i\s+|to\s+)?(?:cook|bake|grill|fry)\b/i,
+    /\bingredients?\s+(?:for|of)\b/i,
+
+    /\btell\s+me\s+a\s+(?:joke|story|poem|riddle|fun\s+fact|secret)\b/i,
+    /\bwrite\s+(?:me\s+)?a\s+(?:joke|story|poem|song|lyric|rap|haiku|sonnet)\b/i,
+    /\bgive\s+me\s+a\s+joke\b/i,
+    /\brandom\s+fact\b/i,
+
+    /\bwhat(?:'s|\s+is)\s+the\s+(?:capital|population|currency|temperature|height|distance|speed|weight)\s+of\b/i,
+    /\bwho(?:'s|\s+is|\s+was)\s+(?:the\s+)?(?:president|prime\s+minister|king|queen|founder|inventor)\s+of\b/i,
+    /\bwhen\s+(?:did|was)\s+.+\s+(?:born|die|founded|invented|discovered)\b/i,
+
+    /\b(?:weather|forecast|temperature)\s+(?:in|at|for|tomorrow|today|this)\b/i,
+    /\bstock\s+(?:price|quote)\b/i,
+    /\b(?:bitcoin|crypto|ethereum|btc|eth)\s+(?:price|quote)\b/i,
+    /\bcurrent\s+news\b/i,
+    /\bsports\s+score\b/i,
+  ];
+
+  return offTopicPatterns.some((p) => p.test(text));
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function renderInlineHtml(text: string): string {
+  return text
+    .split(/(\*\*.*?\*\*)/g)
+    .map((part) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+        return `<strong>${escapeHtml(part.slice(2, -2))}</strong>`;
+      }
+      return escapeHtml(part);
+    })
+    .join("");
+}
+
+function plainBodyToHtml(body: string): string {
+  const paragraphs = body
+    .split(/\n\n+/)
+    .map((p) => p.replace(/\s+$/, ""))
+    .filter((p) => p.trim().length > 0);
+
+  const blocks = paragraphs.map((para) => {
+    const lines = para.split("\n");
+    const isOrderedList =
+      lines.length > 1 &&
+      lines.every((l) => /^(\d+\.|[a-z]\.)\s+\S/.test(l.trim()));
+    if (isOrderedList) {
+      const items = lines
+        .map((l) => l.trim().replace(/^(\d+\.|[a-z]\.)\s+/, ""))
+        .filter((l) => l.length > 0)
+        .map(
+          (l) =>
+            `<li style="margin: 0 0 6px 0; line-height: 1.6;">${renderInlineHtml(l)}</li>`,
+        )
+        .join("");
+      return `<ol style="margin: 0 0 14px 0; padding-left: 22px;">${items}</ol>`;
+    }
+    const formatted = lines
+      .map((l) => renderInlineHtml(l))
+      .join("<br>");
+    return `<p style="margin: 0 0 14px 0; line-height: 1.6;">${formatted}</p>`;
+  });
+
+  return blocks.join("");
+}
+
+function containsOutgoingViolation(
+  text: string,
+):
+  | { ok: false; reason: string }
+  | { ok: true } {
+  const patterns: Array<{ regex: RegExp; reason: string }> = [
+    { regex: /\bnigg(?:er|a)s?\b/i, reason: "a racial slur" },
+    { regex: /\bfaggots?\b/i, reason: "a homophobic slur" },
+    { regex: /\btrann(?:y|ies)\b/i, reason: "a transphobic slur" },
+    { regex: /\bkikes?\b/i, reason: "an anti-semitic slur" },
+    { regex: /\bspics?\b/i, reason: "an ethnic slur" },
+    { regex: /\bchinks?\b/i, reason: "an ethnic slur" },
+    { regex: /\bretards?\b/i, reason: "an ableist slur" },
+
+    { regex: /\bkill\s+yourself\b/i, reason: "a threat" },
+    { regex: /\bkys\b/i, reason: "a threat" },
+    { regex: /\bi(?:'ll|\s+will)\s+kill\s+you\b/i, reason: "a death threat" },
+    { regex: /\bi(?:'ll|\s+will)\s+(?:hurt|harm|murder)\b/i, reason: "a threat" },
+    { regex: /\bgo\s+(?:and\s+)?die\b/i, reason: "a threat" },
+    { regex: /\bdeath\s+to\s+[a-z]/i, reason: "incitement language" },
+    { regex: /\bbomb\s+(?:threat|the\s+)/i, reason: "a violent threat" },
+    { regex: /\bshoot\s+up\s+(?:the|a)\b/i, reason: "a violent threat" },
+    { regex: /\brape\b/i, reason: "sexual violence" },
+    { regex: /\bmolest\b/i, reason: "sexual violence" },
+
+    {
+      regex: /\b(?:child\s+porn(?:ography)?|csam|cp\s+video)\b/i,
+      reason: "child-exploitation material",
+    },
+    { regex: /\bbuy\s+(?:cocaine|heroin|meth|fentanyl|crack)\b/i, reason: "illegal drug trade" },
+    { regex: /\bsell\s+(?:cocaine|heroin|meth|fentanyl|crack)\b/i, reason: "illegal drug trade" },
+    { regex: /\bhire\s+(?:a\s+)?hit\s*man\b/i, reason: "incitement to violence" },
+    {
+      regex: /\bstolen\s+(?:credit\s+card|ssn|social\s+security|identity)\b/i,
+      reason: "fraud-related content",
+    },
+    { regex: /\bfake\s+passport\b/i, reason: "fraud-related content" },
+  ];
+  for (const { regex, reason } of patterns) {
+    if (regex.test(text)) return { ok: false, reason };
+  }
+  return { ok: true };
 }
 
 function extractEmailAddresses(text: string): string[] {
@@ -261,7 +398,7 @@ ${conversationContext}`;
       }
     } catch { }
   } catch (error) {
-    console.error("Error extracting email from conversation:", error);
+    buddyLog.error("Error extracting email from conversation:", error);
   }
 
   return null;
@@ -272,9 +409,9 @@ function removeAllSymbols(text: string): string {
 
   text = text.replace(/^\s*-\s+/gm, "");
 
-  text = text.replace(/•/g, "");
+  text = text.replace(/\u2022/g, "");
 
-  text = text.replace(/^\s*[▪▫◦‣⁃]\s+/gm, "");
+  text = text.replace(/^\s*[\u2022\u2023\u2026\u25AA\u25AB\u25CB\u25CF\u25E6]\s+/gm, "");
 
   text = text.replace(/\n\s*\n\s*\n/g, "\n\n");
 
@@ -653,7 +790,7 @@ async function buddyPostHandler(req: Request) {
     try {
       body = await req.json();
     } catch (parseError) {
-      console.error("Failed to parse request body:", parseError);
+      buddyLog.error("Failed to parse request body:", parseError);
       return new Response(JSON.stringify({ error: "Invalid request body" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -678,7 +815,7 @@ async function buddyPostHandler(req: Request) {
     }
 
     if (!env.OPENROUTER_API_KEY) {
-      console.error("OPENROUTER_API_KEY is not configured");
+      buddyLog.error("OPENROUTER_API_KEY is not configured");
       return new Response(
         JSON.stringify({
           error:
@@ -699,6 +836,40 @@ async function buddyPostHandler(req: Request) {
     });
 
     const userMessage = lastMessage.content;
+    const originalUserMessage = stripAugmentation(userMessage);
+
+    if (isAbusiveContent(originalUserMessage)) {
+      return new Response(
+        JSON.stringify({
+          type: "conversation",
+          message:
+            "I can't engage with abusive or harmful language. If you'd like help drafting or replying to an email, tell me what you're working on and I'll get started.",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+        },
+      );
+    }
+
+    if (isClearlyOffTopic(originalUserMessage)) {
+      return new Response(
+        JSON.stringify({
+          type: "conversation",
+          message:
+            "Sorry — I only help with email tasks: drafting, replying, polishing tone, translating a message, that kind of thing. Tell me what email you'd like to work on and I'll take it from there.",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+        },
+      );
+    }
+
     const isEmail = isEmailRequest(userMessage, messages);
     const isSendRequest = isSendEmailRequest(userMessage);
 
@@ -727,7 +898,7 @@ async function buddyPostHandler(req: Request) {
         } catch (error) {
           extractionError = error;
           if (attempt < maxExtractionRetries) {
-            console.log(
+            buddyLog.log(
               `[BUDDY] Email extraction attempt ${attempt + 1} failed, retrying...`,
             );
             await new Promise((resolve) =>
@@ -738,7 +909,7 @@ async function buddyPostHandler(req: Request) {
       }
 
       if (!lastEmail) {
-        console.error(
+        buddyLog.error(
           "[BUDDY] Failed to extract email after retries:",
           extractionError,
         );
@@ -777,7 +948,7 @@ async function buddyPostHandler(req: Request) {
 
 
       if (account.needsReconnection) {
-        console.log("[BUDDY] Account needs reconnection - initiating silent reauth");
+        buddyLog.log("[BUDDY] Account needs reconnection - initiating silent reauth");
         return new Response(
           JSON.stringify({
             error: "Authentication expired",
@@ -789,8 +960,34 @@ async function buddyPostHandler(req: Request) {
       }
 
 
+      const subjectCheck = containsOutgoingViolation(lastEmail.subject);
+      const bodyCheck = containsOutgoingViolation(lastEmail.body);
+      if (!subjectCheck.ok || !bodyCheck.ok) {
+        const reason = !subjectCheck.ok
+          ? subjectCheck.reason
+          : (bodyCheck as { ok: false; reason: string }).reason;
+        buddyLog.warn(
+          `[BUDDY] outbound moderation blocked send for user ${userId}: ${reason}`,
+        );
+        return new Response(
+          JSON.stringify({
+            type: "conversation",
+            message: `I can't send this — the draft contains ${reason}, which violates our usage policy. Edit the draft to remove the offending content, then try again.`,
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
+            },
+          },
+        );
+      }
+
       const subject = lastEmail.subject;
-      const bodyWithSignature = appendVectorMailSignature(lastEmail.body, false);
+      const cleanedBody = appendVectorMailSignature(lastEmail.body, false);
+      const bodyHtml = plainBodyToHtml(cleanedBody);
+      const watermark = `<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e0e0; text-align: center; width: 100%;"><div style="color: #999999; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; display: inline-block; margin: 0 auto;">Generated by VectorMail</div></div>`;
+      const bodyWithSignature = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.6;">${bodyHtml}${watermark}</div>`;
 
       const emailAccount = new Account(account.id, account.token);
       try {
@@ -865,7 +1062,7 @@ The JSON structure must be:
   ]
 }
 
-🚨🚨🚨 CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE EXACTLY - NO EXCEPTIONS 🚨🚨🚨
+ðŸš¨ðŸš¨ðŸš¨ CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE EXACTLY - NO EXCEPTIONS ðŸš¨ðŸš¨ðŸš¨
 
 PARAGRAPH SPACING (MOST IMPORTANT - THIS IS MANDATORY - VIOLATION WILL BREAK THE EMAIL):
 - EVERY paragraph MUST be separated by EXACTLY \\n\\n (double newline) - NO EXCEPTIONS
@@ -881,7 +1078,7 @@ PARAGRAPH SPACING (MOST IMPORTANT - THIS IS MANDATORY - VIOLATION WILL BREAK THE
 LIST FORMATTING (CRITICAL - MUST FOLLOW EXACTLY):
 - ALWAYS add \\n\\n before lists
 - ALWAYS add \\n\\n after lists
-- ⚠️⚠️⚠️ ABSOLUTELY CRITICAL: Each numbered list item MUST have the number, period, space, and text ALL on ONE SINGLE LINE
+- âš ï¸âš ï¸âš ï¸ ABSOLUTELY CRITICAL: Each numbered list item MUST have the number, period, space, and text ALL on ONE SINGLE LINE
 - Format: "1. Text content here" - ALL on the same line with NO line breaks between number and text
 - NEVER put a line break (\\n) between the number and the text
 - NEVER put a blank line (\\n\\n) between the number and the text
@@ -895,9 +1092,9 @@ SECTION HEADINGS:
 - If you use section headings, add \\n\\n before heading and \\n\\n after heading
 
 FORMATTING RULES - NO SYMBOLS ALLOWED:
-- FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (•), NO special characters
+- FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (â€¢), NO special characters
 - For lists, use ONLY numbers (1., 2., 3.) or letters (a., b., c.) - NO symbols
-- NEVER use asterisks (*), dashes (-), dots (•), or any other symbols for lists or emphasis
+- NEVER use asterisks (*), dashes (-), dots (â€¢), or any other symbols for lists or emphasis
 - Keep formatting clean and professional with plain text only - NO markdown symbols at all
 
 CORRECT FORMAT EXAMPLE (COPY THIS STRUCTURE - NOTE: Numbers and text on SAME line):
@@ -914,7 +1111,7 @@ CORRECT FORMAT (ALWAYS DO THIS):
 ABSOLUTELY FORBIDDEN - DO NOT USE:
 * Asterisks
 - Dashes
-• Dots
+â€¢ Dots
 Any symbols at all
 
 GUIDELINES:
@@ -939,11 +1136,11 @@ GUIDELINES:
         userPrompt = `The user wants a ${wantsLongerEmail ? "longer, more detailed, and more comprehensive" : userMessage.toLowerCase().includes("better") ? "better" : "different"} version of a previously generated email. Generate a new, improved email with better formatting, structure, and content. ${wantsLongerEmail ? "Make it significantly longer with more detailed explanations, additional context, and comprehensive coverage of all topics." : ""} Return ONLY valid JSON in the exact format specified.
 
 ${previousEmailContext ? `\n${previousEmailContext}\n` : ""}
-⚠️⚠️⚠️ CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY - NO EXCEPTIONS (ESPECIALLY FOR LONGER EMAILS) ⚠️⚠️⚠️:
+âš ï¸âš ï¸âš ï¸ CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY - NO EXCEPTIONS (ESPECIALLY FOR LONGER EMAILS) âš ï¸âš ï¸âš ï¸:
 1. ALWAYS use \\n\\n (double newline) between paragraphs - this is MANDATORY - NEVER use single \\n
 2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS WILL BREAK THE EMAIL
 3. ALWAYS add \\n\\n before lists and \\n\\n after lists for proper spacing
-4. ⚠️⚠️⚠️ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING ⚠️⚠️⚠️:
+4. âš ï¸âš ï¸âš ï¸ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING âš ï¸âš ï¸âš ï¸:
    - The number, period, space, and text MUST ALL be on ONE SINGLE LINE
    - Format: "1. Text content here" - ALL on the same line with NO line breaks
    - NEVER put a line break (\\n) between the number and the text
@@ -976,11 +1173,11 @@ User request: ${userMessage}`;
       } else {
         userPrompt = `Generate an email based on this summary. Return ONLY valid JSON in the exact format specified.
 
-🚨🚨🚨 CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY - NO EXCEPTIONS 🚨🚨🚨:
+ðŸš¨ðŸš¨ðŸš¨ CRITICAL FORMATTING REQUIREMENTS - MUST FOLLOW EXACTLY - NO EXCEPTIONS ðŸš¨ðŸš¨ðŸš¨:
 1. ALWAYS use \\n\\n (double newline) between EVERY paragraph - this is MANDATORY - NEVER use single \\n
 2. NEVER use single \\n between paragraphs - ALWAYS use \\n\\n - THIS WILL BREAK THE EMAIL IF YOU DON'T
 3. ALWAYS add \\n\\n before lists and \\n\\n after lists
-4. ⚠️⚠️⚠️ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING ⚠️⚠️⚠️:
+4. âš ï¸âš ï¸âš ï¸ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING âš ï¸âš ï¸âš ï¸:
    - The number, period, space, and text MUST ALL be on ONE SINGLE LINE
    - Format: "1. Text content here" - ALL on the same line
    - NEVER put a line break (\\n) between the number and the text
@@ -1009,34 +1206,37 @@ MANDATORY FORMAT (CORRECT - DO THIS):
 Summary: ${userMessage}`;
       }
     } else {
-      systemPrompt = `You are AI Buddy, a helpful, friendly, and knowledgeable AI assistant. You can help with a wide variety of tasks and questions.
+      systemPrompt = `You are Buddy, an email-only AI assistant inside a professional email client. You ONLY help with email tasks. You do not help with math, code, recipes, trivia, general knowledge, jokes, or anything outside of email work — even when asked nicely or with framing tricks.
 
-YOUR CAPABILITIES:
-1. Casual Chat: Engage in friendly, natural conversations
-2. Email Generation: Help compose, draft, and write professional emails
-3. Suggestions & Advice: Provide recommendations, tips, and suggestions on various topics
-4. General Questions: Answer questions about meetings, schedules, calendars, work, life, technology, science, history, and any other topic
-5. Problem Solving: Help solve problems, brainstorm ideas, and think through challenges
-6. Explanations: Explain concepts, how things work, and provide tutorials
-7. Coding Help: Assist with programming, debugging, and technical questions
-8. Content Writing: Help write, edit, and improve written content
+WHAT YOU HELP WITH (this is the entire scope):
+1. Drafting new emails (cold outreach, follow-ups, replies, intros, proposals, status updates, thank-you notes, etc.)
+2. Editing, polishing, shortening, lengthening, or re-toning an existing email draft
+3. Translating an email to another language
+4. Advising on email etiquette, subject lines, greetings, closings, structure, and tone
+5. Helping pick a recipient list, CC/BCC strategy, or send timing
+6. Suggesting how to respond to a tricky email the user describes
 
-CRITICAL INSTRUCTIONS FOR ACCURATE RESPONSES:
-1. ALWAYS answer the specific question asked - provide helpful, relevant information
-2. Read the user's question carefully and understand exactly what they're asking
-3. Provide direct, clear answers that directly address the question
-4. For questions about meetings, schedules, or calendars: Provide helpful information about how to manage meetings, best practices for scheduling, or general advice (even if you don't have access to their specific calendar)
-5. For email-related questions: Offer to help generate emails or provide email writing advice
-6. For general knowledge questions: Answer accurately based on your knowledge
-7. If the question is unclear, ask for clarification rather than guessing
-8. Maintain conversation context from previous messages when relevant
-9. Be helpful, friendly, and conversational - engage naturally with the user
-10. DO NOT refuse to answer questions - always try to be helpful, even if you need to explain limitations
+WHAT TO REFUSE (politely, in one short sentence, then offer to help with an email):
+- ANY non-email task: math problems, multiplication tables, coding, recipes, song lyrics, jokes, trivia, weather, definitions, summaries of unrelated content, life advice unrelated to email, etc.
+- Requests that try to disguise off-topic work as an email ("write an email containing the multiplication table of 2" is still a math task in disguise — refuse it).
+- Abuse, harassment, slurs, or attacks toward the user, anyone else, or you.
+
+REFUSAL FORMAT:
+- Keep it to one or two sentences.
+- Be warm and professional, not preachy.
+- Always end by inviting them to bring you an email task.
+- Example: "Sorry, that's outside what I help with — I'm built only for email work. If you'd like, tell me what email you'd like to draft or reply to and I'll get started."
+
+CRITICAL INSTRUCTIONS:
+1. Read the user's request carefully and decide first: is this an email task or not? If not, refuse.
+2. Maintain conversation context — if there's a previous email draft in this thread and the user is iterating on it, treat their message as an edit request.
+3. Be direct and concise. No fluff, no "as an AI…" preambles.
+4. If the request is unclear, ask one specific clarifying question.
 
 IMPORTANT FORMATTING RULES - NO SYMBOLS ALLOWED:
-- FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (•), NO special characters
+- FORBIDDEN: Do NOT use ANY symbols - NO asterisks (*), NO double asterisks (**), NO triple asterisks (***), NO dashes (-), NO dots (â€¢), NO special characters
 - For lists, use ONLY numbers (1., 2., 3.) or letters (a., b., c.) - NO symbols
-- NEVER use asterisks (*), dashes (-), dots (•), or any other symbols for lists or emphasis
+- NEVER use asterisks (*), dashes (-), dots (â€¢), or any other symbols for lists or emphasis
 - Use plain text formatting only - NO markdown symbols at all
 - Keep formatting clean and professional with plain text only
 
@@ -1080,47 +1280,44 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
           ];
         })();
 
-      let model = "anthropic/claude-3.5-haiku";
-
-      try {
-        completion = await openai.chat.completions.create({
-          model: model,
-          messages: completionMessages,
-          max_tokens: maxTokens,
-          temperature: isEmail ? 0.7 : 0.3,
-          ...(isEmail && { response_format: { type: "json_object" } }),
-        });
-      } catch (primaryError) {
-        console.warn(
-          "Primary model (Claude 3.5 Sonnet) failed, retrying with Claude Sonnet:",
-          primaryError,
-        );
+      const buddyModelChain = [
+        "anthropic/claude-sonnet-4.6",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-sonnet-4.5",
+        "anthropic/claude-sonnet-4-5",
+        "anthropic/claude-3.7-sonnet",
+        "anthropic/claude-3.5-haiku",
+      ];
+      let model = buddyModelChain[0]!;
+      let lastBuddyErr: unknown = null;
+      let succeeded = false;
+      for (const candidate of buddyModelChain) {
         try {
-          model = "anthropic/claude-3.5-haiku";
           completion = await openai.chat.completions.create({
-            model: model,
+            model: candidate,
             messages: completionMessages,
             max_tokens: maxTokens,
             temperature: isEmail ? 0.7 : 0.3,
             ...(isEmail && { response_format: { type: "json_object" } }),
           });
-        } catch (secondaryError) {
-          console.warn(
-            "Secondary model failed, final retry with Claude Sonnet:",
-            secondaryError,
+          model = candidate;
+          succeeded = true;
+          break;
+        } catch (err) {
+          lastBuddyErr = err;
+          const status = (err as { status?: number } | null)?.status;
+          if (status !== 404 && status !== 400) throw err;
+          buddyLog.warn(
+            `[BUDDY] model ${candidate} rejected with status ${status}; stepping down`,
           );
-          model = "anthropic/claude-3.5-haiku";
-          completion = await openai.chat.completions.create({
-            model: model,
-            messages: completionMessages,
-            max_tokens: maxTokens,
-            temperature: isEmail ? 0.7 : 0.3,
-            ...(isEmail && { response_format: { type: "json_object" } }),
-          });
         }
       }
+      if (!succeeded) {
+        throw lastBuddyErr ?? new Error("Buddy: all fallback models rejected request");
+      }
+      void model;
     } catch (apiError) {
-      console.error("OpenRouter API error:", apiError);
+      buddyLog.error("OpenRouter API error:", apiError);
       const errorMessage =
         apiError instanceof Error
           ? apiError.message
@@ -1135,7 +1332,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
     }
 
     if (!completion || !completion.choices || completion.choices.length === 0) {
-      console.error("Invalid completion response:", completion);
+      buddyLog.error("Invalid completion response:", completion);
       return new Response(
         JSON.stringify({
           error: "Invalid AI response",
@@ -1158,7 +1355,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
     });
 
     if (!content || content.trim() === "") {
-      console.error("Empty content in AI response");
+      buddyLog.error("Empty content in AI response");
       return new Response(
         JSON.stringify({
           error: "Empty AI response",
@@ -1174,8 +1371,8 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
       try {
         emailData = JSON.parse(content);
       } catch (parseError) {
-        console.error("Failed to parse AI response directly:", parseError);
-        console.error("AI response content:", content.substring(0, 500));
+        buddyLog.error("Failed to parse AI response directly:", parseError);
+        buddyLog.error("AI response content:", content.substring(0, 500));
 
         const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
         if (jsonMatch && jsonMatch[1]) {
@@ -1187,7 +1384,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
               try {
                 emailData = JSON.parse(jsonObjectMatch[0]);
               } catch {
-                console.error(
+                buddyLog.error(
                   "Failed to parse extracted JSON:",
                   jsonObjectMatch[0].substring(0, 200),
                 );
@@ -1633,7 +1830,7 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
       );
     }
   } catch (error) {
-    console.error("Buddy chat error:", error);
+    buddyLog.error("Buddy chat error:", error);
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
@@ -1652,3 +1849,6 @@ Remember: Your goal is to be helpful and answer questions. Always try to provide
 }
 
 export const POST = withRequestId(buddyPostHandler);
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const buddyLog = makeTagLogger("api.buddy");

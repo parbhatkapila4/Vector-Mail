@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { serverLog } from "@/lib/logging/server-logger";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -94,9 +95,9 @@ export async function withDbRetry<T>(
 
       if (isConnectionError && attempt < maxRetries - 1) {
         const retryDelay = delay * (attempt + 1);
-        console.warn(
-          `[Prisma] Connection error (attempt ${attempt + 1}/${maxRetries}), retrying in ${retryDelay}ms...`,
-          errorMessage,
+        serverLog.warn(
+          { attempt: attempt + 1, maxRetries, retryDelayMs: retryDelay, errorMessage },
+          "prisma: connection error, retrying",
         );
 
         try {

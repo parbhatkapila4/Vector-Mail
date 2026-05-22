@@ -17,8 +17,9 @@ export function useDemoMode(): boolean {
   const searchParams = useSearchParams();
   const { userId } = useAuth();
   return useMemo(() => {
-    if (userId && userId !== DEMO_USER_ID) return false;
     if (searchParams.get("demo") === "1") return true;
-    return getDemoCookie() === "1";
+    if (getDemoCookie() === "1") return true;
+    if (userId && userId !== DEMO_USER_ID) return false;
+    return false;
   }, [searchParams, userId]);
 }

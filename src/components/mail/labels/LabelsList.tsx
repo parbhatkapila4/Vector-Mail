@@ -54,7 +54,7 @@ export function LabelsList({
                 type="button"
                 className={cn(
                   "rounded p-1.5 text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]",
-                  currentTab === "label" && selectedLabelId && "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]",
+                  currentTab === "label" && selectedLabelId && "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#1e2a4a]",
                 )}
                 title="Filter by label"
               >
@@ -78,7 +78,7 @@ export function LabelsList({
                       onClick={() => onLabelSelect(l.id)}
                       className={cn(
                         "flex items-center gap-2",
-                        isSelected && "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]",
+                        isSelected && "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#1e2a4a]",
                       )}
                     >
                       <Tag
@@ -132,7 +132,7 @@ export function LabelsList({
                   className={cn(
                     "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors",
                     isSelected
-                      ? "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]"
+                      ? "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#1e2a4a]"
                       : "text-[#202124] hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#3c4043]",
                   )}
                 >
@@ -145,7 +145,7 @@ export function LabelsList({
                     className={cn(
                       "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] tabular-nums",
                       isSelected
-                        ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#8ab4f8]/25 dark:text-[#8ab4f8]"
+                        ? "bg-[#1a73e8]/20 text-[#1a73e8] dark:bg-[#1e2a4a]/25 dark:text-[#1e2a4a]"
                         : "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
                     )}
                   >

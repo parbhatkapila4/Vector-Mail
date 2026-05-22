@@ -1,4 +1,3 @@
-
 import { serverLog } from "@/lib/logging/server-logger";
 
 export interface AcquireResult {
@@ -40,6 +39,7 @@ function getBackend(): Backend {
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (upstashUrl && upstashUrl.trim() !== "" && upstashToken && upstashToken.trim() !== "") {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { Redis } = require("@upstash/redis");
       upstashClient = new Redis({ url: upstashUrl, token: upstashToken });
       backend = "upstash";
@@ -58,6 +58,7 @@ function getBackend(): Backend {
   const url = process.env.REDIS_URL;
   if (url && url.trim() !== "") {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const Redis = require("ioredis") as new (url: string, opts?: object) => IoredisClient;
       const client = new Redis(url, {
         maxRetriesPerRequest: 2,

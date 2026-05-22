@@ -51,7 +51,7 @@ export function TimeInput24({
   return (
     <div
       className={cn(
-        "flex items-center gap-2",
+        "inline-flex items-center gap-2",
         className,
       )}
     >
@@ -60,36 +60,55 @@ export function TimeInput24({
         onValueChange={handleHourChange}
         disabled={disabled}
       >
-        <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-yellow-500/50">
+        <SelectTrigger
+          aria-label="Hour"
+          className="h-10 w-[88px] justify-center gap-1.5 border-zinc-200 bg-white text-center font-mono text-base font-semibold tabular-nums text-zinc-900 shadow-sm transition-colors hover:border-zinc-300 focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-0 data-[state=open]:border-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:border-zinc-600 dark:data-[state=open]:border-blue-500 [&>span]:flex-1 [&>span]:text-center"
+        >
           <SelectValue placeholder="00" />
         </SelectTrigger>
-        <SelectContent className="max-h-64 overflow-y-auto border-white/10 bg-[#0a0a0a] text-white">
+        <SelectContent
+          position="popper"
+          sideOffset={6}
+          className="max-h-64 overflow-y-auto border-zinc-200 bg-white text-zinc-900 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
           {HOURS.map((h) => (
             <SelectItem
               key={h}
               value={h}
-              className="focus:bg-white/10 focus:text-white"
+              className="font-mono text-base tabular-nums focus:bg-zinc-100 focus:text-zinc-900 dark:focus:bg-zinc-800 dark:focus:text-zinc-50"
             >
               {h}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <span className="text-zinc-400">:</span>
+      <span
+        aria-hidden
+        className="font-mono text-xl font-semibold text-zinc-400 dark:text-zinc-500"
+      >
+        :
+      </span>
       <Select
         value={minuteStr}
         onValueChange={handleMinuteChange}
         disabled={disabled}
       >
-        <SelectTrigger className="h-10 min-w-[72px] border-white/10 bg-white/5 text-white focus:ring-yellow-500/50">
+        <SelectTrigger
+          aria-label="Minute"
+          className="h-10 w-[88px] justify-center gap-1.5 border-zinc-200 bg-white text-center font-mono text-base font-semibold tabular-nums text-zinc-900 shadow-sm transition-colors hover:border-zinc-300 focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-0 data-[state=open]:border-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:border-zinc-600 dark:data-[state=open]:border-blue-500 [&>span]:flex-1 [&>span]:text-center"
+        >
           <SelectValue placeholder="00" />
         </SelectTrigger>
-        <SelectContent className="max-h-64 overflow-y-auto border-white/10 bg-[#0a0a0a] text-white">
+        <SelectContent
+          position="popper"
+          sideOffset={6}
+          className="max-h-64 overflow-y-auto border-zinc-200 bg-white text-zinc-900 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
           {MINUTES.map((m) => (
             <SelectItem
               key={m}
               value={m}
-              className="focus:bg-white/10 focus:text-white"
+              className="font-mono text-base tabular-nums focus:bg-zinc-100 focus:text-zinc-900 dark:focus:bg-zinc-800 dark:focus:text-zinc-50"
             >
               {m}
             </SelectItem>

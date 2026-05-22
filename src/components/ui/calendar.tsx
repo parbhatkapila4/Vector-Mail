@@ -49,16 +49,16 @@ function Calendar({
       ...acc,
       [key]: classNames?.[key as keyof typeof classNames]
         ? cn(
-            defaultClassNames[key as keyof typeof defaultClassNames],
-            classNames[key as keyof typeof classNames],
-          )
+          defaultClassNames[key as keyof typeof defaultClassNames],
+          classNames[key as keyof typeof classNames],
+        )
         : defaultClassNames[key as keyof typeof defaultClassNames],
     }),
     {} as typeof defaultClassNames,
   );
 
   const defaultComponents = {
-    Chevron: (props: any) => {
+    Chevron: (props: { orientation?: "left" | "right" | "up" | "down" } & React.SVGProps<SVGSVGElement>) => {
       if (props.orientation === "left") {
         return <ChevronLeft size={16} strokeWidth={2} {...props} aria-hidden="true" />;
       }

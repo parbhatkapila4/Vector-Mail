@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const ROW_HEIGHT_PX = 72;
-const MIN_ROWS = 10;
-const MAX_ROWS = 40;
+const ROW_HEIGHT_PX = 88;
+const MIN_ROWS = 6;
+const MAX_ROWS = 24;
 
 export function ThreadListSkeleton() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -17,7 +17,7 @@ export function ThreadListSkeleton() {
     const compute = () => {
       const height = el.clientHeight || el.parentElement?.clientHeight || 0;
       if (!height) return;
-      const estimated = Math.ceil(height / ROW_HEIGHT_PX) + 2;
+      const estimated = Math.ceil(height / ROW_HEIGHT_PX) + 1;
       setRowCount(Math.max(MIN_ROWS, Math.min(MAX_ROWS, estimated)));
     };
 
@@ -37,6 +37,47 @@ export function ThreadListSkeleton() {
       aria-busy="true"
       aria-label="Loading threads"
     >
+      <div
+        className="relative overflow-hidden border-b border-[#e5e7eb] dark:border-[#ffffff]"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 0% 0%, rgba(212,169,85,0.08) 0%, transparent 60%), linear-gradient(180deg, #ffffff 0%, #ffffff 100%)",
+        }}
+      >
+        <div className="px-6 pt-6 pb-5">
+          <div className="mb-2 flex items-center gap-2">
+            <span
+              aria-hidden
+              className="block"
+              style={{ width: 14, height: 1, background: "#1e2a4a" }}
+            />
+            <div
+              className="h-2 w-24 animate-pulse rounded-sm bg-[#f3f4f6]"
+            />
+          </div>
+          <div className="mb-3 h-7 w-2/3 animate-pulse rounded bg-[#f3f4f6]" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-[#f3f4f6]" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 border-b border-[#e5e7eb] bg-[#ffffff]/95 px-5 py-2.5 dark:border-[#ffffff] dark:bg-[#ffffff]/95">
+        <div
+          className="h-3 w-32 animate-pulse rounded-sm bg-[#f3f4f6]"
+        />
+        <span
+          aria-hidden
+          style={{
+            flex: 1,
+            height: 1,
+            background:
+              "linear-gradient(90deg, rgba(212,169,85,0.20) 0%, transparent 100%)",
+          }}
+        />
+        <div
+          className="h-2.5 w-10 animate-pulse rounded-sm bg-[#f3f4f6]"
+        />
+      </div>
+
       {Array.from({ length: rowCount }).map((_, i) => (
         <SkeletonRow key={i} index={i} />
       ))}
@@ -45,28 +86,40 @@ export function ThreadListSkeleton() {
 }
 
 function SkeletonRow({ index }: { index: number }) {
-  const primaryWidth = 70 + ((index * 7) % 25);
-  const secondaryWidth = 55 + ((index * 11) % 30);
-  const tertiaryWidth = 35 + ((index * 13) % 30);
+  const senderWidth = 32 + ((index * 7) % 18);
+  const subjectWidth = 60 + ((index * 11) % 28);
+  const snippetWidth = 70 + ((index * 13) % 22);
 
   return (
-    <div className="flex w-full items-start gap-3 border-b border-[#f3f4f6] px-3 py-3 dark:border-[#1a1a23]">
-      <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-[#e5e7eb] dark:bg-[#1f1f24]" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+    <div className="flex w-full min-h-[88px] items-start gap-3.5 border-b border-[#e5e7eb] px-5 py-4 pr-3 dark:border-[#ffffff]">
+      <div
+        className="h-10 w-10 shrink-0 animate-pulse bg-[#f3f4f6]"
+        style={{
+          borderRadius: 6,
+          border: "1px solid #e5e7eb",
+        }}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <div
-            className="h-3.5 animate-pulse rounded bg-[#e5e7eb] dark:bg-[#1f1f24]"
-            style={{ width: `${primaryWidth}%` }}
+            className="h-3.5 animate-pulse rounded-sm bg-[#f3f4f6]"
+            style={{
+              width: `${senderWidth}%`,
+            }}
           />
-          <div className="h-3 w-10 shrink-0 animate-pulse rounded bg-[#e5e7eb] dark:bg-[#1f1f24]" />
+          <div className="h-2.5 w-9 shrink-0 animate-pulse rounded-sm bg-[#f3f4f6]" />
         </div>
         <div
-          className="h-3 animate-pulse rounded bg-[#e5e7eb] dark:bg-[#1f1f24]"
-          style={{ width: `${secondaryWidth}%` }}
+          className="h-3 animate-pulse rounded-sm bg-[#f3f4f6]"
+          style={{
+            width: `${subjectWidth}%`,
+          }}
         />
         <div
-          className="h-2.5 animate-pulse rounded bg-[#e5e7eb] dark:bg-[#1f1f24]"
-          style={{ width: `${tertiaryWidth}%` }}
+          className="h-2.5 animate-pulse rounded-sm bg-[#f3f4f6]"
+          style={{
+            width: `${snippetWidth}%`,
+          }}
         />
       </div>
     </div>

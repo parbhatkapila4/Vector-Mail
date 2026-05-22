@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { queue } from "@/lib/queue";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.jobs");
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("Failed to get jobs:", error);
+    apiLog.error("Failed to get jobs:", error);
     return NextResponse.json(
       { error: "Failed to retrieve jobs" },
       { status: 500 },
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
       message: "Job queued successfully",
     });
   } catch (error) {
-    console.error("Failed to create job:", error);
+    apiLog.error("Failed to create job:", error);
     return NextResponse.json(
       { error: "Failed to create job" },
       { status: 500 },

@@ -1,0 +1,571 @@
+.vm-bg-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.vmx-halftone.vm-bg-container.vm-hero-white-surface {
+  background: #ffffff;
+}
+
+.vmx-halftone.vm-bg-container.vm-hero-white-surface::before,
+.vmx-halftone.vm-bg-container.vm-hero-white-surface::after {
+  display: none;
+}
+
+.vmx-halftone.vm-bg-container>.vm-flow-bg,
+.vmx-halftone.vm-bg-container>.vm-data-flow,
+.vmx-halftone.vm-bg-container>.vm-convergence-node {
+  z-index: 0;
+}
+
+.vmx-halftone.vm-bg-container>.vm-hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.vm-flow-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.vm-flow-bg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: translateZ(0);
+}
+
+.vm-flow-bg path {
+  fill: none;
+  stroke: rgba(55, 48, 163, 0.22);
+  stroke-width: 1;
+  stroke-linecap: round;
+  transition: opacity 0.4s ease;
+  opacity: var(--flow-opacity, 1);
+}
+
+.vm-flow-bg path.bold {
+  stroke: rgba(55, 48, 163, 0.35);
+  stroke-width: 1.2;
+}
+
+.vm-flow-bg path.faint {
+  stroke: rgba(55, 48, 163, 0.12);
+}
+
+.vm-flow-bg path:nth-child(1) {
+  animation: vm-breath-1 18s ease-in-out infinite;
+}
+
+.vm-flow-bg path:nth-child(2) {
+  animation: vm-breath-2 22s ease-in-out infinite;
+}
+
+.vm-flow-bg path:nth-child(3) {
+  animation: vm-breath-3 26s ease-in-out infinite;
+}
+
+.vm-flow-bg path:nth-child(4) {
+  animation: vm-breath-1 24s ease-in-out infinite reverse;
+}
+
+.vm-flow-bg path:nth-child(5) {
+  animation: vm-breath-2 28s ease-in-out infinite reverse;
+}
+
+.vm-flow-bg path:nth-child(6) {
+  animation: vm-breath-3 20s ease-in-out infinite;
+}
+
+.vm-flow-bg path:nth-child(7) {
+  animation: vm-breath-1 30s ease-in-out infinite reverse;
+}
+
+.vm-flow-bg path:nth-child(8) {
+  animation: vm-breath-2 25s ease-in-out infinite;
+}
+
+.vm-flow-bg path:nth-child(9) {
+  animation: vm-breath-3 32s ease-in-out infinite reverse;
+}
+
+.vm-flow-bg path:nth-child(10) {
+  animation: vm-breath-1 27s ease-in-out infinite;
+}
+
+@keyframes vm-breath-1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(-1.5%, 1%);
+  }
+}
+
+@keyframes vm-breath-2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(1.5%, -0.8%);
+  }
+}
+
+@keyframes vm-breath-3 {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(-1%, -1.5%);
+  }
+}
+
+.vm-scroll-active .vm-flow-bg path,
+.vm-scroll-active .vm-thread-flow,
+.vm-scroll-active .vm-convergence-node::before,
+.vm-scroll-active .vm-convergence-node::after {
+  animation-play-state: paused !important;
+}
+
+.vm-cursor-trail {
+  transition: opacity 120ms linear;
+}
+
+.vm-scroll-active .vm-cursor-trail {
+  opacity: 0;
+}
+
+.vm-scroll-active .vm-convergence-node::before,
+.vm-scroll-active .vm-convergence-node::after {
+  filter: none !important;
+}
+
+.vm-data-flow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.vm-data-flow svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: translateZ(0);
+}
+
+.vm-convergence-node {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 240px;
+  height: 240px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.vm-convergence-node::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+      rgba(55, 48, 163, 0.4) 0%,
+      rgba(55, 48, 163, 0.15) 30%,
+      transparent 60%);
+  filter: blur(30px);
+  animation: vm-node-pulse 3s ease-in-out infinite;
+}
+
+.vm-convergence-node::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+      rgba(55, 48, 163, 0.6) 0%,
+      rgba(55, 48, 163, 0.2) 40%,
+      transparent 70%);
+  filter: blur(15px);
+  animation: vm-node-pulse 3s ease-in-out infinite reverse;
+}
+
+@keyframes vm-node-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.vm-thread {
+  fill: none;
+  stroke-linecap: round;
+  stroke: url(#vmThreadGrad);
+}
+
+.vm-thread-flow {
+  stroke-dasharray: 3 200;
+  animation: vm-dash-flow 2.5s linear infinite;
+}
+
+@keyframes vm-dash-flow {
+  from {
+    stroke-dashoffset: 200;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.vm-thread-label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  fill: rgba(55, 48, 163, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  animation: vm-label-flicker 3s ease-in-out infinite;
+}
+
+@keyframes vm-label-flicker {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .vm-flow-bg path,
+  .vm-thread-flow,
+  .vm-convergence-node::before,
+  .vm-convergence-node::after {
+    animation: none !important;
+  }
+}
+
+.vml-landing-root {
+  -webkit-overflow-scrolling: touch;
+}
+
+.hero-bg-wrap {
+  position: relative;
+  background: #fafaf7;
+  overflow: hidden;
+  width: 100%;
+}
+
+.hero-bg-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: 50%;
+  width: 130%;
+  height: 70%;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(ellipse at 25% 50%, rgba(233, 189, 110, 0.18) 0%, transparent 45%),
+    radial-gradient(ellipse at 60% 55%, rgba(212, 165, 91, 0.10) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 45%, rgba(99, 102, 241, 0.14) 0%, transparent 45%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: vm-hero-atmo-shift 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes vm-hero-atmo-shift {
+
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: translateX(-49%) scale(1.04);
+    opacity: 1;
+  }
+}
+
+.ribbon-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.ribbon-bg svg {
+  position: absolute;
+  bottom: 0;
+  left: -10%;
+  width: 120%;
+  height: 100%;
+  display: block;
+}
+
+.ribbon-bg .layer-back {
+  animation: vm-hero-drift-back 20s ease-in-out infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.ribbon-bg .layer-main {
+  animation: vm-hero-drift-main 16s ease-in-out infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.ribbon-bg .layer-fore {
+  animation: vm-hero-drift-fore 12s ease-in-out infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+@keyframes vm-hero-drift-back {
+
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateX(-1.5%) rotate(0.3deg);
+  }
+}
+
+@keyframes vm-hero-drift-main {
+
+  0%,
+  100% {
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+
+  33% {
+    transform: translateX(-1.2%) translateY(-0.5%) rotate(-0.2deg);
+  }
+
+  66% {
+    transform: translateX(1%) translateY(0.3%) rotate(0.15deg);
+  }
+}
+
+@keyframes vm-hero-drift-fore {
+
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateX(1.5%) rotate(-0.3deg);
+  }
+}
+
+.hero-bg-wrap .particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.hero-bg-wrap .particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233, 189, 110, 0.9) 0%, rgba(233, 189, 110, 0) 70%);
+  will-change: transform, opacity;
+}
+
+.hero-bg-wrap .particle.indigo {
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.9) 0%, rgba(129, 140, 248, 0) 70%);
+}
+
+.hero-bg-wrap .particle.pearl {
+  background: radial-gradient(circle, rgba(255, 248, 224, 1) 0%, rgba(255, 248, 224, 0) 70%);
+  width: 2px;
+  height: 2px;
+}
+
+.hero-bg-wrap .particle:nth-child(1) {
+  left: 8%;
+  bottom: 38%;
+  animation: vm-hero-float-up 9s ease-in-out infinite;
+}
+
+.hero-bg-wrap .particle:nth-child(2) {
+  left: 16%;
+  bottom: 28%;
+  animation: vm-hero-float-up 11s ease-in-out infinite 1s;
+}
+
+.hero-bg-wrap .particle:nth-child(3) {
+  left: 22%;
+  bottom: 45%;
+  animation: vm-hero-float-up 8s ease-in-out infinite 2s;
+}
+
+.hero-bg-wrap .particle:nth-child(4) {
+  left: 31%;
+  bottom: 32%;
+  animation: vm-hero-float-up 12s ease-in-out infinite 0.5s;
+}
+
+.hero-bg-wrap .particle:nth-child(5) {
+  left: 38%;
+  bottom: 41%;
+  animation: vm-hero-float-up 10s ease-in-out infinite 3s;
+}
+
+.hero-bg-wrap .particle:nth-child(6) {
+  left: 45%;
+  bottom: 25%;
+  animation: vm-hero-float-up 9s ease-in-out infinite 1.5s;
+}
+
+.hero-bg-wrap .particle:nth-child(7) {
+  left: 52%;
+  bottom: 38%;
+  animation: vm-hero-float-up 11s ease-in-out infinite 2.5s;
+}
+
+.hero-bg-wrap .particle:nth-child(8) {
+  left: 60%;
+  bottom: 30%;
+  animation: vm-hero-float-up 8s ease-in-out infinite 0.8s;
+}
+
+.hero-bg-wrap .particle:nth-child(9) {
+  left: 67%;
+  bottom: 42%;
+  animation: vm-hero-float-up 13s ease-in-out infinite 1.8s;
+}
+
+.hero-bg-wrap .particle:nth-child(10) {
+  left: 74%;
+  bottom: 27%;
+  animation: vm-hero-float-up 9s ease-in-out infinite 3.2s;
+}
+
+.hero-bg-wrap .particle:nth-child(11) {
+  left: 82%;
+  bottom: 36%;
+  animation: vm-hero-float-up 10s ease-in-out infinite 0.3s;
+}
+
+.hero-bg-wrap .particle:nth-child(12) {
+  left: 89%;
+  bottom: 30%;
+  animation: vm-hero-float-up 11s ease-in-out infinite 2.2s;
+}
+
+.hero-bg-wrap .particle:nth-child(13) {
+  left: 12%;
+  bottom: 22%;
+  animation: vm-hero-float-up 12s ease-in-out infinite 1.2s;
+}
+
+.hero-bg-wrap .particle:nth-child(14) {
+  left: 28%;
+  bottom: 18%;
+  animation: vm-hero-float-up 9s ease-in-out infinite 2.8s;
+}
+
+.hero-bg-wrap .particle:nth-child(15) {
+  left: 56%;
+  bottom: 16%;
+  animation: vm-hero-float-up 10s ease-in-out infinite 0.6s;
+}
+
+.hero-bg-wrap .particle:nth-child(16) {
+  left: 70%;
+  bottom: 20%;
+  animation: vm-hero-float-up 11s ease-in-out infinite 1.6s;
+}
+
+.hero-bg-wrap .particle:nth-child(17) {
+  left: 85%;
+  bottom: 24%;
+  animation: vm-hero-float-up 8s ease-in-out infinite 2.4s;
+}
+
+.hero-bg-wrap .particle:nth-child(18) {
+  left: 40%;
+  bottom: 14%;
+  animation: vm-hero-float-up 13s ease-in-out infinite 0.9s;
+}
+
+@keyframes vm-hero-float-up {
+
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: translateY(-30px) translateX(8px);
+    opacity: 1;
+  }
+
+  75% {
+    opacity: 0.5;
+  }
+}
+
+.hero-bg-wrap .hero-content {
+  position: relative;
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .hero-bg-wrap::before,
+  .ribbon-bg .layer-back,
+  .ribbon-bg .layer-main,
+  .ribbon-bg .layer-fore,
+  .hero-bg-wrap .particle {
+    animation: none !important;
+  }
+}

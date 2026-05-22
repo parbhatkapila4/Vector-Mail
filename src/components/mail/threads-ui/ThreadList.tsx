@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAuth } from "@clerk/nextjs";
 import { api, type RouterOutputs } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
 import { UNIFIED_INBOX_ACCOUNT_ID } from "../AccountSwitcher";
@@ -46,29 +45,223 @@ export interface ThreadListRef {
 
 type RouterThread = RouterOutputs["account"]["getThreads"]["threads"][0];
 
+type AvatarColor = {
+  h: number;
+  s: number;
+  l: number;
+};
+
+const AVATAR_PALETTE: ReadonlyArray<AvatarColor> = [
+  { h: 222, s: 32, l: 42 },
+  { h: 200, s: 38, l: 38 },
+  { h: 178, s: 40, l: 32 },
+  { h: 158, s: 32, l: 34 },
+  { h: 92, s: 28, l: 36 },
+  { h: 38, s: 42, l: 40 },
+  { h: 22, s: 42, l: 42 },
+  { h: 10, s: 38, l: 42 },
+  { h: 348, s: 36, l: 42 },
+  { h: 322, s: 32, l: 42 },
+  { h: 288, s: 30, l: 42 },
+  { h: 264, s: 30, l: 42 },
+  { h: 240, s: 30, l: 44 },
+  { h: 28, s: 25, l: 36 },
+];
+
+function hashString(input: string): number {
+  let hash = 5381;
+  const s = input.toLowerCase();
+  for (let i = 0; i < s.length; i++) {
+    hash = ((hash << 5) + hash + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function getAvatarInitials(name: string): string {
+  const cleaned = (name ?? "").trim();
+  if (!cleaned) return "?";
+  const firstChar = cleaned.replace(/^[^\p{L}\p{N}]+/u, "");
+  const words = firstChar
+    .split(/\s+/)
+    .filter((w) => /^[\p{L}\p{N}]/u.test(w));
+  if (words.length === 0) return cleaned.slice(0, 1).toUpperCase();
+  if (words.length === 1) return words[0]!.slice(0, 1).toUpperCase();
+  return (
+    (words[0]?.[0] ?? "").toUpperCase() +
+    (words[1]?.[0] ?? "").toUpperCase()
+  );
+}
+
+function getAvatarStyle(
+  name: string,
+  isUnread: boolean,
+): React.CSSProperties {
+  const tone =
+    AVATAR_PALETTE[hashString(name) % AVATAR_PALETTE.length] ??
+    AVATAR_PALETTE[0]!;
+  const sat = isUnread ? Math.min(tone.s + 6, 50) : tone.s;
+  const top = `hsl(${tone.h} ${sat}% ${tone.l}%)`;
+  const bottom = `hsl(${tone.h} ${sat}% ${tone.l - 6}%)`;
+  return {
+    backgroundColor: top,
+    backgroundImage: `linear-gradient(160deg, ${top} 0%, ${bottom} 100%)`,
+    boxShadow: [
+      "inset 0 0 0 1px rgba(255,255,255,0.08)",
+      "inset 0 1px 0 rgba(255,255,255,0.16)",
+      "0 1px 2px rgba(15,20,40,0.10)",
+      "0 2px 6px rgba(15,20,40,0.08)",
+    ].join(", "),
+    color: "#ffffff",
+  };
+}
+
+function getLogoProviders(domain: string): ReadonlyArray<string> {
+  const enc = encodeURIComponent(domain);
+  return [
+    `https://icons.duckduckgo.com/ip3/${enc}.ico`,
+    `https://www.google.com/s2/favicons?domain=${enc}&sz=128`,
+  ];
+}
+
+const PERSONAL_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.co.in",
+  "yahoo.co.uk",
+  "ymail.com",
+  "hotmail.com",
+  "hotmail.co.uk",
+  "outlook.com",
+  "outlook.in",
+  "live.com",
+  "msn.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "pm.me",
+  "fastmail.com",
+  "zoho.com",
+  "gmx.com",
+  "gmx.net",
+  "mail.com",
+  "rediffmail.com",
+  "rocketmail.com",
+  "tutanota.com",
+  "duck.com",
+]);
+
+function getSenderDomain(address: string | null | undefined): string | null {
+  if (!address) return null;
+  const at = address.lastIndexOf("@");
+  if (at < 0 || at === address.length - 1) return null;
+  const raw = address.slice(at + 1).trim().toLowerCase();
+  const domain = raw.replace(/[>\s,;]+$/g, "");
+  if (!domain || !domain.includes(".")) return null;
+  return domain;
+}
+
+function shouldUseLogoForDomain(domain: string | null): boolean {
+  if (!domain) return false;
+  if (PERSONAL_EMAIL_DOMAINS.has(domain)) return false;
+  for (const personal of PERSONAL_EMAIL_DOMAINS) {
+    if (domain.endsWith("." + personal)) return false;
+  }
+  return true;
+}
+
+interface SenderAvatarProps {
+  fromName: string;
+  fromAddress: string | null | undefined;
+  isUnread: boolean;
+}
+
+const SenderAvatar = React.memo(function SenderAvatar({
+  fromName,
+  fromAddress,
+  isUnread,
+}: SenderAvatarProps) {
+  const domain = React.useMemo(
+    () => getSenderDomain(fromAddress),
+    [fromAddress],
+  );
+  const canTryLogo = shouldUseLogoForDomain(domain);
+  const providers = React.useMemo(
+    () => (domain && canTryLogo ? getLogoProviders(domain) : []),
+    [domain, canTryLogo],
+  );
+  const [providerIdx, setProviderIdx] = React.useState(0);
+  const [logoLoaded, setLogoLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    setProviderIdx(0);
+    setLogoLoaded(false);
+  }, [domain]);
+
+  const currentSrc =
+    providerIdx < providers.length ? providers[providerIdx] : null;
+  const initialsStyle: React.CSSProperties = getAvatarStyle(fromName, isUnread);
+
+  return (
+    <span
+      className="email-from-icon"
+      style={initialsStyle}
+      data-has-logo={logoLoaded ? "true" : undefined}
+    >
+      <span className="email-from-icon-initials" aria-hidden={logoLoaded}>
+        {getAvatarInitials(fromName)}
+      </span>
+      {currentSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={currentSrc}
+          className="email-from-icon-logo"
+          src={currentSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth < 16 || img.naturalHeight < 16) {
+              setProviderIdx((i) => i + 1);
+              return;
+            }
+            setLogoLoaded(true);
+          }}
+          onError={() => {
+            setLogoLoaded(false);
+            setProviderIdx((i) => i + 1);
+          }}
+          data-loaded={logoLoaded ? "true" : "false"}
+        />
+      ) : null}
+    </span>
+  );
+});
+
 const CATEGORY_BADGE: Record<
   string,
   { label: string; className: string }
 > = {
   promotions: {
     label: "Promotions",
-    className:
-      "bg-[#fef7e0] text-[#b36b00] dark:bg-[#5c3317] dark:text-[#fdd663]",
+    className: "tag t-promo",
   },
   social: {
     label: "Social",
-    className:
-      "bg-[#e8f0fe] text-[#1967d2] dark:bg-[#174ea6]/40 dark:text-[#8ab4f8]",
+    className: "tag t-update",
   },
   updates: {
     label: "Updates",
-    className:
-      "bg-[#e6f4ea] text-[#137333] dark:bg-[#0d652d]/40 dark:text-[#81c995]",
+    className: "tag t-update",
   },
   forums: {
     label: "Forums",
-    className:
-      "bg-[#f3e8fd] text-[#7c4dff] dark:bg-[#5e35b1]/40 dark:text-[#c4a6ff]",
+    className: "tag t-reply",
   },
 };
 
@@ -153,14 +346,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     effectiveAccountId,
     isUnifiedView,
     refetch,
-    isPlaceholderData,
     selectedLabelId,
     account: validatedAccount,
   } = useThreads();
   const threads = rawThreads as (RouterThread & { accountEmail?: string; accountName?: string })[] | undefined;
   const [isSearching] = useAtom(isSearchingAtom);
   const [searchValue] = useAtom(searchValueAtom);
-  const { isLoaded: authLoaded, userId: clerkUserId } = useAuth();
   const [currentTab] = useLocalStorage<string>("vector-mail", "inbox");
   const [important] = useLocalStorage("vector-mail-important", false);
   const [unread] = useLocalStorage("vector-mail-unread", false);
@@ -287,10 +478,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   }, []);
 
   const clearSelection = useCallback(() => setSelectedThreadIds(new Set()), []);
-
-  const selectAllVisible = useCallback(() => {
-    setSelectedThreadIds(new Set((threads ?? []).map((t) => t.id)));
-  }, [threads]);
 
   const { data: accounts, isLoading: accountsLoading } =
     api.account.getAccounts.useQuery(undefined, {
@@ -798,7 +985,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       void softThreadListRefresh();
     }, SYNC_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [syncEmailsMutation.isPending, accountId, currentTab, forceThreadListRefresh]);
+  }, [syncEmailsMutation.isPending, accountId, currentTab, forceThreadListRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAccountConnection = useCallback(() => {
     window.location.href = "/api/connect/google";
@@ -1015,6 +1202,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       staleTime: 60_000,
     },
   );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const focusCounts = useMemo(() => {
     const visibleIds = new Set((threadsToRender ?? []).map((t) => t.id));
     const importantIds = new Set(
@@ -1054,7 +1242,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     isUnifiedView,
   ]);
   const isFocusActive = focusChipsEnabled && focusView !== "all";
-  const focusFilterHidden = isSearching && !!searchValue;
 
   const cycleBriefFocus = useCallback(() => {
     if (!focusChipsEnabled) return;
@@ -1197,9 +1384,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   if (accountsLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-white dark:bg-[#111113]">
+      <div className="flex h-full items-center justify-center bg-white dark:bg-[#ffffff]">
         <div className="text-center">
-          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#3b82f6] dark:border-[#1a1a23] dark:border-t-[#60a5fa]" />
+          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#1e2a4a] dark:border-[#ffffff] dark:border-t-[#1e2a4a]" />
           <p className="mt-3 text-[13px] text-[#6b7280] dark:text-[#a1a1aa]">Loading...</p>
         </div>
       </div>
@@ -1208,8 +1395,8 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   if (currentTab === "scheduled") {
     return (
-      <div className="flex h-full flex-col bg-white dark:bg-[#111113]">
-        <div className="flex-shrink-0 border-b border-[#e5e7eb] px-4 py-3 dark:border-[#1a1a23]">
+      <div className="flex h-full flex-col bg-white dark:bg-[#ffffff]">
+        <div className="flex-shrink-0 border-b border-[#e5e7eb] px-4 py-3 dark:border-[#ffffff]">
           <h2 className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Scheduled sends</h2>
           <p className="mt-0.5 text-xs text-[#5f6368] dark:text-[#9aa0a6]">Emails that will be sent at the chosen time</p>
         </div>
@@ -1256,7 +1443,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   if (!accountId || (accounts !== undefined && accounts.length === 0)) {
     return (
-      <div className="flex h-full items-center justify-center bg-white p-10 dark:bg-[#111113]">
+      <div className="flex h-full items-center justify-center bg-white p-10 dark:bg-[#ffffff]">
         <div className="max-w-sm text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#f1f3f4] dark:bg-[#3c4043]">
             <Mail className="h-8 w-8 text-[#5f6368] dark:text-[#9aa0a6]" />
@@ -1265,7 +1452,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           <p className="mb-6 text-[14px] leading-relaxed text-[#5f6368] dark:text-[#9aa0a6]">{CONNECTION_ERROR_MESSAGES.CONNECT_DESCRIPTION}</p>
           <button
             onClick={handleAccountConnection}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#1a73e8] px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#1a73e8] px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -1295,6 +1482,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const renderThreadItem = (thread: Thread, isLast: boolean, readOnlyPreview = false) => {
     const latestEmail = thread.emails?.[0] ?? null;
     const fromName = latestEmail?.from?.name ?? "Unknown";
+    const fromAddress = latestEmail?.from?.address ?? null;
     const subject = thread.subject || "(No subject)";
     const date = thread.lastMessageDate ?? new Date();
     const bodySnippet = latestEmail?.bodySnippet ?? null;
@@ -1328,129 +1516,108 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     const nudgeType = nudgeTypeByThreadId.get(thread.id);
     const threadAccountId = (thread as { accountId?: string }).accountId ?? accountId ?? "";
     const accountLabel = isUnifiedView && "accountEmail" in thread ? String((thread as { accountEmail?: string; accountName?: string }).accountEmail ?? (thread as { accountEmail?: string; accountName?: string }).accountName ?? "") : "";
+    const hasUrgentTag = categoryBadges.some((badge) => badge.className.includes("t-urgent"));
+    const hasReplyTag = categoryBadges.some((badge) => badge.className.includes("t-reply"));
+    const hasPromoTag = categoryBadges.some((badge) => badge.className.includes("t-promo"));
+    const rowCategory = hasUrgentTag
+      ? "urgent"
+      : hasReplyTag
+        ? "needs-reply"
+        : hasPromoTag
+          ? "promotions"
+          : "updates";
+    const openThread = () => {
+      if (readOnlyPreview) {
+        toast.info("Still syncing your inbox", {
+          description:
+            "You can open threads once your mail has finished syncing to VectorMail.",
+          duration: 4000,
+        });
+        return;
+      }
+      setThreadId(thread.id);
+      onThreadSelect?.(thread.id);
+    };
+
     return (
       <div
         key={thread.id}
         ref={isLast ? lastThreadElementRef : null}
-        className={cn(
-          "group relative flex w-full min-h-[48px] items-start gap-0 border-b border-[#f3f4f6] text-left transition-colors dark:border-[#1a1a23] [touch-action:manipulation]",
-          isSelected
-            ? "bg-[#eff6ff] dark:bg-[#3b82f6]/[0.08]"
-            : isUnread && !isSelected
-              ? "bg-white hover:bg-[#f9fafb] dark:bg-[#111113] dark:hover:bg-[#ffffff]/[0.03]"
-              : "hover:bg-[#f9fafb] dark:hover:bg-[#ffffff]/[0.03]",
-        )}
+        data-cat={rowCategory}
+        role="button"
+        tabIndex={readOnlyPreview ? -1 : 0}
+        className={cn("email-row", isSelected && "active", isUnread && "unread")}
+        onClick={openThread}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openThread();
+          }
+        }}
       >
         <div
-          className={cn(
-            "flex shrink-0 flex-col overflow-hidden pt-3 transition-[width,padding,opacity] duration-150",
-            readOnlyPreview && "hidden",
-            !readOnlyPreview &&
-            (isRowSelected
-              ? "w-[48px] pl-2 opacity-100 pointer-events-auto"
-              : "w-0 min-w-0 pl-0 opacity-0 pointer-events-none group-hover:w-[48px] group-hover:min-w-0 group-hover:pl-2 group-hover:opacity-100 group-hover:pointer-events-auto"),
-          )}
+          style={{ display: "none" }}
           onClick={(e) => e.stopPropagation()}
           role="presentation"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-            <Checkbox
-              checked={isRowSelected}
-              onCheckedChange={() => toggleSelection(thread.id)}
-              aria-label={`Select ${subject}`}
-              className="border-[#9ca3af] dark:border-[#71717a] data-[state=checked]:bg-[#3b82f6] data-[state=checked]:border-[#3b82f6] dark:data-[state=checked]:bg-[#60a5fa] dark:data-[state=checked]:border-[#60a5fa]"
-            />
-          </div>
+          <Checkbox
+            checked={isRowSelected}
+            onCheckedChange={() => toggleSelection(thread.id)}
+            aria-label={`Select ${subject}`}
+            className="border-[#9ca3af] dark:border-[#71717a] data-[state=checked]:bg-[#1e2a4a] data-[state=checked]:border-[#1e2a4a] dark:data-[state=checked]:bg-[#1e2a4a] dark:data-[state=checked]:border-[#1e2a4a]"
+          />
         </div>
-        <button
-          type="button"
-          className={cn(
-            "relative flex min-h-[48px] min-w-0 flex-1 gap-3 px-3 py-3 pr-2 text-left outline-none [touch-action:manipulation]",
-            readOnlyPreview && "cursor-default opacity-95",
-          )}
-          onClick={() => {
-            if (readOnlyPreview) {
-              toast.info("Still syncing your inbox", {
-                description: "You can open threads once your mail has finished syncing to VectorMail.",
-                duration: 4000,
-              });
-              return;
-            }
-            setThreadId(thread.id);
-            onThreadSelect?.(thread.id);
-          }}
-        >
-          <div
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-medium",
-              (nudgeType || isUnread) && "ring-2 ring-[#3b82f6] dark:ring-[#60a5fa]",
-              isSelected
-                ? "bg-[#3b82f6] text-white"
-                : isUnread
-                  ? "bg-[#3b82f6] text-white"
-                  : "bg-[#e5e7eb] text-[#6b7280] dark:bg-[#18181b] dark:text-[#a1a1aa]",
-            )}
-          >
-            {fromName.charAt(0).toUpperCase()}
+
+        <SenderAvatar
+          fromName={fromName}
+          fromAddress={fromAddress}
+          isUnread={isUnread}
+        />
+
+        <div className="email-row-content">
+          <div className="email-row-head">
+            <span className="email-from">{fromName}</span>
+            <span className="email-time">
+              {formatDistanceToNow(date, { addSuffix: false })}
+            </span>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 truncate">
-                  <span
-                    className={cn(
-                      "truncate text-[13px]",
-                      isUnread || isSelected
-                        ? "font-semibold text-[#202124] dark:text-[#d4d4d8]"
-                        : "font-normal text-[#5f6368] dark:text-[#9aa0a6]",
-                    )}
-                  >
-                    {fromName}
-                  </span>
-                  {isUnread && !isSelected && (
-                    <span className="mt-0.5 flex h-2 w-2 shrink-0 rounded-full bg-[#3b82f6] dark:bg-[#60a5fa]" />
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 truncate">
-                  <span
-                    className={cn(
-                      "truncate text-[13px]",
-                      isUnread || isSelected
-                        ? "font-medium text-[#202124] dark:text-[#c4c4c8]"
-                        : "font-normal text-[#5f6368] dark:text-[#9aa0a6]",
-                    )}
-                  >
-                    {subject}
-                  </span>
-                  {accountLabel && (
-                    <span className="shrink-0 rounded bg-[#e8eaed] px-1.5 py-0.5 text-[10px] font-medium text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
-                      {accountLabel}
-                    </span>
-                  )}
+          <div className="email-row-subject-line">
+            <span className="email-subject">{subject}</span>
+            {(accountLabel ||
+              categoryBadges.length > 0 ||
+              threadLabels.length > 0 ||
+              followUpBadgeByThreadId[thread.id]) && (
+                <span className="email-row-tags">
+                  {accountLabel && <span>{accountLabel}</span>}
                   {categoryBadges.map((badge) => (
-                    <span
-                      key={badge.label}
-                      className={cn(
-                        "inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
-                        badge.className,
-                      )}
-                    >
+                    <span key={badge.label} className={badge.className}>
                       {badge.label}
                     </span>
                   ))}
-                  {threadLabels.slice(0, 3).map((lbl: { id: string; name: string; color: string | null }) => (
-                    <span
-                      key={lbl.id}
-                      className="inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[#e8f0fe] text-[#1967d2] dark:bg-[#174ea6]/40 dark:text-[#8ab4f8]"
-                      style={lbl.color ? { backgroundColor: `${lbl.color}20`, color: lbl.color } : undefined}
-                    >
-                      {lbl.name}
-                    </span>
-                  ))}
+                  {threadLabels
+                    .slice(0, 3)
+                    .map(
+                      (lbl: { id: string; name: string; color: string | null }) => (
+                        <span
+                          key={lbl.id}
+                          className="tag t-update"
+                          style={
+                            lbl.color
+                              ? {
+                                backgroundColor: `${lbl.color}20`,
+                                color: lbl.color,
+                              }
+                              : undefined
+                          }
+                        >
+                          {lbl.name}
+                        </span>
+                      ),
+                    )}
                   {followUpBadgeByThreadId[thread.id] && (
                     <span
-                      className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-violet-100 text-violet-900 ring-1 ring-violet-300/60 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-400/25"
+                      className="tag t-urgent"
                       title={
                         followUpBadgeByThreadId[thread.id]?.wasRealSend
                           ? "Auto follow-up sent (delivered)"
@@ -1460,40 +1627,37 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
                       Auto
                     </span>
                   )}
-                </div>
-                {bodySnippet && (
-                  <div className="line-clamp-2 text-[12px] leading-snug text-[#5f6368] dark:text-[#9aa0a6]">
-                    {bodySnippet}
-                  </div>
-                )}
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-0.5 pt-0.5">
-                <div className="flex items-center gap-1">
-                  {nudgeType === "REMINDER" && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex shrink-0 text-[#5f6368] dark:text-[#9aa0a6]">
-                          <Bell className="h-3 w-3 text-[#b36b00] dark:text-[#fdd663]" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="bg-[#303134] text-xs text-[#e8eaed]">
-                        Reminder
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {isImportant && (
-                    <Star className="h-3.5 w-3.5 fill-[#f59e0b] text-[#f59e0b] dark:fill-[#fbbf24] dark:text-[#fbbf24]" />
-                  )}
-                </div>
-                <span className="whitespace-nowrap text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">
-                  {formatDistanceToNow(date, { addSuffix: false })}
                 </span>
-              </div>
-            </div>
+              )}
           </div>
-        </button>
+
+          {bodySnippet && <div className="email-snippet">{bodySnippet}</div>}
+        </div>
+
+        <span style={{ display: "none" }}>
+          {nudgeType === "REMINDER" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Bell className="h-3 w-3 text-[#b36b00] dark:text-[#ffffff]" />
+              </TooltipTrigger>
+              <TooltipContent
+                side="left"
+                className="bg-[#303134] text-xs text-[#e8eaed]"
+              >
+                Reminder
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {isImportant && (
+            <Star className="h-3 w-3 fill-[#1e2a4a] text-[#1e2a4a] dark:fill-[#1e2a4a] dark:text-[#1e2a4a]" />
+          )}
+        </span>
+
         {showRowActions && (
-          <div className="flex items-center gap-0.5 pr-1">
+          <div
+            style={{ display: "none" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {showSnooze && (
               <SnoozeMenu
                 threadId={thread.id}
@@ -1635,7 +1799,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             </p>
             <a
               href="/api/connect/google"
-              className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+              className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
             >
               Reconnect account
             </a>
@@ -1757,15 +1921,48 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
     return (
       <div className="flex flex-col">
+        {currentTab === "inbox" && !isReadOnlyPreview && Object.keys(groupedThreads).length > 0 && (
+          <header className="date-header">
+            <div className="date-eyebrow">THE DAILY RITUAL</div>
+            <h1 className="date-title">
+              {format(new Date(), "EEEE")},{" "}
+              <span className="it">{format(new Date(), "MMMM d")}</span>
+            </h1>
+            <div className="date-stats">
+              {(() => {
+                const allThreads = Object.values(groupedThreads).flat();
+                const unread = allThreads.filter((t) =>
+                  (t.emails ?? []).some((e) =>
+                    (e.sysLabels ?? []).includes("unread"),
+                  ),
+                ).length;
+                const total = allThreads.length;
+                return (
+                  <>
+                    <span>
+                      <span className="num">{unread}</span> unread
+                    </span>
+                    <span className="sep" aria-hidden />
+                    <span>
+                      <span className="num">{total}</span> in queue
+                    </span>
+                    <span className="sep" aria-hidden />
+                    <span className="live">synced just now</span>
+                  </>
+                );
+              })()}
+            </div>
+          </header>
+        )}
         {isReadOnlyPreview && (
           <div className="border-b border-[#1f2937] bg-gradient-to-r from-[#0f172a] via-[#111827] to-[#0b1220] px-4 py-3 shadow-[inset_0_1px_0_rgba(148,163,184,0.12)]">
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-[#60a5fa] shadow-[0_0_12px_rgba(96,165,250,0.9)]" />
+              <span className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-[#1e2a4a] shadow-[0_0_12px_rgba(96,165,250,0.9)]" />
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold tracking-wide text-[#dbeafe]">
+                <p className="text-[12px] font-semibold tracking-wide text-[#f3e8c8]">
                   Live inbox preview
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#bfdbfe]/90">
+                <p className="mt-1 text-[11px] leading-relaxed text-[#e8d59f]/90">
                   Showing your latest mail from the provider while we sync into VectorMail. Rows are read only until sync finishes, then you can open threads and use all actions.
                 </p>
               </div>
@@ -1773,17 +1970,20 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           </div>
         )}
         {currentTab === "inbox" && !isReadOnlyPreview && hasPreviewRows && (
-          <div className="border-b border-amber-300/30 bg-amber-50 px-4 py-2.5 dark:border-amber-500/30 dark:bg-amber-500/10">
-            <p className="text-[11px] text-amber-800 dark:text-amber-200">
+          <div className="border-b border-text-[#1e2a4a] bg-text-[#1e2a4a] px-4 py-2.5 dark:border-text-[#1e2a4a] dark:bg-text-[#1e2a4a]">
+            <p className="text-[11px] text-text-[#1e2a4a] dark:text-text-[#1e2a4a]">
               Sync is taking longer than expected. Threads are unlocked now, and inbox sync will keep retrying in the background.
             </p>
           </div>
         )}
         {Object.entries(groupedThreads).map(([date, threads]) => (
           <React.Fragment key={date}>
-            <div className="sticky top-0 z-10 border-b border-[#e5e7eb] bg-white px-4 py-2 dark:border-[#1a1a23] dark:bg-[#111113]">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-[#5f6368] dark:text-[#9aa0a6]">
-                {format(new Date(date), "MMM d, yyyy")}
+            <div className="day-divider">
+              <span>
+                {format(new Date(date), "EEEE, MMMM d")}
+              </span>
+              <span className="day-count">
+                · {threads.length} {threads.length === 1 ? "msg" : "msgs"}
               </span>
             </div>
             {threads.map((thread) =>
@@ -1793,7 +1993,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         ))}
         {(isFetchingNextPage || loadingMoreAtListEnd) && (
           <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#3b82f6] dark:border-[#1a1a23] dark:border-t-[#60a5fa]" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#1e2a4a] dark:border-[#ffffff] dark:border-t-[#1e2a4a]" />
             <span>Loading more emails…</span>
           </div>
         )}
@@ -1842,9 +2042,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white dark:bg-[#111113]">
+    <div className="flex h-full flex-col overflow-hidden bg-white dark:bg-[#ffffff]">
       {showBulkBar && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 dark:border-[#1a1a23] dark:bg-[#18181b]">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 dark:border-[#ffffff] dark:bg-[#18181b]">
           <span className="text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
             {selectedCount} selected
           </span>
@@ -1934,56 +2134,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {focusChipsEnabled && !focusFilterHidden && (
-        <div className="flex items-center gap-1.5 border-b border-[#e5e7eb] px-3 py-2 dark:border-[#1a1a23]">
-          <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-[#9ca3af] dark:text-[#71717a]">
-            Focus
-          </span>
-          {([
-            ["all", "All"],
-            ["needsReply", "Needs reply"],
-            ["important", "Important"],
-            ["lowPriority", "Low priority"],
-          ] as const).map(([key, label]) => {
-            const active = focusView === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  trackInboxBrainEvent("daily_brief_focus_changed", {
-                    filter_key: key,
-                    source: "chip",
-                  });
-                  setFocusView(key);
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  active
-                    ? "border-[#3b82f6]/30 bg-[#eff6ff] text-[#2563eb] dark:border-[#60a5fa]/30 dark:bg-[#3b82f6]/[0.14] dark:text-[#93c5fd]"
-                    : "border-[#e5e7eb] bg-[#f9fafb] text-[#5f6368] hover:bg-[#f3f4f6] dark:border-[#27272a] dark:bg-[#18181b] dark:text-[#a1a1aa] dark:hover:bg-[#202024]",
-                )}
-                aria-pressed={active}
-              >
-                <span>{label}</span>
-                {key === "all" && (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
-                      active
-                        ? "bg-[#dbeafe] text-[#1d4ed8] dark:bg-[#2563eb]/30 dark:text-[#bfdbfe]"
-                        : "bg-[#e8eaed] text-[#5f6368] dark:bg-[#27272a] dark:text-[#9aa0a6]",
-                    )}
-                  >
-                    {focusCounts.all}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       <div
         ref={listContainerRef}

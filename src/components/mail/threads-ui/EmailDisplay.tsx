@@ -16,7 +16,7 @@ const EmailDisplay = ({ email }: Props) => {
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const isMe = account?.emailAddress === email.from.address;
-  const { data: openData } = api.account.getEmailOpenByMessageId.useQuery(
+  api.account.getEmailOpenByMessageId.useQuery(
     {
       messageId: email.id,
       accountId: accountId ?? "",
@@ -258,7 +258,7 @@ const EmailDisplay = ({ email }: Props) => {
         const url = match.startsWith("http") ? match : `https://${match}`;
         const displayText =
           match.length > 60 ? match.substring(0, 57) + "..." : match;
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: underline; word-break: break-all; display: inline-block; max-width: 100%;">${displayText}</a>`;
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #b88a3f; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; display: inline-block; max-width: 100%;">${displayText}</a>`;
       }
     );
 
@@ -276,20 +276,17 @@ const EmailDisplay = ({ email }: Props) => {
 
   return (
     <div
-      className={cn(
-        "min-h-0 cursor-pointer rounded-md border p-2 transition-all hover:translate-x-2",
-        {
-          "border-l-4 border-l-gray-900": isMe,
-        },
-      )}
+      className={cn("min-h-0", {
+        "border-l-2 border-l-[#1e2a4a]/40 pl-4": isMe,
+      })}
     >
       {showLoading ? (
         <div className="flex min-h-[70vh] items-center justify-center rounded-md bg-white">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-yellow-500"></div>
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-text-[#1e2a4a]"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="h-6 w-6 animate-pulse rounded-full bg-yellow-500/20"></div>
+                <div className="h-6 w-6 animate-pulse rounded-full bg-text-[#1e2a4a]"></div>
               </div>
             </div>
             <div className="text-center">
@@ -320,24 +317,40 @@ const EmailDisplay = ({ email }: Props) => {
         </div>
       ) : hasContent ? (
         <div
-          className="min-h-[70vh] overflow-y-auto rounded-md bg-white md:min-h-[70vh] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           ref={letterRef}
         >
           <div
-            className="email-body-wrapper"
+            className="mx-auto"
             style={{
-              padding: "24px 20px",
-              wordWrap: "break-word",
-              overflowWrap: "break-word",
-              wordBreak: "break-word",
-              maxWidth: "100%",
-              overflow: "hidden",
-              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+              maxWidth: 760,
+              background: "#ffffff",
+              borderRadius: 8,
+              border: "1px solid #e5e7eb",
+              boxShadow:
+                "0 1px 2px rgba(26,22,18,0.04), 0 4px 12px -4px rgba(26,22,18,0.06)",
             }}
-            dangerouslySetInnerHTML={{
-              __html: sanitizeEmailHtml(displayBody),
-            }}
-          />
+          >
+            <div
+              className="email-body-wrapper"
+              style={{
+                padding: "36px 40px",
+                wordWrap: "break-word",
+                overflowWrap: "break-word",
+                wordBreak: "break-word",
+                maxWidth: "100%",
+                overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                fontSize: 15,
+                lineHeight: 1.65,
+                letterSpacing: "-0.003em",
+                color: "#1a1612",
+              }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeEmailHtml(displayBody),
+              }}
+            />
+          </div>
           <style
             dangerouslySetInnerHTML={{
               __html: `
@@ -385,10 +398,12 @@ const EmailDisplay = ({ email }: Props) => {
                   hyphens: auto;
                 }
                 
-                /* Preserve original link colors if specified, otherwise use blue */
+                /* Preserve original link colors if specified, otherwise use brass */
                 .email-body-wrapper a:not([style*="color"]):not([class*="color"]) {
-                  color: #1a73e8 !important;
+                  color: #b88a3f !important;
                   text-decoration: underline;
+                  text-decoration-color: rgba(184,138,63,0.45);
+                  text-underline-offset: 2px;
                 }
                 
                 /* Force long text/URLs to break */

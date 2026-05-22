@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
@@ -51,7 +51,7 @@ const COMPLETE_SYSTEM = (context: string, prompt: string) =>
           - NEVER include subject lines or email headers
           - Use line breaks (\\n) for proper email formatting
           - Keep paragraphs concise and well-structured
-          - ⚠️⚠️⚠️ NUMBERED LISTS: Number and text MUST be on SAME line - "1. Text here" NOT "1.\\nText here" ⚠️⚠️⚠️
+          - âš ï¸âš ï¸âš ï¸ NUMBERED LISTS: Number and text MUST be on SAME line - "1. Text here" NOT "1.\\nText here" âš ï¸âš ï¸âš ï¸
           - NEVER put line breaks between number and text in lists`;
 
 const COMPOSE_SYSTEM = (context: string) =>
@@ -70,7 +70,7 @@ const COMPOSE_SYSTEM = (context: string) =>
                     - End with a professional closing (Best regards, Sincerely, Thank you, etc.) followed by the sender's name
                     - Keep sentences complete and coherent
                     - Use proper spacing between paragraphs
-                    - ⚠️⚠️⚠️ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING ⚠️⚠️⚠️:
+                    - âš ï¸âš ï¸âš ï¸ ABSOLUTELY CRITICAL - NUMBERED LIST FORMATTING âš ï¸âš ï¸âš ï¸:
                       * The number, period, space, and text MUST ALL be on ONE SINGLE LINE
                       * Format: "1. Text content here" - ALL on the same line with NO line breaks
                       * NEVER put a line break (\\n) between the number and the text
@@ -223,10 +223,13 @@ Format the response as a complete email with proper paragraphs. Use \\n\\n betwe
 
     return NextResponse.json({ content });
   } catch (error) {
-    console.error("Error in generate-email:", error);
+    apiLog.error("Error in generate-email:", error);
     return NextResponse.json(
       { error: "Failed to generate email" },
       { status: 500 },
     );
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.generate-email");

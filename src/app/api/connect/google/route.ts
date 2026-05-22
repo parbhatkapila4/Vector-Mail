@@ -1,4 +1,4 @@
-import { buildAurinkoAuthUrlForService } from "@/lib/aurinko";
+﻿import { buildAurinkoAuthUrlForService } from "@/lib/aurinko";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
     const url = buildAurinkoAuthUrlForService("Google");
     return NextResponse.redirect(url);
   } catch (e) {
-    console.error("[connect/google]", e);
+    apiLog.error("[connect/google]", e);
     return NextResponse.redirect(new URL("/sign-in", baseUrl));
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.connect-google");

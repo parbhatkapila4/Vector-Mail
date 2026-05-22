@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+﻿import { auth } from "@clerk/nextjs/server";
 import axios from "axios";
 
 const AURINKO_SCOPES = "Mail.Read Mail.Send";
@@ -46,14 +46,14 @@ export const getAurinkoAuthUrl = async (
 };
 
 export async function exchangeAurinkoCodeForToken(code: string) {
-  console.log("[TOKEN] Exchanging OAuth code");
-  console.log(
+  aurinkoLog.log("[TOKEN] Exchanging OAuth code");
+  aurinkoLog.log(
     "[TOKEN] Code:",
     code ? `${code.substring(0, 10)}...` : "MISSING",
   );
 
   const tokenUrl = `https://api.aurinko.io/v1/auth/token/${encodeURIComponent(code)}`;
-  console.log(
+  aurinkoLog.log(
     "[TOKEN] Token URL:",
     tokenUrl.replace(code, `${code.substring(0, 10)}...`),
   );
@@ -73,8 +73,8 @@ export async function exchangeAurinkoCodeForToken(code: string) {
       },
     );
 
-    console.log("[TOKEN] Response status:", response.status);
-    console.log(
+    aurinkoLog.log("[TOKEN] Response status:", response.status);
+    aurinkoLog.log(
       "[TOKEN] Full response data:",
       JSON.stringify(response.data, null, 2),
     );
@@ -103,13 +103,13 @@ export async function exchangeAurinkoCodeForToken(code: string) {
           ? data.expires_in
           : null;
 
-    console.log("[TOKEN] ✓ Success - accessToken and accountId present");
-    console.log(
+    aurinkoLog.log("[TOKEN] âœ“ Success - accessToken and accountId present");
+    aurinkoLog.log(
       "[TOKEN] API token:",
       accountToken ? "accountToken" : "accessToken (fallback)",
     );
-    if (refreshToken) console.log("[TOKEN] ✓ Refresh token present (will use for silent renewal)");
-    if (expiresIn) console.log("[TOKEN] ✓ expiresIn:", expiresIn, "seconds");
+    if (refreshToken) aurinkoLog.log("[TOKEN] âœ“ Refresh token present (will use for silent renewal)");
+    if (expiresIn) aurinkoLog.log("[TOKEN] âœ“ expiresIn:", expiresIn, "seconds");
 
     return {
       accessToken: data.accessToken,
@@ -120,20 +120,20 @@ export async function exchangeAurinkoCodeForToken(code: string) {
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error("[TOKEN] ✗ FAILED");
-      console.error("[TOKEN] Status:", error.response?.status);
-      console.error("[TOKEN] Status Text:", error.response?.statusText);
-      console.error(
+      aurinkoLog.error("[TOKEN] âœ- FAILED");
+      aurinkoLog.error("[TOKEN] Status:", error.response?.status);
+      aurinkoLog.error("[TOKEN] Status Text:", error.response?.statusText);
+      aurinkoLog.error(
         "[TOKEN] Response Data:",
         JSON.stringify(error.response?.data, null, 2),
       );
-      console.error("[TOKEN] Request Config:", {
+      aurinkoLog.error("[TOKEN] Request Config:", {
         url: error.config?.url,
         method: error.config?.method,
         hasAuth: !!error.config?.auth,
       });
     } else {
-      console.error("[TOKEN] ✗ FAILED - Unknown error:", error);
+      aurinkoLog.error("[TOKEN] âœ- FAILED - Unknown error:", error);
     }
     throw error;
   }
@@ -173,7 +173,7 @@ export async function refreshAurinkoToken(
     const data = response.data;
     const accessToken = data?.accessToken ?? data?.token;
     if (!accessToken) {
-      console.warn("[TOKEN] Refresh response missing accessToken:", Object.keys(data ?? {}));
+      aurinkoLog.warn("[TOKEN] Refresh response missing accessToken:", Object.keys(data ?? {}));
       return null;
     }
     const accountToken =
@@ -186,24 +186,24 @@ export async function refreshAurinkoToken(
           : undefined;
     const nextRefresh =
       data?.refreshToken ?? data?.refresh_token ?? undefined;
-    console.log("[TOKEN] ✓ Refresh successful for account", accountId);
+    aurinkoLog.log("[TOKEN] âœ“ Refresh successful for account", accountId);
     return { accessToken, accountToken, expiresIn, refreshToken: nextRefresh };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.warn(
+      aurinkoLog.warn(
         "[TOKEN] Refresh failed:",
         error.response?.status,
         error.response?.data,
       );
     } else {
-      console.warn("[TOKEN] Refresh failed:", error);
+      aurinkoLog.warn("[TOKEN] Refresh failed:", error);
     }
     return null;
   }
 }
 
 export async function getAccountInfo(accessToken: string, accountId: string) {
-  console.log("[ACCOUNT] Verifying account");
+  aurinkoLog.log("[ACCOUNT] Verifying account");
 
   try {
     const response = await axios.get("https://api.aurinko.io/v1/account", {
@@ -213,7 +213,7 @@ export async function getAccountInfo(accessToken: string, accountId: string) {
       },
     });
 
-    console.log("[ACCOUNT] ✓ Verified");
+    aurinkoLog.log("[ACCOUNT] âœ“ Verified");
 
     return response.data as {
       email: string;
@@ -221,8 +221,8 @@ export async function getAccountInfo(accessToken: string, accountId: string) {
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error(
-        "[ACCOUNT] ✗ FAILED",
+      aurinkoLog.error(
+        "[ACCOUNT] âœ- FAILED",
         error.response?.status,
         error.response?.data,
       );
@@ -230,3 +230,6 @@ export async function getAccountInfo(accessToken: string, accountId: string) {
     throw error;
   }
 }
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const aurinkoLog = makeTagLogger("aurinko");

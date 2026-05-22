@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 export function formatEmailBody(text: string): string {

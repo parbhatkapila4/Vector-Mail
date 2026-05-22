@@ -10,7 +10,18 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { env } from "@/env.js";
 import { AUTO_FOLLOW_UP_ACTION_TYPE } from "@/lib/automation/action-types";
-import { DEMO_ACCOUNT_ID, DEMO_USER_ID } from "@/lib/demo/constants";
+import { isDemoCall, isDemoCallFor } from "@/lib/demo/predicate";
+import {
+  DEMO_AUTOMATION_OUTCOME_SUMMARY,
+  DEMO_AUTOMATION_METRICS_BASE,
+  getDemoAutomationPrefs,
+  getDemoAutomationGuardrails,
+  getDemoPendingExecutions,
+  getDemoExecutionList,
+  getDemoThreadAutoFollowUpBadges,
+  getDemoThreadFollowUpSummary,
+  getDemoRecentFailures,
+} from "@/lib/demo/automation-repository";
 import {
   MAX_ALLOWED_AUTO_SENDS_PER_DAY,
   normalizeAutomationGuardrails,
@@ -62,46 +73,6 @@ function redactSensitiveJson(value: Prisma.JsonValue): Prisma.JsonValue {
   return value;
 }
 
-const DEMO_AUTOMATION_OUTCOME_SUMMARY = {
-  sentRealToday: 1,
-  simulatedToday: 2,
-  failedToday: 1,
-  pendingApproval: 2,
-  isDemo: true as const,
-};
-
-const DEMO_AUTOMATION_METRICS = {
-  actionsExecuted: 3,
-  actionsPendingApproval: 2,
-  actionsFailed: 1,
-  simulatedActions: 4,
-  eligibleNeedsReply: 10,
-  autoHandledPercent: 30,
-  estTimeSavedMinutes: 9,
-  llmTokens: 6240,
-  estimatedCostUsd: 0.02,
-  latencyMs: {
-    avg: 1840,
-    p50: 1520,
-    p95: 3660,
-    sampleSize: 14,
-  },
-  range: {
-    startAt: new Date(Date.UTC(2026, 0, 1)).toISOString(),
-    endAt: new Date(Date.UTC(2026, 0, 2)).toISOString(),
-  },
-  isDemo: true as const,
-};
-
-const DEMO_AUTOMATION_FAILURES = [
-  {
-    id: "demo-exec-fail-1",
-    updatedAt: new Date().toISOString(),
-    lastError: "Pre-send: user_already_replied",
-    thread: { id: "demo-thread-4", subject: "Re: Project timeline" },
-  },
-];
-
 const DEMO_EXECUTION_STATUS = [
   "pending",
   "awaiting_approval",
@@ -116,19 +87,8 @@ export const automationRouter = createTRPCRouter({
     .input(z.object({ accountId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
-        return {
-          paused: false,
-          maxAutoSendsPerDay: 5,
-          blockedDomains: ["example.org"],
-          blockedSenderSubstrings: ["noreply@"],
-          autoConsentAcknowledgedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          autoConsentGuardrailsHash: guardrailsMaterialHash({
-            maxAutoSendsPerDay: 5,
-            blockedDomains: ["example.org"],
-            blockedSenderSubstrings: ["noreply@"],
-          }),
-        };
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoAutomationGuardrails(guardrailsMaterialHash);
       }
       const account = await db.account.findFirst({
         where: { id: input.accountId, userId },
@@ -215,6 +175,9 @@ export const automationRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoAutomationPrefs();
+      }
       const account = await db.account.findFirst({
         where: { id: input.accountId, userId },
         select: { id: true, automationMode: true, automationGuardrails: true },
@@ -242,6 +205,7 @@ export const automationRouter = createTRPCRouter({
         requiresAutoConsent: !hasConsent,
         guardrailPaused: guardrails.paused,
         maxAutoSendsPerDay: guardrails.maxAutoSendsPerDay,
+        realSendEnabled: env.AUTOMATION_REAL_SEND_ENABLED === true,
       };
     }),
 
@@ -306,6 +270,9 @@ export const automationRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoPendingExecutions();
+      }
       const account = await db.account.findFirst({
         where: { id: input.accountId, userId },
         select: { id: true },
@@ -551,7 +518,7 @@ export const automationRouter = createTRPCRouter({
     .input(z.object({ accountId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+      if (isDemoCall(ctx, input.accountId)) {
         return DEMO_AUTOMATION_OUTCOME_SUMMARY;
       }
       const account = await db.account.findFirst({
@@ -628,11 +595,11 @@ export const automationRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
+      if (isDemoCall(ctx, input.accountId)) {
         const start = input.startAt ?? startOfTodayUtc();
         const end = input.endAt ?? endOfTodayExclusive(start);
         return {
-          ...DEMO_AUTOMATION_METRICS,
+          ...DEMO_AUTOMATION_METRICS_BASE,
           range: { startAt: start.toISOString(), endAt: end.toISOString() },
         };
       }
@@ -795,50 +762,8 @@ export const automationRouter = createTRPCRouter({
       const start = input.startAt;
       const end = input.endAt;
 
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
-        const demoItems = [
-          {
-            id: "demo-exec-1",
-            status: "success",
-            type: AUTO_FOLLOW_UP_ACTION_TYPE,
-            createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 88 * 60 * 1000).toISOString(),
-            dryRun: true,
-            retryCount: 0,
-            providerMessageId: null,
-            thread: { id: "demo-thread-1", subject: "Re: Intro call follow-up" },
-          },
-          {
-            id: "demo-exec-2",
-            status: "awaiting_approval",
-            type: AUTO_FOLLOW_UP_ACTION_TYPE,
-            createdAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
-            dryRun: true,
-            retryCount: 0,
-            providerMessageId: null,
-            thread: { id: "demo-thread-2", subject: "Re: Contract details" },
-          },
-          {
-            id: "demo-exec-3",
-            status: "failed",
-            type: AUTO_FOLLOW_UP_ACTION_TYPE,
-            createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
-            dryRun: false,
-            retryCount: 1,
-            providerMessageId: null,
-            thread: { id: "demo-thread-3", subject: "Re: Proposal timeline" },
-          },
-        ] as const;
-        return {
-          items: demoItems,
-          page: input.page,
-          limit: input.limit,
-          hasMore: false,
-          total: demoItems.length,
-          isDemo: true as const,
-        };
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoExecutionList(input.page, input.limit);
       }
 
       const account = await db.account.findFirst({
@@ -909,7 +834,7 @@ export const automationRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
 
-      if (userId === DEMO_USER_ID && input.executionId.startsWith("demo-exec-")) {
+      if (isDemoCallFor(ctx, input, (i) => i.executionId.startsWith("demo-exec-"))) {
         const now = Date.now();
         return {
           id: input.executionId,
@@ -1041,11 +966,8 @@ export const automationRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
-        return DEMO_AUTOMATION_FAILURES.map((r) => ({
-          ...r,
-          lastErrorTruncated: r.lastError.slice(0, 160),
-        }));
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoRecentFailures();
       }
       const account = await db.account.findFirst({
         where: { id: input.accountId, userId },
@@ -1094,19 +1016,8 @@ export const automationRouter = createTRPCRouter({
       if (ids.length === 0) {
         return { byThreadId: {} as Record<string, { lastSuccessAt: string; wasRealSend: boolean }> };
       }
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
-        const byThreadId: Record<string, { lastSuccessAt: string; wasRealSend: boolean }> = {};
-        const t1 = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-        const t2 = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
-        for (const tid of ["demo-thread-1", "demo-thread-2", "demo-thread-3"]) {
-          if (ids.includes(tid)) {
-            byThreadId[tid] = {
-              lastSuccessAt: tid === "demo-thread-1" ? t1 : t2,
-              wasRealSend: tid === "demo-thread-1",
-            };
-          }
-        }
-        return { byThreadId };
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoThreadAutoFollowUpBadges(ids);
       }
       const account = await db.account.findFirst({
         where: { id: input.accountId, userId },
@@ -1148,14 +1059,8 @@ export const automationRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (userId === DEMO_USER_ID && input.accountId === DEMO_ACCOUNT_ID) {
-        if (input.threadId === "demo-thread-1") {
-          return {
-            lastSuccessAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
-            wasRealSend: false,
-          };
-        }
-        return null;
+      if (isDemoCall(ctx, input.accountId)) {
+        return getDemoThreadFollowUpSummary(input.threadId);
       }
       const account = await db.account.findFirst({
         where: { id: input.accountId, userId },

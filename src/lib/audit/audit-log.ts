@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { serverLog } from "@/lib/logging/server-logger";
 
 export interface AuditLogParams {
   userId: string;
@@ -19,6 +20,9 @@ export function log(params: AuditLogParams): void {
       },
     })
     .catch((err) => {
-      console.error("[audit] log failed:", err);
+      serverLog.error(
+        { err: err instanceof Error ? err.message : String(err), action, userId },
+        "audit: log persist failed",
+      );
     });
 }

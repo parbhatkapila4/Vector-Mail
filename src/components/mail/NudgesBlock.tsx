@@ -36,27 +36,41 @@ export function NudgesBlock({
       type="button"
       onClick={() => setExpanded((e) => !e)}
       className={cn(
-        "flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors",
-        "hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] rounded",
+        "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all",
+        "hover:bg-[#ffffff]/40 dark:hover:bg-[#1e2a4a]/[0.06]",
       )}
       aria-expanded={expanded}
     >
       {expanded ? (
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+        <ChevronDown className="h-3 w-3 shrink-0 text-[#b88a3f] dark:text-[#1e2a4a] transition-transform" />
       ) : (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+        <ChevronRight className="h-3 w-3 shrink-0 text-[#8a8278] transition-transform group-hover:text-[#b88a3f] dark:group-hover:text-[#1e2a4a]" />
       )}
-      <Bell className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
-      <span className="text-xs font-medium uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6]">
-        Nudges
+      <span
+        className="text-[#8a8278] dark:text-[#8a8278]"
+        style={{
+          fontFamily:
+            "var(--font-jetbrains-mono), ui-monospace, monospace",
+          fontSize: 9.5,
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+        }}
+      >
+        <span className="text-[#b88a3f] dark:text-[#1e2a4a]">✦</span>{" "}
+        NUDGES
       </span>
       <span
-        className={cn(
-          "min-w-[20px] rounded-full px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums",
-          "bg-[#f1f3f4] text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]",
-        )}
+        style={{
+          fontFamily:
+            "var(--font-jetbrains-mono), ui-monospace, monospace",
+          fontSize: 9.5,
+          color: expanded ? "#b88a3f" : "#8a8278",
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+        }}
+        className="dark:text-[#1e2a4a]"
       >
-        {isLoading ? "…" : count}
+        · {isLoading ? "…" : count}
       </span>
     </button>
   );
@@ -71,7 +85,7 @@ export function NudgesBlock({
       >
         {header}
         <div className="flex items-center justify-center py-6">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#1e2a4a]" />
         </div>
       </div>
     );
@@ -117,7 +131,7 @@ export function NudgesBlock({
               >
                 <div className="flex items-center gap-1.5">
                   {nudge.type === "REMINDER" && (
-                    <Bell className="h-3 w-3 shrink-0 text-[#b36b00] dark:text-[#fdd663]" />
+                    <Bell className="h-3 w-3 shrink-0 text-[#b36b00] dark:text-[#ffffff]" />
                   )}
                   <span className="truncate text-xs font-medium text-[#202124] dark:text-[#e8eaed]">
                     {nudge.thread?.subject ?? "(No subject)"}

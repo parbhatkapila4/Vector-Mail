@@ -1,34 +1,33 @@
 import "@/styles/globals.css";
-import "@/lib/suppress-console-errors";
+import "@/styles/design-tokens.css";
+import "@/styles/hero-reactive-background.css";
 
 import { type Metadata } from "next";
 import Script from "next/script";
-import { Inter, Oswald, Newsreader, JetBrains_Mono } from "next/font/google";
+import { Inter, Oswald, Newsreader, JetBrains_Mono, Fraunces } from "next/font/google";
 
 import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
 import { PwaRegister } from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
-  title: "VectorMail AI - Smart Email Management",
+  title: "VectorMail",
   icons: {
     icon: "/VectorMail-New.png",
     apple: "/VectorMail-New.png",
   },
   description:
-    "Transform your email experience with AI-powered insights, smart organization, and intelligent responses. Get AI-powered email composition, smart search, and intelligent email management.",
+    "An email client for Gmail with semantic search, daily briefs, and replies trained on your sent mail.",
   keywords: [
-    "email",
-    "AI",
-    "artificial intelligence",
-    "email management",
-    "smart email",
-    "email automation",
-    "productivity",
     "email client",
+    "Gmail",
+    "semantic search",
+    "pgvector",
+    "inbox zero",
+    "email productivity",
   ],
-  authors: [{ name: "VectorMail AI" }],
-  creator: "VectorMail AI",
-  publisher: "VectorMail AI",
+  authors: [{ name: "VectorMail" }],
+  creator: "VectorMail",
+  publisher: "VectorMail",
   verification: {
     google: "nmkq5i-5uWS3ush6WO4uP6t6DitTVQSvNDaFFGoI3f0",
   },
@@ -70,12 +69,19 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   display: "swap",
 });
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  style: ["normal", "italic"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${oswald.variable} ${newsreader.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${oswald.variable} ${newsreader.variable} ${jetbrainsMono.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Script
           id="chunk-load-recovery"

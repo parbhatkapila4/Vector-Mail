@@ -177,11 +177,6 @@ You are helping compose a new email. The user has started typing: "${prompt}"
 Generate a complete email body starting with what the user has typed. Use \\n\\n between paragraphs. Do not include subject lines. Keep it concise.`;
       }
 
-      toast.info("AI is thinking...", {
-        id: "ai-thinking",
-        duration: 5000,
-      });
-
       const timeoutWarning = setTimeout(() => {
         if (isGenerating) {
           toast.warning("AI is taking longer than expected. Please wait...", {
@@ -284,11 +279,12 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
   const editor = useEditor({
     autofocus: false,
     immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
     extensions: [StarterKit, customText, GhostExtension],
     editorProps: {
       attributes: {
         placeholder: "Write your email here...",
-        class: "pyellow pyellow-sm focus:outline-none min-h-full",
+        class: "prose prose-sm focus:outline-none min-h-full",
       },
       handleDOMEvents: {
         mousedown: (view) => {
@@ -358,7 +354,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
       const html = initialBody.trim().startsWith("<") ? initialBody : initialBody.split("\n\n").map((p) => `<p>${p.trim()}</p>`).join("");
       editor.commands.setContent(html || "<p></p>");
     }
-  }, [applyDraftKey, editor]);
+  }, [applyDraftKey, editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -401,7 +397,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             className="cursor-pointer text-[#5f6368] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:text-[#e8eaed]"
             onClick={() => setExpanded((e) => !e)}
           >
-            <span className="font-medium text-[#1a73e8] dark:text-[#8ab4f8]">Draft </span>
+            <span className="font-medium text-[#1a73e8] dark:text-[#1e2a4a]">Draft </span>
             <span>to {to.length > 0 ? to.join(", ") : "..."}</span>
           </div>
           <AIComposeButton
@@ -416,9 +412,9 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
 
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-3 py-2 md:px-4 md:py-4">
         <div
-          className={`relative h-full w-full rounded-lg border p-3 text-[#202124] transition-all duration-200 dark:text-[#e8eaed] md:min-h-[300px] md:p-4 ${isGenerating
-            ? "border-[#1a73e8] bg-[#1a73e8]/5 ring-2 ring-[#1a73e8]/20 dark:border-[#8ab4f8] dark:bg-[#8ab4f8]/10 dark:ring-[#8ab4f8]/30"
-            : "border-[#dadce0] bg-white focus-within:border-[#1a73e8] focus-within:ring-1 focus-within:ring-[#1a73e8]/30 dark:border-[#3c4043] dark:bg-[#292a2d] dark:focus-within:border-[#8ab4f8] dark:focus-within:ring-[#8ab4f8]/30"
+          className={`relative h-full w-full rounded-xl border p-3 text-[#202124] transition-all duration-300 dark:text-[#e8eaed] md:min-h-[300px] md:p-4 ${isGenerating
+            ? "border-[#1e2a4a]/25 bg-white shadow-[0_0_0_4px_rgba(30,42,74,0.06),0_8px_24px_rgba(30,42,74,0.06)] dark:border-[#1e2a4a]/40 dark:bg-[#202124]"
+            : "border-[#dadce0] bg-white focus-within:border-[#1e2a4a]/40 focus-within:shadow-[0_0_0_3px_rgba(30,42,74,0.08)] dark:border-[#3c4043] dark:bg-[#292a2d] dark:focus-within:border-[#1e2a4a]/50"
             }`}
           onClick={() => {
             if (editor && !editor.isDestroyed) {
@@ -426,8 +422,24 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             }
           }}
         >
+          {isGenerating && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-[2px] overflow-hidden rounded-t-xl"
+            >
+              <span
+                className="block h-full w-1/3"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(30,42,74,0.6) 50%, transparent 100%)",
+                  animation: "vm-shimmer 1.6s ease-in-out infinite",
+                }}
+              />
+            </span>
+          )}
+
           <EditorContent
-            className="pyellow pyellow-sm h-full w-full max-w-none border-none focus:outline-none [&_.PyellowMirror]:h-full [&_.PyellowMirror]:min-h-full [&_.PyellowMirror]:cursor-text [&_.PyellowMirror]:p-0 [&_.PyellowMirror]:outline-none [&_.PyellowMirror]:focus:outline-none"
+            className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:cursor-text [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none [&_.ProseMirror]:focus:outline-none"
             editor={editor}
             placeholder={
               isGenerating
@@ -435,10 +447,47 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
                 : "Write your email here..."
             }
           />
+
           {isGenerating && (
-            <div className="absolute right-2 top-2 flex items-center gap-2 text-xs text-[#1a73e8] dark:text-[#8ab4f8]">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-[#1a73e8]/30 border-t-[#1a73e8] dark:border-[#8ab4f8]/30 dark:border-t-[#8ab4f8]" />
-              <span>AI thinking...</span>
+            <div
+              aria-hidden
+              className="pointer-events-none mt-4 space-y-2 select-none"
+            >
+              <div className="vm-skeleton-line" style={{ width: "82%" }} />
+              <div className="vm-skeleton-line" style={{ width: "94%" }} />
+              <div className="vm-skeleton-line" style={{ width: "67%" }} />
+              <div className="vm-skeleton-line" style={{ width: "78%" }} />
+              <div className="vm-skeleton-line" style={{ width: "44%" }} />
+            </div>
+          )}
+
+          {isGenerating && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-2 rounded-full border border-[#1e2a4a]/15 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-sm dark:border-[#1e2a4a]/40 dark:bg-[#1a1c1e]/90"
+            >
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1e2a4a]/40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1e2a4a]" />
+              </span>
+              <span className="text-[11px] font-semibold tracking-tight text-[#1e2a4a] dark:text-[#e8eaed]">
+                Inbox brain thinking
+              </span>
+              <span className="ml-0.5 inline-flex items-end gap-0.5">
+                <span
+                  className="block h-1 w-1 rounded-full bg-[#1e2a4a]/55"
+                  style={{ animation: "vm-bounce-dot 1.2s ease-in-out 0ms infinite" }}
+                />
+                <span
+                  className="block h-1 w-1 rounded-full bg-[#1e2a4a]/55"
+                  style={{ animation: "vm-bounce-dot 1.2s ease-in-out 150ms infinite" }}
+                />
+                <span
+                  className="block h-1 w-1 rounded-full bg-[#1e2a4a]/55"
+                  style={{ animation: "vm-bounce-dot 1.2s ease-in-out 300ms infinite" }}
+                />
+              </span>
             </div>
           )}
         </div>
@@ -476,12 +525,6 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             )}{" "}
             for AI autocomplete
           </span>
-          {isGenerating && (
-            <div className="flex items-center gap-2 text-sm text-[#1a73e8] dark:text-[#8ab4f8]">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-[#1a73e8]/30 border-t-[#1a73e8] dark:border-[#8ab4f8]/30 dark:border-t-[#8ab4f8]" />
-              <span>AI thinking...</span>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-3 md:hidden">
@@ -489,7 +532,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             onClick={handleGenerateClick}
             disabled={isGenerating || isSending}
             variant="outline"
-            className="h-11 flex-1 border-[#dadce0] text-[#1a73e8] hover:bg-[#1a73e8]/10 dark:border-[#3c4043] dark:text-[#8ab4f8] dark:hover:bg-[#8ab4f8]/15"
+            className="h-11 flex-1 border-[#dadce0] text-[#1a73e8] hover:bg-[#1a73e8]/10 dark:border-[#3c4043] dark:text-[#1e2a4a] dark:hover:bg-[#1e2a4a]/15"
           >
             <MessageCircle className="mr-2 h-4 w-4" />
             {isGenerating ? "Generating..." : "Generate"}
@@ -514,7 +557,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             }}
             disabled={isSending || sendDisabled}
             title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
-            className="h-11 flex-1 bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
+            className="h-11 flex-1 bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
           >
             {isSending ? "Sending..." : "Send"}
           </Button>
@@ -541,7 +584,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             }}
             disabled={isSending || sendDisabled}
             title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
-            className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
+            className="bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
           >
             {isSending ? "Sending..." : "Send"}
           </Button>

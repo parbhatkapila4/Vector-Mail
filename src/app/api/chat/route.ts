@@ -1,4 +1,4 @@
-import { db } from "@/server/db";
+﻿import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { env } from "@/env.js";
@@ -10,404 +10,55 @@ import {
   updateSearchSessionMemory,
 } from "@/lib/chat-session";
 import { tryResolveLastSelectedEmail } from "@/lib/ai-search-memory";
-import { buildSourcesFooter } from "@/lib/ai-search-explainable";
+import { buildSourcesFooter } from "@/lib/explainability/sources";
 import { detectIntent } from "@/lib/intent-detection";
 import {
   selectEmails,
-  formatEmailOptions,
   pickMatchesForFollowUp,
   formatEmailOptionsWithReasons,
 } from "@/lib/email-selection";
 import { generateConversationalSummary } from "@/lib/conversational-summary";
-import { getSummarySourceExcerpts } from "@/lib/summary-explainability";
+import { getSummarySourceExcerpts } from "@/lib/explainability/summary";
 import { searchEmailsByVector } from "@/lib/vector-search";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
 import { checkUserRateLimit } from "@/lib/rate-limit";
+import type { InboxAssistantTurn } from "@/lib/inbox-chat-structured";
+import { buildInboxBrainPrompt } from "./prompt";
 import {
-  appendStructuredJsonFence,
-  type InboxAssistantTurn,
-} from "@/lib/inbox-chat-structured";
+  appendExplainableFooter,
+  classifySearchScopeWithLlm,
+  createCompletionWithModelFallback,
+  generateGeneralAssistanceReply,
+  isContextualEmailFollowUp,
+  isExplicitComposeOrSendRequest,
+  isFindOrSummarizeQuery,
+  parseInboxStatsQuery,
+  parseReplyIntent,
+  parseTimeRangeSummaryQuery,
+  resolveTargetThreadIdFromMessages,
+  REASONING_MODEL_CHAIN,
+  removeAllSymbols,
+  RECENT_DAYS,
+  SIMILARITY_THRESHOLD,
+  structuredPlainResponse,
+  turnFromFilteredEmails,
+  turnSingleThread,
+  VECTOR_SIMILARITY_THRESHOLD,
+  type ChatRequest,
+} from "./helpers";
 import type { EmailAddress, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function structuredPlainResponse(body: string, turn: InboxAssistantTurn) {
-  return new Response(appendStructuredJsonFence(body, turn), {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache",
-    },
-  });
-}
-
-function turnSingleThread(args: {
-  summaryLine: string;
-  actionBullets: string[];
-  threadId?: string;
-  chipLabel: string;
-  reason?: string;
-  confidence?: "High" | "Medium" | "Low";
-}): InboxAssistantTurn {
-  const { summaryLine, actionBullets, threadId, chipLabel, reason, confidence } = args;
-  return {
-    summary: summaryLine.slice(0, 500),
-    actions: actionBullets.slice(0, 5),
-    threads: threadId
-      ? [
-        {
-          threadId,
-          label: chipLabel.slice(0, 56),
-          reason: reason ?? "Direct match to your question",
-          confidence: confidence ?? "High",
-        },
-      ]
-      : [],
-  };
-}
-
-function turnFromFilteredEmails(
-  summary: string,
-  actions: string[],
-  emails: Array<{
-    threadId: string;
-    subject: string;
-    from?: { name: string | null; address: string };
-    sentAt?: Date;
-    bodySnippet?: string | null;
-  }>,
-): InboxAssistantTurn {
-  const keywordRe = /\b(deadline|invoice|urgent|asap|contract|legal|board|investor)\b/i;
-  const threads = emails.slice(0, 8).map((e) => ({
-    threadId: e.threadId,
-    label: e.subject.length > 44 ? `${e.subject.slice(0, 44)}…` : e.subject,
-    reason: keywordRe.test(`${e.subject} ${e.bodySnippet ?? ""}`)
-      ? "Contains urgency or business-critical keywords"
-      : e.sentAt
-        ? `Recent thread from ${e.from?.name || e.from?.address || "sender"}`
-        : "Relevant to your query",
-    confidence: keywordRe.test(`${e.subject} ${e.bodySnippet ?? ""}`) ? "High" : "Medium" as "High" | "Medium",
-  }));
-  return {
-    summary: summary.slice(0, 500),
-    actions: actions.slice(0, 5),
-    threads,
-  };
-}
-
-function removeAllSymbols(text: string): string {
-  text = text.replace(/\*+/g, "");
-
-  text = text.replace(/^\s*-\s+/gm, "");
-
-  text = text.replace(/•/g, "");
-
-  text = text.replace(/^\s*[▪▫◦‣⁃]\s+/gm, "");
-
-  text = text.replace(/\n\s*\n\s*\n/g, "\n\n");
-
-  return text;
-}
-
-function appendExplainableFooter<
-  T extends {
-    subject: string;
-    from: { name: string | null; address: string };
-    sentAt: Date;
-    bodySnippet?: string | null;
-  },
->(text: string, explainable: boolean, emails: T[]): string {
-  const base = removeAllSymbols(text);
-  if (!explainable || emails.length === 0) return base;
-  const footer = buildSourcesFooter(
-    emails.slice(0, 5).map((e, i) => ({
-      index: i + 1,
-      subject: e.subject || "(No subject)",
-      from: e.from.name || e.from.address,
-      dateLabel: new Date(e.sentAt).toLocaleDateString(),
-      snippet: e.bodySnippet ?? undefined,
-    })),
-  );
-  return base + footer;
-}
-
-interface ChatRequest {
-  messages: Array<{
-    role: "user" | "assistant";
-    content: string;
-  }>;
-  accountId: string;
-  explainableMode?: boolean;
-  founderDemo?: boolean;
-}
-
-type SearchScopeDecision =
-  | "email_search_or_summary"
-  | "compose_or_send_email"
-  | "out_of_scope";
-
-function isExplicitComposeOrSendRequest(query: string): boolean {
-  const lower = query.toLowerCase();
-  const hasComposeVerb = /\b(write|draft|compose|generate|create|send)\b/.test(lower);
-  const hasEmailContext = /\b(email|mail|message|thread)\b/.test(lower);
-  if (!hasComposeVerb) return false;
-  return hasEmailContext;
-}
-
-async function classifySearchScopeWithLlm(
-  query: string,
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
-  hasStoredResults: boolean,
-): Promise<SearchScopeDecision | null> {
-  if (!env.OPENROUTER_API_KEY) return null;
-
-  try {
-    const openai = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: env.OPENROUTER_API_KEY,
-      defaultHeaders: {
-        "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
-        "X-Title": "VectorMail AI",
-      },
-    });
-
-    const recentMessages = messages.slice(-6).map((m) => ({
-      role: m.role,
-      content: m.content.slice(0, 600),
-    }));
-
-    const prompt = `Classify the user's latest message for an EMAIL SEARCH ASSISTANT.
-
-The assistant is allowed to:
-- find emails
-- filter emails
-- summarize emails
-- answer follow-up questions about previously listed emails
-
-The assistant is NOT allowed to:
-- write/compose/generate emails
-- send emails
-
-Be robust to broken English, slang, mixed language, shorthand, and implicit references like "that failed one on march 17".
-
-Return ONLY JSON:
-{"decision":"email_search_or_summary"|"compose_or_send_email"|"out_of_scope"}
-
-Context:
-- hasStoredResults: ${hasStoredResults ? "true" : "false"}
-- recentMessages: ${JSON.stringify(recentMessages)}
-- latestUserMessage: ${JSON.stringify(query)}`;
-
-    const completion = await openai.chat.completions.create({
-      model: "anthropic/claude-3.5-haiku",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an intent classifier. Return only the requested JSON object.",
-        },
-        { role: "user", content: prompt },
-      ],
-      max_tokens: 40,
-      temperature: 0,
-      response_format: { type: "json_object" },
-    });
-
-    const content = completion.choices[0]?.message?.content?.trim() ?? "";
-    const parsed = JSON.parse(content) as { decision?: SearchScopeDecision };
-    if (
-      parsed.decision === "email_search_or_summary" ||
-      parsed.decision === "compose_or_send_email" ||
-      parsed.decision === "out_of_scope"
-    ) {
-      return parsed.decision;
-    }
-    return null;
-  } catch (error) {
-    console.warn("[Chat] Scope classification failed:", error);
-    return null;
-  }
-}
-
-async function generateGeneralAssistanceReply(
-  query: string,
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
-  userId: string,
-  accountId: string | null,
-): Promise<string | null> {
-  if (!env.OPENROUTER_API_KEY) return null;
-
-  try {
-    const openai = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: env.OPENROUTER_API_KEY,
-      defaultHeaders: {
-        "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
-        "X-Title": "VectorMail AI",
-      },
-    });
-
-    const completion = await openai.chat.completions.create({
-      model: "anthropic/claude-3.5-haiku",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Inbox Brain, a helpful assistant inside an email product. Answer user requests directly and clearly. Refuse only if the user asks you to draft/compose/write/send an email. Keep answers practical and concise.",
-        },
-        ...messages.slice(-8),
-        { role: "user", content: query },
-      ],
-      max_tokens: 500,
-      temperature: 0.6,
-    });
-
-    recordUsage({
-      userId,
-      accountId: accountId ?? undefined,
-      operation: "chat",
-      inputTokens: completion.usage?.prompt_tokens ?? 0,
-      outputTokens: completion.usage?.completion_tokens ?? 0,
-      model: completion.model ?? undefined,
-    });
-
-    return completion.choices[0]?.message?.content?.trim() ?? null;
-  } catch (error) {
-    console.warn("[Chat] General fallback response failed:", error);
-    return null;
-  }
-}
-
-function isContextualEmailFollowUp(
-  query: string,
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
-): boolean {
-  const lowerQuery = query.toLowerCase().trim();
-
-  if (messages.length < 2) return false;
-
-  const followUpSignal =
-    /\b(tell me about|what about|that one|this one|the one|that failed|failed one|on march|on april|on may|on june|on july|on august|on september|on october|on november|on december|on \d{1,2}[-\/]\d{1,2}|from \d{1,2}[-\/]\d{1,2})\b/i.test(
-      lowerQuery,
-    );
-
-  if (!followUpSignal) return false;
-
-  const recentAssistantContext = messages
-    .slice(-6)
-    .filter((msg) => msg.role === "assistant")
-    .map((msg) => msg.content.toLowerCase())
-    .join("\n");
-
-  return (
-    recentAssistantContext.includes("failed payments") ||
-    recentAssistantContext.includes("from:") ||
-    recentAssistantContext.includes("subject:") ||
-    recentAssistantContext.includes("would you like a detailed summary") ||
-    recentAssistantContext.includes("found ")
-  );
-}
-
-const recentDays = 365;
-const similarityThreshold = 0.1;
-const vectorSimilarityThreshold = 0.3;
-
-function isFindOrSummarizeQuery(query: string): boolean {
-  const lowerQuery = query.toLowerCase().trim();
-
-  if (lowerQuery.length < 2) {
-    return true;
-  }
-
-  const simpleConversational = [
-    /^(hi|hello|hey|hey\s+dude|hey\s+there|greetings|sup|what's\s+up|wassup)$/i,
-    /^(thanks|thank\s+you|thx|ty|appreciate\s+it|cheers)$/i,
-    /^(cool|nice|awesome|great|ok|okay|sure|alright|sounds\s+good)$/i,
-    /^(yes|yeah|yep|yup|no|nope|maybe|sure)$/i,
-    /^(bye|goodbye|see\s+ya|later|cya)$/i,
-    /^(help|what\s+can\s+you\s+do|what\s+do\s+you\s+do|capabilities)$/i,
-  ];
-
-  const isSimpleConversation = simpleConversational.some((pattern) =>
-    pattern.test(lowerQuery),
-  );
-  if (isSimpleConversation) {
-    return true;
-  }
-
-  const naturalFindPatterns = [
-    /^from\s+[\w\s.@-]+\??$/i,
-    /\b(emails?|mail|messages?)\s+from\s+/i,
-    /^[\w\s.@-]+\??$/i,
-    /\b(find|search|show|get|look|fetch|retrieve|display|list)\b/i,
-    /\b(mail|email|message|inbox)\s+(from|about|with|regarding|concerning)\b/i,
-    /\b(any|all|some|my)\s+(mail|email|message|emails)\b/i,
-    /\b(emails?|mail|messages?)\s+(from|about|with|regarding|concerning)\b/i,
-    /\b(orders?|flights?|meetings?|payments?|receipts?|bookings?|invoices?|confirmations?)\b/i,
-    /\b(what|which|where|when|who|how|do|does|did|is|are|was|were)\s+(mail|email|message|emails)\b/i,
-    /\b(do\s+i\s+have|have\s+i|got\s+any)\s+(mail|email|message|emails?)\b/i,
-  ];
-
-  const summarizePatterns = [
-    /\b(summarize|summary|summarise|summaries)\b/i,
-    /\b(what\s+(is|was|does|did|are|were)|tell\s+me\s+about|explain|describe|what\s+about|what's)\b/i,
-    /\b(about\s+(this|that|the|it|them))\b/i,
-    /\b(the|this|that|one|first|second|third|fourth|fifth)\s+(on|from|dated?|about|email|mail)\b/i,
-  ];
-
-  const isFindQuery = naturalFindPatterns.some((pattern) =>
-    pattern.test(lowerQuery),
-  );
-
-  const isSummarizeQuery = summarizePatterns.some((pattern) =>
-    pattern.test(lowerQuery),
-  );
-
-  const hasEmailWords =
-    /\b(mail|email|message|inbox|emails?|messages?)\b/i.test(lowerQuery);
-  const hasActionWords = /\b(from|about|with|regarding|concerning|for)\b/i.test(
-    lowerQuery,
-  );
-
-  if (/\bfrom\s+[\w\s.@-]+/i.test(lowerQuery)) {
-    return true;
-  }
-
-  if (
-    /^[\w\s.@-]+\??$/i.test(lowerQuery) &&
-    lowerQuery.length > 2 &&
-    lowerQuery.length < 50
-  ) {
-    const words = lowerQuery.replace(/[?]/g, "").trim().split(/\s+/);
-    if (words.length <= 3) {
-      return true;
-    }
-  }
-
-  if (hasEmailWords && hasActionWords) {
-    return true;
-  }
-
-  if (
-    /^(what|which|where|when|who|how|do|does|did|is|are|was|were)\b/i.test(
-      lowerQuery,
-    ) &&
-    hasEmailWords
-  ) {
-    return true;
-  }
-
-  return isFindQuery || isSummarizeQuery;
-}
-
 async function chatPostHandler(req: Request) {
   try {
     const { userId } = await auth();
 
     if (!userId) {
-      console.error("[Chat API] Unauthorized: No userId found");
+      chatLog.error("[Chat API] Unauthorized: No userId found");
       return new Response(
         JSON.stringify({ error: "Unauthorized. Please sign in.", code: "UNAUTHORIZED" }),
         {
@@ -453,7 +104,7 @@ async function chatPostHandler(req: Request) {
     try {
       body = await req.json();
     } catch (parseError) {
-      console.error("[Chat API] Failed to parse request body:", parseError);
+      chatLog.error("[Chat API] Failed to parse request body:", parseError);
       return new Response(
         JSON.stringify({ error: "Invalid request body", code: "INVALID_REQUEST" }),
         {
@@ -468,7 +119,7 @@ async function chatPostHandler(req: Request) {
     const founderDemo = body.founderDemo === true;
 
     if (!accountId || accountId.trim() === "") {
-      console.error("[Chat API] Account ID is required");
+      chatLog.error("[Chat API] Account ID is required");
       return new Response(
         JSON.stringify({ error: "Account ID is required. Please select an email account.", code: "MISSING_ACCOUNT_ID" }),
         {
@@ -479,7 +130,7 @@ async function chatPostHandler(req: Request) {
     }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      console.error("[Chat API] Invalid messages array");
+      chatLog.error("[Chat API] Invalid messages array");
       return new Response(
         JSON.stringify({ error: "Messages array is required and must not be empty", code: "INVALID_MESSAGES" }),
         {
@@ -491,7 +142,7 @@ async function chatPostHandler(req: Request) {
 
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage?.content) {
-      console.error("[Chat API] No message content provided");
+      chatLog.error("[Chat API] No message content provided");
       return new Response(
         JSON.stringify({ error: "No message content provided", code: "MISSING_CONTENT" }),
         {
@@ -512,7 +163,7 @@ async function chatPostHandler(req: Request) {
     });
 
     if (!account) {
-      console.error(`[Chat API] Account not found. userId: ${userId}, accountId: ${accountId}`);
+      chatLog.error(`[Chat API] Account not found. userId: ${userId}, accountId: ${accountId}`);
 
       const accountExists = await db.account.findFirst({
         where: { id: accountId },
@@ -520,7 +171,7 @@ async function chatPostHandler(req: Request) {
       });
 
       if (accountExists) {
-        console.error(`[Chat API] Account exists but belongs to different user: ${accountExists.userId}`);
+        chatLog.error(`[Chat API] Account exists but belongs to different user: ${accountExists.userId}`);
         return new Response(
           JSON.stringify({
             error: "Account not found or access denied. Please reconnect your email account.",
@@ -550,6 +201,74 @@ async function chatPostHandler(req: Request) {
     if (hasStoredResults) {
       touchChatSession(userId, accountId);
     }
+    const replyIntent = parseReplyIntent(userQuery);
+    if (replyIntent) {
+      const targetThreadId = resolveTargetThreadIdFromMessages(
+        messages,
+        storedEmails,
+      );
+      if (!targetThreadId) {
+        return structuredPlainResponse(
+          "I need to know which thread you mean. Open the email first, or ask me to find it (e.g. 'show the Gumroad email'), then say 'reply with …' again.",
+          {
+            summary: "No thread to reply to yet",
+            actions: [
+              "Open a thread, or ask me to find one first.",
+              "Then say: reply with \"your message\".",
+            ],
+            threads: [],
+          },
+        );
+      }
+
+      const { sendReplyToThread } = await import("@/lib/email-reply");
+      const result = await sendReplyToThread({
+        userId,
+        threadId: targetThreadId,
+        body: replyIntent.body,
+        source: "inbox_brain_chat",
+      });
+
+      if (!result.ok) {
+        chatLog.warn(
+          `[Chat] reply intent failed (${result.reason}) for thread ${targetThreadId}`,
+        );
+        return structuredPlainResponse(result.message, {
+          summary: "Couldn't send the reply",
+          actions:
+            result.reason === "needs_reconnect"
+              ? ["Reconnect the mailbox, then try again."]
+              : result.reason === "demo"
+                ? ["Connect a real mailbox to send."]
+                : ["Try again, or open the thread to send manually."],
+          threads: [{ threadId: targetThreadId, label: "Open thread", reason: "Reply attempt", confidence: "High" }],
+        });
+      }
+
+      const recipient = result.toName
+        ? `${result.toName} <${result.toAddress}>`
+        : result.toAddress;
+      const previewBody =
+        replyIntent.body.length > 220
+          ? `${replyIntent.body.slice(0, 217)}…`
+          : replyIntent.body;
+      return structuredPlainResponse(
+        `Sent to ${recipient}.\n\n"${previewBody}"`,
+        {
+          summary: `Sent reply to ${result.toAddress}`,
+          actions: ["Open the thread to see your reply in context."],
+          threads: [
+            {
+              threadId: targetThreadId,
+              label: result.subject.slice(0, 80),
+              reason: "Reply sent from chat",
+              confidence: "High",
+            },
+          ],
+        },
+      );
+    }
+
     const contextualFollowUp = isContextualEmailFollowUp(userQuery, messages);
     const heuristicAllowsSearch =
       isFindOrSummarizeQuery(userQuery) || contextualFollowUp;
@@ -591,7 +310,7 @@ async function chatPostHandler(req: Request) {
 
     let shouldUseStoredResults = hasStoredResults;
     if (isNewSearchQuery && hasStoredResults) {
-      console.log(`[Chat] Detected new search query, clearing stored results`);
+      chatLog.log(`[Chat] Detected new search query, clearing stored results`);
       const { clearSession } = await import("@/lib/chat-session");
       clearSession(userId, accountId);
       shouldUseStoredResults = false;
@@ -600,7 +319,7 @@ async function chatPostHandler(req: Request) {
     const intentResult = detectIntent(userQuery, shouldUseStoredResults);
     const { intent, extractedData } = intentResult;
 
-    console.log(
+    chatLog.log(
       `[Chat] Intent: ${intent}, Confidence: ${intentResult.confidence}, IsNewSearch: ${isNewSearchQuery}, ShouldUseStored: ${shouldUseStoredResults}, Extracted:`,
       extractedData,
     );
@@ -683,7 +402,7 @@ async function chatPostHandler(req: Request) {
         }
       }
 
-      let matches = pickMatchesForFollowUp(
+      const matches = pickMatchesForFollowUp(
         selectEmails(storedEmails, extractedData || {}),
       );
 
@@ -720,8 +439,7 @@ The user is asking about one of these emails. Based on their query, which email 
 
 Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query. If you can't determine, respond with "0".`;
 
-            const completion = await openai.chat.completions.create({
-              model: "anthropic/claude-3.5-haiku",
+            const completion = await createCompletionWithModelFallback(openai, {
               messages: [
                 { role: "system", content: smartSystemPrompt },
                 { role: "user", content: userQuery },
@@ -802,7 +520,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
               }
             }
           } catch (llmError) {
-            console.error("LLM fallback error:", llmError);
+            chatLog.error("LLM fallback error:", llmError);
           }
         }
 
@@ -825,7 +543,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
               threadId: tid,
               label:
                 m.email.subject.length > 44
-                  ? `${m.email.subject.slice(0, 44)}…`
+                  ? `${m.email.subject.slice(0, 44)}â€¦`
                   : m.email.subject,
               reason:
                 m.matchReason?.slice(0, 120) ??
@@ -908,7 +626,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           }),
         );
       } catch (summaryError) {
-        console.error("Summary generation failed:", summaryError);
+        chatLog.error("Summary generation failed:", summaryError);
         const response = `This email from ${selectedEmail.from.name || selectedEmail.from.address} dated ${new Date(selectedEmail.date).toLocaleDateString()} is about "${selectedEmail.subject}". ${selectedEmail.snippet}...`;
         return structuredPlainResponse(response, {
           summary: `Snippet: ${selectedEmail.subject.slice(0, 80)}`,
@@ -919,7 +637,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
                 threadId: selectedEmail.threadId,
                 label:
                   selectedEmail.subject.length > 44
-                    ? `${selectedEmail.subject.slice(0, 44)}…`
+                    ? `${selectedEmail.subject.slice(0, 44)}â€¦`
                     : selectedEmail.subject,
                 reason: "Directly selected as the best match for your query",
                 confidence: "High",
@@ -931,7 +649,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
     }
 
     const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - recentDays);
+    recentDate.setDate(recentDate.getDate() - RECENT_DAYS);
 
     let relevantEmails: Array<{
       id: string;
@@ -946,35 +664,184 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
       to: EmailAddress[];
     }> = [];
 
-    let senderTerm = "";
-    const senderPatterns = [
-      /(?:from|by|sent\s+by)\s+([a-zA-Z0-9._@\s-]+)/i,
-      /^([a-zA-Z0-9._@\s-]+)\??$/i,
-    ];
+    if (parseInboxStatsQuery(userQuery)) {
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const accountScope = { thread: { accountId } } as const;
+      const [totalEmails, totalThreads, inboxThreads, last24h, last7d, last30d] =
+        await Promise.all([
+          db.email.count({ where: accountScope }),
+          db.thread.count({ where: { accountId } }),
+          db.thread.count({ where: { accountId, inboxStatus: true } }),
+          db.email.count({ where: { ...accountScope, sentAt: { gte: dayAgo } } }),
+          db.email.count({ where: { ...accountScope, sentAt: { gte: weekAgo } } }),
+          db.email.count({ where: { ...accountScope, sentAt: { gte: monthAgo } } }),
+        ]);
+      const fmt = (n: number) => n.toLocaleString();
+      const body = [
+        `Across this account I can see ${fmt(totalEmails)} email${totalEmails === 1 ? "" : "s"} in ${fmt(totalThreads)} thread${totalThreads === 1 ? "" : "s"}.`,
+        `${fmt(inboxThreads)} are sitting in your inbox right now.`,
+        `Recent activity: ${fmt(last24h)} in the last 24h, ${fmt(last7d)} in the last 7 days, ${fmt(last30d)} in the last 30 days.`,
+        totalEmails > 0
+          ? `Ask me to rank what matters, summarize a window, or find mail from a specific sender - I can search across all of these.`
+          : `Nothing has synced yet. Connect a mailbox or let the initial sync finish and I'll come back to life.`,
+      ].join(" ");
+      return structuredPlainResponse(body, {
+        summary: `${fmt(totalEmails)} emails · ${fmt(inboxThreads)} inbox threads`,
+        actions: totalEmails > 0
+          ? ["Try: rank what matters today.", "Try: summarize the last 7 days."]
+          : ["Wait for sync, or connect a mailbox."],
+        threads: [],
+      });
+    }
 
-    for (const pattern of senderPatterns) {
-      const match = userQuery.match(pattern);
-      if (match && match[1]) {
-        senderTerm = match[1].trim().toLowerCase().replace(/[?]/g, "");
-        if (
-          senderTerm.length > 1 &&
-          senderTerm.length < 50 &&
-          !senderTerm.includes(" ")
-        ) {
-          break;
-        } else if (senderTerm.length > 1 && senderTerm.length < 100) {
-          const words = senderTerm.split(/\s+/);
-          if (words.length <= 3) {
+    const timeRangeSummary = parseTimeRangeSummaryQuery(userQuery);
+    let timeRangeSummaryActive = false;
+    if (timeRangeSummary) {
+      const windows = Array.from(
+        new Set([timeRangeSummary.days, 7, 30, 90]),
+      ).filter((d) => d >= timeRangeSummary.days);
+      const fetchWindow = (days: number) => {
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+        return db.email.findMany({
+          where: {
+            thread: { accountId: accountId },
+            sentAt: { gte: since },
+          },
+          include: { from: true, to: true },
+          orderBy: { sentAt: "desc" },
+          take: 80,
+        });
+      };
+      let recentEmails = await fetchWindow(timeRangeSummary.days);
+      let usedDays = timeRangeSummary.days;
+      if (recentEmails.length === 0) {
+        for (const days of windows.slice(1)) {
+          recentEmails = await fetchWindow(days);
+          if (recentEmails.length > 0) {
+            usedDays = days;
             break;
           }
         }
-        senderTerm = "";
       }
+
+      if (recentEmails.length > 0) {
+        relevantEmails = recentEmails.map((email) => ({
+          id: email.id,
+          threadId: email.threadId,
+          subject: email.subject,
+          summary: email.summary,
+          body: email.body,
+          bodySnippet: email.bodySnippet,
+          sentAt: email.sentAt,
+          similarity: 0.8,
+          from: email.from,
+          to: email.to,
+        }));
+        storeSearchResults(userId, accountId, relevantEmails, userQuery);
+        timeRangeSummaryActive = true;
+        chatLog.log(
+          `[Chat] time-range summary: pulled ${relevantEmails.length} emails from last ${usedDays}d (requested ${timeRangeSummary.days}d)`,
+        );
+      } else {
+        const totalCheck = await db.email.count({
+          where: { thread: { accountId } },
+        });
+        const msg = totalCheck > 0
+          ? `Your inbox has ${totalCheck.toLocaleString()} email${totalCheck === 1 ? "" : "s"} total, but none in the recent window. Ask me to look further back or for a specific sender.`
+          : `Your inbox is empty for this account - nothing has synced yet. Connect a mailbox or wait for the initial sync to finish.`;
+        return structuredPlainResponse(msg, {
+          summary: totalCheck > 0 ? "Nothing recent" : "Inbox empty",
+          actions: totalCheck > 0
+            ? ["Try: last 30 days, or a specific sender."]
+            : ["Wait for sync, or connect a mailbox."],
+          threads: [],
+        });
+      }
+    }
+
+    const senderTermBlocklist = new Set([
+      "another",
+      "anyone",
+      "anything",
+      "everyone",
+      "everything",
+      "him",
+      "her",
+      "them",
+      "us",
+      "you",
+      "me",
+      "this",
+      "that",
+      "these",
+      "those",
+      "today",
+      "tomorrow",
+      "yesterday",
+      "morning",
+      "evening",
+      "night",
+      "now",
+      "later",
+      "earlier",
+      "long",
+      "short",
+      "where",
+      "when",
+      "what",
+      "who",
+      "why",
+      "how",
+      "the",
+      "a",
+      "an",
+      "my",
+      "your",
+      "our",
+      "his",
+      "their",
+      "real",
+      "good",
+      "bad",
+      "old",
+      "new",
+      "last",
+      "first",
+      "second",
+      "third",
+      "mother",
+      "father",
+      "brother",
+      "sister",
+      "friend",
+      "people",
+      "someone",
+      "somebody",
+    ]);
+    let senderTerm = "";
+    const trimmedQuery = userQuery.trim();
+    const singleTokenSenderPatterns: RegExp[] = [
+      /\b(?:emails?|mail|messages?)\s+from\s+([a-zA-Z0-9._@-]+)\b/i,
+      /^from\s+([a-zA-Z0-9._@-]+)\??$/i,
+      /^([a-zA-Z0-9._@-]+)\??$/i,
+    ];
+    for (const pattern of singleTokenSenderPatterns) {
+      const match = trimmedQuery.match(pattern);
+      if (!match || !match[1]) continue;
+      const candidate = match[1].trim().toLowerCase().replace(/[?]/g, "");
+      if (candidate.length <= 1 || candidate.length > 50) continue;
+      if (candidate.includes(" ")) continue;
+      if (senderTermBlocklist.has(candidate)) continue;
+      senderTerm = candidate;
+      break;
     }
 
     let understoodQuery = userQuery;
     let queryIntent = "";
-    if (env.OPENROUTER_API_KEY) {
+    if (env.OPENROUTER_API_KEY && !timeRangeSummaryActive) {
       try {
         const openai = new OpenAI({
           baseURL: "https://openrouter.ai/api/v1",
@@ -987,30 +854,40 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
 
         const understandingPrompt = `The user asked: "${userQuery}"
 
-Your task: Understand what the user is REALLY looking for and generate:
-1. A clear search query optimized for finding relevant emails
-2. A description of what types of emails are relevant
+Your task: Understand what the user is REALLY looking for and produce a SEMANTIC search expansion for a vector database, plus a relevance description for downstream filtering.
+
+Think about INTENT - not just the literal words. Treat the user like a smart human asking a smart assistant. If they ask "find emails regarding meetings" they want everything that genuinely relates to meetings - calendar invites, scheduling threads, meeting agendas, recaps, reschedules, follow-ups, sync requests, intro chats, etc. - not only the literal word "meeting".
+
+For relevantTypes, capture both the COMMITMENT level the user is asking for:
+- "find my X" / "show X" / "what X do I have" → STRICT: actual instances of X
+- "anything regarding X" / "emails about X" / "mention of X" / "discuss X" / "related to X" → INCLUSIVE: anything substantively about X
+- ambiguous → moderate
+
+SENDER EXTRACTION - important:
+If the user is asking about emails from a specific person, company, brand, or service (e.g., "from notion", "any email from cursor", "frrrom stripe", "Anthropic emails"), set "sender" to that name as a SINGLE LOWERCASE TOKEN. Be robust to typos ("frrrom" → still recognize "from"), slang ("brother from another mother" → ignore, it's an expression), and casual phrasing. If no specific sender is mentioned, set "sender" to null.
 
 Examples:
-- "Find my flight bookings" → Search: "flight booking airline ticket reservation travel" | Relevant: emails about flights, airlines, travel bookings, tickets, reservations, airports
-- "Show receipts and payments" → Search: "receipt payment invoice purchase order transaction" | Relevant: emails about payments, receipts, invoices, purchases, transactions, billing
-- "What meetings do I have" → Search: "meeting appointment calendar invite schedule" | Relevant: emails about meetings, appointments, calendar invites, scheduling
-- "from Joe?" or "from Joe" → Search: "Joe" | Relevant: emails from sender named Joe or email address containing Joe
-- "Joe?" or "Luma?" → Search: "Joe" or "Luma" | Relevant: emails from sender with that name
-
-IMPORTANT: If the query is asking about emails from a specific person (like "from Joe?", "Joe?", "emails from John"), the searchQuery should be the person's name, and relevantTypes should indicate "emails from that sender".
+- "Find my flight bookings" → searchQuery: "flight booking airline ticket reservation itinerary boarding pass departure arrival" | sender: null | relevantTypes: "STRICT: actual flight bookings, airline confirmations, e-tickets, itineraries, boarding passes" | intent: "find actual flight bookings"
+- "Show receipts and payments" → searchQuery: "receipt payment invoice purchase order transaction billing charge debit subscription" | sender: null | relevantTypes: "STRICT: real transaction records, invoices, payment confirmations" | intent: "find actual payment records"
+- "What meetings do I have this week" → searchQuery: "meeting calendar invite scheduled call appointment zoom google meet sync standup" | sender: null | relevantTypes: "STRICT: actual calendar invites, RSVPs, scheduled meetings on the calendar" | intent: "find scheduled meetings"
+- "find any mail regarding meetings" → searchQuery: "meeting calendar invite scheduled call appointment agenda recap reschedule sync standup discussion" | sender: null | relevantTypes: "INCLUSIVE: anything substantively about meetings - invites, agendas, recaps, scheduling threads, follow-ups, sync emails, meeting-related discussions" | intent: "find anything related to meetings"
+- "anything about hiring or recruiting" → searchQuery: "hiring recruiting candidate interview offer job application resume role position" | sender: null | relevantTypes: "INCLUSIVE: anything substantively about hiring or recruiting - candidates, interviews, offers, job posts, recruiting threads" | intent: "discuss hiring/recruiting"
+- "from Joe?" → searchQuery: "joe" | sender: "joe" | relevantTypes: "emails from a sender named Joe or address containing Joe" | intent: "find emails from sender Joe"
+- "Brother from another mother, any email from cursor regarding payment?" → searchQuery: "cursor payment invoice billing subscription receipt charge" | sender: "cursor" | relevantTypes: "INCLUSIVE: emails from Cursor about payments/billing" | intent: "find Cursor payment emails"
+- "is there any email frrrom notion in my inbox?" → searchQuery: "notion workspace docs productivity team" | sender: "notion" | relevantTypes: "STRICT: emails from Notion the company or addresses containing notion" | intent: "find emails from Notion"
+- "any neeon mails about payment?" → searchQuery: "neon database postgres payment billing invoice subscription" | sender: "neon" | relevantTypes: "INCLUSIVE: emails from Neon about payments" | intent: "find Neon payment emails"
 
 Return ONLY a JSON object in this exact format:
 {
-  "searchQuery": "optimized search terms here",
-  "relevantTypes": "description of what emails are relevant",
-  "intent": "brief intent description"
+  "searchQuery": "comma- or space-separated semantic expansion terms (include synonyms)",
+  "sender": "lowercase single-token sender name, or null if none",
+  "relevantTypes": "STRICT or INCLUSIVE - followed by what to include/exclude",
+  "intent": "one-line intent description"
 }`;
 
-        let understandingResponse;
-        try {
-          understandingResponse = await openai.chat.completions.create({
-            model: "anthropic/claude-3.5-haiku",
+        const understandingResponse = await createCompletionWithModelFallback(
+          openai,
+          {
             messages: [
               {
                 role: "system",
@@ -1022,24 +899,8 @@ Return ONLY a JSON object in this exact format:
             max_tokens: 200,
             temperature: 0.1,
             response_format: { type: "json_object" },
-          });
-        } catch (claudeError) {
-          console.warn("Claude failed, retrying with Claude Sonnet:", claudeError);
-          understandingResponse = await openai.chat.completions.create({
-            model: "anthropic/claude-3.5-haiku",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are a query understanding assistant. Analyze user queries and generate optimized search terms and relevance criteria. Return ONLY valid JSON.",
-              },
-              { role: "user", content: understandingPrompt },
-            ],
-            max_tokens: 200,
-            temperature: 0.1,
-            response_format: { type: "json_object" },
-          });
-        }
+          },
+        );
 
         if (understandingResponse?.usage) {
           recordUsage({
@@ -1060,37 +921,44 @@ Return ONLY a JSON object in this exact format:
             understoodQuery = parsed.searchQuery || userQuery;
             queryIntent = parsed.relevantTypes || "";
 
+            const llmSender =
+              typeof parsed.sender === "string"
+                ? parsed.sender.trim().toLowerCase()
+                : "";
+            if (
+              llmSender.length > 1 &&
+              llmSender.length <= 50 &&
+              !llmSender.includes(" ") &&
+              !senderTermBlocklist.has(llmSender)
+            ) {
+              senderTerm = llmSender;
+            }
+
             if (
               senderTerm &&
               !understoodQuery.toLowerCase().includes(senderTerm.toLowerCase())
             ) {
-              understoodQuery = senderTerm;
-              queryIntent = `emails from sender: ${senderTerm}`;
+              understoodQuery = `${senderTerm} ${understoodQuery}`.trim();
             }
 
-            console.log(
-              `[Query Understanding] Original: "${userQuery}" → Understood: "${understoodQuery}" | Intent: "${queryIntent}" | Sender: "${senderTerm}"`,
+            chatLog.log(
+              `[Query Understanding] Original: "${userQuery}" â†’ Understood: "${understoodQuery}" | Intent: "${queryIntent}" | Sender: "${senderTerm}" (regex/LLM merged)`,
             );
           } catch (parseError) {
-            console.warn("Failed to parse query understanding:", parseError);
-            if (senderTerm) {
-              understoodQuery = senderTerm;
-              queryIntent = `emails from sender: ${senderTerm}`;
-            }
+            chatLog.warn("Failed to parse query understanding:", parseError);
           }
-        } else if (senderTerm) {
-          understoodQuery = senderTerm;
-          queryIntent = `emails from sender: ${senderTerm}`;
         }
       } catch (understandingError) {
-        console.warn(
+        chatLog.warn(
           "Query understanding failed, using original query:",
           understandingError,
         );
       }
     }
 
-    try {
+    const VECTOR_TOPUP_THRESHOLD = 5;
+
+    if (!timeRangeSummaryActive) try {
       let vectorSearchResults: Array<{
         id: string;
         threadId: string;
@@ -1140,20 +1008,20 @@ Return ONLY a JSON object in this exact format:
         }
 
         vectorSearchResults = vectorSearchResults.filter(
-          (email) => email.similarity >= vectorSimilarityThreshold,
+          (email) => email.similarity >= VECTOR_SIMILARITY_THRESHOLD,
         );
 
         if (vectorSearchResults.length > 0) {
           relevantEmails = vectorSearchResults;
         }
       } catch (vectorError) {
-        console.log(
+        chatLog.log(
           "Vector search not available or failed, falling back to text search:",
           vectorError,
         );
       }
 
-      if (relevantEmails.length === 0) {
+      if (relevantEmails.length < VECTOR_TOPUP_THRESHOLD) {
         const whereConditions: Prisma.EmailWhereInput = {
           thread: {
             accountId: accountId,
@@ -1184,28 +1052,49 @@ Return ONLY a JSON object in this exact format:
           )
           .trim();
 
+        const stopwords = new Set([
+          "the", "a", "an", "and", "or", "but", "not", "is", "are", "was",
+          "were", "be", "been", "being", "have", "has", "had", "do", "does",
+          "did", "will", "would", "should", "could", "can", "may", "might",
+          "must", "shall", "this", "that", "these", "those", "for", "with",
+          "about", "regarding", "concerning", "any", "all", "some", "every",
+          "each", "what", "which", "who", "whom", "whose", "when", "where",
+          "why", "how", "there", "their", "they", "them", "from", "to", "of",
+          "in", "on", "at", "by", "as", "into", "onto", "out", "over",
+          "under", "again", "further", "then", "once", "email", "emails",
+          "mail", "mails", "message", "messages", "inbox", "thread", "threads",
+          "tell", "show", "find", "give", "say", "see", "look", "check",
+          "search", "fetch", "get", "list", "want", "need", "please", "kindly",
+          "hey", "hi", "hello", "yo", "dude", "bro", "brother", "man",
+          "mate", "friend", "buddy", "actually", "really", "very", "much",
+          "more", "less", "just", "only", "also", "too", "still", "yet",
+          "already", "now", "later", "today", "yesterday", "tomorrow",
+          "received", "receive", "got", "had", "have", "has",
+        ]);
         const searchTerms = cleanQuery
           .split(/\s+/)
+          .map((t) => t.replace(/[^\w@.-]/g, ""))
           .filter(
-            (term) => term.length > 2 && term !== senderTerm.toLowerCase(),
+            (term) =>
+              term.length > 2 &&
+              term !== senderTerm.toLowerCase() &&
+              !stopwords.has(term),
           );
 
-        if (searchTerms.length > 0) {
+        for (const term of searchTerms) {
           orConditions.push(
-            { subject: { contains: searchTerms[0], mode: "insensitive" } },
-            { bodySnippet: { contains: searchTerms[0], mode: "insensitive" } },
-            { summary: { contains: searchTerms[0], mode: "insensitive" } },
+            { subject: { contains: term, mode: "insensitive" } },
+            { bodySnippet: { contains: term, mode: "insensitive" } },
+            { summary: { contains: term, mode: "insensitive" } },
+            {
+              from: {
+                OR: [
+                  { address: { contains: term, mode: "insensitive" } },
+                  { name: { contains: term, mode: "insensitive" } },
+                ],
+              },
+            },
           );
-
-          if (searchTerms.length > 1) {
-            searchTerms.slice(1).forEach((term) => {
-              orConditions.push(
-                { subject: { contains: term, mode: "insensitive" } },
-                { bodySnippet: { contains: term, mode: "insensitive" } },
-                { summary: { contains: term, mode: "insensitive" } },
-              );
-            });
-          }
         }
 
         if (orConditions.length > 0) {
@@ -1224,23 +1113,27 @@ Return ONLY a JSON object in this exact format:
           take: 20,
         });
 
-        relevantEmails = searchResults.map((email) => ({
-          id: email.id,
-          threadId: email.threadId,
-          subject: email.subject,
-          summary: email.summary,
-          body: email.body,
-          bodySnippet: email.bodySnippet,
-          sentAt: email.sentAt,
-          similarity: 0.5,
-          from: email.from,
-          to: email.to,
-        }));
+        const existingIds = new Set(relevantEmails.map((e) => e.id));
+        const textOnly = searchResults
+          .filter((email) => !existingIds.has(email.id))
+          .map((email) => ({
+            id: email.id,
+            threadId: email.threadId,
+            subject: email.subject,
+            summary: email.summary,
+            body: email.body,
+            bodySnippet: email.bodySnippet,
+            sentAt: email.sentAt,
+            similarity: 0.5,
+            from: email.from,
+            to: email.to,
+          }));
+        relevantEmails = [...relevantEmails, ...textOnly].slice(0, 30);
       }
 
       storeSearchResults(userId, accountId, relevantEmails, userQuery);
     } catch (searchError) {
-      console.error("Search failed:", searchError);
+      chatLog.error("Search failed:", searchError);
       throw searchError;
     }
 
@@ -1269,7 +1162,10 @@ Return ONLY a JSON object in this exact format:
         lowerUserQuery,
       );
 
-    if (relevantEmails.length === 0 && isHeuristicCategoryQuery) {
+    if (
+      relevantEmails.length < VECTOR_TOPUP_THRESHOLD &&
+      isHeuristicCategoryQuery
+    ) {
       const since = new Date();
       since.setDate(since.getDate() - 90);
 
@@ -1387,28 +1283,51 @@ Return ONLY a JSON object in this exact format:
           take: 20,
         });
 
-        relevantEmails = searchResults.map((email) => ({
-          id: email.id,
-          threadId: email.threadId,
-          subject: email.subject,
-          summary: email.summary,
-          body: email.body,
-          bodySnippet: email.bodySnippet,
-          sentAt: email.sentAt,
-          similarity: 0.5,
-          from: email.from,
-          to: email.to,
-        }));
+        const existingIds = new Set(relevantEmails.map((e) => e.id));
+        const categoryOnly = searchResults
+          .filter((email) => !existingIds.has(email.id))
+          .map((email) => ({
+            id: email.id,
+            threadId: email.threadId,
+            subject: email.subject,
+            summary: email.summary,
+            body: email.body,
+            bodySnippet: email.bodySnippet,
+            sentAt: email.sentAt,
+            similarity: 0.5,
+            from: email.from,
+            to: email.to,
+          }));
+        relevantEmails = [...relevantEmails, ...categoryOnly].slice(0, 30);
         storeSearchResults(userId, accountId, relevantEmails, userQuery);
       }
     }
 
     let filteredEmails = relevantEmails.filter((email) => {
-      const minSimilarity = isHeuristicCategoryQuery ? 0 : similarityThreshold;
+      const minSimilarity = isHeuristicCategoryQuery ? 0 : SIMILARITY_THRESHOLD;
       return email.similarity >= minSimilarity;
     });
 
-    let skipLlmStrictFilter = false;
+    let skipLlmStrictFilter = timeRangeSummaryActive || senderTerm.length > 0;
+
+    if (senderTerm.length > 0 && filteredEmails.length > 0) {
+      const senderLower = senderTerm.toLowerCase();
+      const senderMatched = filteredEmails.filter((email) => {
+        const fromAddress = email.from.address?.toLowerCase() || "";
+        const fromName = email.from.name?.toLowerCase() || "";
+        return (
+          fromAddress.includes(senderLower) || fromName.includes(senderLower)
+        );
+      });
+      if (senderMatched.length > 0) {
+        filteredEmails = senderMatched;
+        chatLog.log(
+          `[Chat] senderTerm "${senderTerm}" filtered ${filteredEmails.length} from-matched candidates from the pool`,
+        );
+      } else {
+        filteredEmails = [];
+      }
+    }
 
     const hitsText = (e: (typeof filteredEmails)[number]) =>
       `${e.subject}\n${e.summary ?? ""}\n${e.bodySnippet ?? ""}\n${e.body ?? ""}`.toLowerCase();
@@ -1448,7 +1367,6 @@ Return ONLY a JSON object in this exact format:
 
       if (heurFiltered.length > 0) {
         filteredEmails = heurFiltered;
-        skipLlmStrictFilter = true;
       } else {
         const declineOnly = filteredEmails.filter((e) => {
           const t = hitsText(e);
@@ -1457,7 +1375,6 @@ Return ONLY a JSON object in this exact format:
 
         if (declineOnly.length > 0) {
           filteredEmails = declineOnly;
-          skipLlmStrictFilter = true;
         }
       }
     }
@@ -1488,7 +1405,6 @@ Return ONLY a JSON object in this exact format:
         : [];
       if (heurAttention.length > 0) {
         filteredEmails = heurAttention;
-        skipLlmStrictFilter = true;
       }
     }
 
@@ -1516,7 +1432,6 @@ Return ONLY a JSON object in this exact format:
         : [];
       if (heurOrders.length > 0) {
         filteredEmails = heurOrders;
-        skipLlmStrictFilter = true;
       }
     }
 
@@ -1546,7 +1461,6 @@ Return ONLY a JSON object in this exact format:
         : [];
       if (heurTravel.length > 0) {
         filteredEmails = heurTravel;
-        skipLlmStrictFilter = true;
       }
     }
 
@@ -1576,7 +1490,6 @@ Return ONLY a JSON object in this exact format:
         : [];
       if (heurMeetings.length > 0) {
         filteredEmails = heurMeetings;
-        skipLlmStrictFilter = true;
       }
     }
 
@@ -1609,15 +1522,16 @@ Return ONLY a JSON object in this exact format:
         : [];
       if (heurPayments.length > 0) {
         filteredEmails = heurPayments;
-        skipLlmStrictFilter = true;
       }
     }
 
     const shouldRunLlmStrictFilter =
-      !isHeuristicCategoryQuery &&
       !skipLlmStrictFilter &&
       filteredEmails.length > 0 &&
       env.OPENROUTER_API_KEY;
+
+    const preStrictFilterEmails = [...filteredEmails];
+    let softMatchMode = false;
 
     if (shouldRunLlmStrictFilter) {
       try {
@@ -1638,37 +1552,60 @@ Return ONLY a JSON object in this exact format:
           )
           .join("\n");
 
+        const lowerForFilter = userQuery.toLowerCase();
+        const inclusivePhrasing =
+          /\b(regarding|about|mention(ing|s)?|discuss(ing|es|ed)?|related\s+to|relating\s+to|anything\s+(on|about|regarding)|involv(ing|es|ed)|talk(s|ing|ed)?\s+about|reference[sd]?\s+to|touch(ing|es|ed)?\s+on)\b/.test(
+            lowerForFilter,
+          );
+        const intentSaysStrict =
+          typeof queryIntent === "string" && /\bSTRICT\b/i.test(queryIntent);
+        const intentSaysInclusive =
+          typeof queryIntent === "string" && /\bINCLUSIVE\b/i.test(queryIntent);
+        const useInclusiveMode =
+          intentSaysInclusive || (inclusivePhrasing && !intentSaysStrict);
+
         const filterPrompt = `The user asked: "${userQuery}"
 ${queryIntent ? `\nWhat the user is looking for: ${queryIntent}` : ""}
+Mode: ${useInclusiveMode ? "INCLUSIVE" : "STRICT"}
 
 Here are emails that were found by the search system:
 ${emailList}
 
-Your task: Return ONLY the numbers (comma-separated) of emails that are ACTUALLY and DIRECTLY relevant to the user's query. 
+Your task: Return the numbers (comma-separated) of emails that are relevant under the chosen Mode.
 
-CRITICAL RULES - BE EXTREMELY STRICT:
-- If the user asked about "flight bookings" or "flights", ONLY include emails about: flights, airlines, travel bookings, tickets, reservations, airports, departures, arrivals, boarding passes. EXCLUDE: job applications, meetings, payments, or any other unrelated topics.
-- If the user asked about "orders" or "purchases", ONLY include emails about: orders, purchases, deliveries, shipments, products, shopping. EXCLUDE: anything else.
-- If the user asked about "meetings" or "appointments", ONLY include emails about: meetings, appointments, calendar invites, scheduling, calls. EXCLUDE: anything else.
-- If the user asked about "payments" or "receipts", ONLY include emails about: payments, receipts, invoices, transactions, billing, purchases. EXCLUDE: anything else.
-- Be EXTREMELY strict - if an email is about something completely different (e.g., job applications when user asked about flights), DO NOT include it, even if it was in the search results
-- Only include emails where the subject, summary, or content clearly relates to what the user asked for
+${useInclusiveMode
+            ? `INCLUSIVE MODE rules:
+- The user wants ANY email substantively about the topic, not just literal instances of it.
+- INCLUDE: invites, confirmations, scheduling threads, agendas, recaps, follow-ups, related discussions, newsletters that meaningfully analyze the topic, emails where the topic is a real focus or thread.
+- EXCLUDE: emails where the topic word appears once in totally unrelated content (e.g. a footer keyword, a single tangential reference in a different-subject email).
+- When in doubt, INCLUDE. Missing a relevant match is worse than including a borderline one.
+- It's OK and expected to return many results when many are relevant.`
+            : `STRICT MODE rules:
+- The email must BE an instance of what the user asked for, not merely mention it.
+- Newsletters, blog posts, how-to guides, and productivity advice are NOT instances of the thing they describe:
+   * A Notion newsletter "How to structure team meetings" is NOT a meeting invite.
+   * A SaaS marketing email "Tips for managing flight bookings" is NOT a flight booking.
+   * A productivity guide "10 ways to track orders" is NOT an order confirmation.
+- "meetings" / "appointments": actual calendar invites, RSVPs, meeting confirmations, scheduled calls.
+- "flights" / "travel": actual airline tickets, boarding passes, itineraries, hotel reservations.
+- "orders" / "purchases": actual order confirmations, shipment notifications.
+- "payments" / "receipts": actual transaction records, invoices, billing statements.
+- If unsure, EXCLUDE.`}
 
 Return format: Just numbers separated by commas, like: 1,3,5,7
-If NONE are relevant, return: 0`;
+If NONE qualify, return: 0`;
 
-        const filterResponse = await openai.chat.completions.create({
-          model: "anthropic/claude-3.5-haiku",
+        const filterSystemPrompt = useInclusiveMode
+          ? "You are an email relevance verifier in INCLUSIVE mode. The user phrased their question loosely (\"regarding\", \"about\", \"mention\"). Return the indices of every email substantively related to the topic - invites, confirmations, scheduling threads, agendas, recaps, follow-ups, related discussions. When in doubt, INCLUDE. Return ONLY comma-separated indices, or '0' if truly none qualify."
+          : "You are an email relevance verifier in STRICT mode. Return ONLY the indices of emails that ARE instances of what the user asked for - not merely mention it. A 'Notion newsletter advising teams to schedule meetings' is NOT relevant to 'do I have meetings this week' because it's a productivity newsletter, not a meeting invite. Calendar invites, RSVPs, scheduled-call notifications, and explicit meeting confirmations ARE relevant. Be ruthless. Return ONLY comma-separated indices, or '0' if none qualify.";
+
+        const filterResponse = await createCompletionWithModelFallback(openai, {
           messages: [
-            {
-              role: "system",
-              content:
-                "You are an extremely strict email filter. Your ONLY job is to return email numbers that are DIRECTLY and CLEARLY relevant to the user's query. If an email is about something different (e.g., job applications when user asked about flights), exclude it. Be very strict - it's better to return fewer emails than to include irrelevant ones. Return ONLY comma-separated numbers or '0' if none are relevant.",
-            },
+            { role: "system", content: filterSystemPrompt },
             { role: "user", content: filterPrompt },
           ],
           max_tokens: 100,
-          temperature: 0.1,
+          temperature: 0,
         });
 
         recordUsage({
@@ -1702,7 +1639,15 @@ If NONE are relevant, return: 0`;
           filteredEmails = [];
         }
       } catch (filterError) {
-        console.log("AI filtering failed, using all results:", filterError);
+        chatLog.log("AI filtering failed, using all results:", filterError);
+      }
+
+      if (filteredEmails.length === 0 && preStrictFilterEmails.length > 0) {
+        filteredEmails = preStrictFilterEmails.slice(0, 5);
+        softMatchMode = true;
+        chatLog.log(
+          `[Chat] strict filter emptied candidates; restored ${filteredEmails.length} as soft matches`,
+        );
       }
     }
 
@@ -1723,6 +1668,16 @@ If NONE are relevant, return: 0`;
     }));
 
     if (filteredEmails.length === 0) {
+      const trimmedQuery = userQuery.trim();
+      const isRobotSearchCommand =
+        /^(find|search|show|list|fetch|retrieve|display|locate)\s+\S+/i.test(
+          trimmedQuery,
+        ) ||
+        /^from\s+\S+/i.test(trimmedQuery) ||
+        /^(any|all)\s+(unread|new|recent|important|emails?|messages?|mail|threads?)\b/i.test(
+          trimmedQuery,
+        );
+
       const generalReply = await generateGeneralAssistanceReply(
         userQuery,
         messages,
@@ -1741,156 +1696,40 @@ If NONE are relevant, return: 0`;
         });
       }
 
-      const response = "No mails found regarding your query. I'm Sorry!";
+      const categoryHint = isHeuristicCategoryQuery
+        ? /\b(meeting|calendar|invite|appointment|rsvp|scheduled|call)\b/i.test(
+          userQuery,
+        )
+          ? "If your meetings live on Google Calendar but no invite was emailed to you, I won't see them - check your calendar app directly."
+          : /\b(flight|travel|trip|hotel|booking|itinerary|pnr|airline)\b/i.test(
+            userQuery,
+          )
+            ? "Try the airline or booking site directly if the confirmation went to a different inbox."
+            : /\b(payment|payments|receipt|invoice|subscription|upi|card|debit|charged|billing)\b/i.test(
+              userQuery,
+            )
+              ? "If the charge was very recent it might not be indexed yet, or check the bank/biller directly."
+              : "Try widening the date range or check the sending platform directly."
+        : "Try different keywords or widen the date range.";
 
-      return structuredPlainResponse(response, {
+      const fallbackMsg = isRobotSearchCommand
+        ? `I searched your indexed mail and didn't find anything matching "${trimmedQuery.slice(0, 160)}". ${categoryHint}`
+        : `I couldn't find anything in your indexed mail to answer that. ${categoryHint}`;
+
+      return structuredPlainResponse(fallbackMsg, {
         summary: "No matching threads found",
-        actions: ["Try different keywords or widen the date range."],
+        actions: [categoryHint],
         threads: [],
       });
     }
 
-    if (isHeuristicCategoryQuery && filteredEmails.length > 0) {
-      const top = filteredEmails[0]!;
-      const bodyForSummary = (top.body ?? top.bodySnippet ?? "").toString();
-
-      const summary = await generateConversationalSummary(
-        {
-          subject: top.subject,
-          from: { name: top.from.name ?? null, address: top.from.address },
-          date: top.sentAt,
-          body: bodyForSummary,
-        },
-        "short",
-        undefined,
-        { userId, accountId: accountId ?? undefined },
-      );
-
-      const excerpts = getSummarySourceExcerpts(bodyForSummary, summary, 1);
-      const basedOn =
-        excerpts.length > 0 ? `\n\nBased on: "${excerpts[0]}"` : "";
-
-      const rawCore = `${top.subject}\nFrom: ${top.from.name || top.from.address}\nDate: ${new Date(top.sentAt).toLocaleDateString()}\n\n${summary}${basedOn}`;
-      let response = removeAllSymbols(rawCore);
-
-      if (explainableMode) {
-        response += buildSourcesFooter([
-          {
-            index: 1,
-            subject: top.subject || "(No subject)",
-            from: top.from.name || top.from.address,
-            dateLabel: new Date(top.sentAt).toLocaleDateString(),
-            reason: "Top match for your inbox-intelligence query",
-            snippet: top.bodySnippet ?? undefined,
-          },
-        ]);
-      }
-
-      updateSearchSessionMemory(userId, accountId, {
-        lastSelectedEmailId: top.id,
-        lastAssistantPreview: response.slice(0, 320),
-      });
-
-      const head =
-        removeAllSymbols(summary).split(/\n/)[0]?.trim().slice(0, 280) ||
-        top.subject;
-      return structuredPlainResponse(
-        response,
-        turnSingleThread({
-          summaryLine: head,
-          actionBullets: [],
-          threadId: top.threadId,
-          chipLabel: top.subject || "(No subject)",
-        }),
-      );
-    }
-
-    const safetyRails = `
-QUALITY AND SAFETY (MANDATORY):
-- Only state facts that appear in the email previews or summaries below. Do not invent amounts, dates, senders, or outcomes.
-- If the user asks for detail that is not in the provided excerpts, say you only have the preview and suggest they open the thread in the inbox.
-- If several emails could match, briefly list the ambiguity and ask which one they mean.
-- Never offer to compose, draft, or send email in this assistant; tell them to use AI Buddy for that.
-`;
-
-    const founderDemoBlock = founderDemo
-      ? `
-FOUNDER DEMO MODE:
-- Be concise and executive: lead with the answer, then 1-2 supporting bullets from the emails.
-- Sound confident only when the evidence is in the previews; otherwise hedge clearly.
-`
-      : "";
-
-    const systemPrompt = `You are an email assistant that ONLY helps users find and summarize emails. Your capabilities are LIMITED to:
-
-1. Finding Emails: Search and find emails by subject, sender, content, date, or keywords
-2. Summarizing Emails: Provide summaries of emails - SHORT (one sentence), MEDIUM (2-3 sentences), or LONG (detailed) based on user preference
-
-IMPORTANT RULES:
-- You can ONLY find and summarize emails - nothing else
-- If user asks for a "short" summary or says "in short", provide a ONE SENTENCE summary
-- If user asks for "detailed", "long", or "full" summary, provide comprehensive 4-6 sentence summary
-- If no preference is specified, use 2-3 sentences (medium length)
-- Be conversational, friendly, and helpful
-- If you don't have enough information, ask clarifying questions
-- Always be accurate and reference specific emails when relevant
-- Understand informal language and conversational references like "the one on 13-12", "that email", "the third one", etc.
-- When user references dates like "13-12", "13/12", "on 13th", understand they mean day-month format
-- If user asks about a specific email from the list, provide details about that email
-- If the user asks for something that is NOT about finding or summarizing emails, politely redirect them to use AI Buddy for that task
-
-FORMATTING RULES - PLAIN TEXT IN THE ANSWER BODY:
-- FORBIDDEN in the prose answer: markdown emphasis (* **), bullet dashes (-, •) at line starts, decorative symbols
-- For lists in prose, use ONLY numbered lines like 1. 2. 3. or letters a. b. c.
-- Keep the answer readable and plain
-
-STRUCTURED OUTPUT (MANDATORY; app relies on this):
-After your plain-text answer, append EXACTLY ONE fenced JSON block using ONLY this shape (triple backticks allowed here and nowhere else):
-\`\`\`json
-{"summary":"One-line executive headline of your answer","actions":["Short actionable bullet if any","..."],"threads":[{"threadId":"<exact ThreadId from email list>","label":"Short chip text (e.g. subject)","reason":"Crisp user-facing why this thread matters","confidence":"High|Medium|Low"}]}
-\`\`\`
-Rules:
-- summary: concise headline; not empty.
-- actions: 0-5 short strings; use [] if nothing to recommend.
-- threads: up to 8 objects for threads you cite; threadId MUST be copied exactly from "ThreadId:" in the numbered emails below; never invent or guess IDs; use [] if none.
-- For each thread object, include:
-  - reason: short plain-English justification (no model internals), e.g. "Last message from external sender 3d ago", "Contains deadline/invoice keywords", "Looks newsletter-like".
-  - confidence: exactly one of High, Medium, Low.
-- The JSON must be valid and on one line or pretty-printed inside the fence.
-
-Found ${filteredEmails.length} email${filteredEmails.length !== 1 ? "s" : ""}:
-
-${emailContext
-        .map(
-          (email, index) => `
-${index + 1}. ThreadId: ${email.threadId}
-From: ${email.from}
-Subject: ${email.subject}
-Date: ${new Date(email.date).toLocaleDateString()}
-${email.summary ? `Summary: ${email.summary}` : ""}
-Preview: ${email.content.substring(0, 300)}...
-`,
-        )
-        .join("\n")}
-
-CRITICAL RELEVANCE FILTERING - ABSOLUTELY MANDATORY:
-${queryIntent ? `The user is looking for: ${queryIntent}\n` : ""}
-- ONLY mention emails that are DIRECTLY and CLEARLY relevant to what the user asked for
-- If the user asked about "flight bookings" or "flights", ONLY mention emails about: flights, airlines, travel bookings, tickets, reservations, airports, departures, arrivals, boarding passes
-- If the user asked about "orders" or "purchases", ONLY mention emails about: orders, purchases, deliveries, shipments, products, shopping
-- If the user asked about "meetings" or "appointments", ONLY mention emails about: meetings, appointments, calendar invites, scheduling, calls
-- If the user asked about "payments" or "receipts", ONLY mention emails about: payments, receipts, invoices, transactions, billing, purchases
-- DO NOT mention emails that are about completely different topics (e.g., job applications when user asked about flights)
-- If an email's subject or content is not clearly related to the user's query, DO NOT mention it
-- Be EXTREMELY strict - it's better to say "No mails found" than to mention irrelevant emails
-
-Answer the user's request based on these emails. Be conversational, helpful, and do exactly what they ask. Reference specific emails by number or subject when relevant. If the user asks about "the one on [date]" or similar, identify which email they mean and provide details about it.
-
-IMPORTANT: If none of the emails in the list are actually relevant to the user's query, respond with: "No mails found regarding your query. I'm Sorry!" DO NOT list emails that are not relevant.
-
-If the user sends a simple greeting (hi, hello, thanks, cool, etc.), respond in a friendly, brief way and remind them you can help find and summarize emails.
-${explainableMode ? safetyRails : ""}
-${founderDemoBlock}`;
+    const systemPrompt = buildInboxBrainPrompt({
+      emailContext,
+      queryIntent,
+      explainableMode,
+      founderDemo,
+      softMatchMode,
+    });
 
     if (!env.OPENROUTER_API_KEY) {
       let resp =
@@ -1937,15 +1776,41 @@ ${founderDemoBlock}`;
           "HTTP-Referer": process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
           "X-Title": "VectorMail AI",
         },
+        maxRetries: 0,
       });
 
-      const stream = await openai.chat.completions.create({
-        model: "anthropic/claude-3.5-haiku",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        max_tokens: 1000,
-        temperature: 0.7,
-        stream: true,
-      });
+      const inboxBrainModelChain = [
+        process.env.INBOX_BRAIN_MODEL?.trim(),
+        ...REASONING_MODEL_CHAIN,
+      ].filter(Boolean) as string[];
+
+      let stream: Awaited<ReturnType<typeof openai.chat.completions.create>> | null = null;
+      let lastModelErr: unknown = null;
+      let activeModel: string = inboxBrainModelChain[0] ?? "anthropic/claude-sonnet-4-6";
+      for (const candidate of inboxBrainModelChain) {
+        if (req.signal.aborted) throw new DOMException("Aborted", "AbortError");
+        try {
+          stream = await openai.chat.completions.create(
+            {
+              model: candidate,
+              messages: [{ role: "system", content: systemPrompt }, ...messages],
+              max_tokens: 1000,
+              temperature: 0.3,
+              stream: true,
+            },
+            { signal: req.signal },
+          );
+          activeModel = candidate;
+          break;
+        } catch (err) {
+          lastModelErr = err;
+          const errName = (err as { name?: string } | null)?.name;
+          if (errName === "AbortError" || req.signal.aborted) throw err;
+          const status = (err as { status?: number } | null)?.status;
+          if (status !== 404 && status !== 400) throw err;
+        }
+      }
+      if (!stream) throw lastModelErr ?? new Error("No inbox-brain model available");
 
       const encoder = new TextEncoder();
       let accumulatedRaw = "";
@@ -1989,7 +1854,7 @@ ${founderDemoBlock}`;
               }
             }
           } catch (error) {
-            console.error("Streaming error:", error);
+            chatLog.error("Streaming error:", error);
             controller.enqueue(encoder.encode("\n\nError streaming response"));
           } finally {
             if (explainable && footerEmails.length > 0) {
@@ -2008,7 +1873,7 @@ ${founderDemoBlock}`;
               operation: "chat",
               inputTokens: streamUsage.prompt_tokens,
               outputTokens: streamUsage.completion_tokens,
-              model: "anthropic/claude-3.5-haiku",
+              model: activeModel,
             });
             controller.close();
           }
@@ -2022,7 +1887,7 @@ ${founderDemoBlock}`;
         },
       });
     } catch (openaiError) {
-      console.error("OpenRouter error:", openaiError);
+      chatLog.error("OpenRouter error:", openaiError);
       let resp =
         filteredEmails.length > 0
           ? `Found ${filteredEmails.length} emails:\n\n${filteredEmails
@@ -2059,7 +1924,7 @@ ${founderDemoBlock}`;
       return structuredPlainResponse(resp, turnErr);
     }
   } catch (error) {
-    console.error("[Chat API] Unhandled error:", error);
+    chatLog.error("[Chat API] Unhandled error:", error);
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
@@ -2081,3 +1946,6 @@ ${founderDemoBlock}`;
 }
 
 export const POST = withRequestId(chatPostHandler);
+
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const chatLog = makeTagLogger("api.chat");

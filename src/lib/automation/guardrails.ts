@@ -45,24 +45,24 @@ export function normalizeAutomationGuardrails(
   const maxAutoSendsPerDay = clampCap(obj.maxAutoSendsPerDay);
   const blockedDomains = Array.isArray(obj.blockedDomains)
     ? uniq(
-        obj.blockedDomains
-          .filter((v): v is string => typeof v === "string")
-          .map(normalizeDomain)
-          .filter(Boolean),
-      )
+      obj.blockedDomains
+        .filter((v): v is string => typeof v === "string")
+        .map(normalizeDomain)
+        .filter(Boolean),
+    )
     : [];
   const blockedSenderSubstrings = Array.isArray(obj.blockedSenderSubstrings)
     ? uniq(
-        obj.blockedSenderSubstrings
-          .filter((v): v is string => typeof v === "string")
-          .map(normalizeSubstring)
-          .filter(Boolean),
-      )
+      obj.blockedSenderSubstrings
+        .filter((v): v is string => typeof v === "string")
+        .map(normalizeSubstring)
+        .filter(Boolean),
+    )
     : [];
   const autoConsentObj =
     obj.autoConsent &&
-    typeof obj.autoConsent === "object" &&
-    !Array.isArray(obj.autoConsent)
+      typeof obj.autoConsent === "object" &&
+      !Array.isArray(obj.autoConsent)
       ? (obj.autoConsent as Record<string, unknown>)
       : null;
   const autoConsentAcknowledgedAt =

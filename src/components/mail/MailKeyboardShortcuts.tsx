@@ -272,7 +272,6 @@ export function MailKeyboardShortcuts({
       }
 
       const key = event.key;
-      const shift = event.shiftKey;
 
       switch (key) {
         case "j":
@@ -293,7 +292,6 @@ export function MailKeyboardShortcuts({
           handleArchive();
           break;
         case "#":
-          if (!shift) break;
           event.preventDefault();
           event.stopPropagation();
           handleDelete();
@@ -323,7 +321,6 @@ export function MailKeyboardShortcuts({
           }, G_WAIT_MS);
           break;
         case "?":
-          if (!shift) break;
           event.preventDefault();
           event.stopPropagation();
           showHelp();

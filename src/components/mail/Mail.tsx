@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Menu,
   Inbox,
@@ -8,18 +8,21 @@ import {
   Bot,
   X,
   Plus,
-  MessageCircle,
-  LogOut,
   Loader2,
   Zap,
-  Search,
   CircleHelp,
-  ArrowRight,
   ArrowLeft,
   CalendarClock,
   Trash2,
-  Settings,
   Pencil,
+  ChevronsUp,
+  RefreshCw,
+  ChevronDown,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  FlaskConical,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -32,7 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AccountSwitcher, UNIFIED_INBOX_ACCOUNT_ID } from "./AccountSwitcher";
+import { UNIFIED_INBOX_ACCOUNT_ID } from "./AccountSwitcher";
 import { ThreadList, type ThreadListRef } from "./threads-ui/ThreadList";
 import { ThreadDisplay } from "./threads-ui/ThreadDisplay";
 import EmailSearchAssistant from "../global/AskAi";
@@ -40,22 +43,17 @@ import SearchBar from "./search/SearchBar";
 import ComposeEmailGmail from "./ComposeEmailGmail";
 import { MailKeyboardShortcuts } from "./MailKeyboardShortcuts";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
-import { GripVertical, RefreshCw } from "lucide-react";
-import { UserProfile, useClerk, useUser } from "@clerk/nextjs";
+import { RequestAccessDialog } from "./RequestAccessDialog";
+import { ProfileMenu } from "./ProfileMenu";
+import { MobileSidebar } from "./MobileSidebar";
+import { useResizableLayout } from "./useResizableLayout";
+import { useClerk, useUser } from "@clerk/nextjs";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format, formatDistanceToNow } from "date-fns";
 import { useLocalStorage } from "usehooks-ts";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
@@ -71,18 +69,6 @@ import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 import { AutopilotSection } from "@/components/mail/AutopilotSection";
 import { AutomationOutcomeBanner } from "@/components/mail/AutomationOutcomeBanner";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
-
-const REQUEST_ACCESS_EMAIL_BODY = `Hi Parbhat,
-
-I've been exploring VectorMail in demo mode and would like to request access so I can use it with my own inbox.
-
-I'm particularly interested in using AI Inbox Brain and AI Buddy to find and summarize mail in plain language, draft replies, and stay on top of my workflow. That would make a real difference day to day. I'd like to connect my Gmail account and try the full experience with my actual mail.
-
-Could you let me know what the process looks like for getting access, and when I might be able to start? I'm happy to share more about my use case or jump on a short call if that would be helpful.
-
-Thanks for your time, and I look forward to hearing from you.
-
-Best regards`;
 
 interface MailLayoutProps {
   defaultLayout?: number[] | readonly number[] | undefined;
@@ -110,6 +96,8 @@ function threadListWidthPctDefault(
 }
 
 export function Mail({ defaultLayout }: MailLayoutProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [aiSearchResetKey, setAiSearchResetKey] = useState(0);
@@ -129,22 +117,31 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   const threadListLayoutWidthPct = sidebarLayoutHydrated
     ? sidebarWidthPct
     : threadListWidthPctDefault(defaultLayout);
-  const [isResizing, setIsResizing] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isAiResizing, setIsAiResizing] = useState(false);
   const [aiPanelWidthPx, setAiPanelWidthPx] = useLocalStorage<number>(
     "mail-ai-panel-width-px",
     AI_PANEL_WIDTH_PX.fallback,
   );
+  const effectiveWidth = mounted ? aiPanelWidthPx : AI_PANEL_WIDTH_PX.fallback;
   const signOutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resizeStartRef = useRef<{ x: number; pct: number; finalPct: number } | null>(null);
-  const aiResizeStartRef = useRef<{ x: number; widthPx: number; finalWidthPx: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const sidebarRef = useRef<HTMLElement>(null);
   const threadListRef = useRef<ThreadListRef>(null);
-  const rafRef = useRef<number | null>(null);
-  const aiRafRef = useRef<number | null>(null);
+  const {
+    containerRef,
+    sidebarRef,
+    isResizing,
+    isAiResizing,
+    handleResizeStart,
+    handleAiResizeStart,
+  } = useResizableLayout({
+    sidebarWidthPct,
+    setSidebarWidthPct,
+    sidebarBoundsPct: THREAD_LIST_WIDTH_PCT,
+    aiPanelWidthPx,
+    setAiPanelWidthPx,
+    aiPanelBoundsPx: AI_PANEL_WIDTH_PX,
+    onAiPanelCommit: () => setSelectedThread(null),
+  });
   const isMobile = useIsMobile();
   const isMacOS =
     typeof window !== "undefined" &&
@@ -174,125 +171,6 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
       window.location.href = "/";
     }, forceRedirectMs);
   }, [signOut]);
-
-  const handleResizeStart = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-      setIsResizing(true);
-      resizeStartRef.current = { x: e.clientX, pct: sidebarWidthPct, finalPct: sidebarWidthPct };
-    },
-    [sidebarWidthPct],
-  );
-
-  const handleAiResizeStart = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-      setIsAiResizing(true);
-      aiResizeStartRef.current = {
-        x: e.clientX,
-        widthPx: aiPanelWidthPx,
-        finalWidthPx: aiPanelWidthPx,
-      };
-    },
-    [aiPanelWidthPx],
-  );
-
-  useEffect(() => {
-    if (!isResizing) return;
-    const pendingRef = { current: null as number | null };
-    const flush = () => {
-      rafRef.current = null;
-      const x = pendingRef.current;
-      pendingRef.current = null;
-      if (x === null) return;
-      const start = resizeStartRef.current;
-      const el = containerRef.current;
-      const sidebar = sidebarRef.current;
-      if (!start || !el || !sidebar) return;
-      const containerWidth = el.getBoundingClientRect().width;
-      if (containerWidth <= 0) return;
-      const deltaPct = ((x - start.x) / containerWidth) * 100;
-      let next = start.pct + deltaPct;
-      next = Math.max(
-        THREAD_LIST_WIDTH_PCT.min,
-        Math.min(THREAD_LIST_WIDTH_PCT.max, next),
-      );
-      resizeStartRef.current = { ...start, finalPct: next };
-      sidebar.style.width = `${next}%`;
-    };
-    const onMove = (e: PointerEvent) => {
-      pendingRef.current = e.clientX;
-      if (rafRef.current === null) rafRef.current = requestAnimationFrame(flush);
-    };
-    const onUp = () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      const start = resizeStartRef.current;
-      if (start) setSidebarWidthPct(start.finalPct);
-      resizeStartRef.current = null;
-      setIsResizing(false);
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [isResizing, setSidebarWidthPct]);
-
-  useEffect(() => {
-    if (!isAiResizing) return;
-    const pendingRef = { current: null as number | null };
-    const flush = () => {
-      aiRafRef.current = null;
-      const x = pendingRef.current;
-      pendingRef.current = null;
-      if (x === null) return;
-      const start = aiResizeStartRef.current;
-      if (!start) return;
-      const delta = start.x - x;
-      let next = start.widthPx + delta;
-      next = Math.max(AI_PANEL_WIDTH_PX.min, Math.min(AI_PANEL_WIDTH_PX.max, next));
-      aiResizeStartRef.current = { ...start, finalWidthPx: next };
-      setAiPanelWidthPx(next);
-    };
-    const onMove = (e: PointerEvent) => {
-      pendingRef.current = e.clientX;
-      if (aiRafRef.current === null) aiRafRef.current = requestAnimationFrame(flush);
-    };
-    const onUp = () => {
-      if (aiRafRef.current !== null) {
-        cancelAnimationFrame(aiRafRef.current);
-        aiRafRef.current = null;
-      }
-      const start = aiResizeStartRef.current;
-      if (start) {
-        const widthChanged = Math.abs(start.finalWidthPx - start.widthPx) >= 1;
-        setAiPanelWidthPx(start.finalWidthPx);
-        if (widthChanged) {
-          setSelectedThread(null);
-        }
-      }
-      aiResizeStartRef.current = null;
-      setIsAiResizing(false);
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      if (aiRafRef.current !== null) cancelAnimationFrame(aiRafRef.current);
-    };
-  }, [isAiResizing, setAiPanelWidthPx]);
 
   const focusSearch = useCallback(() => {
     document.getElementById("mail-search-input")?.focus();
@@ -330,6 +208,64 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
       : storedAccount
         ? storedAccountId
         : firstConnectedAccountId;
+
+  const { data: dailyBriefForCount } = api.account.getDailyBrief.useQuery(
+    { accountId: accountId || "placeholder" },
+    { enabled: !!accountId && accountId.length > 0 },
+  );
+  const { data: nudgesForCount } = api.account.getNudges.useQuery(
+    { accountId: accountId || "placeholder" },
+    { enabled: !!accountId && accountId.length > 0 },
+  );
+  const { data: autopilotPrefsForBadge } = api.automation.getPrefs.useQuery(
+    { accountId: accountId || "" },
+    { enabled: !!accountId && accountId.length > 0, staleTime: 10_000 },
+  );
+  const { data: autopilotToday } = api.automation.getTodaySummary.useQuery(
+    { accountId: accountId || "" },
+    { enabled: !!accountId && accountId.length > 0, staleTime: 30_000 },
+  );
+  const autopilotSent = autopilotToday?.sentRealToday ?? 0;
+  const autopilotPending = autopilotToday?.pendingApproval ?? 0;
+  const autopilotFailed = autopilotToday?.failedToday ?? 0;
+  const autopilotSimulated = autopilotToday?.simulatedToday ?? 0;
+  const autopilotHandled = autopilotSent + autopilotSimulated;
+  const autopilotMinSaved = autopilotHandled * 5;
+  const todaysBriefCount = dailyBriefForCount
+    ? dailyBriefForCount.needsReply.length +
+      dailyBriefForCount.important.length +
+      dailyBriefForCount.lowPriority.length
+    : null;
+  const nudgesCount = nudgesForCount?.nudges?.length ?? null;
+  const autopilotState =
+    autopilotPrefsForBadge?.automationMode &&
+    autopilotPrefsForBadge.automationMode !== "manual"
+      ? "on"
+      : autopilotPrefsForBadge
+        ? "off"
+        : null;
+
+  const [upcomingPopoverOpen, setUpcomingPopoverOpen] = useState(false);
+  const [dailyBriefPopoverOpen, setDailyBriefPopoverOpen] = useState(false);
+  const [nudgesPopoverOpen, setNudgesPopoverOpen] = useState(false);
+  const { data: upcomingMeetingsData, isLoading: upcomingLoading } =
+    api.account.getUpcomingEventsFromEmails.useQuery(
+      { accountId: accountId || "placeholder" },
+      {
+        enabled: !!accountId && accountId.length > 0 && upcomingPopoverOpen,
+        refetchOnWindowFocus: false,
+        staleTime: 60_000,
+      },
+    );
+  const upcomingEvents = useMemo(() => {
+    const now = Date.now();
+    return (upcomingMeetingsData?.events ?? []).filter((e) => {
+      const endTs = e.endAt ? new Date(e.endAt).getTime() : Number.NaN;
+      const startTs = new Date(e.startAt).getTime();
+      return Number.isFinite(endTs) ? endTs > now : startTs > now;
+    });
+  }, [upcomingMeetingsData?.events]);
+
   const setThreadId = useSetAtom(threadIdAtom);
 
   const handleThreadSelect = useCallback((threadId: string) => {
@@ -388,15 +324,15 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
 
   if (showConnectCard) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-4 dark:bg-[#09090b]">
-        <div className="max-w-md rounded-2xl border border-[#e5e7eb] bg-white p-8 text-center shadow-sm dark:border-[#1a1a23] dark:bg-[#111113]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-4 dark:bg-[#ffffff]">
+        <div className="max-w-md rounded-2xl border border-[#e5e7eb] bg-white p-8 text-center shadow-sm dark:border-[#ffffff] dark:bg-[#ffffff]">
           <h1 className="text-xl font-semibold text-[#111118] dark:text-[#f4f4f5]">Connect your Gmail</h1>
           <p className="mt-2 text-sm text-[#6b7280] dark:text-[#a1a1aa]">
             You&apos;re signed in. Connect your Gmail account to access your inbox.
           </p>
           <a
             href="/api/connect/google"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#3b82f6] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2563eb]"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e2a4a] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#b88a3f]"
           >
             Connect Gmail
           </a>
@@ -545,7 +481,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               </span>
               <a
                 href="mailto:parbhat@parbhat.dev?subject=VectorMail%20%E2%80%93%20Request%20access&body=Hi%2C%0A%0AI'd%20like%20to%20request%20access%20to%20connect%20my%20Gmail%20and%20use%20VectorMail%20with%20my%20own%20inbox.%20Please%20let%20me%20know%20when%20access%20is%20available.%0A%0AThank%20you."
-                className="shrink-0 rounded-md bg-[#1a73e8] px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
+                className="shrink-0 rounded-md bg-[#1a73e8] px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#1557b0] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa]"
               >
                 Request access
               </a>
@@ -556,9 +492,9 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
           )}
 
           {isNavigating && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1e2a4a]/40 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-4 rounded-lg bg-white p-8 shadow-lg dark:bg-[#292a2d]">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#8ab4f8]" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#dadce0] border-t-[#1a73e8] dark:border-[#3c4043] dark:border-t-[#1e2a4a]" />
                 <p className="text-sm font-medium text-[#5f6368] dark:text-[#9aa0a6]">Loading...</p>
               </div>
             </div>
@@ -595,7 +531,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               className={cn(
                 "flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium transition-colors [touch-action:manipulation]",
                 !selectedThread && tab === "inbox"
-                  ? "text-[#1a73e8] dark:text-[#8ab4f8]"
+                  ? "text-[#1a73e8] dark:text-[#1e2a4a]"
                   : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]",
               )}
             >
@@ -620,11 +556,11 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
     <TooltipProvider delayDuration={0}>
       {isSigningOut && (
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-white/95 backdrop-blur-sm dark:bg-[#09090b]/95"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-white/95 backdrop-blur-sm dark:bg-[#ffffff]/95"
           aria-live="polite"
           aria-busy="true"
         >
-          <Loader2 className="h-10 w-10 animate-spin text-[#3b82f6]" />
+          <Loader2 className="h-10 w-10 animate-spin text-[#1e2a4a]" />
           <p className="text-[15px] font-medium text-[#111118] dark:text-[#f4f4f5]">Logging out…</p>
           <p className="text-[13px] text-[#6b7280] dark:text-[#71717a]">Taking you to the home page</p>
         </div>
@@ -645,14 +581,22 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
         cycleBriefFocus={cycleBriefFocusFromShortcut}
       />
       <ShortcutHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
-      <div className="flex h-full min-h-0 w-full bg-white dark:bg-[#09090b]">
-        <aside className="flex w-[260px] shrink-0 flex-col border-r border-[#e5e7eb] bg-[#fafbfc] dark:border-[#1a1a23] dark:bg-[#09090b]">
+      <div className="vm-mockup flex h-full min-h-0 w-full bg-white dark:bg-[#ffffff]">
+        <aside className="sidebar w-[240px] shrink-0">
           <Link
             href="/"
             prefetch
-            className="flex w-full items-center gap-2.5 px-5 py-4 text-left transition-opacity hover:opacity-90 active:opacity-95"
+            className="sidebar-head"
+            style={{ textDecoration: "none" }}
           >
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-[#3b82f6]">
+            <span
+              className="brand-mark"
+              style={{
+                background: "#1e2a4a",
+                borderRadius: 6,
+                overflow: "hidden",
+              }}
+            >
               <video
                 src="/Vectormail-logo.mp4"
                 autoPlay
@@ -661,48 +605,44 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                 playsInline
                 className="h-full w-full scale-[1.6] object-cover"
               />
-            </div>
-            <span className="text-[17px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
-              VectorMail
             </span>
+            <span className="brand-name">VectorMail</span>
           </Link>
 
-          <div className="px-3 pb-3">
-            <button
-              type="button"
-              onClick={() => setComposeOpen(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3b82f6] px-4 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all hover:bg-[#2563eb] hover:shadow-md active:scale-[0.98]"
-            >
-              <Pencil className="h-4 w-4" />
-              New email
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setComposeOpen(true)}
+            className="new-email-btn"
+          >
+            <Pencil size={13} strokeWidth={1.6} />
+            <span>New email</span>
+            <span className="kbd-mini">C</span>
+          </button>
 
-          <nav className="flex flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="space-y-0.5 px-2 pb-1">
+          <nav className="sidebar-scroll [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="sidebar-section">
+              <div className="sidebar-label">
+                <span>
+                  <span style={{ color: "var(--accent)" }}>✦</span> FOLDERS
+                </span>
+              </div>
               {navItems.map((item) => (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => {
                     setTab(item.id);
                     if (item.id !== tab) setSelectedThread(null);
                   }}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all",
-                    tab === item.id
-                      ? "bg-[#eff6ff] text-[#2563eb] dark:bg-[#3b82f6]/[0.12] dark:text-[#60a5fa]"
-                      : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]",
-                  )}
+                  className={cn("sidebar-item", tab === item.id && "active")}
                 >
-                  <item.icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <item.icon className="icon" size={14} />
+                  <span className="label-text">{item.label}</span>
                 </button>
               ))}
             </div>
 
-            <div className="mx-3 my-2 h-px bg-[#e5e7eb] dark:bg-[#1a1a23]" />
-
-            <div className="px-2">
+            <div className="sidebar-section">
               <LabelsList
                 accountId={accountId}
                 currentTab={tab}
@@ -718,9 +658,52 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               />
             </div>
 
-            <div className="mx-3 my-2 h-px bg-[#e5e7eb] dark:bg-[#1a1a23]" />
+            <div className="sidebar-section">
+              <div className="sidebar-label">
+                <span>
+                  <span style={{ color: "var(--accent)" }}>✦</span> INTELLIGENCE
+                </span>
+              </div>
 
-            <div className="space-y-0.5 px-2">
+              <Popover
+                open={dailyBriefPopoverOpen}
+                onOpenChange={setDailyBriefPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="Today's Brief"
+                    className="sidebar-item brief-item"
+                  >
+                    <span className="brief-glyph" aria-hidden="true" />
+                    <span className="label-text">Today&apos;s Brief</span>
+                    <span className="count">
+                      {todaysBriefCount === null ? "-" : todaysBriefCount}
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="right"
+                  align="start"
+                  sideOffset={12}
+                  className="w-[400px] max-w-[92vw] border-[#e4e7ed] bg-white p-0 text-[#0e1729] shadow-lg"
+                >
+                  <div className="max-h-[640px] overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <DailyBriefStrip
+                      accountId={accountId}
+                      isDemo={isDemo}
+                      onShowKeyboardHelp={() => setHelpOpen(true)}
+                      showDesktopShortcuts={!isMobile}
+                      defaultExpanded
+                      onThreadSelect={(threadId) => {
+                        handleThreadSelect(threadId);
+                        setDailyBriefPopoverOpen(false);
+                      }}
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <button
                 type="button"
                 onClick={() => {
@@ -730,106 +713,524 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                     window.location.href = "/buddy?fresh=true";
                   }
                 }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-[#6b7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]"
+                className="sidebar-item"
               >
-                <Bot className="h-[18px] w-[18px] shrink-0" />
-                <span className="flex-1 text-left">AI Buddy</span>
+                <Bot className="icon" size={14} />
+                <span className="label-text">AI Buddy</span>
               </button>
 
               <button
                 type="button"
                 title="Open VectorMail Inbox Brain"
                 onClick={() => {
-                  if (isDemo) {
-                    setRequestAccessOpen(true);
-                  } else {
-                    setShowAIPanel((prev) => {
-                      if (!prev) {
-                        trackInboxBrainEvent("inbox_brain_panel_opened", {
-                          source: "sidebar",
-                        });
-                      }
-                      return !prev;
-                    });
-                  }
+                  setShowAIPanel((prev) => {
+                    if (!prev) {
+                      trackInboxBrainEvent("inbox_brain_panel_opened", {
+                        source: "sidebar",
+                      });
+                    }
+                    return !prev;
+                  });
                 }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all",
-                  showAIPanel
-                    ? "bg-[#eff6ff] text-[#2563eb] dark:bg-[#3b82f6]/[0.12] dark:text-[#60a5fa]"
-                    : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#a1a1aa] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]",
-                )}
+                className={cn("sidebar-item", showAIPanel && "active")}
               >
-                <span className="h-[18px] w-[18px] shrink-0 overflow-hidden rounded-full">
+                <span
+                  className="icon"
+                  style={{ overflow: "hidden", borderRadius: 4 }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/Opus-B.png"
                     alt="Inbox brain"
                     className="h-full w-full object-cover"
                   />
                 </span>
-                <span className="flex-1 text-left">Inbox brain</span>
-                {isDemo && (
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
-                    Demo
-                  </span>
+                <span className="label-text">Inbox brain</span>
+                {isDemo && <span className="count">DEMO</span>}
+              </button>
+
+              <Popover
+                open={nudgesPopoverOpen}
+                onOpenChange={setNudgesPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="Threads waiting on your reply"
+                    className="sidebar-item"
+                  >
+                    <Plus className="icon" size={14} />
+                    <span className="label-text">Nudges</span>
+                    {nudgesCount !== null && (
+                      <span className="count">{nudgesCount}</span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="right"
+                  align="start"
+                  sideOffset={12}
+                  className="w-[380px] max-w-[92vw] border-[#e4e7ed] bg-white p-0 text-[#0e1729] shadow-lg"
+                >
+                  <div className="flex items-center justify-between border-b border-[#eef0f4] px-4 py-3">
+                    <p
+                      className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1e2a4a]"
+                      style={{
+                        fontFamily:
+                          "var(--font-jetbrains-mono), ui-monospace, monospace",
+                      }}
+                    >
+                      <span className="text-[#1e2a4a]">✦</span>
+                      NUDGES
+                    </p>
+                    {nudgesCount !== null && (
+                      <span className="rounded-full bg-[#1e2a4a]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1e2a4a]">
+                        {nudgesCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="max-h-[520px] overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {(nudgesForCount?.nudges ?? []).length === 0 ? (
+                      <div className="px-4 py-10 text-center">
+                        <p className="text-[13px] font-medium text-[#1e2a44]">
+                          You&apos;re all caught up
+                        </p>
+                        <p className="mt-1 text-[11.5px] leading-relaxed text-[#7a849a]">
+                          No threads are waiting on your reply right now.
+                        </p>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-[#eef0f4]">
+                        {(nudgesForCount?.nudges ?? []).map((nudge) => (
+                          <li key={nudge.threadId}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNudgesPopoverOpen(false);
+                                handleThreadSelect(nudge.threadId);
+                              }}
+                              className="group flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-[#f4f5f8]"
+                            >
+                              <p className="line-clamp-2 text-[13px] font-medium text-[#0e1729] group-hover:text-[#1e2a4a]">
+                                {nudge.thread?.subject ?? "(No subject)"}
+                              </p>
+                              <div className="flex items-center gap-2 text-[11px] text-[#7a849a]">
+                                <span>{nudge.reason ?? "You haven't replied"}</span>
+                                {nudge.thread?.lastMessageDate && (
+                                  <>
+                                    <span className="text-[#a8b0c0]">·</span>
+                                    <span>
+                                      {formatDistanceToNow(
+                                        new Date(nudge.thread.lastMessageDate),
+                                        { addSuffix: true },
+                                      )}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Popover
+                open={upcomingPopoverOpen}
+                onOpenChange={setUpcomingPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="Upcoming meetings from email"
+                    className="sidebar-item"
+                  >
+                    <ChevronsUp className="icon" size={14} />
+                    <span className="label-text">Upcoming</span>
+                    {upcomingEvents.length > 0 && (
+                      <span className="count">{upcomingEvents.length}</span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="right"
+                  align="start"
+                  sideOffset={12}
+                  className="w-[360px] max-w-[90vw] border-[#e4e7ed] bg-white p-0 text-[#0e1729] shadow-lg"
+                >
+                  <div className="flex items-center justify-between border-b border-[#eef0f4] px-4 py-3">
+                    <p
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a849a]"
+                      style={{
+                        fontFamily:
+                          "var(--font-jetbrains-mono), ui-monospace, monospace",
+                      }}
+                    >
+                      UPCOMING MEETINGS
+                    </p>
+                    <span className="rounded-full border border-[#e4e7ed] bg-[#fafbfc] px-2 py-0.5 text-[10px] font-semibold text-[#4a5572]">
+                      Last 60d
+                    </span>
+                  </div>
+                  <div className="max-h-[420px] overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {upcomingLoading ? (
+                      <div className="flex items-center justify-center gap-2 px-4 py-8 text-[12px] text-[#7a849a]">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Scanning your inbox…
+                      </div>
+                    ) : upcomingEvents.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <p className="text-[13px] font-medium text-[#1e2a44]">
+                          No upcoming meetings
+                        </p>
+                        <p className="mt-1 text-[11.5px] leading-relaxed text-[#7a849a]">
+                          We scan the last 60 days for Google Meet, Zoom, and
+                          Teams links. Anything past its end time is
+                          automatically removed.
+                        </p>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-[#eef0f4]">
+                        {upcomingEvents.map((event) => {
+                          const startDate = new Date(event.startAt);
+                          const endDate = event.endAt
+                            ? new Date(event.endAt)
+                            : null;
+                          const isToday =
+                            startDate.toDateString() ===
+                            new Date().toDateString();
+                          const isTomorrow =
+                            startDate.toDateString() ===
+                            new Date(Date.now() + 86400000).toDateString();
+                          const dayLabel = isToday
+                            ? "Today"
+                            : isTomorrow
+                              ? "Tomorrow"
+                              : format(startDate, "EEE, MMM d");
+                          const timeLabel = format(startDate, "h:mm a");
+                          return (
+                            <li key={`${event.sourceEmailId}-${event.startAt}`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUpcomingPopoverOpen(false);
+                                  if (event.sourceThreadId) {
+                                    handleThreadSelect(event.sourceThreadId);
+                                  }
+                                }}
+                                className="group flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-[#f4f5f8]"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="rounded-md bg-[#1e2a4a]/8 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1e2a4a]"
+                                    style={{
+                                      fontFamily:
+                                        "var(--font-jetbrains-mono), ui-monospace, monospace",
+                                    }}
+                                  >
+                                    {dayLabel}
+                                  </span>
+                                  <span
+                                    className="text-[11px] font-medium text-[#4a5572]"
+                                    style={{
+                                      fontFamily:
+                                        "var(--font-jetbrains-mono), ui-monospace, monospace",
+                                    }}
+                                  >
+                                    {timeLabel}
+                                    {endDate &&
+                                      endDate.getTime() !==
+                                        startDate.getTime() &&
+                                      ` – ${format(endDate, "h:mm a")}`}
+                                  </span>
+                                  <span className="ml-auto text-[10px] text-[#a8b0c0]">
+                                    in {formatDistanceToNow(startDate)}
+                                  </span>
+                                </div>
+                                <p className="line-clamp-2 text-[13px] font-medium text-[#0e1729] group-hover:text-[#1e2a4a]">
+                                  {event.title}
+                                </p>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <button
+                type="button"
+                title="Autopilot"
+                onClick={() => setShowAIPanel(true)}
+                className="sidebar-item"
+              >
+                <Zap className="icon" size={14} />
+                <span className="label-text">Autopilot</span>
+                {autopilotState !== null && (
+                  <span className="count">{autopilotState}</span>
                 )}
               </button>
             </div>
 
-            {tab === "inbox" && (
-              <DailyBriefStrip
+            {accountId && (
+              <div className="autopilot-widget">
+                <div className="autopilot-widget-head">
+                  <ChevronDown className="autopilot-widget-toggle" />
+                  <Zap className="autopilot-widget-icon" />
+                  <span className="autopilot-widget-title">
+                    AUTOPILOT TODAY
+                  </span>
+                  <span className="autopilot-widget-count">
+                    {autopilotHandled + autopilotPending + autopilotFailed}
+                  </span>
+                </div>
+                <div className="autopilot-widget-grid">
+                  <div className="autopilot-stat">
+                    <div className="autopilot-stat-row">
+                      <CheckCircle2 className="autopilot-stat-icon stat-success" />
+                      <span className="autopilot-stat-value">
+                        {autopilotSent}
+                      </span>
+                    </div>
+                    <span className="autopilot-stat-label">SENT</span>
+                  </div>
+                  <div className="autopilot-stat">
+                    <div className="autopilot-stat-row">
+                      <Clock className="autopilot-stat-icon stat-pending" />
+                      <span className="autopilot-stat-value">
+                        {autopilotPending}
+                      </span>
+                    </div>
+                    <span className="autopilot-stat-label">PENDING</span>
+                  </div>
+                  <div className="autopilot-stat">
+                    <div className="autopilot-stat-row">
+                      <XCircle className="autopilot-stat-icon stat-failed" />
+                      <span className="autopilot-stat-value">
+                        {autopilotFailed}
+                      </span>
+                    </div>
+                    <span className="autopilot-stat-label">FAILED</span>
+                  </div>
+                  <div className="autopilot-stat">
+                    <div className="autopilot-stat-row">
+                      <FlaskConical className="autopilot-stat-icon stat-sim" />
+                      <span className="autopilot-stat-value">
+                        {autopilotSimulated}
+                      </span>
+                    </div>
+                    <span className="autopilot-stat-label">SIMULATED</span>
+                  </div>
+                </div>
+                <div className="autopilot-widget-summary">
+                  <Sparkles className="autopilot-widget-summary-icon" />
+                  <span className="autopilot-widget-summary-text">
+                    Inbox handled
+                  </span>
+                  <span className="autopilot-widget-summary-counts">
+                    <span>{autopilotHandled} follow-ups</span>
+                    <span>~{autopilotMinSaved} min saved</span>
+                  </span>
+                </div>
+                {autopilotHandled === 0 &&
+                  autopilotPending === 0 &&
+                  autopilotFailed === 0 && (
+                    <p className="autopilot-widget-empty">
+                      No autopilot activity yet today. Once the engine sends or
+                      queues follow-ups, you&apos;ll see the breakdown here.
+                    </p>
+                  )}
+              </div>
+            )}
+
+            {accountId && isDemo && (
+              <div className="calendar-widget">
+                <div className="calendar-widget-head">
+                  <ChevronDown className="calendar-widget-toggle" />
+                  <CalendarClock className="calendar-widget-icon" />
+                  <span className="calendar-widget-title">
+                    CALENDAR TODAY
+                  </span>
+                  <span className="calendar-widget-count">4</span>
+                </div>
+                <div className="calendar-widget-events">
+                  <div className="calendar-event">
+                    <div className="calendar-event-time">
+                      <span className="calendar-event-hour">10</span>
+                      <span className="calendar-event-meridiem">AM</span>
+                    </div>
+                    <div className="calendar-event-body">
+                      <div className="calendar-event-title">
+                        Engineering standup
+                      </div>
+                      <div className="calendar-event-meta">
+                        15 min · 7 attendees
+                      </div>
+                    </div>
+                    <span className="calendar-event-dot dot-info" />
+                  </div>
+                  <div className="calendar-event">
+                    <div className="calendar-event-time">
+                      <span className="calendar-event-hour">11</span>
+                      <span className="calendar-event-meridiem">AM</span>
+                    </div>
+                    <div className="calendar-event-body">
+                      <div className="calendar-event-title">
+                        Mei Lin · phone screen
+                      </div>
+                      <div className="calendar-event-meta">
+                        45 min · Greenhouse req-2418
+                      </div>
+                    </div>
+                    <span className="calendar-event-dot dot-warn" />
+                  </div>
+                  <div className="calendar-event">
+                    <div className="calendar-event-time">
+                      <span className="calendar-event-hour">3</span>
+                      <span className="calendar-event-meridiem">PM</span>
+                    </div>
+                    <div className="calendar-event-body">
+                      <div className="calendar-event-title">
+                        Brightlane renewal
+                      </div>
+                      <div className="calendar-event-meta">
+                        30 min · Sophia + Tomas
+                      </div>
+                    </div>
+                    <span className="calendar-event-dot dot-success" />
+                  </div>
+                  <div className="calendar-event">
+                    <div className="calendar-event-time">
+                      <span className="calendar-event-hour">4</span>
+                      <span className="calendar-event-meridiem">PM</span>
+                    </div>
+                    <div className="calendar-event-body">
+                      <div className="calendar-event-title">
+                        Hana · office hours
+                      </div>
+                      <div className="calendar-event-meta">
+                        30 min · Forerunner
+                      </div>
+                    </div>
+                    <span className="calendar-event-dot dot-accent" />
+                  </div>
+                </div>
+                <div className="calendar-widget-summary">
+                  <Sparkles className="calendar-widget-summary-icon" />
+                  <span className="calendar-widget-summary-text">
+                    Day in shape
+                  </span>
+                  <span className="calendar-widget-summary-counts">
+                    <span>4 meetings</span>
+                    <span>3h 45m free</span>
+                  </span>
+                </div>
+              </div>
+            )}
+            <div style={{ display: "none" }} aria-hidden="true">
+              {tab === "inbox" && (
+                <DailyBriefStrip
+                  accountId={accountId}
+                  isDemo={isDemo}
+                  onShowKeyboardHelp={() => setHelpOpen(true)}
+                  showDesktopShortcuts={!isMobile}
+                  onThreadSelect={handleThreadSelect}
+                />
+              )}
+              <NudgesBlock
                 accountId={accountId}
-                isDemo={isDemo}
-                onShowKeyboardHelp={() => setHelpOpen(true)}
-                showDesktopShortcuts={!isMobile}
                 onThreadSelect={handleThreadSelect}
               />
-            )}
-            <NudgesBlock
-              accountId={accountId}
-              onThreadSelect={handleThreadSelect}
-            />
-            <UpcomingFromEmailBlock
-              accountId={accountId}
-              onThreadSelect={handleThreadSelect}
-            />
-            {accountId ? (
-              <AutomationOutcomeBanner
+              <UpcomingFromEmailBlock
                 accountId={accountId}
-                isDemo={isDemo && accountId === DEMO_ACCOUNT_ID}
-                onOpenThread={handleThreadSelect}
+                onThreadSelect={handleThreadSelect}
               />
-            ) : null}
+              {accountId ? (
+                <AutomationOutcomeBanner
+                  accountId={accountId}
+                  isDemo={isDemo && accountId === DEMO_ACCOUNT_ID}
+                  onOpenThread={handleThreadSelect}
+                />
+              ) : null}
+            </div>
           </nav>
 
-          <div className="border-t border-[#e5e7eb] p-2 dark:border-[#1a1a23]">
-            <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-              <ProfileMenu onSignOut={handleSignOut} isSigningOut={isSigningOut} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-[#111118] dark:text-[#f4f4f5]">
-                  {userName}
-                </p>
-                {userEmail && (
-                  <p className="truncate text-[11px] text-[#9ca3af] dark:text-[#71717a]">
-                    {userEmail}
-                  </p>
-                )}
-              </div>
+          <div className="sidebar-foot">
+            <ProfileMenu onSignOut={handleSignOut} isSigningOut={isSigningOut} />
+            <div className="user-info">
+              <div className="user-name">{userName}</div>
+              {userEmail && <div className="user-status">{userEmail}</div>}
             </div>
           </div>
         </aside>
 
         <div className="flex flex-1 flex-col overflow-hidden">
           {isDemo && (
-            <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-b border-[#e5e7eb] bg-[#f9fafb] px-4 py-1.5 dark:border-[#1a1a23] dark:bg-[#111113]">
-              <span className="text-[12px] text-[#6b7280] dark:text-[#a1a1aa]">
-                Exploring VectorMail with sample data.
+            <div
+              style={{ display: "none" }}
+              aria-hidden="true"
+              className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b px-4 py-1.5"
+            >
+              <span
+                className="inline-flex items-center gap-1.5"
+                style={{
+                  fontFamily:
+                    "var(--font-jetbrains-mono), ui-monospace, monospace",
+                  fontSize: 10,
+                  color: "#b88a3f",
+                  fontWeight: 700,
+                  letterSpacing: "0.16em",
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="block rounded-full"
+                  style={{
+                    width: 5,
+                    height: 5,
+                    background: "#1e2a4a",
+                    boxShadow: "0 0 0 2.5px rgba(212,169,85,0.18)",
+                  }}
+                />
+                DEMO MODE
+              </span>
+              <span
+                className="text-[#5b554c] dark:text-[#a89b86]"
+                style={{
+                  fontFamily: "var(--font-newsreader), Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 12.5,
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                exploring VectorMail with sample data
               </span>
               <a
                 href="mailto:parbhat@parbhat.dev?subject=VectorMail%20%E2%80%93%20Request%20access&body=Hi%2C%0A%0AI'd%20like%20to%20request%20access%20to%20connect%20my%20Gmail%20and%20use%20VectorMail%20with%20my%20own%20inbox.%20Please%20let%20me%20know%20when%20access%20is%20available.%0A%0AThank%20you."
-                className="shrink-0 rounded-md bg-[#3b82f6] px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#2563eb]"
+                className="inline-flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-[#1a1612] transition-all hover:-translate-y-px"
+                style={{
+                  background:
+                    "linear-gradient(180deg, #1e2a4a 0%, #1e2a4a 100%)",
+                  border: "1px solid #b88a3f",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 6px rgba(212,169,85,0.32)",
+                  letterSpacing: "0.005em",
+                }}
               >
                 Request access
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                  <path
+                    d="M3 6h6M6 3l3 3-3 3"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </a>
             </div>
           )}
@@ -843,34 +1244,34 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
           >
             <aside
               ref={sidebarRef}
-              className="flex h-full shrink-0 flex-col border-r border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]"
+              className="flex h-full shrink-0 flex-col border-r border-[#e5e7eb] bg-white dark:border-[#ffffff] dark:bg-[#ffffff]"
               style={{
                 width: `${threadListLayoutWidthPct}%`,
                 minWidth: 280,
                 ...(isResizing && { willChange: "width" }),
               }}
             >
-              <div className="flex min-w-0 items-center gap-2 border-b border-[#e5e7eb] px-3 py-2 dark:border-[#1a1a23]">
-                <div className="min-w-0 flex-1">
+              <div className="inbox-top">
+                <div className="inbox-search-row">
                   <SearchBar />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => threadListRef.current?.triggerSync()}
+                        className="inbox-refresh"
+                        aria-label={syncPending ? "Stop sync" : "Sync emails"}
+                      >
+                        <RefreshCw
+                          className={cn("h-3.5 w-3.5", syncPending && "animate-spin")}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-[#18181b] text-xs text-[#f4f4f5]">
+                      {syncPending ? "Syncing…" : "Sync emails"}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => threadListRef.current?.triggerSync()}
-                      className="flex shrink-0 items-center justify-center rounded-lg p-2 text-[#9ca3af] transition-colors hover:bg-[#f3f4f6] hover:text-[#111118] dark:text-[#71717a] dark:hover:bg-[#ffffff]/[0.04] dark:hover:text-[#f4f4f5]"
-                      aria-label={syncPending ? "Stop sync" : "Sync emails"}
-                    >
-                      <RefreshCw
-                        className={cn("h-4 w-4", syncPending && "animate-spin")}
-                      />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-[#18181b] text-xs text-[#f4f4f5]">
-                    {syncPending ? "Syncing…" : "Sync emails"}
-                  </TooltipContent>
-                </Tooltip>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden">
                 <ThreadList
@@ -888,17 +1289,17 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
               onPointerDown={handleResizeStart}
               className={cn(
                 "relative z-10 flex w-[5px] shrink-0 cursor-col-resize items-center justify-center self-stretch transition-colors",
-                "bg-transparent hover:bg-[#3b82f6]/20 dark:hover:bg-[#3b82f6]/20",
-                isResizing && "bg-[#3b82f6]/30 dark:bg-[#3b82f6]/30",
+                "bg-transparent hover:bg-[#1e2a4a]/20 dark:hover:bg-[#1e2a4a]/20",
+                isResizing && "bg-[#1e2a4a]/30 dark:bg-[#1e2a4a]/30",
               )}
               style={{ touchAction: "none", minHeight: 120 }}
             />
 
             <main
               className={cn(
-                "flex min-w-0 flex-1 flex-col bg-white dark:bg-[#111113]",
+                "flex min-w-0 flex-1 flex-col bg-white dark:bg-[#ffffff]",
               )}
-              style={{ marginRight: showAIPanel ? aiPanelWidthPx : 0 }}
+              style={{ marginRight: showAIPanel ? effectiveWidth : 0 }}
             >
               <ThreadDisplay threadId={selectedThread} onClose={handleThreadClose} />
             </main>
@@ -906,11 +1307,10 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
 
             <aside
               className={cn(
-                "fixed right-0 z-40 border-l border-[#e5e7eb] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.04)] transition-transform duration-300 ease-out dark:border-[#1a1a23] dark:bg-[#111113] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
-                isDemo ? "top-[2.25rem] h-[calc(100vh-2.25rem)]" : "top-0 h-screen",
+                "fixed right-0 top-0 z-40 h-screen border-l border-[#e5e7eb] bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.04)] transition-transform duration-300 ease-out dark:border-[#ffffff] dark:bg-[#ffffff] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.3)]",
                 showAIPanel ? "translate-x-0" : "translate-x-full",
               )}
-              style={{ width: aiPanelWidthPx }}
+              style={{ width: effectiveWidth }}
             >
               <div
                 role="separator"
@@ -918,16 +1318,27 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                 onPointerDown={handleAiResizeStart}
                 className={cn(
                   "absolute left-0 top-0 z-50 h-full w-[6px] -translate-x-1/2 cursor-col-resize",
-                  "bg-transparent hover:bg-[#3b82f6]/20 dark:hover:bg-[#3b82f6]/20",
-                  isAiResizing && "bg-[#3b82f6]/30 dark:bg-[#3b82f6]/30",
+                  "bg-transparent hover:bg-[#1e2a4a]/20 dark:hover:bg-[#1e2a4a]/20",
+                  isAiResizing && "bg-[#1e2a4a]/30 dark:bg-[#1e2a4a]/30",
                 )}
                 style={{ touchAction: "none" }}
               />
               <div className="flex h-full flex-col">
-                <div className="border-b border-[#e5e7eb] px-4 py-3.5 dark:border-[#1a1a23]">
+                <div
+                  className="border-b border-[#e5e7eb] bg-gradient-to-b from-[#ffffff] to-[#ffffff] px-4 py-3 dark:border-[#ffffff] dark:from-[#ffffff] dark:to-[#ffffff]"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="-mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#111113] ring-1 ring-white/10">
+                      <div
+                        className="-mt-0.5 h-8 w-8 shrink-0 overflow-hidden"
+                        style={{
+                          borderRadius: 7,
+                          border: "1px solid #b88a3f",
+                          boxShadow:
+                            "inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px rgba(212,169,85,0.32)",
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src="/Opus-B.png"
                           alt="Inbox Brain"
@@ -935,22 +1346,54 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                         />
                       </div>
                       <div className="min-w-0 py-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-[14px] font-semibold tracking-tight text-[#111118] dark:text-[#f4f4f5]">
-                            AI Inbox Brain
+                        <div className="flex items-baseline gap-2">
+                          <span
+                            className="truncate text-[14px] font-semibold tracking-tight text-[#111118] dark:text-[#f5ebd9]"
+                          >
+                            Inbox brain
                           </span>
                           {isDemo && (
-                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/20 dark:text-amber-400">
-                              Demo
+                            <span
+                              className="rounded px-1.5 py-0.5"
+                              style={{
+                                background: "rgba(212,169,85,0.14)",
+                                color: "#b88a3f",
+                                fontFamily:
+                                  "var(--font-jetbrains-mono), ui-monospace, monospace",
+                                fontSize: 9,
+                                fontWeight: 700,
+                                letterSpacing: "0.1em",
+                              }}
+                            >
+                              DEMO
                             </span>
                           )}
                         </div>
                         {!isMobile && (
-                          <p className="mt-1 text-[10px] leading-4 text-[#9ca3af] dark:text-[#71717a]">
-                            <kbd className="rounded border border-[#e5e7eb] bg-[#f9fafb] px-1 font-mono text-[9px] text-[#6b7280] dark:border-[#3f3f46] dark:bg-[#18181b] dark:text-[#a1a1aa]">
+                          <p
+                            className="mt-1 flex items-center gap-1.5 text-[#8a8278] dark:text-[#8a8278]"
+                            style={{
+                              fontFamily:
+                                "var(--font-jetbrains-mono), ui-monospace, monospace",
+                              fontSize: 9.5,
+                              letterSpacing: "0.06em",
+                              fontWeight: 600,
+                            }}
+                          >
+                            <kbd
+                              className="rounded px-1 py-px"
+                              style={{
+                                background: "#ffffff",
+                                border: "1px solid #e5e7eb",
+                                boxShadow: "inset 0 -1px 0 #e5e7eb",
+                                color: "#1a1612",
+                                fontSize: 9,
+                                letterSpacing: "0.04em",
+                              }}
+                            >
                               {isMacOS ? "⌘↵" : "Ctrl+Enter"}
                             </kbd>
-                            <span className="ml-1">send</span>
+                            SEND
                           </p>
                         )}
                       </div>
@@ -1039,265 +1482,11 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
         />
       </div>
 
-      <Dialog open={requestAccessOpen} onOpenChange={setRequestAccessOpen}>
-        <DialogContent className="border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-[#111118] dark:text-[#f4f4f5">
-              Request access
-            </DialogTitle>
-            <DialogDescription className="text-left text-[#6b7280] dark:text-[#a1a1aa]">
-              <span className="block mt-2">
-                To use AI Buddy, AI Inbox Brain, and other features with your own Gmail, you need access to VectorMail. Right now you're exploring with sample data.
-              </span>
-              <span className="mt-3 block">
-                Request access to connect your account and unlock the full experience: AI Inbox Brain, AI Buddy, semantic search, smart summaries, and more, all in your mailbox.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setRequestAccessOpen(false)}
-              className="border-[#e5e7eb] dark:border-[#1a1a23]"
-            >
-              Close
-            </Button>
-            <a
-              href={`mailto:parbhat@parbhat.dev?subject=${encodeURIComponent("VectorMail - Request access")}&body=${encodeURIComponent(REQUEST_ACCESS_EMAIL_BODY)}`}
-              className="inline-flex h-9 items-center justify-center rounded-md bg-[#3b82f6] px-4 text-sm font-medium text-white transition-colors hover:bg-[#2563eb]"
-              onClick={() => setRequestAccessOpen(false)}
-            >
-              Request access
-            </a>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RequestAccessDialog
+        open={requestAccessOpen}
+        onOpenChange={setRequestAccessOpen}
+      />
     </TooltipProvider>
-  );
-}
-
-function ProfileMenu({
-  onSignOut,
-  isSigningOut,
-}: {
-  onSignOut: () => void;
-  isSigningOut: boolean;
-}) {
-  const { user } = useUser();
-  const [profileOpen, setProfileOpen] = useState(false);
-  const imageUrl = user?.imageUrl ?? "";
-  const name =
-    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-    (user?.emailAddresses?.[0]?.emailAddress ?? "Account");
-  const email = user?.primaryEmailAddress?.emailAddress ?? "";
-
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e5e7eb] bg-[#f3f4f6] dark:border-[#1a1a23] dark:bg-[#18181b] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
-            aria-label="Account menu"
-          >
-            {imageUrl ? (
-              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-sm font-medium text-[#6b7280] dark:text-[#a1a1aa]">
-                {name.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="min-w-[220px] rounded-lg border-[#e5e7eb] bg-white dark:border-[#1a1a23] dark:bg-[#111113]"
-        >
-          <div className="flex items-center gap-3 border-b border-[#f3f4f6] px-2 py-3 dark:border-[#1a1a23]">
-            {imageUrl ? (
-              <img src={imageUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e5e7eb] text-[15px] font-medium text-[#6b7280] dark:bg-[#18181b] dark:text-[#a1a1aa]">
-                {name.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-medium text-[#111118] dark:text-[#f4f4f5]">{name}</p>
-              {email && (
-                <p className="truncate text-[12px] text-[#6b7280] dark:text-[#a1a1aa]">{email}</p>
-              )}
-            </div>
-          </div>
-          <DropdownMenuItem
-            onClick={() => setProfileOpen(true)}
-            className="cursor-pointer text-[#111118] focus:bg-[#f3f4f6] dark:text-[#f4f4f5] dark:focus:bg-[#ffffff]/[0.04]"
-          >
-            <Settings className="h-4 w-4" />
-            Manage account
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={onSignOut}
-            disabled={isSigningOut}
-            variant="destructive"
-            className="cursor-pointer text-[#ef4444] focus:bg-[#fef2f2] dark:text-[#f87171] dark:focus:bg-[#7f1d1d]/30"
-          >
-            {isSigningOut ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <LogOut className="h-4 w-4" />
-            )}
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
-        <SheetContent
-          side="right"
-          className="w-full max-w-[400px] overflow-y-auto border-[#e5e7eb] bg-white p-0 dark:border-[#1a1a23] dark:bg-[#111113]"
-        >
-          <UserProfile />
-        </SheetContent>
-      </Sheet>
-    </>
-  );
-}
-
-function MobileSidebar({
-  navItems,
-  tab,
-  setTab,
-  router,
-  onNavigate,
-  onSignOut,
-  isSigningOut,
-}: {
-  navItems: Array<{
-    id: string;
-    icon: React.ElementType;
-    label: string;
-  }>;
-  tab: string;
-  setTab: (tab: string) => void;
-  router: ReturnType<typeof useRouter>;
-  onNavigate?: (newTab: string, isBuddy?: boolean) => void;
-  onSignOut: () => void;
-  isSigningOut: boolean;
-}) {
-  return (
-    <div className="relative flex h-full flex-col bg-white dark:bg-[#202124]">
-      <Link
-        href="/"
-        prefetch
-        className="flex w-full items-center gap-3 border-b border-[#dadce0] p-4 transition-opacity hover:opacity-90 active:opacity-95 dark:border-[#3c4043]"
-      >
-        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-[#1a73e8] dark:bg-[#8ab4f8]">
-          <video
-            src="/Vectormail-logo.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="h-full w-full scale-[1.6] object-cover"
-          />
-        </div>
-        <div>
-          <h2 className="text-[15px] font-medium text-[#202124] dark:text-[#e8eaed]">VectorMail</h2>
-          <p className="mt-0.5 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">AI-Powered Email</p>
-        </div>
-      </Link>
-
-      <div className="border-[#dadce0] dark:border-[#3c4043] md:border-b md:p-3">
-        <div className="hidden md:block">
-          <AccountSwitcher isCollapsed={false} />
-        </div>
-      </div>
-
-      <div className="space-y-0.5 p-2">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => {
-              if (onNavigate && tab !== item.id) {
-                onNavigate(item.id, false);
-              } else {
-                setTab(item.id);
-              }
-            }}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition-colors",
-              tab === item.id
-                ? "bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#174ea6]/30 dark:text-[#8ab4f8]"
-                : "text-[#202124] hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#303134]",
-            )}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            <span className="flex-1">{item.label}</span>
-          </button>
-        ))}
-
-        <div className="my-2 h-px bg-[#dadce0] dark:bg-[#3c4043]" />
-
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.("", true);
-            window.location.href = "/buddy?fresh=true";
-          }}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-[#202124] transition-colors hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#303134]"
-        >
-          <Bot className="h-5 w-5 shrink-0" />
-          <span className="flex-1">AI Buddy</span>
-        </button>
-      </div>
-
-      <div className="flex min-h-0 flex-1 px-2 pb-2">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.("", true);
-            window.location.href = "/buddy?fresh=true";
-          }}
-          className="group flex w-full flex-col justify-between rounded-lg border border-[#dadce0] bg-[#f8f9fa] p-4 text-left transition-colors hover:border-[#1a73e8]/30 hover:bg-[#e8f0fe]/50 dark:border-[#3c4043] dark:bg-[#292a2d] dark:hover:border-[#8ab4f8]/30 dark:hover:bg-[#174ea6]/10"
-        >
-          <div className="flex flex-col">
-            <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8] dark:bg-[#8ab4f8]">
-                <Zap className="h-4 w-4 text-white dark:text-[#202124]" />
-              </div>
-              <Search className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
-            </div>
-            <h3 className="mb-2 text-[14px] font-semibold tracking-tight text-[#202124] dark:text-[#e8eaed]">
-              AI Inbox Brain
-            </h3>
-            <p className="text-[13px] leading-relaxed text-[#5f6368] dark:text-[#9aa0a6]">
-              Ask in plain English, get structured answers, and open the threads.
-              Best on desktop.
-            </p>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-[13px] font-medium text-[#1a73e8] dark:text-[#8ab4f8]">
-            <span>Try on desktop</span>
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </div>
-        </button>
-      </div>
-
-      <div className="border-t border-[#dadce0] p-2 dark:border-[#3c4043]">
-        <button
-          type="button"
-          onClick={onSignOut}
-          disabled={isSigningOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#d93025] transition-colors hover:bg-[#fce8e6] disabled:opacity-70 dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
-        >
-          {isSigningOut ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-          ) : (
-            <LogOut className="h-4 w-4 shrink-0" />
-          )}
-          <span className="flex-1 text-left">{isSigningOut ? "Signing out…" : "Sign Out"}</span>
-        </button>
-      </div>
-    </div>
   );
 }
 

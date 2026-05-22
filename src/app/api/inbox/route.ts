@@ -1,7 +1,9 @@
-import { db } from "@/server/db";
+﻿import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Account } from "@/lib/accounts";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.inbox");
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +34,14 @@ export async function GET(req: NextRequest) {
     }
 
     const accountId = account.id;
-    console.log("[Inbox API] Server-derived accountId:", accountId);
+    apiLog.log("[Inbox API] Server-derived accountId:", accountId);
 
     const emailAccount = new Account(account.id, account.token);
 
     try {
       const result = await emailAccount.fetchInboxEmails();
 
-      console.log("INBOX DB QUERY RESULT COUNT:", result.emails.length);
+      apiLog.log("INBOX DB QUERY RESULT COUNT:", result.emails.length);
 
       const messages =
         maxResults > 0 ? result.emails.slice(0, maxResults) : result.emails;
@@ -56,7 +58,7 @@ export async function GET(req: NextRequest) {
         },
       );
     } catch (error) {
-      console.error("[Inbox API] Aurinko fetch failed:", error);
+      apiLog.error("[Inbox API] Aurinko fetch failed:", error);
 
       const dbEmails = await db.email.findMany({
         where: {
@@ -92,7 +94,7 @@ export async function GET(req: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("[Inbox API] Fatal error:", error);
+    apiLog.error("[Inbox API] Fatal error:", error);
     return NextResponse.json(
       {
         error: "Failed to fetch inbox",

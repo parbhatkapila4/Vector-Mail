@@ -14,9 +14,6 @@ export function automationRealSendEnabled(): boolean {
   return env.AUTOMATION_REAL_SEND_ENABLED === true;
 }
 
-/**
- * Whether this execution is allowed to perform a real Aurinko send (all gates except pre-send thread checks).
- */
 export function canAutomationExecutionRealSend(params: {
   execution: Pick<
     ActionExecution,

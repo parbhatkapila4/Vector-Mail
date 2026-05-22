@@ -75,7 +75,7 @@ export function RemindMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-[200px] border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
+        className="min-w-[200px] border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#1e2a4a]"
         onClick={(e) => e.stopPropagation()}
       >
         {isRemindersTab && (

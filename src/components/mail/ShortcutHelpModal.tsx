@@ -60,7 +60,7 @@ export function ShortcutHelpModal({ open, onOpenChange }: ShortcutHelpModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-neutral-800 bg-neutral-950 text-white sm:max-w-lg">
+      <DialogContent className="max-w-md border-neutral-800 bg-[#1e2a4a] text-white sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-white">
             Keyboard shortcuts

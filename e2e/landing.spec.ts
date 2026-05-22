@@ -20,15 +20,6 @@ test.describe("Landing Page", () => {
     await expect(page).toHaveURL("/features");
   });
 
-  test("should navigate to pricing page", async ({ page }) => {
-    await page.goto("/");
-    await page
-      .getByRole("link", { name: /Pricing/i })
-      .first()
-      .click();
-    await expect(page).toHaveURL("/pricing");
-  });
-
   test("should navigate to about page when logged out", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: /About/i }).first().click();
@@ -52,18 +43,6 @@ test.describe("Features Page", () => {
     await page.goto("/features");
     const backButton = page.getByRole("link", { name: /Back/i }).first();
     await expect(backButton).toBeVisible();
-  });
-});
-
-test.describe("Pricing Page", () => {
-  test("should display pricing cards", async ({ page }) => {
-    await page.goto("/pricing");
-    await expect(page.getByText(/Pricing Coming Soon/i)).toBeVisible();
-  });
-
-  test("should display FAQ section", async ({ page }) => {
-    await page.goto("/pricing");
-    await expect(page.getByText(/Frequently Asked Questions/i)).toBeVisible();
   });
 });
 

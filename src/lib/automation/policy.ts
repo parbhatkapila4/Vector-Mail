@@ -14,7 +14,18 @@ export function bandForConfidence(confidence: number | null | undefined): Confid
   return "LOW";
 }
 
-export function decisionForModeAndConfidence(mode: AutomationMode, confidence: number | null | undefined): {
+export function isHighConfidence(confidence: number | null | undefined): boolean {
+  return bandForConfidence(confidence) === "HIGH";
+}
+
+export function isMediumConfidence(confidence: number | null | undefined): boolean {
+  return bandForConfidence(confidence) === "MEDIUM";
+}
+
+export function decisionForModeAndConfidence(
+  mode: AutomationMode,
+  confidence: number | null | undefined,
+): {
   status: "pending" | "awaiting_approval" | "cancelled";
   band: ConfidenceBand;
 } {
@@ -29,4 +40,3 @@ export function decisionForModeAndConfidence(mode: AutomationMode, confidence: n
   if (band === "MEDIUM") return { status: "awaiting_approval", band };
   return { status: "cancelled", band };
 }
-

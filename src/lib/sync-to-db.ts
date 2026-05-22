@@ -1,11 +1,17 @@
-import { db } from "@/server/db";
+﻿import { db } from "@/server/db";
 import type { EmailAddress, EmailAttachment, EmailMessage } from "@/types";
 import type { Prisma } from "@prisma/client";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const syncLog = makeTagLogger("sync-to-db");
+
+function safeDateOrNull(value: unknown): Date | null {
+  if (value == null) return null;
+  const d = value instanceof Date ? value : new Date(value as string | number);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 function safeDate(value: unknown): Date {
-  if (value == null) return new Date();
-  const d = value instanceof Date ? value : new Date(value as string | number);
-  return Number.isNaN(d.getTime()) ? new Date() : d;
+  return safeDateOrNull(value) ?? new Date();
 }
 
 function normalizeEmailAddressString(addr: string, raw?: string | null): string | null {
@@ -44,7 +50,7 @@ export async function syncEmailsToDatabase(
   options?: { writeConcurrency?: number; skipRecalculate?: boolean },
 ) {
   if (!emails || emails.length === 0) {
-    console.warn(
+    syncLog.warn(
       `[syncEmailsToDatabase] No emails provided for account ${accountId}`,
     );
     return;
@@ -55,7 +61,7 @@ export async function syncEmailsToDatabase(
     select: { id: true },
   });
   if (!accountExists) {
-    console.error(`[sync] Account ${accountId} not found in DB - skipping sync (foreign key would fail).`);
+    syncLog.error(`[sync] Account ${accountId} not found in DB - skipping sync (foreign key would fail).`);
     return;
   }
 
@@ -75,7 +81,7 @@ export async function syncEmailsToDatabase(
         } catch (error) {
           errorCount++;
           if (errorCount === 1) {
-            console.error(
+            syncLog.error(
               `[sync] First upsert failure (${emails.length} emails in batch):`,
               error instanceof Error ? error.message : String(error),
             );
@@ -89,11 +95,11 @@ export async function syncEmailsToDatabase(
       await recalculateAllThreadStatuses(accountId);
     }
 
-    console.log(
-      `[sync] Account ${accountId}: ${emails.length} emails → saved ${successCount}${errorCount > 0 ? `, ${errorCount} errors` : ""}`,
+    syncLog.log(
+      `[sync] Account ${accountId}: ${emails.length} emails â†’ saved ${successCount}${errorCount > 0 ? `, ${errorCount} errors` : ""}`,
     );
   } catch (error) {
-    console.error(
+    syncLog.error(
       `[syncEmailsToDatabase] Fatal sync error for account ${accountId}:`,
       error,
     );
@@ -108,9 +114,6 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       select: { id: true },
     });
 
-    let inboxCount = 0;
-    let sentCount = 0;
-    let draftCount = 0;
 
     for (const thread of threads) {
       const threadEmails = await db.email.findMany({
@@ -197,16 +200,17 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       }
 
       const latestDate = threadEmails.reduce<Date | null>((acc, e) => {
-        const d = e.sentAt ?? e.receivedAt ?? e.createdTime;
-        if (!d) return acc;
-        const t = d.getTime ? d.getTime() : new Date(d).getTime();
-        return !acc || t > acc.getTime() ? new Date(t) : acc;
+        const raw = e.sentAt ?? e.receivedAt;
+        if (!raw) return acc;
+        const d = raw instanceof Date ? raw : new Date(raw);
+        if (Number.isNaN(d.getTime()) || d.getTime() === 0) return acc;
+        return !acc || d.getTime() > acc.getTime() ? d : acc;
       }, null);
       const updateData = {
         draftStatus: threadFolderType === "draft",
         inboxStatus: threadFolderType === "inbox",
         sentStatus: threadFolderType === "sent",
-        ...(latestDate && { lastMessageDate: latestDate }),
+        lastMessageDate: latestDate ?? new Date(0),
       };
 
       await db.thread.update({
@@ -215,9 +219,6 @@ export async function recalculateAllThreadStatuses(accountId: string) {
       });
 
 
-      if (threadFolderType === "inbox") inboxCount++;
-      else if (threadFolderType === "sent") sentCount++;
-      else if (threadFolderType === "draft") draftCount++;
 
 
     }
@@ -233,7 +234,7 @@ export async function recalculateAllThreadStatuses(accountId: string) {
     });
 
     if (dbInboxCount === 0 && threads.length > 0) {
-      console.error(
+      syncLog.error(
         `[recalculateAllThreadStatuses] WARNING: NO INBOX THREADS FOUND for account ${accountId}`,
       );
     }
@@ -241,20 +242,20 @@ export async function recalculateAllThreadStatuses(accountId: string) {
     await db.account.update({
       where: { id: accountId },
       data: { lastInboxSyncAt: new Date() },
-    }).catch(err => console.error(`[recalculateAllThreadStatuses] Failed to update lastInboxSyncAt:`, err));
+    }).catch(err => syncLog.error(`[recalculateAllThreadStatuses] Failed to update lastInboxSyncAt:`, err));
 
-    console.log(
+    syncLog.log(
       `[sync] Account ${accountId}: threads recalculated (inbox=${dbInboxCount}, sent=${dbSentCount}, draft=${dbDraftCount})`,
     );
 
   } catch (error) {
-    console.error("[recalculateAllThreadStatuses] Error:", error);
+    syncLog.error("[recalculateAllThreadStatuses] Error:", error);
   }
 }
 
 async function upsertEmail(email: EmailMessage, accountId: string) {
   if (!email.id || !email.threadId) {
-    console.error(
+    syncLog.error(
       `[upsertEmail] Invalid email data - missing id or threadId:`,
       {
         id: email.id,
@@ -338,22 +339,34 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
     const replyToAddresses = (email.replyTo ?? [])
       .map((addr) => addressMap.get(safeAddrKey(addr)))
       .filter(Boolean);
+    const parsedSentAt = safeDateOrNull(email.sentAt);
+    const parsedReceivedAt = safeDateOrNull(email.receivedAt);
+    const candidateDate = parsedSentAt ?? parsedReceivedAt;
+    const storedSentAt = parsedSentAt ?? parsedReceivedAt ?? new Date(0);
+    const storedReceivedAt = parsedReceivedAt ?? parsedSentAt ?? new Date(0);
 
-    const lastMessageDate = safeDate(email.sentAt ?? email.receivedAt ?? email.createdTime);
     const existingThread = await db.thread.findUnique({
       where: { id: email.threadId },
       select: { lastMessageDate: true },
     });
-    const effectiveLastMessageDate =
-      !existingThread?.lastMessageDate || lastMessageDate > existingThread.lastMessageDate
-        ? lastMessageDate
-        : existingThread.lastMessageDate;
+
+    const effectiveLastMessageDate: Date =
+      candidateDate &&
+      (!existingThread?.lastMessageDate ||
+        candidateDate > existingThread.lastMessageDate)
+        ? candidateDate
+        : existingThread?.lastMessageDate ?? candidateDate ?? new Date(0);
+
     const thread = await db.thread.upsert({
       where: { id: email.threadId },
       update: {
         subject: email.subject,
         accountId,
-        lastMessageDate: effectiveLastMessageDate,
+        ...(candidateDate &&
+        (!existingThread?.lastMessageDate ||
+          candidateDate > existingThread.lastMessageDate)
+          ? { lastMessageDate: candidateDate }
+          : {}),
         done: false,
         participantIds: [
           ...new Set([
@@ -391,8 +404,8 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         threadId: thread.id,
         createdTime: safeDate(email.createdTime),
         lastModifiedTime: new Date(),
-        sentAt: safeDate(email.sentAt),
-        receivedAt: safeDate(email.receivedAt),
+        sentAt: storedSentAt,
+        receivedAt: storedReceivedAt,
         subject: email.subject,
         sysLabels: email.sysLabels,
         keywords: email.keywords,
@@ -426,8 +439,8 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         threadId: thread.id,
         createdTime: safeDate(email.createdTime),
         lastModifiedTime: new Date(),
-        sentAt: safeDate(email.sentAt),
-        receivedAt: safeDate(email.receivedAt),
+        sentAt: storedSentAt,
+        receivedAt: storedReceivedAt,
         subject: email.subject,
         sysLabels: email.sysLabels,
         internetHeaders:
@@ -571,7 +584,7 @@ async function upsertAttachment(emailId: string, attachment: EmailAttachment) {
       },
     });
   } catch (error) {
-    console.log(`Failed to upsert attachment: ${error}`);
+    syncLog.log(`Failed to upsert attachment: ${error}`);
   }
 }
 

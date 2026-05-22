@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { generateQueryEmbedding } from "./email-analysis";
+import { serverLog } from "@/lib/logging/server-logger";
 import type {
   Email,
   Thread,
@@ -45,7 +46,10 @@ export async function searchEmailsByVector(
     const queryEmbedding = await generateQueryEmbedding(query);
 
     if (queryEmbedding.every((val) => val === 0)) {
-      console.warn("Empty query embedding, falling back to text search");
+      serverLog.warn(
+        { accountId, queryLength: query.length },
+        "vector-search: empty query embedding, falling back to text search",
+      );
       return await fallbackTextSearch(query, accountId, limit);
     }
 
@@ -106,7 +110,10 @@ export async function searchEmailsByVector(
 
     return results;
   } catch (error) {
-    console.error("Vector search error:", error);
+    serverLog.error(
+      { err: error instanceof Error ? error.message : String(error), accountId },
+      "vector-search: pgvector query failed; falling back to text search",
+    );
     return await fallbackTextSearch(query, accountId, limit);
   }
 }
@@ -148,6 +155,14 @@ async function fallbackTextSearch(
         relevanceScore: 0.5,
       }));
     }
+    const perTermFromConditions = searchTerms.map((term) => ({
+      from: {
+        OR: [
+          { address: { contains: term, mode: "insensitive" } as const },
+          { name: { contains: term, mode: "insensitive" } as const },
+        ],
+      },
+    }));
 
     const emails = await db.email.findMany({
       where: {
@@ -178,6 +193,15 @@ async function fallbackTextSearch(
               hasSome: searchTerms,
             },
           },
+          {
+            from: {
+              OR: [
+                { address: { contains: query, mode: "insensitive" } },
+                { name: { contains: query, mode: "insensitive" } },
+              ],
+            },
+          },
+          ...perTermFromConditions,
         ],
       },
       include: {
@@ -212,7 +236,10 @@ async function fallbackTextSearch(
 
     return results;
   } catch (error) {
-    console.error("Fallback search error:", error);
+    serverLog.error(
+      { err: error instanceof Error ? error.message : String(error), accountId },
+      "vector-search: text-search fallback also failed",
+    );
     return [];
   }
 }
@@ -282,6 +309,17 @@ function calculateTextRelevanceScore(
       summary.includes(term),
     ).length;
     score += summMatches * 0.2;
+  }
+
+  const fromAddr = email.from?.address?.toLowerCase() || "";
+  const fromName = email.from?.name?.toLowerCase() || "";
+  if (fromAddr.includes(q) || fromName.includes(q)) {
+    score += 4;
+  } else {
+    const fromMatches = searchTerms.filter(
+      (term) => fromAddr.includes(term) || fromName.includes(term),
+    ).length;
+    score += fromMatches * 1.5;
   }
 
   const tagMatches =

@@ -1,11 +1,11 @@
-import { db } from "@/server/db";
+﻿import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { searchEmailsByVector } from "@/lib/vector-search";
 import {
   getMatchedKeywords,
   buildHighlightedSnippet,
-} from "@/lib/search-explainability";
+} from "@/lib/explainability/keywords";
 import { serverLog } from "@/lib/logging/server-logger";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { recordSearchLatency } from "@/lib/metrics/store";
@@ -15,6 +15,8 @@ import {
 } from "@/lib/rate-limit";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 import { getDemoSearchResults } from "@/lib/demo/seed-demo-data";
+import { makeTagLogger } from "@/lib/logging/console-shim";
+const apiLog = makeTagLogger("api.search");
 
 async function searchHandler(req: NextRequest | Request) {
   try {
@@ -98,7 +100,7 @@ async function searchHandler(req: NextRequest | Request) {
     let finalResults = keywordResults;
 
     if (shouldUseSemanticSearch) {
-      console.log(
+      apiLog.log(
         `[Search] Keyword search returned ${keywordResults.length} results, trying semantic search...`,
       );
       try {
@@ -140,7 +142,7 @@ async function searchHandler(req: NextRequest | Request) {
           }),
         ];
       } catch (semanticError) {
-        console.error(
+        apiLog.error(
           "[Search] Semantic search failed, using keyword results:",
           semanticError,
         );
@@ -164,7 +166,7 @@ async function searchHandler(req: NextRequest | Request) {
       },
       "email search completed",
     );
-    console.log(
+    apiLog.log(
       `[Search] Query: "${searchQuery}" | Results: ${limitedResults.length} | Time: ${totalTime}ms | Keyword: ${keywordSearchTime}ms`,
     );
 
@@ -182,7 +184,7 @@ async function searchHandler(req: NextRequest | Request) {
       },
     );
   } catch (error) {
-    console.error("[Search] Error:", error);
+    apiLog.error("[Search] Error:", error);
     return NextResponse.json(
       {
         error: "Search failed",
