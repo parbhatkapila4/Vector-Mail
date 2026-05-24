@@ -21,6 +21,7 @@ import { log as auditLog } from "@/lib/audit/audit-log";
 import { Account } from "@/lib/accounts";
 import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { db, withDbRetry } from "@/server/db";
+import { isOutgoingContentBlockedError } from "@/lib/outgoing-content-policy";
 
 const TRANSIENT_ERROR_CODES = new Set(["ETIMEDOUT", "ECONNRESET", "EAI_AGAIN"]);
 
@@ -474,6 +475,7 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       );
     }
     const msg = err instanceof Error ? err.message : String(err);
+    const policyBlocked = isOutgoingContentBlockedError(err);
     await transitionActionExecution({
       id: execution.id,
       userId: execution.userId,
@@ -482,12 +484,17 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
     });
     auditLog({
       userId: execution.userId,
-      action: "automation_follow_up_send_failed",
+      action: policyBlocked
+        ? "automation_follow_up_blocked"
+        : "automation_follow_up_send_failed",
       resourceId: execution.id,
       metadata: {
         accountId: execution.accountId,
         threadId: threadIdForSend,
         transient: false,
+        ...(policyBlocked
+          ? { policyField: err.field, policyReason: err.reason }
+          : {}),
       },
     });
     throw new AutomationSendPermanentError(msg);

@@ -9,6 +9,9 @@ export const env = createEnv({
       .default("development"),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    AURINKO_CLIENT_ID: z.string().min(1).optional(),
+    AURINKO_CLIENT_SECRET: z.string().min(1).optional(),
 
     ENABLE_EMAIL_SEND: z
       .string()
@@ -37,6 +40,7 @@ export const env = createEnv({
       .string()
       .optional()
       .transform((v) => (v === "true" ? true : false)),
+    NEXT_PUBLIC_URL: z.string().url().optional(),
   },
 
   runtimeEnv: {
@@ -44,6 +48,9 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    AURINKO_CLIENT_ID: process.env.AURINKO_CLIENT_ID,
+    AURINKO_CLIENT_SECRET: process.env.AURINKO_CLIENT_SECRET,
     ENABLE_EMAIL_SEND: process.env.ENABLE_EMAIL_SEND,
     AUTOMATION_REAL_SEND_ENABLED: process.env.AUTOMATION_REAL_SEND_ENABLED,
     CRON_SECRET: process.env.CRON_SECRET,
@@ -55,6 +62,7 @@ export const env = createEnv({
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
     NEXT_PUBLIC_ANALYTICS_ENABLED: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED,
+    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

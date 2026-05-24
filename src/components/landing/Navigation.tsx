@@ -156,9 +156,7 @@ export function Navigation() {
     <header
       className="sticky top-0 z-50 border-b"
       style={{
-        background: "rgba(255,255,255,0.8)",
-        backdropFilter: "blur(20px) saturate(180%)",
-        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        background: "#fbf6e8",
         borderColor: "var(--vmx-line, #e5e0ee)",
       }}
     >
@@ -306,8 +304,7 @@ export function Navigation() {
           className="border-t md:hidden"
           style={{
             borderColor: "var(--vmx-line, #e5e0ee)",
-            background: "rgba(255,255,255,0.95)",
-            backdropFilter: "blur(20px)",
+            background: "#ffffff",
           }}
         >
           <div className="mx-auto max-w-[1280px] space-y-0.5 px-5 py-3">

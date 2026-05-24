@@ -8,6 +8,7 @@ import { isDemoCall } from "@/lib/demo/predicate";
 import { getDemoScheduledSends } from "@/lib/demo/seed-demo-data";
 import { emailAddressSchema } from "@/types";
 import { makeTagLogger } from "@/lib/logging/console-shim";
+import { isOutgoingContentBlockedError } from "@/lib/outgoing-content-policy";
 
 import { authoriseAccountAccess } from "./shared";
 
@@ -58,10 +59,21 @@ export const sendingProcedures = {
         }
       }
       const emailAccount = new Account(account.id, account.token);
-      const result = await emailAccount.sendEmail({
-        ...input,
-        body,
-      });
+      let result;
+      try {
+        result = await emailAccount.sendEmail({
+          ...input,
+          body,
+        });
+      } catch (sendErr) {
+        if (isOutgoingContentBlockedError(sendErr)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `This email can't be sent — the ${sendErr.field} contains ${sendErr.reason}. Edit the offending content and try again.`,
+          });
+        }
+        throw sendErr;
+      }
       if (trackingId && result?.id) {
         try {
           const { updateTrackingMessageId } = await import(

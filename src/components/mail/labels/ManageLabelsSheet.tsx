@@ -171,17 +171,11 @@ export function ManageLabelsSheet({
             </p>
           </SheetHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <section className="shrink-0 rounded-xl border border-[#e4e7ed] bg-[#fafbfc] p-4 shadow-[0_1px_2px_rgba(15,20,40,0.04)] dark:border-[#3c4043] dark:bg-[#292a2d]">
-              <p
-                className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a849a]"
-                style={{
-                  fontFamily:
-                    "var(--font-jetbrains-mono), ui-monospace, monospace",
-                }}
-              >
-                <span className="text-[#1e2a4a]">✦</span> New label
-              </p>
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-6">
+            <section className="shrink-0">
+              <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[#0e1729] dark:text-[#e8eaed]">
+                New label
+              </h3>
               <div className="flex flex-col gap-3">
                 <Input
                   placeholder="Label name"
@@ -190,16 +184,16 @@ export function ManageLabelsSheet({
                   className="h-9 border-[#e4e7ed] bg-white text-[13px] text-[#0e1729] placeholder:text-[#a8b0c0] focus-visible:border-[#1e2a4a]/40 focus-visible:ring-2 focus-visible:ring-[#1e2a4a]/15 dark:border-[#3c4043] dark:bg-[#202124] dark:text-[#e8eaed]"
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}
                 />
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-2">
                   <span className="text-[11px] font-medium text-[#7a849a]">
                     Color
                   </span>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {LABEL_COLORS.map((c) => (
                       <button
                         key={c}
                         type="button"
-                        className="h-6 w-6 rounded-full transition-all hover:scale-110"
+                        className="h-6 w-6 shrink-0 rounded-full transition-all hover:scale-110"
                         style={{
                           backgroundColor: c,
                           ...(newColor === c
@@ -223,25 +217,13 @@ export function ManageLabelsSheet({
               </div>
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#e4e7ed] bg-[#fafbfc] p-4 shadow-[0_1px_2px_rgba(15,20,40,0.04)] dark:border-[#3c4043] dark:bg-[#292a2d]">
+            <section className="flex min-h-0 flex-1 flex-col border-t border-[#eef0f4] pt-5 dark:border-[#3c4043]">
               <div className="mb-3 flex shrink-0 items-center justify-between">
-                <p
-                  className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a849a]"
-                  style={{
-                    fontFamily:
-                      "var(--font-jetbrains-mono), ui-monospace, monospace",
-                  }}
-                >
-                  <span className="text-[#1e2a4a]">✦</span> Your labels
-                </p>
+                <h3 className="text-[13px] font-semibold tracking-tight text-[#0e1729] dark:text-[#e8eaed]">
+                  Your labels
+                </h3>
                 {(labels ?? []).length > 0 && (
-                  <span
-                    className="rounded-full border border-[#e4e7ed] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#4a5572]"
-                    style={{
-                      fontFamily:
-                        "var(--font-jetbrains-mono), ui-monospace, monospace",
-                    }}
-                  >
+                  <span className="rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-semibold text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
                     {(labels ?? []).length}
                   </span>
                 )}
@@ -278,12 +260,12 @@ export function ManageLabelsSheet({
                             className="h-8 flex-1 border-[#e4e7ed] text-[13px] focus-visible:border-[#1e2a4a]/40 focus-visible:ring-2 focus-visible:ring-[#1e2a4a]/15 dark:border-[#3c4043] dark:bg-[#292a2d] dark:text-[#e8eaed]"
                             autoFocus
                           />
-                          <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {LABEL_COLORS.map((c) => (
                               <button
                                 key={c}
                                 type="button"
-                                className="h-5 w-5 rounded-full transition-all hover:scale-110"
+                                className="h-5 w-5 shrink-0 rounded-full transition-all hover:scale-110"
                                 style={{
                                   backgroundColor: c,
                                   ...(editColor === c

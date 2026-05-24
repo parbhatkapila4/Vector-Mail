@@ -412,7 +412,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
 
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-3 py-2 md:px-4 md:py-4">
         <div
-          className={`relative h-full w-full rounded-xl border p-3 text-[#202124] transition-all duration-300 dark:text-[#e8eaed] md:min-h-[300px] md:p-4 ${isGenerating
+          className={`relative h-full w-full min-w-0 overflow-hidden rounded-xl border p-3 text-[#202124] transition-all duration-300 dark:text-[#e8eaed] md:min-h-[300px] md:p-4 ${isGenerating
             ? "border-[#1e2a4a]/25 bg-white shadow-[0_0_0_4px_rgba(30,42,74,0.06),0_8px_24px_rgba(30,42,74,0.06)] dark:border-[#1e2a4a]/40 dark:bg-[#202124]"
             : "border-[#dadce0] bg-white focus-within:border-[#1e2a4a]/40 focus-within:shadow-[0_0_0_3px_rgba(30,42,74,0.08)] dark:border-[#3c4043] dark:bg-[#292a2d] dark:focus-within:border-[#1e2a4a]/50"
             }`}
@@ -439,7 +439,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
           )}
 
           <EditorContent
-            className="prose prose-sm h-full w-full max-w-none border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:cursor-text [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none [&_.ProseMirror]:focus:outline-none"
+            className="prose prose-sm h-full w-full min-w-0 max-w-none break-words border-none focus:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:cursor-text [&_.ProseMirror]:p-0 [&_.ProseMirror]:outline-none [&_.ProseMirror]:focus:outline-none [&_.ProseMirror_*]:max-w-full [&_.ProseMirror]:[overflow-wrap:anywhere] [&_.ProseMirror]:[word-break:break-word]"
             editor={editor}
             placeholder={
               isGenerating
@@ -527,26 +527,27 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
           </span>
         </div>
 
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
           <Button
             onClick={handleGenerateClick}
             disabled={isGenerating || isSending}
             variant="outline"
-            className="h-11 flex-1 border-[#dadce0] text-[#1a73e8] hover:bg-[#1a73e8]/10 dark:border-[#3c4043] dark:text-[#1e2a4a] dark:hover:bg-[#1e2a4a]/15"
+            aria-label={isGenerating ? "Generating reply" : "Generate reply with AI"}
+            title={isGenerating ? "Generating…" : "Generate with AI"}
+            className="h-11 w-11 shrink-0 border-[#dadce0] p-0 text-[#1a73e8] hover:bg-[#1a73e8]/10 dark:border-[#3c4043] dark:text-[#1e2a4a] dark:hover:bg-[#1e2a4a]/15"
           >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            {isGenerating ? "Generating..." : "Generate"}
+            <MessageCircle className="h-4 w-4" />
           </Button>
           {onScheduleSend && (
             <Button
               type="button"
               variant="outline"
               disabled={isSending || isScheduling || sendDisabled}
-              title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
+              title={sendDisabled ? "Request access to connect your Gmail and send" : "Schedule send"}
               onClick={() => onScheduleSend(editor?.getHTML() ?? "")}
-              className="h-11 flex-1 border-[#dadce0] text-[#5f6368] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:bg-[#303134] disabled:opacity-60"
+              className="h-11 shrink-0 border-[#dadce0] px-3 text-[12.5px] font-medium text-[#5f6368] hover:bg-[#f1f3f4] dark:border-[#3c4043] dark:text-[#9aa0a6] dark:hover:bg-[#303134] disabled:opacity-60"
             >
-              {isScheduling ? "Scheduling..." : "Schedule send"}
+              {isScheduling ? "Scheduling…" : "Schedule"}
             </Button>
           )}
           <Button
@@ -559,7 +560,7 @@ Generate a complete email body starting with what the user has typed. Use \\n\\n
             title={sendDisabled ? "Request access to connect your Gmail and send" : undefined}
             className="h-11 flex-1 bg-[#1a73e8] text-white hover:bg-[#1765cc] dark:bg-[#1e2a4a] dark:text-[#202124] dark:hover:bg-[#aecbfa] disabled:opacity-60"
           >
-            {isSending ? "Sending..." : "Send"}
+            {isSending ? "Sending…" : "Send"}
           </Button>
         </div>
 

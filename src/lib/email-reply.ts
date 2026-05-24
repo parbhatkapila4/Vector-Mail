@@ -3,13 +3,15 @@ import { Account } from "@/lib/accounts";
 import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { DEMO_ACCOUNT_ID, DEMO_USER_ID } from "@/lib/demo/constants";
+import { isOutgoingContentBlockedError } from "@/lib/outgoing-content-policy";
 
 export type SendReplyFailureReason =
   | "demo"
   | "thread_not_found"
   | "needs_reconnect"
   | "no_messages"
-  | "send_failed";
+  | "send_failed"
+  | "policy_blocked";
 
 export type SendReplyResult =
   | {
@@ -138,6 +140,13 @@ export async function sendReplyToThread(opts: {
       threadId,
     });
   } catch (err) {
+    if (isOutgoingContentBlockedError(err)) {
+      return {
+        ok: false,
+        reason: "policy_blocked",
+        message: `This reply contains ${err.reason} in the ${err.field}. Edit and try again.`,
+      };
+    }
     return {
       ok: false,
       reason: "send_failed",

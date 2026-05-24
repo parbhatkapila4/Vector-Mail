@@ -3,6 +3,7 @@ import { Account } from "@/lib/accounts";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { sendEmailRest } from "@/lib/send-email-rest";
 import { serverLog } from "@/lib/logging/server-logger";
+import { isOutgoingContentBlockedError } from "@/lib/outgoing-content-policy";
 
 type RestPayload = {
   type: "rest";
@@ -198,15 +199,38 @@ export async function runScheduledSend(
     return { ok: true };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    serverLog.error(
-      {
-        event: "scheduled_send_failed",
-        scheduledSendId: row.id,
-        accountId: row.accountId,
-        error: errorMessage,
-      },
-      "scheduled send failed",
-    );
+    if (isOutgoingContentBlockedError(err)) {
+      serverLog.warn(
+        {
+          event: "scheduled_send_blocked",
+          scheduledSendId: row.id,
+          accountId: row.accountId,
+          field: err.field,
+          reason: err.reason,
+        },
+        "scheduled send blocked by outgoing content policy",
+      );
+      auditLog({
+        userId: row.userId,
+        action: "scheduled_send_blocked",
+        resourceId: row.id,
+        metadata: {
+          accountId: row.accountId,
+          field: err.field,
+          reason: err.reason,
+        },
+      });
+    } else {
+      serverLog.error(
+        {
+          event: "scheduled_send_failed",
+          scheduledSendId: row.id,
+          accountId: row.accountId,
+          error: errorMessage,
+        },
+        "scheduled send failed",
+      );
+    }
     await db.scheduledSend.update({
       where: { id: row.id },
       data: { status: "failed" },

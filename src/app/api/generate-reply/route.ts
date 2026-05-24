@@ -228,10 +228,9 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKey: env.OPENROUTER_API_KEY,
       defaultHeaders: {
-        "HTTP-Referer":
-          process.env.NEXT_PUBLIC_URL || "https://vectormail.space",
+        "HTTP-Referer": env.NEXT_PUBLIC_URL || "https://vectormail.space",
         "X-Title": "VectorMail AI",
       },
       maxRetries: 0,

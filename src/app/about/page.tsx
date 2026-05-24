@@ -57,7 +57,7 @@ const SECTIONS: Section[] = [
     lead:
       "VectorMail sits next to the Gmail account you already use. It reads with you, drafts in your voice, and finds the thread you half-remember.",
     bullets: [
-      "An email client that connects to Gmail through Aurinko",
+      "An intelligence layer that sits on top of Gmail through Aurinko",
       "Threads sync into PostgreSQL with embeddings stored in pgvector",
       "AI summaries, drafts, and search run against your own indexed mail",
       "Works alongside Gmail; we don't replace your underlying account",
@@ -238,10 +238,10 @@ export default function AboutPage() {
                 margin: 0,
               }}
             >
-              An email client
+              Not another inbox.
               <br />
               <span style={{ fontStyle: "italic", fontWeight: 400 }}>
-                that reads with you.
+                One that reads with you.
               </span>
             </h1>
           </div>

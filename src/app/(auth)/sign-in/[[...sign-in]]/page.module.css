@@ -54,18 +54,7 @@
 }
 
 .scope :global(.auth-left)::after {
-  content: "";
-  position: absolute;
-  top: -20%;
-  left: -10%;
-  width: 70%;
-  height: 70%;
-  background: radial-gradient(ellipse at center,
-      rgba(217, 119, 6, 0.06) 0%,
-      transparent 70%);
-  filter: blur(40px);
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .scope :global(.auth-brand) {

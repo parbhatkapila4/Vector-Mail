@@ -321,7 +321,7 @@ const EmailDisplay = ({ email }: Props) => {
           ref={letterRef}
         >
           <div
-            className="mx-auto"
+            className="mx-3 sm:mx-auto"
             style={{
               maxWidth: 760,
               background: "#ffffff",
@@ -332,9 +332,8 @@ const EmailDisplay = ({ email }: Props) => {
             }}
           >
             <div
-              className="email-body-wrapper"
+              className="email-body-wrapper px-4 py-5 sm:px-10 sm:py-9"
               style={{
-                padding: "36px 40px",
                 wordWrap: "break-word",
                 overflowWrap: "break-word",
                 wordBreak: "break-word",

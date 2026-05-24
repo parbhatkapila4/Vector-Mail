@@ -7,11 +7,12 @@
 import axios from "axios";
 import pLimit from "p-limit";
 import { refreshAurinkoToken } from "./aurinko";
-import { syncEmailsToDatabase } from "./sync-to-db";
+import { syncEmailsToDatabase, recalculateAllThreadStatuses } from "./sync-to-db";
 import { withLock } from "./sync-lock";
 import { db } from "@/server/db";
 import { serverLog } from "@/lib/logging/server-logger";
 import { makeTagLogger } from "@/lib/logging/console-shim";
+import { enforceOutgoingPolicy } from "./outgoing-content-policy";
 
 const accountsLog = makeTagLogger("accounts");
 
@@ -21,7 +22,7 @@ function debugLog(...args: unknown[]) {
   if (DEBUG_EMAIL) serverLog.debug({ args }, "accounts: debug");
 }
 
-const SYNC_WINDOW_DAYS = 60;
+const SYNC_WINDOW_DAYS = 36500;
 
 const INITIAL_FIRST_BATCH_SIZE = 250;
 const EMAIL_FETCH_BATCH_SIZE = 25;
@@ -32,8 +33,8 @@ const INSTANT_SYNC_LIST_SIZE = 500;
 const warnedMissingRefreshTokenAccountIds = new Set<string>();
 
 const FAST_FIRST_BATCH_INBOX = 50;
-const FAST_FIRST_FETCH_CONCURRENCY = 20;
-const FAST_FIRST_FETCH_TIMEOUT_MS = 15_000;
+const FAST_FIRST_FETCH_CONCURRENCY = 25;
+const FAST_FIRST_FETCH_TIMEOUT_MS = 30_000;
 const FAST_FIRST_LIST_TIMEOUT_MS = 25_000;
 const RATE_LIMIT_WAIT_MS = 60_000;
 const AUTH_WARN_COOLDOWN_MS = 60_000;
@@ -690,13 +691,20 @@ export class Account {
     }
   }
 
-  async fetchInboxFirstPageInChunks(
-    maxIds: number = 20,
-    chunkSize: number = 5,
-    listTimeoutMs: number = 12_000,
-    getTimeoutMs: number = 8_000,
-  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string }> {
+  async fetchInboxPageViaList(
+    maxIds: number = FAST_FIRST_BATCH_INBOX,
+    pageToken?: string,
+    listTimeoutMs: number = FAST_FIRST_LIST_TIMEOUT_MS,
+    getTimeoutMs: number = FAST_FIRST_FETCH_TIMEOUT_MS,
+  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string; listed: number; fetched: number }> {
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
+    const params: Record<string, string | number> = {
+      maxResults: maxIds,
+      bodyType: "text",
+      q: `label:inbox ${newerThanQuery}`,
+    };
+    if (pageToken) params.pageToken = pageToken;
+
     const listResponse = await with401Retry(
       this.id,
       () =>
@@ -704,11 +712,7 @@ export class Account {
           "https://api.aurinko.io/v1/email/messages",
           {
             headers: this.aurinkoHeaders,
-            params: {
-              maxResults: maxIds,
-              bodyType: "text",
-              q: `label:inbox ${newerThanQuery}`,
-            },
+            params,
             timeout: listTimeoutMs,
           },
         ),
@@ -719,19 +723,30 @@ export class Account {
       listResponse.data.records?.map((r) => r.id) ??
       [];
     const nextPageToken = listResponse.data.nextPageToken;
-    const allEmails: EmailMessage[] = [];
-    for (let i = 0; i < messageIds.length; i += chunkSize) {
-      const chunk = messageIds.slice(i, i + chunkSize);
-      const batchEmails = await Promise.all(
-        chunk.map((id) => this.getEmailById(id, getTimeoutMs)),
-      );
-      const valid = batchEmails.filter((e): e is EmailMessage => e !== null);
-      allEmails.push(...valid);
-      if (valid.length > 0) {
-        await syncEmailsToDatabase(valid, this.id);
-      }
+
+    let idsToFetch = messageIds;
+    if (messageIds.length > 0) {
+      const existing = await db.email.findMany({
+        where: { id: { in: messageIds } },
+        select: { id: true },
+      });
+      const have = new Set(existing.map((e) => e.id));
+      idsToFetch = messageIds.filter((id) => !have.has(id));
     }
-    return { emails: allEmails, nextPageToken };
+
+    const limit = pLimit(FAST_FIRST_FETCH_CONCURRENCY);
+    const fetched = await Promise.all(
+      idsToFetch.map((id) => limit(() => this.getEmailById(id, getTimeoutMs))),
+    );
+    const emails = fetched.filter((e): e is EmailMessage => e !== null);
+    if (emails.length > 0) {
+      await syncEmailsToDatabase(emails, this.id, {
+        writeConcurrency: 20,
+        skipRecalculate: true,
+      });
+      await recalculateAllThreadStatuses(this.id);
+    }
+    return { emails, nextPageToken, listed: messageIds.length, fetched: emails.length };
   }
 
   async sendEmail({
@@ -757,6 +772,8 @@ export class Account {
     bcc?: EmailAddress[];
     replyTo?: EmailAddress;
   }) {
+    enforceOutgoingPolicy({ subject, body });
+
     try {
       const payload: Record<string, unknown> = {
         from,
@@ -1782,48 +1799,66 @@ export class Account {
       { labelIds: "INBOX" },
     ]);
 
-    if (inboxIds.length === 0) {
+    if (inboxIds.length < FAST_FIRST_BATCH_INBOX) {
+      const needed = FAST_FIRST_BATCH_INBOX - inboxIds.length;
+      const seen = new Set(inboxIds);
 
-
-      const broadList = await with401Retry(
-        this.id,
-        () =>
-          aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
-            "https://api.aurinko.io/v1/email/messages",
-            {
-              ...listOpts,
-              headers: this.aurinkoHeaders,
-              params: {
-                maxResults: 120,
-                bodyType: "text",
+      try {
+        const broadList = await with401Retry(
+          this.id,
+          () =>
+            aurinkoAxios.get<{ messages?: Array<{ id: string }> }>(
+              "https://api.aurinko.io/v1/email/messages",
+              {
+                ...listOpts,
+                headers: this.aurinkoHeaders,
+                params: {
+                  maxResults: Math.max(needed * 2, 80),
+                  q: `${newerThanQuery} -in:sent -in:draft -in:trash -in:spam`,
+                  bodyType: "text",
+                },
               },
-            },
-          ),
-        { tryRefresh: () => this.refreshTokenIfPossible() },
-      );
-      const broadIds = broadList.data.messages?.map((m) => m.id) ?? [];
-      if (broadIds.length > 0) {
-        const broadEmails = await Promise.all(
-          broadIds.map((id) =>
-            limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS)),
-          ),
+            ),
+          { tryRefresh: () => this.refreshTokenIfPossible() },
         );
-        const inboxLike = broadEmails
-          .filter((e): e is EmailMessage => e !== null)
-          .filter((e) => {
-            const labels = (e.sysLabels ?? []).map((l) => String(l).toLowerCase());
-            if (labels.includes("trash") || labels.includes("draft")) return false;
-            if (
-              labels.includes("inbox") ||
-              labels.includes("unread") ||
-              labels.includes("important")
-            ) {
-              return true;
-            }
-            return !labels.includes("sent");
-          })
-          .slice(0, FAST_FIRST_BATCH_INBOX);
-        inboxIds = inboxLike.map((e) => e.id);
+        const broadIds = (broadList.data.messages ?? [])
+          .map((m) => m.id)
+          .filter((id) => !seen.has(id));
+
+        if (broadIds.length > 0) {
+          const broadEmails = await Promise.all(
+            broadIds.map((id) =>
+              limit(() => this.getEmailById(id, FAST_FIRST_FETCH_TIMEOUT_MS)),
+            ),
+          );
+          const supplementaryIds = broadEmails
+            .filter((e): e is EmailMessage => e !== null)
+            .filter((e) => {
+              const labels = (e.sysLabels ?? []).map((l) =>
+                String(l).toLowerCase(),
+              );
+              return (
+                !labels.includes("sent") &&
+                !labels.includes("draft") &&
+                !labels.includes("trash") &&
+                !labels.includes("spam")
+              );
+            })
+            .slice(0, needed)
+            .map((e) => e.id);
+
+          if (supplementaryIds.length > 0) {
+            inboxIds = [...inboxIds, ...supplementaryIds];
+            accountsLog.log(
+              `[syncFirstBatchQuick] Topped up ${supplementaryIds.length} email(s) from broader query (inbox had ${inboxIds.length - supplementaryIds.length}, target ${FAST_FIRST_BATCH_INBOX})`,
+            );
+          }
+        }
+      } catch (topUpErr) {
+        accountsLog.warn(
+          "[syncFirstBatchQuick] Top-up query failed (continuing with inbox-only results):",
+          topUpErr,
+        );
       }
     }
 

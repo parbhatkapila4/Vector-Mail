@@ -6,6 +6,7 @@ import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { rateLimit } from "@/lib/rate-limit";
 import { DEMO_ACCOUNT_ID, DEMO_USER_ID } from "@/lib/demo/constants";
+import { isOutgoingContentBlockedError } from "@/lib/outgoing-content-policy";
 
 export async function POST(req: NextRequest) {
   try {
@@ -165,6 +166,21 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+
+    if (isOutgoingContentBlockedError(error)) {
+      apiLog.warn(
+        `[send-reply] outbound moderation blocked: ${error.reason}`,
+      );
+      return NextResponse.json(
+        {
+          error: "Content policy violation",
+          message: `This reply can't be sent — the ${error.field} contains ${error.reason}. Edit the offending content and try again.`,
+          field: error.field,
+          reason: error.reason,
+        },
+        { status: 400 },
+      );
+    }
     apiLog.error("Error in send-reply:", error);
     const message =
       error instanceof Error ? error.message : "Failed to send reply";

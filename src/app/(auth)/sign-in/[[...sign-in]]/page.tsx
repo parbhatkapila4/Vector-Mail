@@ -2,6 +2,7 @@
 
 import { useSignIn } from "@clerk/nextjs";
 import type { OAuthStrategy } from "@clerk/types";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import styles from "./page.module.css";
@@ -43,15 +44,25 @@ export default function Page() {
     <div className={`auth-wrap ${styles.scope}`}>
       <div className="auth-left">
         <Link href="/" className="auth-brand">
-          <span className="auth-brand-mark" aria-hidden>
-            <svg viewBox="0 0 30 30" fill="none">
-              <rect x="3" y="6" width="24" height="18" rx="3" fill="var(--ink-light)" />
-              <g stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7 11l3 4-3 4" />
-                <path d="M13 11l3 4-3 4" />
-                <path d="M19 11l3 4-3 4" />
-              </g>
-            </svg>
+          <span
+            className="auth-brand-mark"
+            aria-hidden
+            style={{
+              background: "#0a0a0a",
+              display: "grid",
+              placeItems: "center",
+              overflow: "hidden",
+            }}
+          >
+            <Image
+              src="/VectorMail-New.png"
+              alt=""
+              width={30}
+              height={30}
+              className="h-full w-full object-contain"
+              unoptimized
+              priority
+            />
           </span>
           VectorMail
         </Link>
@@ -253,9 +264,15 @@ export default function Page() {
           <div className="trust-strip">
             <div className="trust-strip-label">Built in public</div>
             <div className="trust-logos">
-              <span className="trust-logo">github.com/vectormail</span>
-              <span className="trust-logo-sep">·</span>
-              <span className="trust-logo">v2.4 shipped this week</span>
+              <a
+                href="https://github.com/parbhatkapila4/Vector-Mail"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="trust-logo"
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
+                github.com/parbhatkapila4/Vector-Mail
+              </a>
             </div>
           </div>
         </div>

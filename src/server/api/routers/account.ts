@@ -93,12 +93,23 @@ export const accountRouter = createTRPCRouter({
             select: { lastMessageDate: true },
           });
           const staleCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+          const isFirstLoad = !latestInboxThread?.lastMessageDate;
           const shouldRefreshLatest =
-            !latestInboxThread?.lastMessageDate ||
-            latestInboxThread.lastMessageDate < staleCutoff;
+            isFirstLoad || latestInboxThread.lastMessageDate < staleCutoff;
           if (shouldRefreshLatest && account.token) {
             const emailAccount = new Account(account.id, account.token);
-            await emailAccount.fetchAndSyncLatestInboxPage();
+            if (isFirstLoad) {
+              await emailAccount.fetchAndSyncLatestInboxPage();
+            } else {
+              void emailAccount
+                .fetchAndSyncLatestInboxPage()
+                .catch((bgErr) =>
+                  routerLog.warn(
+                    "[getThreads] Background inbox refresh failed:",
+                    bgErr,
+                  ),
+                );
+            }
           }
         } catch (refreshErr) {
           routerLog.warn(

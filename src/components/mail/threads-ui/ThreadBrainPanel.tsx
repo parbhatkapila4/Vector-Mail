@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
@@ -34,28 +34,42 @@ export function ThreadBrainPanel({
       },
     );
 
+  const toggleMobile = () =>
+    setExpanded((e) => {
+      const next = !e;
+      trackInboxBrainEvent("thread_brain_expanded", {
+        expanded: next,
+        surface: "mobile",
+      });
+      return next;
+    });
+
   return (
     <div className="ai-brief">
-      <div
-        className={cn("ai-brief-head", isMobile && "cursor-pointer")}
-        onClick={
-          isMobile
-            ? () =>
-              setExpanded((e) => {
-                const next = !e;
-                trackInboxBrainEvent("thread_brain_expanded", {
-                  expanded: next,
-                  surface: "mobile",
-                });
-                return next;
-              })
-            : undefined
-        }
-      >
-        <span className="ai-brief-icon" />
-        <span className="ai-brief-label">Inbox Brain</span>
-        <span className="ai-brief-time">live</span>
-      </div>
+      {isMobile ? (
+        <button
+          type="button"
+          onClick={toggleMobile}
+          aria-expanded={expanded}
+          className="ai-brief-head -mx-1.5 -my-1 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 text-left transition-colors active:bg-[#f4f5f8] [touch-action:manipulation]"
+        >
+          <span className="ai-brief-icon" />
+          <span className="ai-brief-label">Inbox Brain</span>
+          <span className="ai-brief-time !ml-auto">live</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-[#8a8278] transition-transform duration-200",
+              expanded && "rotate-180",
+            )}
+          />
+        </button>
+      ) : (
+        <div className="ai-brief-head">
+          <span className="ai-brief-icon" />
+          <span className="ai-brief-label">Inbox Brain</span>
+          <span className="ai-brief-time">live</span>
+        </div>
+      )}
 
       {expanded && (
         <div className="ai-brief-body">

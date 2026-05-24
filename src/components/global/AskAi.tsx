@@ -119,7 +119,7 @@ export default function EmailSearchAssistant({
     "aiSearchExplainable",
     true,
   );
-  const [founderDemo, setFounderDemo] = useState(false);
+  const [founderDemo, setFounderDemo] = useState(true);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);

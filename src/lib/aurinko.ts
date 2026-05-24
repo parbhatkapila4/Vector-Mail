@@ -1,14 +1,25 @@
 ﻿import { auth } from "@clerk/nextjs/server";
 import axios from "axios";
+import { env } from "@/env.js";
 
 const AURINKO_SCOPES = "Mail.Read Mail.Send";
+
+function requireAurinkoCredentials(): { id: string; secret: string } {
+  if (!env.AURINKO_CLIENT_ID || !env.AURINKO_CLIENT_SECRET) {
+    throw new Error(
+      "Aurinko credentials missing. Set AURINKO_CLIENT_ID and AURINKO_CLIENT_SECRET in your environment.",
+    );
+  }
+  return { id: env.AURINKO_CLIENT_ID, secret: env.AURINKO_CLIENT_SECRET };
+}
 
 export function buildAurinkoAuthUrlForService(
   serviceType: "Google" | "Office365",
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
+  const baseUrl = env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
+  const { id } = requireAurinkoCredentials();
   const params = new URLSearchParams({
-    clientId: process.env.AURINKO_CLIENT_ID!,
+    clientId: id,
     serviceType,
     responseType: "code",
     returnUrl: `${baseUrl}/api/aurinko/callback`,
@@ -63,10 +74,10 @@ export async function exchangeAurinkoCodeForToken(code: string) {
       tokenUrl,
       {},
       {
-        auth: {
-          username: process.env.AURINKO_CLIENT_ID!,
-          password: process.env.AURINKO_CLIENT_SECRET!,
-        },
+        auth: (() => {
+          const { id, secret } = requireAurinkoCredentials();
+          return { username: id, password: secret };
+        })(),
         headers: {
           "Content-Type": "application/json",
         },
@@ -162,10 +173,10 @@ export async function refreshAurinkoToken(
       "https://api.aurinko.io/v1/auth/refresh",
       { accountId, refreshToken },
       {
-        auth: {
-          username: process.env.AURINKO_CLIENT_ID!,
-          password: process.env.AURINKO_CLIENT_SECRET!,
-        },
+        auth: (() => {
+          const { id, secret } = requireAurinkoCredentials();
+          return { username: id, password: secret };
+        })(),
         headers: { "Content-Type": "application/json" },
         timeout: 15000,
       },

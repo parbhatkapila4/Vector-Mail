@@ -1,7 +1,8 @@
 "use client";
 
-import { HeroWaveBackground } from "./HeroWaveBackground";
+import { HeroStaticBackground } from "./HeroStaticBackground";
 import { HeroInboxMockup } from "./HeroInboxMockup";
+import { HeroMobileMockup } from "./HeroMobileMockup";
 
 const ARROW_PATH = "M3 6h6M6 3l3 3-3 3";
 
@@ -113,7 +114,7 @@ export function HeroLight() {
 
   return (
     <section className="hero-bg-wrap relative">
-      <HeroWaveBackground />
+      <HeroStaticBackground />
       <div className="hero-content vm-hero-content relative z-[3]">
         <div className="relative px-5 pb-[100px] pt-20 text-center md:px-8">
           <div className="relative mx-auto max-w-[1280px]">
@@ -178,7 +179,12 @@ export function HeroLight() {
           </div>
 
           <div className="relative mx-auto max-w-[1480px]">
-            <HeroInboxMockup />
+            <div className="hidden md:block">
+              <HeroInboxMockup />
+            </div>
+            <div className="md:hidden">
+              <HeroMobileMockup />
+            </div>
           </div>
         </div>
       </div>

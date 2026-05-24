@@ -115,12 +115,25 @@ function getAvatarStyle(
   };
 }
 
+const MAIL_SUBDOMAIN_PREFIX =
+  /^(mail|mailer|mailing|email|e|m|news|newsletter|marketing|mktg|promo|promos|promotions?|notification[s]?|notify|alert[s]?|no-?reply|do-?not-?reply|info|hello|hi|support|contact|reply|update[s]?|billing|invoice[s]?|sales|account[s]?|offers?|deals?|smtp|relay|mta|rmp)\./i;
+
+function stripMailSubdomain(domain: string): string {
+  const stripped = domain.replace(MAIL_SUBDOMAIN_PREFIX, "");
+  return stripped.includes(".") ? stripped : domain;
+}
+
 function getLogoProviders(domain: string): ReadonlyArray<string> {
-  const enc = encodeURIComponent(domain);
-  return [
-    `https://icons.duckduckgo.com/ip3/${enc}.ico`,
-    `https://www.google.com/s2/favicons?domain=${enc}&sz=128`,
-  ];
+  const root = stripMailSubdomain(domain);
+  const encFull = encodeURIComponent(domain);
+  const encRoot = encodeURIComponent(root);
+  const list: string[] = [];
+  if (root !== domain) {
+    list.push(`https://icons.duckduckgo.com/ip3/${encRoot}.ico`);
+  }
+  list.push(`https://icons.duckduckgo.com/ip3/${encFull}.ico`);
+  list.push(`https://www.google.com/s2/favicons?domain=${encFull}&sz=128`);
+  return list;
 }
 
 const PERSONAL_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
@@ -321,9 +334,10 @@ const CONNECTION_ERROR_MESSAGES = {
   CONNECT_BUTTON: "Connect your Google account",
 } as const;
 
-const MAX_AUTO_CONTINUE_SYNC_PAGES = 3;
+const MAX_AUTO_CONTINUE_SYNC_PAGES = 5000;
 const SYNC_POLL_INTERVAL_MS = 4000;
 const MAX_REFRESHES_WHILE_SYNC = 6;
+const RECURRING_SYNC_INTERVAL_MS = 30_000;
 const PREVIEW_READ_ONLY_MAX_MS = 25_000;
 const RECONNECT_UI_MUTE_MS = 90_000;
 const RECONNECT_UI_MUTE_KEY = "vm-reconnect-ui-muted-until";
@@ -486,12 +500,33 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     });
 
   const syncCancelledRef = useRef(false);
+  const wasUnmountedRef = useRef(false);
+  const pendingTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const lastContinueTokenRef = useRef<string | null>(null);
   const accountsInvalidatedOnMountRef = useRef(false);
   useEffect(() => {
     if (accountsInvalidatedOnMountRef.current) return;
     accountsInvalidatedOnMountRef.current = true;
     void utils.account.getAccounts.invalidate();
   }, [utils.account.getAccounts]);
+  useEffect(() => {
+    wasUnmountedRef.current = false;
+    return () => {
+      wasUnmountedRef.current = true;
+      pendingTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      pendingTimeoutsRef.current.clear();
+    };
+  }, []);
+
+  const scheduleSafe = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      pendingTimeoutsRef.current.delete(id);
+      if (wasUnmountedRef.current) return;
+      fn();
+    }, ms);
+    pendingTimeoutsRef.current.add(id);
+    return id;
+  }, []);
 
   const syncFirstBatchQuickMutation = api.account.syncFirstBatchQuick.useMutation({
     onSuccess: async () => {
@@ -500,7 +535,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       void utils.account.getNumThreads.invalidate();
       void utils.account.getUnifiedThreads.invalidate();
       await refetch();
-      setTimeout(() => void refetch(), 800);
+      scheduleSafe(() => void refetch(), 800);
     },
     onError: (error) => {
       console.warn("[ThreadList] Quick first sync:", error.message);
@@ -562,6 +597,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     onSuccess: async (data) => {
       if (syncCancelledRef.current) {
         syncCancelledRef.current = false;
+        lastContinueTokenRef.current = null;
         return;
       }
       if (data.needsReconnection || data.success === false) {
@@ -603,9 +639,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         void utils.account.getAccounts.invalidate();
         setRefreshingAfterSync(true);
         for (let i = 1; i <= 40; i++) {
-          setTimeout(() => void softThreadListRefresh(), i * 2500);
+          scheduleSafe(() => void softThreadListRefresh(), i * 2500);
         }
-        setTimeout(() => setRefreshingAfterSync(false), 100_000);
+        scheduleSafe(() => setRefreshingAfterSync(false), 100_000);
         return;
       }
 
@@ -620,23 +656,35 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         accountId !== UNIFIED_INBOX_ACCOUNT_ID;
 
       if (willContinueSync) {
-        if (autoContinueSyncCountRef.current >= MAX_AUTO_CONTINUE_SYNC_PAGES) {
+        if (lastContinueTokenRef.current === continueToken) {
           autoContinueSyncCountRef.current = 0;
-          toast.info("Background sync will continue shortly", {
-            description:
-              "Loaded several pages already. To keep the app responsive, remaining pages sync in the next cycle.",
-            duration: 5000,
-          });
+          lastContinueTokenRef.current = null;
+          console.warn("[ThreadList] Sync stopped — continueToken repeated.");
           setRefreshingAfterSync(true);
-          setTimeout(() => void forceThreadListRefresh(), 1200);
-          setTimeout(() => setRefreshingAfterSync(false), 2000);
+          scheduleSafe(() => void forceThreadListRefresh(), 1200);
+          scheduleSafe(() => setRefreshingAfterSync(false), 2000);
           return;
         }
+        
+        if (autoContinueSyncCountRef.current >= MAX_AUTO_CONTINUE_SYNC_PAGES) {
+          autoContinueSyncCountRef.current = 0;
+          lastContinueTokenRef.current = null;
+          toast.info("Paused inbox sync", {
+            description:
+              "Loaded a lot of mail in this session. Tap Sync again to keep going from where it left off.",
+            duration: 6000,
+          });
+          setRefreshingAfterSync(true);
+          scheduleSafe(() => void forceThreadListRefresh(), 1200);
+          scheduleSafe(() => setRefreshingAfterSync(false), 2000);
+          return;
+        }
+        lastContinueTokenRef.current = continueToken;
         autoContinueSyncCountRef.current += 1;
         void utils.account.getAccounts.invalidate();
         void softThreadListRefresh();
         const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
-        setTimeout(() => {
+        scheduleSafe(() => {
           syncEmailsMutation.mutate({
             accountId: accountId.trim(),
             folder: folder as "inbox" | "sent" | "trash",
@@ -646,14 +694,19 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         return;
       }
 
+      lastContinueTokenRef.current = null;
+
       autoContinueSyncCountRef.current = 0;
       void utils.account.getAccounts.invalidate();
       setRefreshingAfterSync(true);
-      setTimeout(async () => {
-        await forceThreadListRefresh();
-        setRefreshingAfterSync(false);
+      scheduleSafe(() => {
+        void (async () => {
+          await forceThreadListRefresh();
+          if (wasUnmountedRef.current) return;
+          setRefreshingAfterSync(false);
+        })();
       }, 400);
-      setTimeout(() => void forceThreadListRefresh(), 1200);
+      scheduleSafe(() => void forceThreadListRefresh(), 1200);
 
       if (data.success) {
         toast.success("Sync complete", {
@@ -668,11 +721,26 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       if (syncCancelledRef.current) {
         syncCancelledRef.current = false;
         autoContinueSyncCountRef.current = 0;
+        lastContinueTokenRef.current = null;
         return;
       }
-      console.error("[ThreadList] ❌ Sync failed:", error);
 
       const rawMessage = error.message || "";
+      const cause = (error as { cause?: { name?: string } }).cause;
+      const wasAborted =
+        wasUnmountedRef.current ||
+        cause?.name === "AbortError" ||
+        /^unknown\s*error$/i.test(rawMessage) ||
+        /the user aborted|aborted a request|signal is aborted/i.test(rawMessage);
+
+      if (wasAborted) {
+        autoContinueSyncCountRef.current = 0;
+        lastContinueTokenRef.current = null;
+        return;
+      }
+
+      console.error("[ThreadList] ❌ Sync failed:", error);
+
       const errorMessage =
         rawMessage.trim() && !/unknown\s*error/i.test(rawMessage)
           ? rawMessage
@@ -967,6 +1035,45 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   }, [accountId, currentTab, syncEmailsMutation, isAccountValid]);
 
   useEffect(() => {
+    if (
+      !accountId?.trim() ||
+      accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      !isAccountValid ||
+      (currentTab !== "inbox" && currentTab !== "sent" && currentTab !== "trash")
+    ) {
+      return;
+    }
+    const aid = accountId.trim();
+    const folder = currentTab as "inbox" | "sent" | "trash";
+    const tick = () => {
+      if (wasUnmountedRef.current) return;
+      if (syncEmailsPendingRef.current) return;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      syncEmailsMutation.mutate({
+        accountId: aid,
+        forceFullSync: false,
+        syncAllFolders: false,
+        folder,
+      });
+    };
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        tick();
+      }
+    };
+    const interval = setInterval(tick, RECURRING_SYNC_INTERVAL_MS);
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      }
+    };
+  }, [accountId, currentTab, isAccountValid, syncEmailsMutation]);
+
+  useEffect(() => {
     onSyncPendingChange?.(syncEmailsMutation.isPending);
   }, [syncEmailsMutation.isPending, onSyncPendingChange]);
 
@@ -995,14 +1102,21 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     (node: HTMLDivElement | null) => {
       if (isFetchingNextPage || loadingMoreAtListEnd) return;
       if (observerRef.current) observerRef.current.disconnect();
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage) {
-          setLoadingMoreAtListEnd(true);
-          void fetchNextPage().finally(() => {
-            setLoadingMoreAtListEnd(false);
-          });
-        }
-      });
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting && hasNextPage) {
+            setLoadingMoreAtListEnd(true);
+            void fetchNextPage().finally(() => {
+              setLoadingMoreAtListEnd(false);
+            });
+          }
+        },
+        {
+          root: listContainerRef.current,
+          rootMargin: "600px 0px",
+          threshold: 0,
+        },
+      );
       if (node) observerRef.current.observe(node);
     },
     [isFetchingNextPage, loadingMoreAtListEnd, hasNextPage, fetchNextPage],
@@ -1997,6 +2111,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             <span>Loading more emails…</span>
           </div>
         )}
+        {!hasNextPage &&
+          !isFetchingNextPage &&
+          !loadingMoreAtListEnd &&
+          allThreads.length >= 50 && (
+            <div className="py-6 text-center text-[11px] tracking-wide text-[#9aa0a6] dark:text-[#5f6368]">
+              You&apos;re all caught up
+            </div>
+          )}
       </div>
     );
   };

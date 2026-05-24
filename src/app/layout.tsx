@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     apple: "/VectorMail-New.png",
   },
   description:
-    "An email client for Gmail with semantic search, daily briefs, and replies trained on your sent mail.",
+    "An intelligence layer for the Gmail account you already use. Semantic search, daily briefs, and replies trained on your voice.",
   keywords: [
     "email client",
     "Gmail",

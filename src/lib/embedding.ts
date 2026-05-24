@@ -6,8 +6,8 @@ import {
 } from "@/lib/metrics/store";
 import { recordUsage } from "@/lib/ai-usage";
 import { serverLog } from "@/lib/logging/server-logger";
-
-const genAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+import { env } from "@/env.js";
+const genAi = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY! });
 
 export async function getGenerateEmbeddings(
   summary: string,

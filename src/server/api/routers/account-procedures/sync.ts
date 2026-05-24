@@ -18,6 +18,15 @@ import { authoriseAccountAccess, type AccountAccess } from "./shared";
 
 const syncLog = makeTagLogger("account-router.sync");
 
+// Inbox is fetched newest-first in pages of this size: "latest 50, then the
+// next 50, then the next 50". The client auto-continues with the returned
+// continueToken until we run out of mail or reach the backfill target.
+const INBOX_LIST_PAGE_SIZE = 50;
+// Stop advertising "more" once the inbox holds this many threads. Bounds the
+// initial backfill and stops recurring syncs from re-walking the entire
+// mailbox every tick. Raise this if you want to keep older mail loadable.
+const INBOX_BACKFILL_TARGET = 1000;
+
 export const syncProcedures = {
   syncFirstBatchQuick: protectedProcedure
     .input(z.object({ accountId: z.string().min(1) }))
@@ -395,73 +404,14 @@ export const syncProcedures = {
             Buffer.from(JSON.stringify({ pageToken, sentUseLabel: sentUseLabel ?? false, sentOmitDate: sentOmitDate ?? false, sentUseIsOperator: sentUseIsOperator ?? false, sentFromMe: sentFromMe ?? false, sentUseLabelIds: sentUseLabelIds ?? false, ...(syncApiPageToken != null ? { syncApiPageToken } : {}) }), "utf8").toString("base64url");
 
           if (folder === "inbox" && !input.continueToken) {
-            const latestInbox = await ctx.db.thread.findFirst({
-              where: { accountId: account.id, inboxStatus: true },
-              orderBy: { lastMessageDate: "desc" },
-              select: { lastMessageDate: true },
-            });
-            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-            const inboxStale = !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
-            if (inboxStale) {
-              await ctx.db.account.update({
-                where: { id: account.id },
-                data: { nextDeltaToken: null },
-              }).catch(() => { });
-            }
-            const syncApiTimeoutMs = inboxStale ? 52_000 : 10_000;
-            const syncApiFirstPage =
-              await emailAccount.tryGetFirstPageViaSyncApi(syncApiTimeoutMs);
-            if (syncApiFirstPage && (syncApiFirstPage.records.length > 0 || syncApiFirstPage.nextPageToken)) {
-              if (syncApiFirstPage.records.length > 0) {
-                const { syncEmailsToDatabase } = await import("@/lib/sync-to-db");
-                await syncEmailsToDatabase(syncApiFirstPage.records, account.id);
-              }
-              if (syncApiFirstPage.nextDeltaToken) {
-                await ctx.db.account.update({
-                  where: { id: account.id },
-                  data: { nextDeltaToken: syncApiFirstPage.nextDeltaToken },
-                }).catch(() => { });
-              }
-              const threadCount = await ctx.db.thread.count({
-                where: { accountId: account.id, inboxStatus: true },
-              });
-              const hasMore = !!syncApiFirstPage.nextPageToken;
-              const continueToken = hasMore && syncApiFirstPage.nextPageToken
-                ? encodeContinueToken("", false, false, false, false, false, syncApiFirstPage.nextPageToken)
-                : undefined;
-              ctx.log?.info(
-                {
-                  event: "sync_success",
-                  accountId: account.id,
-                  folder: "inbox",
-                  durationMs: Date.now() - syncStartTime,
-                  countSynced: syncApiFirstPage.records.length,
-                  threadCount,
-                  hasMore,
-                  source: "sync_api",
-                },
-                "inbox first page done (Sync API)",
-              );
-              return {
-                success: true,
-                message: syncApiFirstPage.records.length > 0 ? `Synced ${syncApiFirstPage.records.length} emails` : hasMore ? "Fetching moreâ€¦" : "No more emails",
-                threadCount,
-                hasMore,
-                continueToken,
-              };
-            }
-
-            const chunkMaxIds = inboxStale ? 36 : 50;
-            const result = await emailAccount.fetchInboxFirstPageInChunks(
-              chunkMaxIds,
-              5,
-              inboxStale ? 22_000 : 15_000,
-              inboxStale ? 11_000 : 10_000,
+            const result = await emailAccount.fetchInboxPageViaList(
+              INBOX_LIST_PAGE_SIZE,
             );
             const threadCount = await ctx.db.thread.count({
               where: { accountId: account.id, inboxStatus: true },
             });
-            const hasMore = !!result.nextPageToken;
+            const hasMore =
+              !!result.nextPageToken && threadCount < INBOX_BACKFILL_TARGET;
             const continueToken = hasMore
               ? encodeContinueToken(result.nextPageToken!, false, false, false, false, false)
               : undefined;
@@ -471,16 +421,16 @@ export const syncProcedures = {
                 accountId: account.id,
                 folder: "inbox",
                 durationMs: Date.now() - syncStartTime,
-                countSynced: result.emails.length,
+                countSynced: result.fetched,
                 threadCount,
                 hasMore,
-                source: "list_chunks",
+                source: "list_first_page",
               },
-              "inbox first page done (chunked)",
+              "inbox first page done (list)",
             );
             return {
               success: true,
-              message: result.emails.length > 0 ? `Synced ${result.emails.length} emails` : hasMore ? "Fetching moreâ€¦" : "No more emails",
+              message: result.fetched > 0 ? `Synced ${result.fetched} emails` : hasMore ? "Fetching more..." : "No more emails",
               threadCount,
               hasMore,
               continueToken,
@@ -558,6 +508,41 @@ export const syncProcedures = {
               return {
                 success: true,
                 message: syncResult.records.length > 0 ? `Synced ${syncResult.records.length} emails` : hasMore ? "Fetching moreâ€¦" : "No more emails",
+                threadCount,
+                hasMore,
+                continueToken: nextContinueToken,
+              };
+            }
+
+            if (folder === "inbox") {
+              const page = await emailAccount.fetchInboxPageViaList(
+                INBOX_LIST_PAGE_SIZE,
+                pageToken,
+              );
+              const threadCount = await ctx.db.thread.count({
+                where: { accountId: account.id, inboxStatus: true },
+              });
+              const hasMore =
+                !!page.nextPageToken && threadCount < INBOX_BACKFILL_TARGET;
+              const nextContinueToken = hasMore
+                ? encodeContinueToken(page.nextPageToken!, false, false, false, false, false)
+                : undefined;
+              ctx.log?.info(
+                {
+                  event: "sync_success",
+                  accountId: account.id,
+                  folder: "inbox",
+                  durationMs: Date.now() - syncStartTime,
+                  countSynced: page.fetched,
+                  threadCount,
+                  hasMore,
+                  source: "list_chunk",
+                },
+                "inbox chunk done (list)",
+              );
+              return {
+                success: true,
+                message: page.fetched > 0 ? `Synced ${page.fetched} emails` : hasMore ? "Fetching more..." : "No more emails",
                 threadCount,
                 hasMore,
                 continueToken: nextContinueToken,

@@ -77,9 +77,9 @@ const SECTIONS: Section[] = [
     title: "Service description",
     accent: "what VectorMail is, in plain terms.",
     lead:
-      "VectorMail is an AI-assisted email client that runs alongside your existing Gmail account. It's currently in beta - capable, but subject to change.",
+      "VectorMail is an intelligence layer that runs alongside your existing Gmail account. It's currently in beta - capable, but subject to change.",
     bullets: [
-      "VectorMail provides AI-powered email management and organization",
+      "VectorMail provides an intelligence layer over your existing inbox",
       "We use Google OAuth and the Gmail API to access your Gmail account",
       "Gmail data is accessed solely to provide email search, summarization, and organization features",
       "We offer intelligent email analysis, smart responses, and semantic search",

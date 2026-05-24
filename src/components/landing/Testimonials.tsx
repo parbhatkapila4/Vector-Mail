@@ -322,7 +322,7 @@ export function Testimonials() {
         <div className="relative mt-16">
           <div className="mx-auto max-w-5xl space-y-8 px-0 md:space-y-12">
             <div className="relative -mx-4 rounded-3xl p-3 md:-mx-12 lg:col-span-3">
-              <div className="[perspective:800px]">
+              <div className="hidden md:block [perspective:800px]">
                 <div style={{ transform: "skewY(-2deg) skewX(-2deg) rotateX(6deg)" }}>
                   <div className="aspect-[88/36] relative overflow-hidden rounded-xl border border-[#e8e4db] bg-white shadow-[0_24px_48px_-12px_rgba(26,26,23,0.10)]">
                     <div className="absolute inset-0 z-10 flex rounded-xl bg-white">
@@ -410,6 +410,179 @@ export function Testimonials() {
                           <div className="rounded border border-[#d8d3c7] bg-[#fbfaf7] px-2 py-1.5 text-[9px] text-[#777269]">Ask a question or search your inbox...</div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="md:hidden">
+                <div className="overflow-hidden rounded-2xl border border-[#e8e4db] bg-white shadow-[0_8px_24px_-8px_rgba(26,26,23,0.10)]">
+                  <div className="flex items-center justify-between border-b border-[#e8e4db] bg-[#f7f5f0] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-md bg-[#0a0a0a]">
+                        <Image
+                          src="/VectorMail-New.png"
+                          alt="VectorMail"
+                          width={24}
+                          height={24}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <span className="text-[13px] font-semibold tracking-tight text-[#1a1a17]">
+                        Inbox
+                      </span>
+                      <span className="rounded-full border border-[#e8e4db] bg-white px-1.5 py-px text-[10px] font-medium text-[#777269]">
+                        128
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded border border-[#e8e4db] bg-white px-2 py-1 text-[10px] font-medium text-[#1a1a17]"
+                      >
+                        All mail
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded px-2 py-1 text-[10px] font-medium text-[#777269]"
+                      >
+                        Unread
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-[#e8e4db] px-3 py-2">
+                    <div className="flex items-center gap-2 rounded-md border border-[#e8e4db] bg-[#fbfaf7] px-2.5 py-2">
+                      <Search className="h-3.5 w-3.5 shrink-0 text-[#a39e93]" strokeWidth={2} />
+                      <span className="text-[12px] text-[#777269]">
+                        Search by meaning, not keywords
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-[#e8e4db]">
+                    {[
+                      {
+                        from: "VectorMail",
+                        subj: "Find anything in plain language",
+                        snip:
+                          "Ask “emails from Sarah about the Q3 budget” or “that thread where we discussed the launch date.” Semantic search returns the right threads in one shot.",
+                        tags: ["search"],
+                        time: "2h ago",
+                        active: true,
+                      },
+                      {
+                        from: "VectorMail",
+                        subj: "Daily brief",
+                        snip:
+                          "A short read of what arrived overnight, what needs a reply, and what can wait. Refreshes through the day as you triage.",
+                        tags: ["brief"],
+                        time: "5h ago",
+                        active: false,
+                      },
+                      {
+                        from: "VectorMail",
+                        subj: "Reply in your voice",
+                        snip:
+                          "Drafts trained on your sent mail. Editable in your editor; nothing leaves until you press send.",
+                        tags: ["compose"],
+                        time: "1d ago",
+                        active: false,
+                      },
+                      {
+                        from: "VectorMail",
+                        subj: "Your data stays yours",
+                        snip:
+                          "We don't train shared models on your mail. Connect Gmail, get semantic search and a daily brief. Disconnect any time from Google.",
+                        tags: ["privacy"],
+                        time: "2d ago",
+                        active: false,
+                      },
+                    ].map((mail, i) => (
+                      <div
+                        key={`m-${i}`}
+                        className={
+                          mail.active
+                            ? "relative bg-[#ecebff] px-3 py-2.5"
+                            : "relative px-3 py-2.5"
+                        }
+                      >
+                        {mail.active && (
+                          <span
+                            aria-hidden
+                            className="absolute inset-y-0 left-0 w-[3px] rounded-r"
+                            style={{
+                              background:
+                                "linear-gradient(180deg, #1f1bea, #6366f1)",
+                            }}
+                          />
+                        )}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className="grid h-4 w-4 shrink-0 place-items-center rounded text-[7px] font-bold text-white"
+                              style={{
+                                background:
+                                  "linear-gradient(135deg, #1f1bea, #6366f1)",
+                              }}
+                            >
+                              VM
+                            </span>
+                            <span className="truncate text-[11.5px] font-semibold text-[#1a1a17]">
+                              {mail.from}
+                            </span>
+                          </div>
+                          <span className="shrink-0 text-[10px] text-[#777269]">
+                            {mail.time}
+                          </span>
+                        </div>
+                        <div className="mt-1 truncate text-[12px] font-medium text-[#2c2b27]">
+                          {mail.subj}
+                        </div>
+                        <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-[1.4] text-[#4a4943]">
+                          {mail.snip}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {mail.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded border border-[#e8e4db] bg-[#f7f5f0] px-1.5 py-0.5 text-[9px] font-medium text-[#4a4943]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-[#e8e4db] bg-[#f7f5f0] p-2.5">
+                    <div className="flex items-center gap-2 rounded-md border border-[#d8d3c7] bg-white px-2.5 py-2">
+                      <span
+                        className="grid h-4 w-4 shrink-0 place-items-center rounded-full animate-pulse"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #1f1bea, #6366f1)",
+                        }}
+                      >
+                        <svg
+                          width="8"
+                          height="8"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          aria-hidden
+                        >
+                          <path
+                            d="M6 1l1.3 3.4 3.4 1.3-3.4 1.3L6 10.4 4.7 7l-3.4-1.3L4.7 4.4 6 1z"
+                            fill="#fff"
+                          />
+                        </svg>
+                      </span>
+                      <span className="flex-1 truncate text-[11.5px] text-[#777269]">
+                        Ask a question or search your inbox…
+                      </span>
+                      <span className="rounded bg-[#f7f5f0] px-1.5 py-0.5 text-[9px] font-medium tracking-wider text-[#777269]">
+                        ⌘K
+                      </span>
                     </div>
                   </div>
                 </div>

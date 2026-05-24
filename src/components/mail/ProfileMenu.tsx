@@ -89,10 +89,31 @@ export function ProfileMenu({ onSignOut, isSigningOut }: ProfileMenuProps) {
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[min(880px,calc(100vw-2rem))] max-h-[min(720px,calc(100vh-2rem))] max-w-none overflow-y-auto border-[#e5e7eb] bg-white p-0 dark:border-[#ffffff] dark:bg-[#ffffff] sm:max-w-none"
+          className="flex w-[min(880px,calc(100vw-2rem))] max-h-[min(720px,calc(100vh-2rem))] max-w-none flex-col overflow-hidden border-[#e5e7eb] bg-white p-0 dark:border-[#ffffff] dark:bg-[#ffffff] sm:max-w-none"
         >
           <DialogTitle className="sr-only">Manage account</DialogTitle>
-          <UserProfile routing="virtual" />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <UserProfile routing="virtual" />
+          </div>
+          <div className="shrink-0 border-t border-[#e5e7eb] bg-white p-3 dark:border-[#e5e7eb] dark:bg-white [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={() => {
+                setProfileOpen(false);
+                onSignOut();
+              }}
+              disabled={isSigningOut}
+              className="flex min-h-[44px] w-full items-center justify-center gap-2.5 rounded-xl border border-[#f4c7c1] bg-white px-3 py-2.5 text-[14px] font-semibold text-[#d93025] transition-colors hover:bg-[#fce8e6] disabled:opacity-70 [touch-action:manipulation]"
+              aria-label={isSigningOut ? "Signing out" : "Sign out"}
+            >
+              {isSigningOut ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+              ) : (
+                <LogOut className="h-4 w-4 shrink-0" />
+              )}
+              <span>{isSigningOut ? "Signing out…" : "Sign out"}</span>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

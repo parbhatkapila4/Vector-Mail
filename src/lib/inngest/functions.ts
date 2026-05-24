@@ -24,7 +24,7 @@ export const EMAIL_ANALYZE_ACCOUNT_EVENT = "email/analyze-account";
 export const MAIL_SYNC_ACCOUNT_EVENT = "mail/sync-account";
 export const AUTOMATION_EXECUTE_EVENT = "automation/execute";
 
-const MAX_INBOX_SYNC_STEPS = 120;
+const MAX_INBOX_SYNC_STEPS = 500;
 const AUTOMATION_EXECUTE_MAX_RETRIES = 3;
 
 //Just a reminder telling that this limit is according to the vercel hobby plan - To all who clone this repo - Author Parbhat kapila

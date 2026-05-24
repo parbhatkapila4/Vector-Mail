@@ -23,6 +23,7 @@ import {
   XCircle,
   FlaskConical,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,19 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UNIFIED_INBOX_ACCOUNT_ID } from "./AccountSwitcher";
 import { ThreadList, type ThreadListRef } from "./threads-ui/ThreadList";
@@ -69,6 +82,7 @@ import { trackInboxBrainEvent } from "@/lib/analytics/inbox-brain";
 import { AutopilotSection } from "@/components/mail/AutopilotSection";
 import { AutomationOutcomeBanner } from "@/components/mail/AutomationOutcomeBanner";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
+import { ConnectGmailScreen } from "./ConnectGmailScreen";
 
 interface MailLayoutProps {
   defaultLayout?: number[] | readonly number[] | undefined;
@@ -164,12 +178,20 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
 
   const handleSignOut = useCallback(() => {
     setIsSigningOut(true);
-    void signOut().catch(() => { });
-    const forceRedirectMs = 1200;
+    const HANG_FALLBACK_MS = 4000;
     signOutTimeoutRef.current = setTimeout(() => {
       signOutTimeoutRef.current = null;
-      window.location.href = "/";
-    }, forceRedirectMs);
+      window.location.replace("/");
+    }, HANG_FALLBACK_MS);
+
+    void signOut({ redirectUrl: "/" })
+      .catch(() => {
+        if (signOutTimeoutRef.current) {
+          clearTimeout(signOutTimeoutRef.current);
+          signOutTimeoutRef.current = null;
+        }
+        window.location.replace("/");
+      });
   }, [signOut]);
 
   const focusSearch = useCallback(() => {
@@ -248,11 +270,17 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   const [upcomingPopoverOpen, setUpcomingPopoverOpen] = useState(false);
   const [dailyBriefPopoverOpen, setDailyBriefPopoverOpen] = useState(false);
   const [nudgesPopoverOpen, setNudgesPopoverOpen] = useState(false);
+  const [mobileIntelOpen, setMobileIntelOpen] = useState<
+    "brief" | "nudges" | "upcoming" | null
+  >(null);
   const { data: upcomingMeetingsData, isLoading: upcomingLoading } =
     api.account.getUpcomingEventsFromEmails.useQuery(
       { accountId: accountId || "placeholder" },
       {
-        enabled: !!accountId && accountId.length > 0 && upcomingPopoverOpen,
+        enabled:
+          !!accountId &&
+          accountId.length > 0 &&
+          (upcomingPopoverOpen || mobileIntelOpen === "upcoming"),
         refetchOnWindowFocus: false,
         staleTime: 60_000,
       },
@@ -323,22 +351,7 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
   ];
 
   if (showConnectCard) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-4 dark:bg-[#ffffff]">
-        <div className="max-w-md rounded-2xl border border-[#e5e7eb] bg-white p-8 text-center shadow-sm dark:border-[#ffffff] dark:bg-[#ffffff]">
-          <h1 className="text-xl font-semibold text-[#111118] dark:text-[#f4f4f5]">Connect your Gmail</h1>
-          <p className="mt-2 text-sm text-[#6b7280] dark:text-[#a1a1aa]">
-            You&apos;re signed in. Connect your Gmail account to access your inbox.
-          </p>
-          <a
-            href="/api/connect/google"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e2a4a] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#b88a3f]"
-          >
-            Connect Gmail
-          </a>
-        </div>
-      </div>
-    );
+    return <ConnectGmailScreen />;
   }
 
   if (isMobile) {
@@ -384,14 +397,16 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                     side="left"
                     className="flex w-[280px] flex-col min-h-0 overflow-y-auto border-[#dadce0] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   >
+                    <SheetTitle className="sr-only">VectorMail menu</SheetTitle>
+                    <SheetDescription className="sr-only">
+                      Navigate between folders, intelligence widgets, and your account.
+                    </SheetDescription>
                     <MobileSidebar
                       navItems={navItems}
                       tab={tab}
                       setTab={setTab}
                       router={router}
                       onNavigate={handleMobileNavigation}
-                      onSignOut={handleSignOut}
-                      isSigningOut={isSigningOut}
                     />
                     <div className="border-t border-[#dadce0] px-2 py-2 dark:border-[#3c4043]">
                       <LabelsList
@@ -409,43 +424,137 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
                         }}
                       />
                     </div>
-                    <div className="border-t border-[#dadce0] dark:border-[#3c4043]">
-                      {tab === "inbox" && (
-                        <DailyBriefStrip
-                          accountId={accountId}
-                          isDemo={isDemo}
-                          onShowKeyboardHelp={() => setHelpOpen(true)}
-                          showDesktopShortcuts={!isMobile}
-                          onThreadSelect={(threadId) => {
-                            handleThreadSelect(threadId);
-                            setSheetOpen(false);
-                          }}
-                        />
-                      )}
-                      <NudgesBlock
-                        accountId={accountId}
-                        onThreadSelect={(threadId) => {
-                          handleThreadSelect(threadId);
-                          setSheetOpen(false);
-                        }}
-                      />
-                      <UpcomingFromEmailBlock
-                        accountId={accountId}
-                        onThreadSelect={(threadId) => {
-                          handleThreadSelect(threadId);
-                          setSheetOpen(false);
-                        }}
-                      />
-                      {accountId ? (
-                        <AutomationOutcomeBanner
-                          accountId={accountId}
-                          isDemo={isDemo && accountId === DEMO_ACCOUNT_ID}
-                          onOpenThread={(threadId) => {
-                            handleThreadSelect(threadId);
-                            setSheetOpen(false);
-                          }}
-                        />
-                      ) : null}
+                    <div className="border-t border-[#dadce0] px-2 py-2 dark:border-[#3c4043]">
+                      <div className="px-3 pb-1.5 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#a39e93] dark:text-[#9aa0a6]">
+                        Intelligence
+                      </div>
+                      {(
+                        [
+                          {
+                            icon: Sparkles,
+                            label: "Today's brief",
+                            count: todaysBriefCount,
+                            key: "brief" as const,
+                          },
+                          {
+                            icon: Plus,
+                            label: "Nudges",
+                            count: nudgesCount,
+                            key: "nudges" as const,
+                          },
+                          {
+                            icon: CalendarClock,
+                            label: "Upcoming",
+                            count: upcomingEvents.length || null,
+                            key: "upcoming" as const,
+                          },
+                          {
+                            icon: Zap,
+                            label: "Autopilot",
+                            count:
+                              autopilotState === null
+                                ? null
+                                : autopilotState === "on"
+                                  ? "On"
+                                  : "Off",
+                            key: "autopilot" as const,
+                          },
+                        ] as const
+                      ).map((item) => {
+                        if (item.key === "autopilot") {
+                          return (
+                            <div
+                              key={item.label}
+                              aria-disabled="true"
+                              title="Autopilot is available on desktop only"
+                              className="flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2.5 text-left"
+                            >
+                              <item.icon className="h-5 w-5 shrink-0 text-[#a39e93] dark:text-[#5f6368]" />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[14px] font-medium text-[#5f6368] dark:text-[#9aa0a6]">
+                                  {item.label}
+                                </div>
+                                <div className="mt-0.5 text-[11px] leading-snug text-[#a39e93] dark:text-[#5f6368]">
+                                  Available on desktop
+                                </div>
+                              </div>
+                              <span
+                                className="shrink-0 rounded-full border border-[#dadce0] bg-[#f8f9fa] px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[#5f6368] dark:border-[#3c4043] dark:bg-[#292a2d] dark:text-[#9aa0a6]"
+                                style={{
+                                  fontFamily:
+                                    "var(--font-jetbrains-mono), ui-monospace, monospace",
+                                }}
+                              >
+                                Desktop
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => {
+                              setSheetOpen(false);
+                              setMobileIntelOpen(item.key);
+                            }}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-[#202124] transition-colors hover:bg-[#f1f3f4] dark:text-[#e8eaed] dark:hover:bg-[#303134] [touch-action:manipulation]"
+                          >
+                            <item.icon className="h-5 w-5 shrink-0 text-[#5f6368] dark:text-[#9aa0a6]" />
+                            <span className="flex-1">{item.label}</span>
+                            {item.count !== null && item.count !== undefined && (
+                              <span className="rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-semibold text-[#5f6368] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
+                                {item.count}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-auto border-t border-[#dadce0] p-3 dark:border-[#3c4043] [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
+                      <div className="mb-2 flex items-center gap-3 rounded-xl border border-[#dadce0] bg-[#f8f9fa] px-3 py-2.5 dark:border-[#3c4043] dark:bg-[#292a2d]">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e5e7eb] dark:bg-[#3c4043]">
+                          {user?.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={user.imageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[13px] font-semibold text-[#5f6368] dark:text-[#9aa0a6]">
+                              {userName.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-medium text-[#202124] dark:text-[#e8eaed]">
+                            {userName}
+                          </p>
+                          {userEmail && (
+                            <p className="truncate text-[11.5px] text-[#5f6368] dark:text-[#9aa0a6]">
+                              {userEmail}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
+                        className="flex min-h-[44px] w-full items-center justify-center gap-2.5 rounded-xl border border-[#f4c7c1] bg-white px-3 py-2.5 text-[14px] font-semibold text-[#d93025] transition-colors hover:bg-[#fce8e6] disabled:opacity-70 dark:border-[#5f2120] dark:bg-[#292a2d] dark:text-[#f28b82] dark:hover:bg-[#5f2120] [touch-action:manipulation]"
+                        aria-label={isSigningOut ? "Signing out" : "Sign out"}
+                      >
+                        {isSigningOut ? (
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                        ) : (
+                          <LogOut className="h-4 w-4 shrink-0" />
+                        )}
+                        <span>
+                          {isSigningOut ? "Signing out…" : "Sign out"}
+                        </span>
+                      </button>
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -517,37 +626,231 @@ export function Mail({ defaultLayout }: MailLayoutProps) {
             </div>
           )}
 
-          <nav
-            className="flex shrink-0 border-t border-[#dadce0] bg-white dark:border-[#3c4043] dark:bg-[#202124] [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))] [touch-action:manipulation]"
-            aria-label="Primary"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                handleThreadClose();
-                setTab("inbox");
-                setSheetOpen(false);
-              }}
-              className={cn(
-                "flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium transition-colors [touch-action:manipulation]",
-                !selectedThread && tab === "inbox"
-                  ? "text-[#1a73e8] dark:text-[#1e2a4a]"
-                  : "text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed]",
-              )}
-            >
-              <Inbox className="h-5 w-5" />
-              Inbox
-            </button>
-            <button
-              type="button"
-              onClick={() => setComposeOpen(true)}
-              className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[11px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] dark:hover:text-[#e8eaed] [touch-action:manipulation]"
-            >
-              <Send className="h-5 w-5" />
-              New email
-            </button>
-          </nav>
         </div>
+
+        <Dialog
+          open={mobileIntelOpen === "brief"}
+          onOpenChange={(o) => !o && setMobileIntelOpen(null)}
+        >
+          <DialogContent
+            showCloseButton={false}
+            className="flex max-h-[min(640px,85vh)] w-[min(420px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden border-[#e5e7eb] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124] sm:max-w-none"
+          >
+            <DialogTitle className="sr-only">Today&apos;s brief</DialogTitle>
+            <DialogDescription className="sr-only">
+              Today&apos;s prioritized email threads
+            </DialogDescription>
+            <div className="flex shrink-0 items-center justify-end border-b border-[#e4e7ed] px-2 py-1.5 dark:border-[#3c4043]">
+              <button
+                type="button"
+                onClick={() => setMobileIntelOpen(null)}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] [touch-action:manipulation]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <DailyBriefStrip
+                accountId={accountId}
+                isDemo={isDemo}
+                showDesktopShortcuts={false}
+                defaultExpanded
+                onThreadSelect={(threadId) => {
+                  setMobileIntelOpen(null);
+                  handleThreadSelect(threadId);
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={mobileIntelOpen === "nudges"}
+          onOpenChange={(o) => !o && setMobileIntelOpen(null)}
+        >
+          <DialogContent
+            showCloseButton={false}
+            className="flex max-h-[min(640px,85vh)] w-[min(420px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden border-[#e5e7eb] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124] sm:max-w-none"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e4e7ed] px-5 py-4 dark:border-[#3c4043]">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Plus className="h-5 w-5 shrink-0 text-[#1e2a4a] dark:text-[#9aa0a6]" />
+                <DialogTitle className="text-[16px] font-semibold tracking-tight text-[#0e1729] dark:text-[#e8eaed]">
+                  Nudges
+                </DialogTitle>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {nudgesCount !== null && nudgesCount > 0 && (
+                  <span className="rounded-full bg-[#1e2a4a]/10 px-2.5 py-1 text-[11px] font-semibold text-[#1e2a4a] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
+                    {nudgesCount}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setMobileIntelOpen(null)}
+                  aria-label="Close"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] [touch-action:manipulation]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <DialogDescription className="sr-only">
+              Threads waiting on your reply
+            </DialogDescription>
+            <div className="min-h-0 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {(nudgesForCount?.nudges ?? []).length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <p className="text-[14px] font-semibold text-[#0e1729] dark:text-[#e8eaed]">
+                    You&apos;re all caught up
+                  </p>
+                  <p className="mt-2 text-[12px] leading-relaxed text-[#7a849a]">
+                    No threads are waiting on your reply right now.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-[#eef0f4] dark:divide-[#3c4043]">
+                  {(nudgesForCount?.nudges ?? []).map((nudge) => (
+                    <li key={nudge.threadId}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileIntelOpen(null);
+                          handleThreadSelect(nudge.threadId);
+                        }}
+                        className="flex w-full flex-col gap-1 px-5 py-3 text-left transition-colors hover:bg-[#f4f5f8] dark:hover:bg-[#3c4043] [touch-action:manipulation]"
+                      >
+                        <p className="line-clamp-2 text-[13.5px] font-medium text-[#0e1729] dark:text-[#e8eaed]">
+                          {nudge.thread?.subject ?? "(No subject)"}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-[#7a849a]">
+                          <span>{nudge.reason ?? "You haven't replied"}</span>
+                          {nudge.thread?.lastMessageDate && (
+                            <>
+                              <span className="text-[#a8b0c0]">·</span>
+                              <span>
+                                {formatDistanceToNow(
+                                  new Date(nudge.thread.lastMessageDate),
+                                  { addSuffix: true },
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={mobileIntelOpen === "upcoming"}
+          onOpenChange={(o) => !o && setMobileIntelOpen(null)}
+        >
+          <DialogContent
+            showCloseButton={false}
+            className="flex max-h-[min(640px,85vh)] w-[min(420px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden border-[#e5e7eb] bg-white p-0 dark:border-[#3c4043] dark:bg-[#202124] sm:max-w-none"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e4e7ed] px-5 py-4 dark:border-[#3c4043]">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <CalendarClock className="h-5 w-5 shrink-0 text-[#1e2a4a] dark:text-[#9aa0a6]" />
+                <DialogTitle className="text-[16px] font-semibold tracking-tight text-[#0e1729] dark:text-[#e8eaed]">
+                  Upcoming
+                </DialogTitle>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span className="rounded-full border border-[#e4e7ed] bg-[#fafbfc] px-2.5 py-1 text-[10.5px] font-semibold text-[#4a5572] dark:border-[#3c4043] dark:bg-[#292a2d] dark:text-[#9aa0a6]">
+                  Last 60d
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMobileIntelOpen(null)}
+                  aria-label="Close"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4] hover:text-[#202124] dark:text-[#9aa0a6] dark:hover:bg-[#3c4043] [touch-action:manipulation]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <DialogDescription className="sr-only">
+              Upcoming meetings detected from your inbox
+            </DialogDescription>
+            <div className="min-h-0 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {upcomingLoading ? (
+                <div className="flex items-center justify-center gap-2 px-5 py-12 text-[12.5px] text-[#7a849a]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Scanning your inbox…
+                </div>
+              ) : upcomingEvents.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <p className="text-[14px] font-semibold text-[#0e1729] dark:text-[#e8eaed]">
+                    No upcoming meetings
+                  </p>
+                  <p className="mt-2 text-[12px] leading-relaxed text-[#7a849a]">
+                    We scan the last 60 days for Google Meet, Zoom, and Teams
+                    links. Anything past its end time drops automatically.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-[#eef0f4] dark:divide-[#3c4043]">
+                  {upcomingEvents.map((event) => {
+                    const startDate = new Date(event.startAt);
+                    const endDate = event.endAt
+                      ? new Date(event.endAt)
+                      : null;
+                    const isToday =
+                      startDate.toDateString() === new Date().toDateString();
+                    const isTomorrow =
+                      startDate.toDateString() ===
+                      new Date(Date.now() + 86400000).toDateString();
+                    const dayLabel = isToday
+                      ? "Today"
+                      : isTomorrow
+                        ? "Tomorrow"
+                        : format(startDate, "EEE, MMM d");
+                    const timeLabel = format(startDate, "h:mm a");
+                    return (
+                      <li
+                        key={`${event.sourceEmailId}-${event.startAt}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileIntelOpen(null);
+                            if (event.sourceThreadId) {
+                              handleThreadSelect(event.sourceThreadId);
+                            }
+                          }}
+                          className="flex w-full flex-col gap-1 px-5 py-3 text-left transition-colors hover:bg-[#f4f5f8] dark:hover:bg-[#3c4043] [touch-action:manipulation]"
+                        >
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span className="rounded-md bg-[#1e2a4a]/[0.08] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1e2a4a] dark:bg-[#3c4043] dark:text-[#9aa0a6]">
+                              {dayLabel}
+                            </span>
+                            <span className="text-[11.5px] font-medium text-[#4a5572] dark:text-[#9aa0a6]">
+                              {timeLabel}
+                              {endDate &&
+                                endDate.getTime() !==
+                                  startDate.getTime() &&
+                                ` – ${format(endDate, "h:mm a")}`}
+                            </span>
+                          </div>
+                          <p className="line-clamp-2 text-[13.5px] font-medium text-[#0e1729] dark:text-[#e8eaed]">
+                            {event.title}
+                          </p>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </TooltipProvider>
     );
   }

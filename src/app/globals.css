@@ -512,3 +512,290 @@ body::-webkit-scrollbar {
 .arch-stat-stagger>*:nth-child(4) {
   animation-delay: 0.4s;
 }
+
+
+@keyframes vm-onb-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes vm-onb-rise-scale {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+    filter: blur(6px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes vm-onb-float-a {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3.5deg);
+  }
+
+  50% {
+    transform: translateY(-7px) rotate(-2.8deg);
+  }
+}
+
+@keyframes vm-onb-float-b {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(2.2deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(2.8deg);
+  }
+}
+
+@keyframes vm-onb-float-c {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+
+  50% {
+    transform: translateY(-6px) rotate(0.4deg);
+  }
+}
+
+@keyframes vm-onb-cta-shimmer {
+  0% {
+    transform: translateX(-130%) skewX(-12deg);
+    opacity: 0;
+  }
+
+  20%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(330%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes vm-onb-underline {
+  0% {
+    transform: scaleX(0);
+  }
+
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes vm-onb-scan {
+  0% {
+    transform: translateX(-30%) skewX(-14deg);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.7;
+  }
+
+  80% {
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translateX(180%) skewX(-14deg);
+    opacity: 0;
+  }
+}
+
+@keyframes vm-onb-ring-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vm-onb-caret-blink {
+
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vm-onb-status-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(21, 128, 61, 0);
+  }
+}
+
+.vm-onb-rise {
+  animation: vm-onb-rise 0.75s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.vm-onb-rise-scale {
+  animation: vm-onb-rise-scale 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.vm-onb-delay-1 {
+  animation-delay: 0.05s;
+}
+
+.vm-onb-delay-2 {
+  animation-delay: 0.15s;
+}
+
+.vm-onb-delay-3 {
+  animation-delay: 0.25s;
+}
+
+.vm-onb-delay-4 {
+  animation-delay: 0.35s;
+}
+
+.vm-onb-delay-5 {
+  animation-delay: 0.45s;
+}
+
+.vm-onb-delay-6 {
+  animation-delay: 0.6s;
+}
+
+.vm-onb-delay-7 {
+  animation-delay: 0.75s;
+}
+
+.vm-onb-delay-8 {
+  animation-delay: 0.9s;
+}
+
+.vm-onb-delay-9 {
+  animation-delay: 1.05s;
+}
+
+.vm-onb-float-a {
+  animation: vm-onb-float-a 7s ease-in-out infinite;
+}
+
+.vm-onb-float-b {
+  animation: vm-onb-float-b 8.5s ease-in-out infinite 0.4s;
+}
+
+.vm-onb-float-c {
+  animation: vm-onb-float-c 6.5s ease-in-out infinite 1s;
+}
+
+.vm-onb-cta-shimmer {
+  animation: vm-onb-cta-shimmer 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite 1.4s;
+}
+
+.vm-onb-underline-draw {
+  transform-origin: left center;
+  animation: vm-onb-underline 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.55s backwards;
+}
+
+.vm-onb-scan {
+  animation: vm-onb-scan 5.5s cubic-bezier(0.45, 0, 0.55, 1) infinite 2s;
+}
+
+.vm-onb-ring-rotate {
+  animation: vm-onb-ring-rotate 14s linear infinite;
+}
+
+.vm-onb-caret-blink {
+  animation: vm-onb-caret-blink 1.05s steps(1) infinite;
+}
+
+.vm-onb-status-pulse {
+  animation: vm-onb-status-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes vm-hero-warm-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 90, 43, 0.55);
+  }
+
+  70% {
+    box-shadow: 0 0 0 5px rgba(184, 90, 43, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 90, 43, 0);
+  }
+}
+
+.vm-hero-warm-pulse {
+  animation: vm-hero-warm-pulse 2.2s ease-out infinite;
+}
+
+@keyframes vm-hero-tag-shine {
+  0%,
+  100% {
+    background-position: 220% 50%;
+  }
+
+  50% {
+    background-position: -120% 50%;
+  }
+}
+
+.vm-hero-tag-shine {
+  background-image: linear-gradient(110deg,
+      #F0E5BD 0%,
+      #F0E5BD 38%,
+      #FBF5D9 50%,
+      #F0E5BD 62%,
+      #F0E5BD 100%);
+  background-size: 220% 100%;
+  animation: vm-hero-tag-shine 5.5s ease-in-out infinite 1.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .vm-onb-rise,
+  .vm-onb-rise-scale,
+  .vm-onb-float-a,
+  .vm-onb-float-b,
+  .vm-onb-float-c,
+  .vm-onb-cta-shimmer,
+  .vm-onb-underline-draw,
+  .vm-onb-scan,
+  .vm-onb-ring-rotate,
+  .vm-onb-caret-blink,
+  .vm-onb-status-pulse,
+  .vm-hero-warm-pulse,
+  .vm-hero-tag-shine {
+    animation: none !important;
+  }
+}

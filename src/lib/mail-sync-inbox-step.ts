@@ -49,12 +49,10 @@ function encodeContinueToken(
 }
 
 
-const WORKER_SYNC_API_MS_STALE = 8_000;
-const WORKER_SYNC_API_MS_FRESH = 6_000;
-const WORKER_CHUNK_IDS_STALE = 28;
-const WORKER_CHUNK_IDS_FRESH = 40;
 const WORKER_LIST_MS = 8_000;
 const WORKER_GET_MS = 5_500;
+const INBOX_LIST_PAGE_SIZE = 50;
+const INBOX_BACKFILL_TARGET = 1000;
 
 export async function runInboxSyncOneStep(
   accountId: string,
@@ -106,31 +104,30 @@ export async function runInboxSyncOneStep(
       };
     }
 
-    const result = await emailAccount.fetchEmailsByFolderOnePage(
-      "inbox",
+    const page = await emailAccount.fetchInboxPageViaList(
+      INBOX_LIST_PAGE_SIZE,
       pageToken,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      400,
+      WORKER_LIST_MS,
+      WORKER_GET_MS,
     );
-    if (result.emails.length > 0) {
-      await syncEmailsToDatabase(result.emails, accountId);
-    }
-    const hasMore = !!result.nextPageToken;
+    const threadCount = await db.thread.count({
+      where: { accountId, inboxStatus: true },
+    });
+    const hasMore =
+      !!page.nextPageToken && threadCount < INBOX_BACKFILL_TARGET;
     return {
       ok: true,
       hasMore,
       continueToken: hasMore
-        ? encodeContinueToken(result.nextPageToken!, undefined)
+        ? encodeContinueToken(page.nextPageToken!, undefined)
         : undefined,
       mode: "list_page",
     };
   }
 
+  const threadCount = await db.thread.count({
+    where: { accountId, inboxStatus: true },
+  });
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const latestInbox = await db.thread.findFirst({
     where: { accountId, inboxStatus: true },
@@ -139,8 +136,9 @@ export async function runInboxSyncOneStep(
   });
   const inboxStale =
     !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
+  const backfillComplete = threadCount >= INBOX_BACKFILL_TARGET;
 
-  if (!inboxStale && accountRow.nextDeltaToken) {
+  if (backfillComplete && !inboxStale && accountRow.nextDeltaToken) {
     try {
       const latestSyncResult = await emailAccount.syncLatestEmails();
       if (!latestSyncResult.authError && latestSyncResult.success) {
@@ -156,60 +154,24 @@ export async function runInboxSyncOneStep(
     }
   }
 
-  if (inboxStale) {
-    await db.account
-      .update({ where: { id: accountId }, data: { nextDeltaToken: null } })
-      .catch(() => { });
-  }
-
-  const syncApiTimeoutMs = inboxStale
-    ? WORKER_SYNC_API_MS_STALE
-    : WORKER_SYNC_API_MS_FRESH;
-  const syncApiFirstPage =
-    await emailAccount.tryGetFirstPageViaSyncApi(syncApiTimeoutMs);
-
-  if (
-    syncApiFirstPage &&
-    (syncApiFirstPage.records.length > 0 || syncApiFirstPage.nextPageToken)
-  ) {
-    if (syncApiFirstPage.records.length > 0) {
-      await syncEmailsToDatabase(syncApiFirstPage.records, accountId);
-    }
-    if (syncApiFirstPage.nextDeltaToken) {
-      await db.account
-        .update({
-          where: { id: accountId },
-          data: { nextDeltaToken: syncApiFirstPage.nextDeltaToken },
-        })
-        .catch(() => { });
-    }
-    const hasMore = !!syncApiFirstPage.nextPageToken;
-    return {
-      ok: true,
-      hasMore,
-      continueToken:
-        hasMore && syncApiFirstPage.nextPageToken
-          ? encodeContinueToken("", syncApiFirstPage.nextPageToken)
-          : undefined,
-      mode: "sync_api",
-    };
-  }
-
-  const chunkMaxIds = inboxStale ? WORKER_CHUNK_IDS_STALE : WORKER_CHUNK_IDS_FRESH;
-  const result = await emailAccount.fetchInboxFirstPageInChunks(
-    chunkMaxIds,
-    5,
+  const page = await emailAccount.fetchInboxPageViaList(
+    INBOX_LIST_PAGE_SIZE,
+    undefined,
     WORKER_LIST_MS,
     WORKER_GET_MS,
   );
-  const hasMore = !!result.nextPageToken;
+  const newThreadCount = await db.thread.count({
+    where: { accountId, inboxStatus: true },
+  });
+  const hasMore =
+    !!page.nextPageToken && newThreadCount < INBOX_BACKFILL_TARGET;
   return {
     ok: true,
     hasMore,
     continueToken: hasMore
-      ? encodeContinueToken(result.nextPageToken!, undefined)
+      ? encodeContinueToken(page.nextPageToken!, undefined)
       : undefined,
-    mode: "chunks",
+    mode: "list_page",
   };
 }
 

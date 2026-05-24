@@ -7,6 +7,10 @@ import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
 import { checkUserRateLimit } from "@/lib/rate-limit";
+import {
+  containsOutgoingViolation,
+  isOutgoingContentBlockedError,
+} from "@/lib/outgoing-content-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -216,50 +220,6 @@ function plainBodyToHtml(body: string): string {
   });
 
   return blocks.join("");
-}
-
-function containsOutgoingViolation(
-  text: string,
-):
-  | { ok: false; reason: string }
-  | { ok: true } {
-  const patterns: Array<{ regex: RegExp; reason: string }> = [
-    { regex: /\bnigg(?:er|a)s?\b/i, reason: "a racial slur" },
-    { regex: /\bfaggots?\b/i, reason: "a homophobic slur" },
-    { regex: /\btrann(?:y|ies)\b/i, reason: "a transphobic slur" },
-    { regex: /\bkikes?\b/i, reason: "an anti-semitic slur" },
-    { regex: /\bspics?\b/i, reason: "an ethnic slur" },
-    { regex: /\bchinks?\b/i, reason: "an ethnic slur" },
-    { regex: /\bretards?\b/i, reason: "an ableist slur" },
-
-    { regex: /\bkill\s+yourself\b/i, reason: "a threat" },
-    { regex: /\bkys\b/i, reason: "a threat" },
-    { regex: /\bi(?:'ll|\s+will)\s+kill\s+you\b/i, reason: "a death threat" },
-    { regex: /\bi(?:'ll|\s+will)\s+(?:hurt|harm|murder)\b/i, reason: "a threat" },
-    { regex: /\bgo\s+(?:and\s+)?die\b/i, reason: "a threat" },
-    { regex: /\bdeath\s+to\s+[a-z]/i, reason: "incitement language" },
-    { regex: /\bbomb\s+(?:threat|the\s+)/i, reason: "a violent threat" },
-    { regex: /\bshoot\s+up\s+(?:the|a)\b/i, reason: "a violent threat" },
-    { regex: /\brape\b/i, reason: "sexual violence" },
-    { regex: /\bmolest\b/i, reason: "sexual violence" },
-
-    {
-      regex: /\b(?:child\s+porn(?:ography)?|csam|cp\s+video)\b/i,
-      reason: "child-exploitation material",
-    },
-    { regex: /\bbuy\s+(?:cocaine|heroin|meth|fentanyl|crack)\b/i, reason: "illegal drug trade" },
-    { regex: /\bsell\s+(?:cocaine|heroin|meth|fentanyl|crack)\b/i, reason: "illegal drug trade" },
-    { regex: /\bhire\s+(?:a\s+)?hit\s*man\b/i, reason: "incitement to violence" },
-    {
-      regex: /\bstolen\s+(?:credit\s+card|ssn|social\s+security|identity)\b/i,
-      reason: "fraud-related content",
-    },
-    { regex: /\bfake\s+passport\b/i, reason: "fraud-related content" },
-  ];
-  for (const { regex, reason } of patterns) {
-    if (regex.test(text)) return { ok: false, reason };
-  }
-  return { ok: true };
 }
 
 function extractEmailAddresses(text: string): string[] {
@@ -1001,6 +961,24 @@ async function buddyPostHandler(req: Request) {
           body: bodyWithSignature,
         });
       } catch (sendErr) {
+    
+        if (isOutgoingContentBlockedError(sendErr)) {
+          buddyLog.warn(
+            `[BUDDY] Account.sendEmail blocked outbound content for user ${userId}: ${sendErr.reason}`,
+          );
+          return new Response(
+            JSON.stringify({
+              type: "conversation",
+              message: `I can't send this — the ${sendErr.field} contains ${sendErr.reason}, which violates our usage policy. Edit the draft to remove the offending content, then try again.`,
+            }),
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "Cache-Control": "no-cache",
+              },
+            },
+          );
+        }
         const errMessage =
           sendErr instanceof Error ? sendErr.message : "Failed to send email";
         return new Response(

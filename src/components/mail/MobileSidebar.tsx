@@ -2,10 +2,7 @@
 
 import Link from "next/link";
 import {
-  ArrowRight,
   Bot,
-  Loader2,
-  LogOut,
   Search,
   Zap,
 } from "lucide-react";
@@ -23,8 +20,6 @@ interface MobileSidebarProps {
   setTab: (tab: string) => void;
   router: ReturnType<typeof useRouter>;
   onNavigate?: (newTab: string, isBuddy?: boolean) => void;
-  onSignOut: () => void;
-  isSigningOut: boolean;
 }
 
 export function MobileSidebar({
@@ -32,8 +27,6 @@ export function MobileSidebar({
   tab,
   setTab,
   onNavigate,
-  onSignOut,
-  isSigningOut,
 }: MobileSidebarProps) {
   return (
     <div className="relative flex h-full flex-col bg-white dark:bg-[#202124]">
@@ -54,7 +47,16 @@ export function MobileSidebar({
         </div>
         <div>
           <h2 className="text-[15px] font-medium text-[#202124] dark:text-[#e8eaed]">VectorMail</h2>
-          <p className="mt-0.5 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">Email client</p>
+          <p
+            className="mt-0.5 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]"
+            style={{
+              fontFamily: "var(--font-newsreader), Georgia, serif",
+              fontStyle: "italic",
+              letterSpacing: "-0.005em",
+            }}
+          >
+            The inbox, rewritten.
+          </p>
         </div>
       </Link>
 
@@ -103,14 +105,7 @@ export function MobileSidebar({
       </div>
 
       <div className="flex min-h-0 flex-1 px-2 pb-2">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.("", true);
-            window.location.href = "/buddy?fresh=true";
-          }}
-          className="group flex w-full flex-col justify-between rounded-lg border border-[#dadce0] bg-[#f8f9fa] p-4 text-left transition-colors hover:border-[#1a73e8]/30 hover:bg-[#e8f0fe]/50 dark:border-[#3c4043] dark:bg-[#292a2d] dark:hover:border-[#1e2a4a]/30 dark:hover:bg-[#174ea6]/10"
-        >
+        <div className="flex w-full flex-col justify-between rounded-lg border border-[#dadce0] bg-[#f8f9fa] p-4 text-left dark:border-[#3c4043] dark:bg-[#292a2d]">
           <div className="flex flex-col">
             <div className="mb-3 flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a73e8] dark:bg-[#1e2a4a]">
@@ -126,27 +121,10 @@ export function MobileSidebar({
               behind them. Best on desktop.
             </p>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-[13px] font-medium text-[#1a73e8] dark:text-[#1e2a4a]">
-            <span>Try on desktop</span>
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          <div className="mt-4 text-[13px] font-medium text-[#1a73e8] dark:text-[#1e2a4a]">
+            Try on desktop
           </div>
-        </button>
-      </div>
-
-      <div className="border-t border-[#dadce0] p-2 dark:border-[#3c4043]">
-        <button
-          type="button"
-          onClick={onSignOut}
-          disabled={isSigningOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#d93025] transition-colors hover:bg-[#fce8e6] disabled:opacity-70 dark:text-[#f28b82] dark:hover:bg-[#5f2120]"
-        >
-          {isSigningOut ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-          ) : (
-            <LogOut className="h-4 w-4 shrink-0" />
-          )}
-          <span className="flex-1 text-left">{isSigningOut ? "Signing out…" : "Sign Out"}</span>
-        </button>
+        </div>
       </div>
     </div>
   );

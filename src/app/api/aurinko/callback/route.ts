@@ -6,7 +6,8 @@ import { Account } from "@/lib/accounts";
 import axios from "axios";
 import { log as auditLog } from "@/lib/audit/audit-log";
 
-const FAST_FIRST_SYNC_TIMEOUT_MS = 30_000;
+
+const FAST_FIRST_SYNC_TIMEOUT_MS = 60_000;
 
 function getBaseUrl(req: NextRequest): string {
   try {
