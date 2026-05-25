@@ -42,9 +42,12 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import { DEMO_ACCOUNT_ID } from "@/lib/demo/constants";
 import { UNIFIED_INBOX_ACCOUNT_ID } from "@/components/mail/AccountSwitcher";
 
-type Email = RouterOutputs["account"]["getThreads"]["threads"][0]["emails"][0];
+type Email = NonNullable<RouterOutputs["account"]["getThreadById"]>["emails"][0];
 type Thread = RouterOutputs["account"]["getThreads"]["threads"][0];
-type ThreadWithLabels = Thread & {
+type ThreadWithLabels = Omit<
+  NonNullable<RouterOutputs["account"]["getThreadById"]>,
+  "account"
+> & {
   threadLabels?: Array<{ label: { id: string; name: string; color: string | null } }>;
 };
 
@@ -101,12 +104,12 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
   const { data: foundThread, isFetching: isLoadingThread } = api.account.getThreadById.useQuery(
     { threadId: threadId ?? "" },
     {
-      enabled: !!!_thread && !!threadId && threadId.length > 0,
+      enabled: !!threadId && threadId.length > 0,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
     },
   );
-  const thread = (_thread ?? foundThread) as ThreadWithLabels & { account?: { id: string; emailAddress: string; name: string } } | undefined;
+  const thread = (foundThread ?? _thread) as unknown as ThreadWithLabels & { account?: { id: string; emailAddress: string; name: string } } | undefined;
 
   const { data: threadEvent } = api.account.getEventForThread.useQuery(
     { threadId: threadId ?? "" },
@@ -148,10 +151,25 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
 
   const getPlainTextBody = (htmlBody: string) => {
     if (!htmlBody) return "";
+    if (typeof document === "undefined") return htmlBody;
 
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = htmlBody;
-    return tempDiv.textContent || tempDiv.innerText || "";
+    tempDiv
+      .querySelectorAll("style, script, head, title, noscript")
+      .forEach((el) => el.remove());
+    tempDiv.querySelectorAll("br").forEach((el) => el.replaceWith("\n"));
+    tempDiv
+      .querySelectorAll("p, div, tr, li, h1, h2, h3, h4, h5, h6, blockquote")
+      .forEach((el) => el.append("\n"));
+
+    return (tempDiv.textContent || "")
+      .replace(/[͏​‌‍⁠﻿­؜]/g, "")
+      .replace(/[   ]/g, " ")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/ ?\n ?/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   };
 
   const plainTextBody = getPlainTextBody(originalBody);

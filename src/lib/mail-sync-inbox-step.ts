@@ -52,7 +52,7 @@ function encodeContinueToken(
 const WORKER_LIST_MS = 8_000;
 const WORKER_GET_MS = 5_500;
 const INBOX_LIST_PAGE_SIZE = 50;
-const INBOX_BACKFILL_TARGET = 1000;
+const INBOX_BACKFILL_SAFETY_CAP = 2000;
 
 export async function runInboxSyncOneStep(
   accountId: string,
@@ -113,8 +113,12 @@ export async function runInboxSyncOneStep(
     const threadCount = await db.thread.count({
       where: { accountId, inboxStatus: true },
     });
+    const reachedOldest = !page.nextPageToken;
     const hasMore =
-      !!page.nextPageToken && threadCount < INBOX_BACKFILL_TARGET;
+      !reachedOldest && threadCount < INBOX_BACKFILL_SAFETY_CAP;
+    if (!hasMore && !accountRow.nextDeltaToken) {
+      await emailAccount.establishInboxDeltaToken();
+    }
     return {
       ok: true,
       hasMore,
@@ -125,9 +129,6 @@ export async function runInboxSyncOneStep(
     };
   }
 
-  const threadCount = await db.thread.count({
-    where: { accountId, inboxStatus: true },
-  });
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const latestInbox = await db.thread.findFirst({
     where: { accountId, inboxStatus: true },
@@ -136,7 +137,7 @@ export async function runInboxSyncOneStep(
   });
   const inboxStale =
     !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
-  const backfillComplete = threadCount >= INBOX_BACKFILL_TARGET;
+  const backfillComplete = !!accountRow.nextDeltaToken;
 
   if (backfillComplete && !inboxStale && accountRow.nextDeltaToken) {
     try {
@@ -163,8 +164,12 @@ export async function runInboxSyncOneStep(
   const newThreadCount = await db.thread.count({
     where: { accountId, inboxStatus: true },
   });
+  const reachedOldest = !page.nextPageToken;
   const hasMore =
-    !!page.nextPageToken && newThreadCount < INBOX_BACKFILL_TARGET;
+    !reachedOldest && !backfillComplete && newThreadCount < INBOX_BACKFILL_SAFETY_CAP;
+  if (!hasMore && !backfillComplete) {
+    await emailAccount.establishInboxDeltaToken();
+  }
   return {
     ok: true,
     hasMore,

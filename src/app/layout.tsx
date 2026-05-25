@@ -4,7 +4,7 @@ import "@/styles/hero-reactive-background.css";
 
 import { type Metadata } from "next";
 import Script from "next/script";
-import { Inter, Oswald, Newsreader, JetBrains_Mono, Fraunces } from "next/font/google";
+import localFont from "next/font/local";
 
 import { ProvidersWrapper } from "@/components/providers/ProvidersWrapper";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -43,36 +43,57 @@ export const viewport = {
   viewportFit: "cover" as const,
 };
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [{ path: "./fonts/inter.woff2", weight: "100 900", style: "normal" }],
   variable: "--font-geist-sans",
+  display: "swap",
 });
 
-const oswald = Oswald({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const oswald = localFont({
+  src: [
+    { path: "./fonts/oswald-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/oswald-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/oswald-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/oswald-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-oswald",
+  display: "swap",
 });
 
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  style: ["normal", "italic"],
+const newsreader = localFont({
+  src: [
+    { path: "./fonts/newsreader-300.woff2", weight: "300", style: "normal" },
+    { path: "./fonts/newsreader-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/newsreader-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/newsreader-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/newsreader-300-italic.woff2", weight: "300", style: "italic" },
+    { path: "./fonts/newsreader-400-italic.woff2", weight: "400", style: "italic" },
+    { path: "./fonts/newsreader-500-italic.woff2", weight: "500", style: "italic" },
+    { path: "./fonts/newsreader-600-italic.woff2", weight: "600", style: "italic" },
+  ],
   variable: "--font-newsreader",
   display: "swap",
-  adjustFontFallback: false,
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const jetbrainsMono = localFont({
+  src: [
+    { path: "./fonts/jetbrains-mono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/jetbrains-mono-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/jetbrains-mono-600.woff2", weight: "600", style: "normal" },
+  ],
   variable: "--font-jetbrains-mono",
   display: "swap",
 });
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  style: ["normal", "italic"],
+
+const fraunces = localFont({
+  src: [
+    { path: "./fonts/fraunces-300.woff2", weight: "300", style: "normal" },
+    { path: "./fonts/fraunces-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/fraunces-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/fraunces-300-italic.woff2", weight: "300", style: "italic" },
+    { path: "./fonts/fraunces-400-italic.woff2", weight: "400", style: "italic" },
+    { path: "./fonts/fraunces-500-italic.woff2", weight: "500", style: "italic" },
+  ],
   variable: "--font-fraunces",
   display: "swap",
 });

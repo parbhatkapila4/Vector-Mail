@@ -323,7 +323,7 @@ export const briefingProcedures = {
       );
       const now = new Date();
       const NUDGE_CAP = 15;
-      const UNREPLIED_DAYS = 14;
+      const UNREPLIED_DAYS = 30;
       const unrepliedCutoff = new Date(now);
       unrepliedCutoff.setDate(unrepliedCutoff.getDate() - UNREPLIED_DAYS);
 
@@ -389,31 +389,76 @@ export const briefingProcedures = {
           },
         },
         orderBy: { lastMessageDate: "desc" },
-        take: 50,
+        take: 200,
         select: {
           id: true,
           subject: true,
           lastMessageDate: true,
+          threadLabels: { select: { label: { select: { name: true } } } },
           emails: {
             orderBy: { sentAt: "desc" },
             take: 1,
             select: {
+              subject: true,
               bodySnippet: true,
+              keywords: true,
+              sysClassifications: true,
               from: { select: { address: true } },
             },
           },
         },
       });
       const accountEmailLower = account.emailAddress.toLowerCase();
-      const unrepliedThreads = candidateUnreplied.filter((t) => {
-        const latestEmail = t.emails[0];
-        if (!latestEmail?.from?.address) return false;
-        return latestEmail.from.address.toLowerCase() !== accountEmailLower;
-      });
       const existingReminderIds = new Set(dueReminderThreads.map((t) => t.id));
       let unrepliedAdded = 0;
-      for (const t of unrepliedThreads) {
-        if (existingReminderIds.has(t.id) || unrepliedAdded >= NUDGE_CAP) break;
+      for (const t of candidateUnreplied) {
+        if (unrepliedAdded >= NUDGE_CAP) break;
+        if (existingReminderIds.has(t.id)) continue;
+
+        const latestEmail = t.emails[0];
+        if (!latestEmail?.from?.address) continue;
+        if (latestEmail.from.address.toLowerCase() === accountEmailLower) continue;
+
+        const sysC = (latestEmail.sysClassifications ?? []).map((c) =>
+          String(c).toLowerCase(),
+        );
+        const labelNames = t.threadLabels.map((tl) =>
+          tl.label.name.toLowerCase(),
+        );
+        const kw = (latestEmail.keywords ?? []).map((k) => String(k).toLowerCase());
+        const blob = [
+          t.subject ?? "",
+          latestEmail.subject ?? "",
+          latestEmail.bodySnippet ?? "",
+          ...kw,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        const isPromoLike =
+          sysC.some((c) =>
+            ["promotions", "social", "updates", "forums"].includes(c),
+          ) ||
+          labelNames.some((n) =>
+            /\b(promotion|promotions|newsletter|marketing|unsubscribe|bulk|social|updates|forums)\b/.test(
+              n,
+            ),
+          ) ||
+          /\b(newsletter|promo|promotional|marketing|unsubscribe|sale|offer|discount|deal|profile views?|job (alert|opportunit|recommendation))\b/.test(
+            blob,
+          );
+        if (isPromoLike) continue;
+
+        if (
+          isNonRepliable({
+            senderAddress: latestEmail.from.address,
+            subject: latestEmail.subject ?? t.subject,
+            bodySnippet: latestEmail.bodySnippet,
+          }).skip
+        ) {
+          continue;
+        }
+
         nudges.push({
           threadId: t.id,
           type: "UNREPLIED",
@@ -421,7 +466,7 @@ export const briefingProcedures = {
           thread: {
             subject: t.subject,
             lastMessageDate: t.lastMessageDate,
-            snippet: t.emails[0]?.bodySnippet ?? null,
+            snippet: latestEmail.bodySnippet ?? null,
           },
         });
         unrepliedAdded++;
@@ -440,15 +485,14 @@ export const briefingProcedures = {
         input.accountId,
         ctx.auth.userId,
       );
-      const cacheKey = `dailyBrief:v2:${ctx.auth.userId}:${account.id}`;
+      const cacheKey = `dailyBrief:v3:${ctx.auth.userId}:${account.id}`;
       return withCache(
         cacheKey,
         async () => {
           const now = new Date();
           const BRIEF_CAP = 10;
-          const UNREPLIED_DAYS = 14;
-          const unrepliedCutoff = new Date(now);
-          unrepliedCutoff.setDate(unrepliedCutoff.getDate() - UNREPLIED_DAYS);
+          const TODAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+          const todayCutoff = new Date(now.getTime() - TODAY_WINDOW_MS);
 
           type BriefRow = {
             threadId: string;
@@ -493,7 +537,7 @@ export const briefingProcedures = {
             where: {
               accountId: account.id,
               inboxStatus: true,
-              lastMessageDate: { gte: unrepliedCutoff },
+              lastMessageDate: { gte: todayCutoff },
               OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
               emails: {
                 none: { sysLabels: { hasSome: ["trash"] } },
@@ -635,6 +679,7 @@ export const briefingProcedures = {
             where: {
               accountId: account.id,
               inboxStatus: true,
+              lastMessageDate: { gte: todayCutoff },
               OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
               emails: {
                 none: { sysLabels: { hasSome: ["trash"] } },

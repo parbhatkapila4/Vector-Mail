@@ -2,7 +2,6 @@
 
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
-import { Sparkles } from "lucide-react";
 
 type Props = {
   accountId: string;
@@ -25,7 +24,12 @@ export function InboxIntelligenceCards({
   return (
     <div className={cn("border-b border-[#e4e7ed] px-3 py-2", className)}>
       <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[#7a849a]">
-        <Sparkles className="h-3 w-3 text-text-[#1e2a4a]" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/Opus-B.png"
+          alt=""
+          className="h-3.5 w-3.5 shrink-0 rounded-[3px] object-cover"
+        />
         Inbox brain
       </div>
       <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

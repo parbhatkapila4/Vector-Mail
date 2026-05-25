@@ -18,14 +18,8 @@ import { authoriseAccountAccess, type AccountAccess } from "./shared";
 
 const syncLog = makeTagLogger("account-router.sync");
 
-// Inbox is fetched newest-first in pages of this size: "latest 50, then the
-// next 50, then the next 50". The client auto-continues with the returned
-// continueToken until we run out of mail or reach the backfill target.
 const INBOX_LIST_PAGE_SIZE = 50;
-// Stop advertising "more" once the inbox holds this many threads. Bounds the
-// initial backfill and stops recurring syncs from re-walking the entire
-// mailbox every tick. Raise this if you want to keep older mail loadable.
-const INBOX_BACKFILL_TARGET = 1000;
+const INBOX_BACKFILL_SAFETY_CAP = 2000;
 
 export const syncProcedures = {
   syncFirstBatchQuick: protectedProcedure
@@ -411,10 +405,15 @@ export const syncProcedures = {
               where: { accountId: account.id, inboxStatus: true },
             });
             const hasMore =
-              !!result.nextPageToken && threadCount < INBOX_BACKFILL_TARGET;
+              !!result.nextPageToken &&
+              !account.nextDeltaToken &&
+              threadCount < INBOX_BACKFILL_SAFETY_CAP;
             const continueToken = hasMore
               ? encodeContinueToken(result.nextPageToken!, false, false, false, false, false)
               : undefined;
+            if (!hasMore && !account.nextDeltaToken) {
+              void emailAccount.establishInboxDeltaToken();
+            }
             ctx.log?.info(
               {
                 event: "sync_success",
@@ -522,8 +521,14 @@ export const syncProcedures = {
               const threadCount = await ctx.db.thread.count({
                 where: { accountId: account.id, inboxStatus: true },
               });
+              const reachedOldest = !page.nextPageToken;
               const hasMore =
-                !!page.nextPageToken && threadCount < INBOX_BACKFILL_TARGET;
+                !reachedOldest && threadCount < INBOX_BACKFILL_SAFETY_CAP;
+              if (!hasMore && !account.nextDeltaToken) {
+                const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
+                await recalculateAllThreadStatuses(account.id);
+                await emailAccount.establishInboxDeltaToken();
+              }
               const nextContinueToken = hasMore
                 ? encodeContinueToken(page.nextPageToken!, false, false, false, false, false)
                 : undefined;
@@ -1103,9 +1108,8 @@ export const syncProcedures = {
         }
         const message =
           result.totalFailed > 0
-            ? `Processed ${result.totalProcessed}, ${result.totalFailed} failed${
-                result.lastError ? `: ${result.lastError.slice(0, 200)}` : ""
-              }`
+            ? `Processed ${result.totalProcessed}, ${result.totalFailed} failed${result.lastError ? `: ${result.lastError.slice(0, 200)}` : ""
+            }`
             : `Processed ${result.totalProcessed} emails for AI analysis`;
         return {
           success: true,

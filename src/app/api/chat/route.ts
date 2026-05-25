@@ -712,7 +712,7 @@ Respond with ONLY the email number (1, 2, 3, etc.) that best matches their query
           },
           include: { from: true, to: true },
           orderBy: { sentAt: "desc" },
-          take: 80,
+          take: Math.min(Math.max(days * 30, 80), 300),
         });
       };
       let recentEmails = await fetchWindow(timeRangeSummary.days);

@@ -6,7 +6,8 @@ import {
   Send,
   Bot,
   Loader2,
-  Sparkles,
+  Target,
+  Play,
   ArrowRight,
   SkipForward,
   X,
@@ -69,7 +70,7 @@ const suggestedQueries: ReadonlyArray<SuggestedQuery> = [
   {
     label: "What matters today",
     query: "What should I prioritize in my inbox today?",
-    icon: Sparkles,
+    icon: Target,
   },
   {
     label: "Last 7 days",
@@ -92,7 +93,7 @@ const founderDemoQueries: ReadonlyArray<SuggestedQuery> = [
   {
     label: "Today’s stack rank",
     query: "Rank what matters in my inbox today: founder view, 5 bullets max.",
-    icon: Sparkles,
+    icon: Target,
   },
   {
     label: "Month in review",
@@ -577,7 +578,7 @@ export default function EmailSearchAssistant({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#1e2a4a]/90">
-                      <Sparkles className="h-3.5 w-3.5" />
+                      <Play className="h-3.5 w-3.5" />
                       Founder demo
                     </p>
                     <p className="mt-1 text-xs text-[#1e2a44]">
@@ -870,7 +871,7 @@ export default function EmailSearchAssistant({
                   className="w-full rounded-xl border border-[#1e2a4a]/15 bg-[#1e2a4a]/10 px-3 py-2.5 text-left transition-colors hover:bg-[#1e2a4a]/15"
                 >
                   <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#1e2a4a]/90">
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <Play className="h-3.5 w-3.5" />
                     Try a 30-sec demo
                   </span>
                   <span className="mt-1 block text-[12px] text-[#1e2a44]">

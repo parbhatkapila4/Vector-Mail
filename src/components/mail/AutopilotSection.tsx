@@ -16,7 +16,6 @@ import {
   ScrollText,
   Send,
   Settings,
-  Sparkles,
   X,
   XCircle,
 } from "lucide-react";
@@ -182,8 +181,13 @@ function HeroStats({
   return (
     <div className="relative overflow-hidden rounded-xl border border-[#1e2a4a]/15 bg-gradient-to-br from-[#1e2a4a]/[0.08] via-[#1e2a4a]/[0.04] to-transparent p-3">
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e2a4a] text-white shadow-sm">
-          <Sparkles className="h-3.5 w-3.5" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#1e2a4a] shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/Opus-B.png"
+            alt="Autopilot"
+            className="h-full w-full object-cover"
+          />
         </div>
         {hasActivity ? (
           <div className="flex flex-1 items-center gap-4 text-[12px]">
@@ -585,7 +589,7 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
                   type="button"
                   onClick={() => setSettingsOpen(true)}
                   disabled={busy}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#4a5572] transition-colors hover:bg-[#f4f5f8] hover:text-[#0e1729] disabled:opacity-50"
+                  className="absolute right-10 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md text-[#4a5572] transition-colors hover:bg-[#f4f5f8] hover:text-[#0e1729] disabled:opacity-50"
                   title="Settings: cap, blocked senders, pause"
                   aria-label="Autopilot settings"
                 >

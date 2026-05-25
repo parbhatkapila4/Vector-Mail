@@ -32,6 +32,39 @@ import { usePendingSend } from "@/contexts/PendingSendContext";
 const FORWARD_GENERATE_TIMEOUT_MS = 45_000;
 const FORWARDED_MARKER = "---------- Forwarded message ----------";
 
+function htmlToPlainText(input: string): string {
+  if (!input) return "";
+  if (!/<[a-z!/][\s\S]*>/i.test(input)) return input.trim();
+  try {
+    const doc = new DOMParser().parseFromString(input, "text/html");
+    doc.querySelectorAll("style, script, head, title, noscript").forEach((el) =>
+      el.remove(),
+    );
+    doc.querySelectorAll("br").forEach((el) => el.replaceWith("\n"));
+    doc
+      .querySelectorAll("p, div, tr, li, h1, h2, h3, h4, h5, h6, blockquote")
+      .forEach((el) => el.append("\n"));
+    const text = doc.body?.textContent ?? "";
+    return text
+      .replace(/ /g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  } catch {
+    return input
+      .replace(/<(style|script|head|title|noscript)[\s\S]*?<\/\1>/gi, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&quot;/gi, '"')
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+}
+
 async function generateForwardIntroViaApi(
   context: string,
   prompt: string,
@@ -111,7 +144,7 @@ export function ForwardEmailDialog({
     if (open) {
       setSubject(`Fwd: ${originalSubject}`);
       setBody(
-        `\n\n---------- Forwarded message ----------\nFrom: ${originalFrom}\nDate: ${originalDate}\nSubject: ${originalSubject}\n\n${originalBody}`,
+        `\n\n${FORWARDED_MARKER}\nFrom: ${originalFrom}\nDate: ${originalDate}\nSubject: ${originalSubject}\n\n${htmlToPlainText(originalBody)}`,
       );
       setTo("");
     }

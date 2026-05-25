@@ -7,7 +7,7 @@
 import axios from "axios";
 import pLimit from "p-limit";
 import { refreshAurinkoToken } from "./aurinko";
-import { syncEmailsToDatabase, recalculateAllThreadStatuses } from "./sync-to-db";
+import { syncEmailsToDatabase } from "./sync-to-db";
 import { withLock } from "./sync-lock";
 import { db } from "@/server/db";
 import { serverLog } from "@/lib/logging/server-logger";
@@ -734,19 +734,40 @@ export class Account {
       idsToFetch = messageIds.filter((id) => !have.has(id));
     }
 
-    const limit = pLimit(FAST_FIRST_FETCH_CONCURRENCY);
+    const isBackfillContinue = !!pageToken;
+    const fetchConcurrency = isBackfillContinue ? 8 : FAST_FIRST_FETCH_CONCURRENCY;
+    const writeConcurrency = isBackfillContinue ? 5 : 20;
+    const limit = pLimit(fetchConcurrency);
     const fetched = await Promise.all(
       idsToFetch.map((id) => limit(() => this.getEmailById(id, getTimeoutMs))),
     );
     const emails = fetched.filter((e): e is EmailMessage => e !== null);
     if (emails.length > 0) {
       await syncEmailsToDatabase(emails, this.id, {
-        writeConcurrency: 20,
+        writeConcurrency,
         skipRecalculate: true,
       });
-      await recalculateAllThreadStatuses(this.id);
     }
     return { emails, nextPageToken, listed: messageIds.length, fetched: emails.length };
+  }
+
+  async establishInboxDeltaToken(): Promise<void> {
+    try {
+      const sync = await this.startSync({ axiosTimeoutMs: 20_000 });
+      if (sync.ready && sync.syncUpdatedToken) {
+        await db.account
+          .update({
+            where: { id: this.id },
+            data: { nextDeltaToken: sync.syncUpdatedToken },
+          })
+          .catch(() => { });
+      }
+    } catch (err) {
+      accountsLog.warn(
+        "[establishInboxDeltaToken] Could not establish delta token (will retry on next full walk):",
+        err,
+      );
+    }
   }
 
   async sendEmail({

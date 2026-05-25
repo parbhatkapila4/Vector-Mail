@@ -682,7 +682,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         lastContinueTokenRef.current = continueToken;
         autoContinueSyncCountRef.current += 1;
         void utils.account.getAccounts.invalidate();
-        void softThreadListRefresh();
+        void utils.account.getNumThreads.invalidate();
         const folder = currentTab === "sent" ? "sent" : currentTab === "trash" ? "trash" : "inbox";
         scheduleSafe(() => {
           syncEmailsMutation.mutate({
@@ -1445,6 +1445,23 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const isSyncActive =
     syncEmailsMutation.isPending || refreshingAfterSync || isFetching;
+
+  useEffect(() => {
+    if (currentTab !== "inbox" || hasNextPage || !isSyncActive) return;
+    if (isFetching || isFetchingNextPage || loadingMoreAtListEnd) return;
+    const t = setInterval(() => {
+      void refetch();
+    }, 8000);
+    return () => clearInterval(t);
+  }, [
+    currentTab,
+    hasNextPage,
+    isSyncActive,
+    isFetching,
+    isFetchingNextPage,
+    loadingMoreAtListEnd,
+    refetch,
+  ]);
   const isReadOnlyPreview = shouldKeepPreviewReadOnly({
     currentTab,
     hasDbThreads: threadsToRender.length > 0,
@@ -2114,11 +2131,17 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         {!hasNextPage &&
           !isFetchingNextPage &&
           !loadingMoreAtListEnd &&
-          allThreads.length >= 50 && (
+          allThreads.length >= 50 &&
+          (isSyncActive ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#1e2a4a] dark:border-[#ffffff] dark:border-t-[#1e2a4a]" />
+              <span>Syncing older emails…</span>
+            </div>
+          ) : (
             <div className="py-6 text-center text-[11px] tracking-wide text-[#9aa0a6] dark:text-[#5f6368]">
               You&apos;re all caught up
             </div>
-          )}
+          ))}
       </div>
     );
   };

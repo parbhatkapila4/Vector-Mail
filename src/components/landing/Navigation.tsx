@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import { Menu, X, Loader2 } from "lucide-react";
 import { useMailNavigation } from "@/components/mail-navigation-loader";
+import { SignInChoiceModal } from "./SignInChoiceModal";
 
 const NAV_LINKS: { label: string; href: string; chev?: boolean }[] = [
   { label: "Product", href: "/features", chev: true },
@@ -89,6 +90,7 @@ export function Navigation() {
   const [authFallbackReady, setAuthFallbackReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [signInChoiceOpen, setSignInChoiceOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const { navigateToMail, isNavigating } = useMailNavigation();
   const userLabel = user?.firstName || user?.fullName || "User";
@@ -261,13 +263,14 @@ export function Navigation() {
             </div>
           ) : (
             <div className="hidden items-center gap-2 md:flex">
-              <Link
-                href="/sign-in"
+              <button
+                type="button"
+                onClick={() => setSignInChoiceOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-[8px] px-3 py-2 text-[13.5px] font-medium text-[#4a4a4a] transition-colors duration-150 hover:bg-[#f3f1f7] hover:text-[#0a0a0a]"
                 style={{ fontFamily: "var(--vmx-sans)" }}
               >
                 Sign in
-              </Link>
+              </button>
               <a
                 href="/api/demo/enter"
                 className="inline-flex items-center gap-2 rounded-[8px] py-[10px] pl-[18px] pr-[14px] text-[14px] font-semibold text-white transition-all duration-150 hover:-translate-y-px"
@@ -354,13 +357,16 @@ export function Navigation() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/sign-in"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-[8px] px-3.5 py-2.5 text-center text-[13.5px] font-medium text-[#1f1f1f] transition-colors hover:bg-[#f3f1f7]"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setSignInChoiceOpen(true);
+                  }}
+                  className="block w-full rounded-[8px] px-3.5 py-2.5 text-center text-[13.5px] font-medium text-[#1f1f1f] transition-colors hover:bg-[#f3f1f7]"
                 >
                   Sign in
-                </Link>
+                </button>
                 <a
                   href="/api/demo/enter"
                   onClick={() => setMobileMenuOpen(false)}
@@ -379,6 +385,11 @@ export function Navigation() {
           </div>
         </div>
       )}
+
+      <SignInChoiceModal
+        open={signInChoiceOpen}
+        onOpenChange={setSignInChoiceOpen}
+      />
     </header>
   );
 }

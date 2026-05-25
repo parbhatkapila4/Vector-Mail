@@ -263,7 +263,7 @@ All of the above use only demo data and safe guards so the app does not crash in
                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  APPLICATION                                                    │
-│  tRPC (account router) · Clerk (auth) · React Query              │
+│  tRPC (account router) · Clerk (auth) · React Query             │
 └─────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
