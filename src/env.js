@@ -12,6 +12,8 @@ export const env = createEnv({
     GEMINI_API_KEY: z.string().min(1).optional(),
     AURINKO_CLIENT_ID: z.string().min(1).optional(),
     AURINKO_CLIENT_SECRET: z.string().min(1).optional(),
+    OAUTH_STATE_ENFORCED: z.string().optional(),
+    TOKEN_ENCRYPTION_KEY: z.string().optional(),
 
     ENABLE_EMAIL_SEND: z
       .string()
@@ -51,6 +53,8 @@ export const env = createEnv({
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     AURINKO_CLIENT_ID: process.env.AURINKO_CLIENT_ID,
     AURINKO_CLIENT_SECRET: process.env.AURINKO_CLIENT_SECRET,
+    OAUTH_STATE_ENFORCED: process.env.OAUTH_STATE_ENFORCED,
+    TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY,
     ENABLE_EMAIL_SEND: process.env.ENABLE_EMAIL_SEND,
     AUTOMATION_REAL_SEND_ENABLED: process.env.AUTOMATION_REAL_SEND_ENABLED,
     CRON_SECRET: process.env.CRON_SECRET,

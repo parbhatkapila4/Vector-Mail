@@ -902,7 +902,7 @@ export const briefingProcedures = {
         accountEmailLower,
       );
 
-      const aiLimit = checkUserRateLimit(ctx.auth.userId, "ai");
+      const aiLimit = await checkUserRateLimit(ctx.auth.userId, "ai");
       if (!aiLimit.allowed || !env.OPENROUTER_API_KEY) {
         return fallback;
       }

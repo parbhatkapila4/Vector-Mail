@@ -13,6 +13,7 @@ import { db } from "@/server/db";
 import { serverLog } from "@/lib/logging/server-logger";
 import { makeTagLogger } from "@/lib/logging/console-shim";
 import { enforceOutgoingPolicy } from "./outgoing-content-policy";
+import { decryptToken, encryptToken } from "./token-crypto";
 
 const accountsLog = makeTagLogger("accounts");
 
@@ -233,7 +234,7 @@ export class Account {
 
   constructor(id: string, token: string) {
     this.id = id;
-    this.token = token;
+    this.token = decryptToken(token);
   }
 
   async refreshTokenIfPossible(): Promise<boolean> {
@@ -262,7 +263,7 @@ export class Account {
     await db.account.update({
       where: { id: this.id },
       data: {
-        token: newToken,
+        token: encryptToken(newToken),
         needsReconnection: false,
         ...(tokenExpiresAt && { tokenExpiresAt }),
         ...(result.refreshToken && { refreshToken: result.refreshToken }),
@@ -344,7 +345,7 @@ export class Account {
       where: { id: this.id },
       select: { token: true },
     });
-    const t = latest?.token?.trim();
+    const t = decryptToken(latest?.token ?? "").trim();
     if (t && t !== this.token) {
       this.token = t;
       return this.validateToken();
@@ -1015,7 +1016,7 @@ export class Account {
         "Account token is missing. Please reconnect your account.",
       );
     }
-    this.token = account.token;
+    this.token = decryptToken(account.token);
 
     debugLog(
       `[syncEmails] Starting email sync for account ${account.id} (forceFullSync: ${forceFullSync}, folder: ${folder || "all"})`,
@@ -1279,7 +1280,7 @@ export class Account {
     }
 
     const updatedAccount = await db.account.findUnique({
-      where: { token: this.token },
+      where: { id: this.id },
     });
     if (!updatedAccount) throw new Error("Invalid token");
 
@@ -1523,7 +1524,7 @@ export class Account {
     }
 
     if (account.token) {
-      this.token = account.token;
+      this.token = decryptToken(account.token);
       debugLog(
         `[syncLatestEmails] Using token from database for account ${this.id}`,
       );

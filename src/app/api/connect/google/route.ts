@@ -1,6 +1,10 @@
 ﻿import { buildAurinkoAuthUrlForService } from "@/lib/aurinko";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  generateOAuthState,
+  setOAuthStateCookie,
+} from "@/lib/oauth-state";
 
 const SESSION_COOKIE = "vectormail_session_user";
 
@@ -15,8 +19,11 @@ export async function GET(req: NextRequest) {
     if (!userId) {
       return NextResponse.redirect(new URL("/sign-in", baseUrl));
     }
-    const url = buildAurinkoAuthUrlForService("Google");
-    return NextResponse.redirect(url);
+    const state = generateOAuthState();
+    const url = buildAurinkoAuthUrlForService("Google", state);
+    const res = NextResponse.redirect(url);
+    setOAuthStateCookie(res, state);
+    return res;
   } catch (e) {
     apiLog.error("[connect/google]", e);
     return NextResponse.redirect(new URL("/sign-in", baseUrl));

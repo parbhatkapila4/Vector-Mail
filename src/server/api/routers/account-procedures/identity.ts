@@ -135,7 +135,28 @@ export const identityProcedures = {
       if (isDemoCall(ctx)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Demo account cannot update sending identity." });
       }
-      await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      const account = await authoriseAccountAccess(
+        input.accountId,
+        ctx.auth.userId,
+      );
+
+      if (input.customFromAddress) {
+        const authedDomain = account.emailAddress
+          .split("@")[1]
+          ?.toLowerCase()
+          .trim();
+        const customDomain = input.customFromAddress
+          .split("@")[1]
+          ?.toLowerCase()
+          .trim();
+        if (!authedDomain || !customDomain || authedDomain !== customDomain) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Custom From address must be on the same domain as your connected mailbox (@${authedDomain ?? "your domain"}). Cross-domain sending isn't allowed.`,
+          });
+        }
+      }
+
       const data: {
         customFromName?: string | null;
         customFromAddress?: string | null;

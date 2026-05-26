@@ -8,6 +8,7 @@ import {
 } from "@/lib/metrics/store";
 import { getFailedJobCount } from "@/lib/jobs/failed-job";
 import { makeTagLogger } from "@/lib/logging/console-shim";
+import { anySafeSecretEqual } from "@/lib/timing-safe-secret";
 const apiLog = makeTagLogger("api.admin.stats");
 
 const ADMIN_SECRET_HEADER = "x-admin-secret";
@@ -24,7 +25,7 @@ function isAuthorized(req: NextRequest): boolean {
       ? req.headers.get("authorization")!.slice(7).trim()
       : undefined;
   const headerSecret = req.headers.get(ADMIN_SECRET_HEADER)?.trim();
-  return bearer === secret || headerSecret === secret;
+  return anySafeSecretEqual([bearer, headerSecret], secret);
 }
 
 export async function GET(req: NextRequest) {

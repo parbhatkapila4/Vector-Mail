@@ -5,6 +5,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { Account } from "@/lib/accounts";
 import axios from "axios";
 import { log as auditLog } from "@/lib/audit/audit-log";
+import {
+  checkOAuthState,
+  clearOAuthStateCookie,
+  isOAuthStateEnforced,
+} from "@/lib/oauth-state";
+import { encryptToken } from "@/lib/token-crypto";
 
 
 const FAST_FIRST_SYNC_TIMEOUT_MS = 60_000;
@@ -51,6 +57,22 @@ export async function GET(req: NextRequest) {
   const code = params.get("code");
   if (!code) {
     return NextResponse.json({ message: "No code provided" }, { status: 401 });
+  }
+
+  const stateCheck = checkOAuthState(req, params.get("state"));
+  if (!stateCheck.ok) {
+    if (isOAuthStateEnforced()) {
+      cbLog.warn(`[CALLBACK] OAuth state rejected: ${stateCheck.reason}`);
+      const dest = existingUserId
+        ? new URL("/mail?error=oauth_state", baseUrl)
+        : new URL("/sign-in?error=oauth_state", baseUrl);
+      const res = NextResponse.redirect(dest);
+      clearOAuthStateCookie(res);
+      return res;
+    }
+    cbLog.warn(
+      `[CALLBACK] OAuth state check failed (${stateCheck.reason}); enforcement disabled, allowing`,
+    );
   }
 
   cbLog.log("[CALLBACK] ========== STARTING OAUTH CALLBACK ==========", existingUserId ? "(existing session)" : "(one-click sign-in)");
@@ -199,6 +221,7 @@ export async function GET(req: NextRequest) {
     }
 
     const tokenToStore = token.accountToken ?? token.accessToken;
+    const tokenForDb = encryptToken(tokenToStore);
     const refreshTokenToStore = token.refreshToken ?? null;
     const tokenExpiresAt = token.expiresIn
       ? new Date(Date.now() + token.expiresIn * 1000)
@@ -208,7 +231,7 @@ export async function GET(req: NextRequest) {
       await db.account.upsert({
         where: { id: accountIdStr },
         update: {
-          token: tokenToStore,
+          token: tokenForDb,
           refreshToken: refreshTokenToStore,
           userId,
           nextDeltaToken: null,
@@ -217,7 +240,7 @@ export async function GET(req: NextRequest) {
         },
         create: {
           id: accountIdStr,
-          token: tokenToStore,
+          token: tokenForDb,
           refreshToken: refreshTokenToStore,
           emailAddress: accountInfo.email,
           name: accountInfo.name,

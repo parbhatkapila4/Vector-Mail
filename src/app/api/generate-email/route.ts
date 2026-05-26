@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const aiLimit = checkUserRateLimit(userId, "ai");
+    const aiLimit = await checkUserRateLimit(userId, "ai");
     if (!aiLimit.allowed) {
       return rateLimit429Response({
         message: "Too many AI requests. Try again later.",

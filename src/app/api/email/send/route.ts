@@ -9,6 +9,7 @@ import {
   updateTrackingMessageId,
 } from "@/lib/email-open-tracking";
 import { rateLimit } from "@/lib/rate-limit";
+import { decryptToken } from "@/lib/token-crypto";
 import axios from "axios";
 
 export const runtime = "nodejs";
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const rateLimitRes = rateLimit(req, "emailSend");
+  const rateLimitRes = await rateLimit(req, "emailSend");
   if (rateLimitRes) return rateLimitRes;
 
   const contentType = req.headers.get("content-type") || "";
@@ -436,7 +437,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const aurinkoHeaders: Record<string, string> = {
-      Authorization: `Bearer ${account.token}`,
+      Authorization: `Bearer ${decryptToken(account.token)}`,
       "X-Aurinko-Account-Id": account.id,
     };
 

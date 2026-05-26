@@ -1,4 +1,5 @@
 import axios from "axios";
+import { decryptToken } from "@/lib/token-crypto";
 
 export function formatEmailBody(text: string): string {
   if (!text || !text.trim()) {
@@ -221,7 +222,7 @@ export async function sendEmailRest(
   }
 
   const aurinkoHeaders: Record<string, string> = {
-    Authorization: `Bearer ${account.token}`,
+    Authorization: `Bearer ${decryptToken(account.token)}`,
     "X-Aurinko-Account-Id": account.id,
     "Content-Type": "application/json",
   };

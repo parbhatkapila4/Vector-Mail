@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rateLimitRes = rateLimit(req, "emailSend");
+    const rateLimitRes = await rateLimit(req, "emailSend");
     if (rateLimitRes) return rateLimitRes;
 
     if (userId === DEMO_USER_ID) {

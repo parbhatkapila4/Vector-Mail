@@ -25,7 +25,7 @@ async function searchHandler(req: NextRequest | Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const searchLimit = checkUserRateLimit(userId, "search");
+    const searchLimit = await checkUserRateLimit(userId, "search");
     if (!searchLimit.allowed) {
       return rateLimit429Response({
         message: "Too many search requests. Try again later.",

@@ -39,6 +39,10 @@ function applySecurityHeaders(response: NextResponse) {
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space https://clerk-telemetry.com https://*.clerk-telemetry.com *.aurinko.io *.openai.com",
       "frame-src 'self' *.clerk.accounts.dev *.clerk.com https://clerk.vectormail.space https://*.vectormail.space https://accounts.vectormail.space",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self' *.clerk.accounts.dev *.clerk.com https://*.vectormail.space",
+      "object-src 'none'",
     ].join("; "),
   );
 }

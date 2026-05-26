@@ -33,16 +33,16 @@ export function FinalCTA() {
 
       <div className="relative mx-auto flex max-w-[1440px] flex-col items-center justify-center gap-8 px-5 py-20 text-center md:px-8 md:py-28 xl:py-32">
         <h2
-          className="text-white"
+          className="text-balance text-white"
           style={{
             fontSize: "clamp(56px, 8vw, 112px)",
             fontWeight: 600,
             letterSpacing: "-0.045em",
-            lineHeight: 0.92,
+            lineHeight: 0.95,
             fontFamily: "var(--vmx-sans)",
           }}
         >
-          Read. Draft. Send.
+          Your inbox runs itself.
         </h2>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <a

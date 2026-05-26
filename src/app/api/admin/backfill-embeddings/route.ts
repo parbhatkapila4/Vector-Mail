@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { log as auditLog } from "@/lib/audit/audit-log";
 import { enqueueBackfillEmbeddingJobs } from "@/lib/jobs/enqueue";
 import { makeTagLogger } from "@/lib/logging/console-shim";
+import { anySafeSecretEqual } from "@/lib/timing-safe-secret";
 const apiLog = makeTagLogger("api.admin.backfill");
 
 const DEFAULT_LIMIT = 50;
@@ -22,7 +23,7 @@ function isAuthorized(req: NextRequest): boolean {
       : undefined;
   const headerSecret = req.headers.get("x-admin-secret")?.trim();
   const cronSecret = req.headers.get("x-cron-secret")?.trim();
-  return bearer === secret || headerSecret === secret || cronSecret === secret;
+  return anySafeSecretEqual([bearer, headerSecret, cronSecret], secret);
 }
 
 export async function GET(req: NextRequest) {

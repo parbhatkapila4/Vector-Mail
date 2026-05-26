@@ -68,7 +68,7 @@ async function chatPostHandler(req: Request) {
       );
     }
 
-    const aiLimit = checkUserRateLimit(userId, "ai");
+    const aiLimit = await checkUserRateLimit(userId, "ai");
     if (!aiLimit.allowed) {
       return new Response(
         JSON.stringify({

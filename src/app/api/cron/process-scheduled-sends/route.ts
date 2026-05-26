@@ -7,6 +7,7 @@ import {
 } from "@/lib/correlation";
 import { enqueueScheduledSendJobs } from "@/lib/jobs/enqueue";
 import { runScheduledSend } from "@/lib/jobs/run-scheduled-send";
+import { anySafeSecretEqual } from "@/lib/timing-safe-secret";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,7 +29,7 @@ function isAuthorized(req: NextRequest): boolean {
   const headerSecret = req.headers.get("x-cron-secret")?.trim();
   const url = req.nextUrl ?? new URL(req.url);
   const querySecret = url.searchParams.get("secret")?.trim();
-  return bearer === secret || headerSecret === secret || querySecret === secret;
+  return anySafeSecretEqual([bearer, headerSecret, querySecret], secret);
 }
 
 export async function GET(req: NextRequest) {

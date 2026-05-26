@@ -89,6 +89,8 @@ const config = {
       font-src 'self' data: https://fonts.gstatic.com;
       worker-src 'self' blob:;
       object-src 'none';
+      base-uri 'self';
+      frame-ancestors 'none';
     `
       .replace(/\s{2,}/g, " ")
       .trim();

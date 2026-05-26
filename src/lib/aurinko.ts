@@ -15,6 +15,7 @@ function requireAurinkoCredentials(): { id: string; secret: string } {
 
 export function buildAurinkoAuthUrlForService(
   serviceType: "Google" | "Office365",
+  state?: string,
 ): string {
   const baseUrl = env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
   const { id } = requireAurinkoCredentials();
@@ -26,11 +27,12 @@ export function buildAurinkoAuthUrlForService(
     prompt: "consent",
     scopes: AURINKO_SCOPES,
   });
+  if (state) params.set("state", state);
   return `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
 }
 
-export async function buildAurinkoGoogleAuthUrl(): Promise<string> {
-  return buildAurinkoAuthUrlForService("Google");
+export async function buildAurinkoGoogleAuthUrl(state?: string): Promise<string> {
+  return buildAurinkoAuthUrlForService("Google", state);
 }
 
 export const getAurinkoAuthUrl = async (
@@ -85,10 +87,16 @@ export async function exchangeAurinkoCodeForToken(code: string) {
     );
 
     aurinkoLog.log("[TOKEN] Response status:", response.status);
-    aurinkoLog.log(
-      "[TOKEN] Full response data:",
-      JSON.stringify(response.data, null, 2),
-    );
+    aurinkoLog.log("[TOKEN] Response shape:", {
+      hasAccessToken: !!response.data?.accessToken,
+      hasAccountToken: !!(
+        response.data?.accountToken ?? response.data?.account_token
+      ),
+      hasRefreshToken: !!(
+        response.data?.refreshToken ?? response.data?.refresh_token
+      ),
+      hasAccountId: !!response.data?.accountId,
+    });
 
     const data = response.data;
 
