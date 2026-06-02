@@ -4,817 +4,137 @@
 
 # VectorMail
 
-**An email client for Gmail with semantic search and replies trained on your sent mail.**
+**Semantic Gmail client on one Postgres — reads, writes, and automation each run on their own guarded rail.**
 
-Connect Gmail through Aurinko, sync threads into Postgres, search by meaning with pgvector, and draft replies through OpenRouter. One stack, one database, no separate vector store.
-
-[Demo](https://vectormail.space) · [Documentation](#quick-start) · [API](#api-reference)
-
-[![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![tRPC](https://img.shields.io/badge/tRPC-11-2596BE?style=flat-square)](https://trpc.io/)
-[![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?style=flat-square&logo=prisma)](https://prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B-336791?style=flat-square&logo=postgresql)](https://postgresql.org/)
-[![Clerk](https://img.shields.io/badge/Clerk-Auth-6C47FF?style=flat-square)](https://clerk.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[Live demo](https://vectormail.space) · [Portfolio](https://parbhat.dev)
 
 </div>
-
+I
 ---
 
-## Overview
+Email is a database problem with an AI surface, not the reverse.
 
-**The average professional spends a large share of their workweek on email**: searching, reading, writing, and organizing. Traditional clients are keyword-bound; AI features are often bolted on. VectorMail is built for how we work today: one stack (Next.js, tRPC, Prisma, PostgreSQL + pgvector), one auth (Clerk), one email gateway (Aurinko for Gmail/M365), and optional AI (OpenRouter/Gemini) for summaries, compose, and semantic search.
+## The problem
 
-We use PostgreSQL with the pgvector extension for embeddings so we don’t run a separate vector store. Sync is delta-token-driven where possible; first sync and empty-inbox cases trigger a full window sync. The app is designed to run as a single deployment (e.g. Vercel) with a Postgres DB; cron is used only for scheduled sends.
+Email is the largest structured corpus most people own, and almost none of it is searchable by what it means. "The invoice Sarah flagged last week" is a trivially human query and a hopeless keyword query — the words "invoice" and "flagged" may appear nowhere in the thread. Semantic retrieval is the obvious fix, but it drags two harder problems behind it: where the vectors live, and what happens when AI touches the *outbound* path instead of just the read path.
 
----
+Most "AI email" products get both wrong. They bolt a chat box onto a mail client and let the model draft and send with no gate, which turns a hallucination into a delivered message. And they stand up a separate vector database next to the system of record, which means dual writes, re-embedding drift, and tenant scoping enforced in two places instead of one. VectorMail is built on the opposite bet: keep meaning in the same database as the mail, and give reading, writing, and automating their own rails with their own guarantees — because those three operations have wildly different blast radii.
 
-## Core Capabilities
+## Thesis
 
-### Inbox & threads
+### One stack, one database
 
-Thread list (inbox, sent, archive, trash, snoozed, reminders), infinite scroll, and first-time automatic sync after account connect. Threads are stored per account; `getThreads` is tab-filtered (inboxStatus, sentStatus, draftStatus, sysLabels). Bulk actions: mark read/unread, archive, delete (move to trash); multi-select with optional keyboard shortcut (`x` to toggle selection).
+Embeddings live on the `Email` row as a `vector(768)` column, and search is a parameterized `$queryRaw` using pgvector's `<=>` cosine operator, scoped by `accountId` in the same `WHERE` clause that enforces tenancy. There is no separate vector store, no sync job between the system of record and an index, no second place to get scoping wrong.
 
-| Tab       | Filter / behavior                                      |
-| --------- | ------------------------------------------------------ |
-| inbox     | `inboxStatus: true`, snoozed/reminder filters          |
-| sent      | `sentStatus: true`, inboxStatus: false                 |
-| archive   | inboxStatus: false, no trash label                     |
-| trash     | emails.sysLabels has "trash"                           |
-| snoozed   | inboxStatus: true, snoozedUntil > now                  |
-| reminders | remindAt ≤ now, lastMessageDate ≤ remindIfNoReplySince |
+The usual objection is that a dedicated vector DB scales further. True at billions of vectors — irrelevant at per-account email volume, where the working set is thousands of rows behind an `accountId` filter. What you give up in theoretical ANN throughput you get back in having exactly one consistency domain: when a thread is deleted or re-labeled, its vectors are already gone, because they were never anywhere else.
 
-**Keyboard shortcuts**: Gmail-style navigation: `j` / `k` or ↑ / ↓ (next/previous thread), `e` (archive), `#` (delete/trash), `c` (compose), `r` (reply), `/` (focus search), `g` then `i` (go to Inbox), `g` then `s` (go to Sent), `?` (show shortcut help), `Esc` (close thread or help). `x` toggles selection for the current thread (bulk actions). `⌘+N` / `Alt+N` opens Buddy (AI chat). Shortcuts are disabled while typing in inputs.
+When an embedding is missing, the query degrades to text search rather than failing — covered below. The point of the architecture is that "search" is a SQL query against the same tables everything else reads, not a distributed-systems problem.
 
-### Compose, reply & forward
+### Two AI surfaces, one inbox
 
-- **Compose & reply**: Rich editor with optional **open tracking** (1×1 pixel in HTML body) and **scheduled send** (date + 24h time picker). Send can be delayed with **undo send**: after sending, a toast offers “Undo” for a few seconds to cancel the actual send.
-- **Suggest reply**: AI suggests a full reply (subject + body) for the current thread. One click in the thread view fills the reply box; uses `POST /api/generate-reply` (Clerk auth, rate-limited). Disabled in demo mode.
-- **Forward**: Forward emails with optional recipients, subject/body edit, **track opens**, and **schedule send** (same scheduling and tracking as compose).
+Reading and writing get different rails because a bad read shows you the wrong email and a bad write sends one. **AI Search** is the read rail: it classifies intent (search / summarize / select), answers with a deterministic **Sources** footer (subject, sender, date, snippet) so every claim is traceable, and keeps lightweight session memory so "summarize that one" resolves. It is instructed never to invent amounts or dates and never to offer to send.
 
-### Snooze & reminders
+**Buddy** is the write rail, and it is guarded twice. A topic gate runs a regex blacklist on the user's *pre-augmentation* message — math, code, recipes, trivia, weather all bounce before a token reaches the model — so the drafting surface can't be turned into a general chatbot. Then, immediately before `Account.sendEmail`, subject and body pass through `containsOutgoingViolation()`: word-boundary patterns for slurs, threats, sexual violence, CSAM, drug trade, and fraud. The model is upstream of the gate, not trusted to be the gate.
 
-- **Snooze Presets**: Later today (6 PM), Tomorrow (9 AM), Next week (Monday 9 AM); or custom date and time (24-hour). Threads reappear in inbox at the chosen time.
-- **Remind**: “Remind if no reply” with presets: 1, 3, 5, or 7 days; reminder fires when `remindAt` is reached and there’s been no new message since. Clear reminder from the reminders tab.
+### Demo mode as architectural commitment
 
-### Email open tracking
+The demo isn't a fixture set behind a feature flag. The tRPC context rewrites `ctx.auth.userId` to `DEMO_USER_ID` (`trpc.ts:31`), and every account-scoped procedure resolves demo data through the same `isDemoCall` check — no forked controllers, no parallel "demo router."
 
-Optional per-message open tracking: when “Track opens” is enabled for a send (compose, reply, or forward), a tracking pixel is injected into the HTML body. When the recipient opens the email, `GET /api/track/open?id=<trackingId>` is requested; the first hit is stored (`EmailOpen`: `openedAt`, `userAgent`, `ip`). Use `getEmailOpenByMessageId` (tRPC) to check open status by message ID.
+This is a deliberate test of the real boundary. A demo that runs through the production resolver exercises the production auth and account-scoping path; if scoping were broken, the demo would leak too. It also means a procedure can't accidentally support real users while silently breaking in demo, because there is only one path. The cost — every account procedure carries a demo branch — is the honest price of not maintaining two code paths that drift.
 
-### Search
+### Delta-first sync, account-locked
 
-Semantic search over emails: query is embedded (Gemini 768-dim), compared to `Email.embedding` with pgvector `<=>`, scoped by `accountId`. Fallback to text search when embedding is missing or empty. Results are deduplicated and scored by relevance. **Intent detection** classifies natural-language queries (e.g. “summarize the first email”, “open the third result”) into SEARCH, SUMMARIZE, or SELECT and can extract position or date for a better UX. **Conversational summaries** support length preferences (short/medium/long/auto) and optional user phrasing.
+Sync runs in three modes, all behind a per-account lock. Incremental sync uses Aurinko delta tokens. First-time and gap-fill use a list-pagination backfill that walks the mailbox newest-to-oldest, gated on `Account.inboxBackfilledAt`. A full-window fetch (`SYNC_WINDOW_DAYS = 36500`, effectively all-time) runs on force-sync or an empty inbox. The lock (`sync-lock.ts`) guarantees one sync per account at a time; correctness here is the unglamorous heart of the product, and §"Why this is hard" goes deeper.
 
-### AI
+### Automation is opt-in, idempotent, reversible
 
-Summaries and classifications (e.g. promotions, social) stored on `Email`; optional AI **compose**, **suggest reply** (one-click AI draft for the current thread), and “chat with inbox” via OpenRouter/Gemini. We use OpenRouter for a single client to multiple models; embeddings are Gemini. No training on user data.
+Automation has three modes on the account — `manual`, `assist`, `auto` — and every automated action is an `ActionExecution` row that is `dryRun` by default. `assist` parks the action in `awaiting_approval` until a human confirms; `auto` requires explicit opt-in plus a running worker. An `idempotencyKey @unique` makes double-execution a database error rather than a duplicate send, and the Inngest handler runs at concurrency 1 per execution.
 
-**Per-user rate limits** (at route/procedure boundary only; inbox, sync, getThreads not limited): Search 60/min, AI 100/min. Over limit → 429 with `Retry-After` and `X-RateLimit-Remaining`.
-
-**AI usage tracking:** Token usage per user is stored in `AiUsage` (operation: chat, compose, summary, embedding, buddy). Optional daily cap via `AI_DAILY_CAP_TOKENS` (env); if set, over-cap returns 429 "Daily AI limit reached". Apply DB: `npx prisma generate` then `npm run db:push` (or migrate).
-
-### Integrations
-
-**Aurinko (email)**
-
-- **Features:** OAuth connect (Gmail), sync (delta + full window), send, labels (inbox, sent, trash, unread).
-- **Setup:** 1) Create Aurinko app, set redirect to `/api/aurinko/callback`. 2) Set `AURINKO_CLIENT_ID`, `AURINKO_CLIENT_SECRET`; `NEXT_PUBLIC_URL` for redirect. 3) Connect from UI; callback upserts account and runs initial sync (delta token + syncLatestEmails).
-- **Endpoints:** `GET /api/aurinko/callback` (OAuth callback, then redirect to `/mail`).
-
-**Clerk (auth)**
-
-- **Features:** Sign-in/sign-up, session, protected routes (`/mail`, `/buddy`).
-- **Setup:** 1) Create Clerk application. 2) Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `NEXT_PUBLIC_URL` (must match the URL you open the app with, e.g. `http://localhost:3000`). 3) **Redirect URLs (required for Google sign-in):** Clerk has no Dashboard UI for this. Run once: open **`http://localhost:3000/api/clerk-add-redirect-urls`** in the browser (with dev server running). That registers `{NEXT_PUBLIC_URL}/sign-in/sso-callback` and `{NEXT_PUBLIC_URL}/auth/set-session` via Clerk's API. For another environment (e.g. production), set `NEXT_PUBLIC_URL` and call the same route on that origin once. 4) Middleware protects `/mail(.*)` and `/buddy(.*)`; tRPC uses `ctx.auth.userId` for protected procedures.
-
-**Scheduled sends (cron) & background job queue (Inngest)**
-
-- **Features:** Process due `ScheduledSend` rows; send via tRPC or REST payload (supports `trackOpens` in payload). **Background jobs:** Embedding/email analysis and scheduled sends run as Inngest jobs (no separate worker process). Sync and inbox do not depend on the queue; if the queue is down, sync and getThreads still work.
-- **Endpoints:** `GET|POST /api/cron/process-scheduled-sends`: auth: `Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`. Cron fetches due rows and **enqueues** one job per row; the Inngest worker runs the existing send logic. `GET|POST|PUT /api/inngest`: Inngest serve endpoint (register functions and run jobs).
-- **Job types:** `email/analyze` (payload: `emailId` or `emailIds`), `scheduled-send/process` (payload: `scheduledSendId`), optional `email/analyze-account` (payload: `accountId`, `limit`) after sync.
-- **Setup:** Use [Inngest Cloud](https://www.inngest.com) or run `npx inngest-cli@latest dev` locally. Set `INNGEST_EVENT_KEY` (and `INNGEST_SIGNING_KEY` in production) in env.
-
-**Email open tracking**
-
-- **Endpoint:** `GET /api/track/open?id=<trackingId>`: returns 1×1 transparent GIF and records first open (openedAt, userAgent, ip). No auth; ID is unguessable.
-
-**Health, search & AI (HTTP)**
-
-- **Health:** `GET /api/health` - returns `{ status, database, version }`; 503 if DB unreachable.
-- **Search:** `GET /api/email/search?q=<query>&accountId=<id>`: Clerk auth; same vector + text search as tRPC, returns results and timing.
-- **Suggest reply:** `POST /api/generate-reply`: Clerk auth; body `{ threadId, accountId }`; returns AI-suggested subject and body for the thread (rate-limited, subject to AI daily cap).
-
----
-
-## AI Search (mail assistant)
-
-Natural-language **find + summarize** over the connected inbox (drafting/sending stays in **AI Buddy**).
-
-| Feature                           | Behavior                                                                                                                                                                        |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Explainable mode** (default on) | Deterministic **Sources** footer after each answer: subject, sender, date, preview snippet. Toggle in the AI Search panel (persisted as `aiSearchExplainable` in localStorage). |
-| **Session memory**                | Server session stores `lastSelectedEmailId` after a focused summary so follow-ups like “that one” / “same email” resolve when possible.                                         |
-| **Ambiguity**                     | If top matches tie on score, the API asks the user to choose and lists **why** each row matched.                                                                                |
-| **Quality rails**                 | Model instructions: no invented amounts/dates; if detail is not in previews, say so; never offer to compose/send here.                                                          |
-| **Founder demo**                  | `?founderDemo=1` on the mail URL (persists `vectormail_founder_demo`): curated query chips + tighter “exec-style” answer shaping in the system prompt.                          |
-| **Inbox intelligence cards**      | `account.getInboxIntelligenceCards`: 90-day keyword buckets (payments, travel, orders, failed/declined); tapping a card runs a prefilled AI Search query.                       |
-| **Eval harness**                  | `src/__tests__/lib/ai-search-eval.test.ts`: no live LLM; checks intent detection + selection/disambiguation. Run: `npx jest src/__tests__/lib/ai-search-eval.test.ts --ci`      |
-
-### Inbox Brain product analytics (optional)
-
-When `NEXT_PUBLIC_ANALYTICS_ENABLED="true"`, the client posts privacy-safe events to `POST /api/analytics/inbox-brain`. The route validates event names, strips unknown property shapes, and **logs only** (structured JSON in production, `console.info` in development)-no database writes. Properties are limited to coarse strings (e.g. filter keys), booleans, and counts-never subject, body, or email addresses.
-
-| Event                                 | When it fires                                                        | Typical properties                                                                                  |
-| ------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `inbox_brain_panel_opened`            | User opens the Inbox Brain panel (not on every render)               | `source`: `sidebar` \| `keyboard` \| `toolbar_new_chat`                                             |
-| `daily_brief_refreshed`               | User clicks refresh on Today’s brief                                 | `brief_thread_count` (number)                                                                       |
-| `daily_brief_focus_changed`           | Focus bucket changes (keyboard cycle or chip / “Back to All”)        | `filter_key`: `all` \| `needsReply` \| `important` \| `lowPriority`; `source`: `keyboard` \| `chip` |
-| `daily_brief_copied`                  | Brief Markdown copied successfully                                   | `success` (boolean), `brief_thread_count`                                                           |
-| `structured_chat_thread_chip_clicked` | User opens a thread from structured chat (chip or “Open top thread”) | `chip_index`, `threads_in_turn`; `interaction`: `chip` \| `open_top`                                |
-| `thread_brain_expanded`               | Mobile: user toggles Thread Brain section expand/collapse            | `expanded` (boolean), `surface`: `mobile`                                                           |
-
-**HTTP:** `POST /api/chat` with `{ messages, accountId, explainableMode?, founderDemo? }` streams `text/plain`; append `explainableMode: false` to hide the sources block.
-
----
-
-## Buddy (AI drafting assistant)
-
-Buddy lives at `/buddy`. It's the drafting/sending half of the AI surface — AI Search reads the inbox, Buddy writes outward. Scoped strictly to email work; anything else is refused with a single sentence.
-
-| Capability                       | Behavior                                                                                                                                                                                                                                                                                                                          |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Email-only topic gate**        | `/api/buddy` runs a regex blacklist on the user's original (pre-augmentation) message. Math (`table of N`, `solve`, `factorial`), code (`write a function`, `python …`), recipes, trivia (`capital of X`), entertainment (`tell me a joke`), weather/news/stock prices all bounce with a polite refusal. Everything else passes. |
-| **Outbound content moderation**  | Right before `Account.sendEmail`, subject + body run through `containsOutgoingViolation()`. Word-boundary regex catches slurs, direct threats (`kill yourself`, `bomb threat`), sexual violence, CSAM, hard-drug trade, hitman/fake-passport phrases. Violations short-circuit with a 200 explaining the category to fix.         |
-| **Tone picker**                  | 10 presets (Professional, Friendly, Formal, Casual, Persuasive, Concise, Urgent, Apologetic, Confident, Enthusiastic). Persists per-user in `localStorage["buddy-tone"]`. Picking a tone on an existing draft auto-regenerates.                                                                                                   |
-| **Language picker**              | 13 languages (English, Spanish, French, German, Italian, Portuguese, Dutch, Hindi, Japanese, Chinese, Korean, Arabic, Russian). Persists in `localStorage["buddy-language"]`. The directive is appended to the API request, never shown in the chat bubble.                                                                      |
-| **@ Mention / recipient picker** | Reuses `account.getEmailSuggestions` for contacts. Strict ASCII-only email regex on custom adds (no Unicode tricks like `□□□@yuluy.zed`); invalid entries are visibly disabled in the picker. Adding a recipient surfaces it as a chip in the email card's `To` row.                                                              |
-| **Inline edit**                  | Each draft card has an `Edit` button that turns subject (Fraunces input) + body (multi-line textarea) editable. `Save` commits back into the message's `emailData` directly and re-snapshots the chat into `savedChats` so the edit survives a page reload. Cancel discards the buffer.                                          |
-| **Regenerate**                   | Sends a regen prompt with the user's active tone/language preserved. The visible chat bubble just says "Regenerate"; the API receives a detailed re-write instruction.                                                                                                                                                            |
-| **Alternative drafts**           | The model returns up to 2 alternatives alongside the primary. Clicking an alternative promotes it to the main slot and demotes the current primary into the alternatives list — you can swing back without re-prompting.                                                                                                          |
-| **Open in Gmail**                | Opens `mail.google.com/mail/?view=cm&fs=1` in a new tab with `to`, `su`, and `body` populated from the active draft + recipient chips. No backend round-trip.                                                                                                                                                                     |
-| **Send via Buddy**               | Typing "send this mail" / "send it" / "please send" + having a recipient + having a prior draft → inline confirmation card appears in the chat-stream (not a browser `confirm()`) showing To/Subject + Send/Cancel. Confirm synthesises a `Send to addr@x.com` API call that flows through `Account.sendEmail`.                   |
-| **HTML body conversion**         | The plain-text body is converted to inline-styled HTML before send: `\n\n` → `<p>` with margin/line-height, numbered paragraphs → `<ol>`, `**bold**` → `<strong>`, lone `\n` → `<br>`. Without this, Gmail collapsed the whole message into a single wall of text.                                                                |
-| **Auto-saved chat history**      | After every successful response, the conversation is written into `localStorage["buddy-saved-chats"]` (capped at 20). The "Recent drafts" rail on the Buddy home shows the latest 6. Subsequent messages update the same entry (keyed by `activeChat`) instead of creating duplicates.                                            |
-| **Display vs API prompt split**  | The user's typed text shows in the chat bubble; the tone/language/mention directives are appended only on the wire. `stripAugmentation()` reverses any legacy localStorage entries that have the suffix baked in, so old chats render cleanly after the upgrade.                                                                  |
-
-**HTTP:** `POST /api/buddy` with `{ messages: [{ role, content, emailData? }] }`. Returns `{ subject, body, suggestions[] }` for email generation, `{ type: "conversation", message }` for chat/refusal, or `{ type: "conversation", emailSent: true, recipient }` for send confirmations. Same Clerk auth, per-user rate limit, and daily AI cap as the rest of the AI surface.
-
----
-
-## Quick Start
-
-1. **Clone and install**
-
-   ```bash
-   git clone https://github.com/parbhatkapila4/Vector-Mail.git
-   cd Vector-Mail
-   npm install
-   ```
-
-2. **Environment**  
-   Copy `.env.example` to `.env.local` if present; otherwise create `.env.local` and add the variables listed under [Environment Variables](#environment-variables).
-
-3. **Database**
-
-   ```bash
-   npm run db:push
-   npm run db:generate
-   ```
-
-4. **Run**
-
-   ```bash
-   npm run dev
-   ```
-
-   App runs at [http://localhost:3000](http://localhost:3000). Sign in with Clerk, connect Gmail via Aurinko, then open Inbox (first sync runs automatically when thread list is empty).
-
-5. **Local login and session (HTTP)**  
-   Clerk sets session cookies with the `Secure` flag, so browsers do not send them over `http://localhost`. If sign-in succeeds but you are immediately redirected back to the landing page (not logged in), use one of these:
-   - **HTTPS locally:** `npm run dev:https` and open **https://localhost:3000** (add `https://localhost:3000` to redirect URIs in Google, Aurinko, and Clerk).
-   - **Tunnel (no config change to existing URIs):** Run `npx ngrok http 3000`, then add the generated **https** URL (e.g. `https://abc123.ngrok.io`) as a redirect/callback URL in Google Cloud Console, Aurinko, and Clerk. Use that URL in the browser to sign in; session will persist.
-
----
-
-## Demo mode
-
-We built the demo so you can experience VectorMail before connecting an account: explore the inbox, AI search, compose, labels, and scheduling with realistic sample data. When you’re ready to use your own Gmail, request access from the banner in the app; we’ll get back to you once your account is enabled.
-
-When a user clicks **Try Demo** on the landing page they are redirected to `/mail?demo=1` with demo cookies set. Every section of the mail app is wired with sample data so the flow is clear and nothing crashes.
-
-**Entry**
-
-- **Try Demo** (landing): `GET /api/demo/enter` sets `vectormail_demo=1` and session cookie, redirects to `/mail?demo=1`.
-- **Middleware**: For `/mail` and `/buddy`, if `demo=1` or cookie is set, the request is allowed without Clerk sign-in and demo cookies are (re)set.
-- **tRPC context**: If demo cookie or session user is demo, `ctx.auth.userId` is set to `DEMO_USER_ID` so all account procedures can return demo data.
-
-**Mail app sections (all have demo data)**
-
-| Section                   | Demo data source                                                                                                                 | Notes                                                                              |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **Header / nav**          | `getAccounts` → demo account; `getNumThreads` (inbox 25, sent 5, trash 3, label counts); `getScheduledSends` → 3 scheduled items | Counts and Schedule tab work in demo.                                              |
-| **Inbox**                 | `getThreads(tab: "inbox")` → `getDemoThreads()` from `seed-demo-data` (25 threads)                                               | Full list with subjects, snippets, summaries.                                      |
-| **Sent**                  | `getThreads(tab: "sent")` → demo sent threads (5)                                                                                | Same seed module.                                                                  |
-| **Trash**                 | `getThreads(tab: "trash")` → demo trash threads (3)                                                                              | Same seed module.                                                                  |
-| **Schedule**              | `getScheduledSends` → `getDemoScheduledSends()` (3 items)                                                                        | Shown in nav count; schedule UI uses same data.                                    |
-| **Labels**                | `getLabels` / `getLabelsWithCounts` → `getDemoLabelsWithCounts()` (Important, Promotions, Updates with counts)                   | Labels list and label tab work in demo.                                            |
-| **Label tab**             | `getThreads(tab: "label", labelId)` → demo inbox threads filtered by selected label                                              | `getDemoThreads` supports `labelId`; `getNumThreads` returns count for that label. |
-| **Thread list**           | Same `getThreads` as above; click opens thread                                                                                   | Pagination and cursor work.                                                        |
-| **Thread detail**         | `getThreadById(threadId)` → `getDemoThreadById()`; `getEmailBody` → `getDemoEmailBody()`                                         | Single thread view and body fetch use demo seed.                                   |
-| **Nudges block**          | `getNudges` → `getDemoNudges()` (5 items from demo threads)                                                                      | Reminders / unreplied in sidebar.                                                  |
-| **Upcoming from email**   | `getUpcomingEventsFromEmails` → `getDemoUpcomingEvents()` (5 events)                                                             | Sidebar “upcoming” block.                                                          |
-| **AI Search panel**       | Demo conversation pre-filled; sending in demo shows toast + canned reply                                                         | AskAi uses `showDemoUI` and `DEMO_CHAT_MESSAGES`; no real API calls.               |
-| **Compose**               | On open in demo, To/Subject/Body pre-filled with `DEMO_COMPOSE`                                                                  | Send disabled in demo (toast).                                                     |
-| **Reply**                 | Disabled in demo (`ReplyBox` uses `isDemo`); no send                                                                             | Prevents errors.                                                                   |
-| **Suggest reply**         | Disabled in demo (API returns 403 "Demo mode"); button visible but does not call AI                                              | Same as reply: no real send or AI in demo.                                         |
-| **Bulk delete / actions** | Disabled in demo (toast “request access to connect Gmail”)                                                                       | ThreadList and ReplyBox guard mutations.                                           |
-
-**Demo account and IDs**
-
-- **User**: `DEMO_USER_ID` (from session cookie in demo).
-- **Account**: `DEMO_ACCOUNT_ID`; `getAccounts` and `getMyAccount` return it for demo user so the app always has a valid account in demo.
-- **Data**: All demo data lives in `src/lib/demo/seed-demo-data.ts` (threads, labels, scheduled sends, nudges, upcoming events). No DB writes for demo.
-
-**What does not run in demo**
-
-- Real Gmail sync, send, schedule, or any mutation that would hit the DB or external APIs for the demo account.
-- AI search/chat and compose send: replaced by demo UI and toasts so the flow is clear and nothing crashes.
-
-**Quick check**
-
-1. Open `/` and click **Try Demo**.
-2. You should land on `/mail` with the demo banner (you’re exploring with sample data; “Request access” to connect your Gmail; we’ll reply once your account is enabled).
-3. Inbox (25), Sent (5), Schedule (3), Trash (3) show counts; opening each tab shows the corresponding demo threads.
-4. Labels list shows Important, Promotions, Updates; selecting a label shows filtered demo threads and count.
-5. Opening a thread shows full demo content; AI Search shows the pre-filled demo chat; Compose opens with demo To/Subject/Body and Send disabled.
-
-All of the above use only demo data and safe guards so the app does not crash in demo mode.
-
----
+The obvious alternative is "let the model autosend above a confidence threshold." That is irresponsible at any real scale: confidence is not calibrated, retries double-fire, and there is no audit trail when it's wrong. The opinion encoded here is that an automated send needs three things before it's allowed to exist — a dry run, an idempotency key, and an approval gate — and the default is to simulate, not send. "Reversible" means exactly that: nothing leaves by default, assist is human-gated, and an execution can be cancelled before it runs. It does not mean a sent email can be un-sent.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  PRESENTATION                                                   │
-│  Next.js 15 (App Router) · React 19 · Tailwind · Radix · Jotai  │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  APPLICATION                                                    │
-│  tRPC (account router) · Clerk (auth) · React Query             │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────┐
-│  SERVICES                                                          │
-│  lib/accounts (sync, Aurinko) · lib/sync-to-db · lib/vector-search │
-│  lib/embedding (Gemini) · lib/email-analysis · OpenRouter (AI)     │
-└────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  DATA                                                           │
-│  PostgreSQL 16+ · Prisma · pgvector (Email.embedding)           │
-└─────────────────────────────────────────────────────────────────┘
+INGESTION     Gmail via Aurinko (OAuth connect, delta tokens)
+                       │
+SYNC + AUTH   per-account lock (sync-lock.ts) · authoriseAccountAccess(accountId, userId)
+                       │
+PERSISTENCE   PostgreSQL + pgvector
+              Thread · Email (+ embedding vector(768)) · Account · ScheduledSend
+              AiUsage · EmailOpen · FailedJob · ActionExecution
+              (also: Label / FilterRule, SavedCalendarEvent)
+                       │
+SURFACES      AI Search (read)      Buddy (write)         Automation (opt-in)
+              intent + Sources      topic gate + mod      manual / assist / auto, dry-run
 ```
 
----
-
-## Data Model
-
-Core models (Prisma): `User`, `Account` (per-provider token and delta token), `Thread` (inbox/sent/draft/snooze/remind flags), `Email` (labels, summary, optional `vector(768)` embedding), `EmailAddress`, `EmailAttachment`, `ScheduledSend`, `EmailOpen` (open tracking: trackingId, messageId, openedAt, userAgent, ip), optional usage: `ChatbotInteraction`.
-
-```prisma
-model Account {
-  id                String    @id @default(cuid())
-  userId            String
-  token             String    @unique
-  provider          String
-  nextDeltaToken    String?
-  needsReconnection Boolean   @default(false)
-  user              User      @relation(...)
-  threads           Thread[]
-  scheduledSends     ScheduledSend[]
-}
-
-model Thread {
-  id              String    @id @default(cuid())
-  subject         String
-  lastMessageDate DateTime
-  accountId       String
-  inboxStatus     Boolean   @default(true)
-  sentStatus      Boolean   @default(false)
-  draftStatus     Boolean   @default(false)
-  snoozedUntil    DateTime?
-  remindAt        DateTime?
-  remindIfNoReplySince DateTime?
-  emails          Email[]
-  account         Account   @relation(...)
-}
-
-model Email {
-  id                 String    @id @default(cuid())
-  threadId           String
-  internetMessageId  String    @unique
-  sysLabels          String[]
-  sysClassifications String[]
-  summary            String?
-  embedding          Unsupported("vector(768)")?
-  thread             Thread    @relation(...)
-  from               EmailAddress @relation(...)
-  to                 EmailAddress[] @relation(...)
-  // ... cc, bcc, replyTo, attachments
-}
-```
-
----
-
-## Technology Decisions
-
-| Component     | Choice                  | Rationale                                                     |
-| ------------- | ----------------------- | ------------------------------------------------------------- |
-| Framework     | Next.js 15 (App Router) | RSC, API routes, single deploy; Turbopack for dev.            |
-| API           | tRPC                    | End-to-end types, one client for queries/mutations.           |
-| Auth          | Clerk                   | OAuth, MFA, session; minimal custom code.                     |
-| DB            | PostgreSQL + Prisma     | One DB for app + vectors via pgvector; no separate vector DB. |
-| Vectors       | pgvector 768-dim        | Gemini embedding size; index for cosine distance.             |
-| Email gateway | Aurinko                 | Single API for Gmail (and M365); delta sync, send, labels.    |
-| AI            | OpenRouter + Gemini     | One client for chat/compose; Gemini for embeddings.           |
-
----
-
-## Design Philosophy
-
-**PostgreSQL + pgvector, no separate vector store.** We keep embeddings on `Email` and query with `<=>` so one database handles threads, metadata, and search. That reduces ops and keeps consistency (e.g. thread scoping) in SQL.
-
-**Account-scoped everything.** All tRPC procedures that touch threads or emails resolve the account via `authoriseAccountAccess(accountId, ctx.auth.userId)`. Sync, search, and bulk actions are per-account; no cross-tenant leakage.
-
-**Delta-first sync, full window when needed.** We use Aurinko delta tokens for incremental sync. When inbox is empty or we have no token, we run a full-window sync (e.g. 60-day). First connect triggers sync in the OAuth callback and again on the client if the list is still empty (one-time auto first sync).
-
-**Sync lock per account.** `lib/accounts` uses an distributed lock (Redis when REDIS_URL is set, else in-memory per process) so only one sync runs per account at a time. Duplicate requests wait on the same promise. At scale we’d replace this with a distributed lock (e.g. Redis).
-
----
-
-## Engineering Constraints & Tradeoffs
-
-**Sync frequency vs provider rate limits.** We sync on user action (e.g. “Sync” button) and once automatically after first connect. We don’t poll in the background; that keeps us within Aurinko/Google limits and avoids unnecessary load. Heavier usage would need backoff and possibly a queue.
-
-**Accuracy vs latency in search.** Vector search is best-effort: we embed the query and take top-k by distance. If embeddings are missing (e.g. backfill not run), we fall back to text search. We prefer fast, good-enough results over blocking until every email is embedded.
-
-**Optional AI.** OpenRouter and Gemini keys are optional. The app works for connect, sync, and list without them; search degrades to text, and compose/summaries require keys. That keeps the default deploy simple and cost-controlled.
-
-**Embeddings backfill.** New or historical emails may not have `embedding` set. We have backfill tooling; production would run it as a job and/or on a schedule. Until then, semantic search only covers embedded emails.
-
-**Non-determinism from LLMs.** Summaries and AI compose depend on external APIs; outputs can vary. We don’t cache LLM responses in the README scope; at scale we’d consider caching for idempotent operations and clear TTLs.
-
----
-
-## Local Development
-
-**Prerequisites**
-
-- Node.js 20+
-- PostgreSQL 16+ with pgvector extension
-- npm, yarn, or bun
-
-**Setup**
-
-1. Clone the repo and install dependencies (see [Quick Start](#quick-start)).
-2. Copy `.env.example` to `.env.local` and set required variables.
-3. Run `npm run db:push` then `npm run db:generate`.
-4. Run `npm run dev`.
-
-App runs at [http://localhost:3000](http://localhost:3000).
-
----
-
-## Environment Variables
-
-**Required (example)**
-
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/vectormail"
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_..."
-CLERK_SECRET_KEY="sk_..."
-NEXT_PUBLIC_URL="http://localhost:3000"
-# Aurinko (Gmail connect)
-AURINKO_CLIENT_ID="..."
-AURINKO_CLIENT_SECRET="..."
-```
-
-**Optional**
-
-```bash
-# AI (OpenRouter for chat, compose, suggest reply; Gemini for embeddings)
-OPENROUTER_API_KEY="..."
-GEMINI_API_KEY="..."
-
-# Enable outbound send (default false)
-ENABLE_EMAIL_SEND="true"
-
-# Cron for scheduled sends; must match caller secret
-CRON_SECRET="your-random-secret"
-
-# Inngest (background jobs: embedding/analysis, scheduled sends)
-# INNGEST_EVENT_KEY - for sending events (optional in dev)
-# INNGEST_SIGNING_KEY - for Inngest Cloud to invoke your app (production)
-
-# Skip env validation (e.g. CI)
-SKIP_ENV_VALIDATION="1"
-
-# Inbox Brain: optional privacy-safe product analytics (see README → AI Search)
-NEXT_PUBLIC_ANALYTICS_ENABLED="true"
-```
-
-**Full reference (grouped)**
-
-All variables the app reads are listed below. Required vs optional is for a minimal run (inbox, sync, list); AI, scheduled sends, and admin features need additional vars.
-
-| Variable                            | Required | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ----------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auth (Clerk)**                    |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes      | Clerk publishable key for sign-in/sign-up.                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `CLERK_SECRET_KEY`                  | Yes      | Clerk secret key for server-side auth.                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `CLERK_WEBHOOK_SECRET`              | No       | Secret for Clerk webhook (e.g. user sync); only if using webhook.                                                                                                                                                                                                                                                                                                                                                                                  |
-| **App URL**                         |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `NEXT_PUBLIC_URL`                   | Yes      | Base URL of the app (e.g. `http://localhost:3000`). Must match the URL you use to open the app; used for OAuth (Clerk Google sign-in + Aurinko), OpenRouter Referer, and links. For Clerk Google sign-in: run once `GET /api/clerk-add-redirect-urls` on that origin to register redirect URLs (no Dashboard UI).                                                                                                                                  |
-| **Database**                        |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `DATABASE_URL`                      | Yes      | PostgreSQL connection string. Must use a DB with pgvector extension.                                                                                                                                                                                                                                                                                                                                                                               |
-| **Email (Aurinko)**                 |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `AURINKO_CLIENT_ID`                 | Yes      | Aurinko OAuth client ID for Gmail connect.                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `AURINKO_CLIENT_SECRET`             | Yes      | Aurinko OAuth client secret.                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Redis (sync lock)**               |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `REDIS_URL`                         | No       | Redis connection URL (TCP). When set, sync lock is distributed across instances. Omit for single-instance (in-memory lock).                                                                                                                                                                                                                                                                                                                        |
-| `UPSTASH_REDIS_REST_URL`            | No       | Upstash Redis REST URL. Alternative to `REDIS_URL`; preferred with Upstash.                                                                                                                                                                                                                                                                                                                                                                        |
-| `UPSTASH_REDIS_REST_TOKEN`          | No       | Upstash Redis REST token. Use with `UPSTASH_REDIS_REST_URL`.                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Queue (Inngest)**                 |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `INNGEST_EVENT_KEY`                 | No       | Inngest event key. **Strongly recommended on Vercel Hobby:** inbox sync runs in the background via Inngest (multi-step, avoids 10s function limit). Also used for scheduled sends and embedding/analysis. Without it, inbox sync falls back to a single serverless call (may time out on large mailboxes). While the DB inbox is empty, `/mail` can show a **read-only live preview** (up to 50 messages) from the provider until sync catches up. |
-| `INNGEST_SIGNING_KEY`               | No       | Inngest signing key for production; required for Inngest Cloud to invoke your app.                                                                                                                                                                                                                                                                                                                                                                 |
-| **AI**                              |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `OPENROUTER_API_KEY`                | No       | OpenRouter API key for chat, compose, and summaries. Omit to disable those features; search falls back to text.                                                                                                                                                                                                                                                                                                                                    |
-| `GEMINI_API_KEY`                    | No       | Google Gemini API key for embeddings (e.g. `gemini-embedding-001`). Omit to disable semantic search embedding.                                                                                                                                                                                                                                                                                                                                     |
-| `OPENAI_API_KEY`                    | No       | Optional OpenAI key if used by any integration.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `AI_DAILY_CAP_TOKENS`               | No       | Daily token cap per user; when set, over-cap returns 429 "Daily AI limit reached". Omit for no cap.                                                                                                                                                                                                                                                                                                                                                |
-| **Cron & admin**                    |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `CRON_SECRET`                       | No       | Secret for `GET/POST /api/cron/process-scheduled-sends`. Required if using scheduled sends; caller must send this (e.g. Bearer token or `x-cron-secret` header).                                                                                                                                                                                                                                                                                   |
-| `ADMIN_STATS_SECRET`                | No       | Secret for `GET /api/admin/stats` and admin backfill. Falls back to `CRON_SECRET` if not set.                                                                                                                                                                                                                                                                                                                                                      |
-| `ENABLE_EMAIL_SEND`                 | No       | Set to `"true"` to allow outbound send (tRPC and cron). Default is off.                                                                                                                                                                                                                                                                                                                                                                            |
-| **Other**                           |          |                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `NODE_ENV`                          | No       | `development` \| `test` \| `production`; defaults to `development`.                                                                                                                                                                                                                                                                                                                                                                                |
-| `SKIP_ENV_VALIDATION`               | No       | Set to `"1"` to skip env schema validation (e.g. CI).                                                                                                                                                                                                                                                                                                                                                                                              |
-| `NEXT_PUBLIC_ANALYTICS_ENABLED`     | No       | Set to `"true"` to enable Inbox Brain client analytics (`POST /api/analytics/inbox-brain`). Omit or any other value disables tracking (no-op). See [Inbox Brain product analytics](#inbox-brain-product-analytics-optional).                                                                                                                                                                                                                       |
-
-**How to run the stack**
-
-- **App:** Run `npm run dev` (or `npm run build` then `npm run start`). App serves at `NEXT_PUBLIC_URL` (e.g. [http://localhost:3000](http://localhost:3000)).
-- **Database:** PostgreSQL with the pgvector extension must be running. Set `DATABASE_URL`. Run `npm run db:push` (and `npx prisma generate` if needed) before first run.
-- **Redis:** Optional for a single instance; the sync lock falls back to in-memory per process. For multiple instances or to coordinate sync across deploys, set `REDIS_URL` or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`.
-- **Inngest:** Optional for local development if you do not need scheduled sends or background embedding/summary jobs. For production (or to test jobs locally), use [Inngest Cloud](https://www.inngest.com) or run the Inngest dev server (e.g. `npx inngest-cli@latest dev`) and set `INNGEST_EVENT_KEY`; set `INNGEST_SIGNING_KEY` in production so Inngest can invoke your app.
-- **Cron (scheduled sends):** If you use scheduled sends, a scheduler (e.g. Vercel Cron or external cron) must call `GET` or `POST /api/cron/process-scheduled-sends` on an interval (e.g. every minute). Set `CRON_SECRET` and send it in the request (`Authorization: Bearer <CRON_SECRET>` or header `x-cron-secret`). Set `ENABLE_EMAIL_SEND="true"` so the cron route can send.
-
-Secrets: Clerk and Aurinko keys in env (or Vercel/project env). Per-account tokens are stored in the database (`Account.token`). No user-facing “API keys”; auth is session-based (Clerk).
-
----
-
-## API Reference
-
-**Auth:** All tRPC procedures under the account router that need a user use `protectedProcedure`; context is created with Clerk’s `auth()`. The client sends the session (e.g. Clerk’s default with Next.js); no separate API key.
-
-**Key procedures (account router)**
-
-| Method / type | Procedure / route                          | Description                                                 |
-| ------------- | ------------------------------------------ | ----------------------------------------------------------- |
-| query         | `getAccounts`                              | List accounts for current user.                             |
-| query         | `getThreads`                               | Paginated threads (tab, cursor).                            |
-| query         | `getThreadById`                            | Single thread with emails.                                  |
-| mutation      | `syncEmails`                               | Trigger sync (accountId, folder, forceFullSync, cursor).    |
-| mutation      | `bulkMarkRead` / `bulkMarkUnread`          | Bulk read/unread.                                           |
-| mutation      | `bulkArchiveThreads` / `bulkDeleteThreads` | Bulk archive or move to trash.                              |
-| mutation      | `scheduleSend` / `cancelScheduledSend`     | Schedule or cancel send (payload can include `trackOpens`). |
-| mutation      | `sendEmail`                                | Send now (optional `trackOpens`).                           |
-| mutation      | `snoozeThread` / `unsnoozeThread`          | Snooze thread until date/time or clear.                     |
-| mutation      | `setReminder` / `clearReminder`            | Remind if no reply (e.g. in N days) or clear.               |
-| query         | `getNumThreads`                            | Count threads per tab (for badges).                         |
-| query         | `getScheduledSends`                        | List scheduled sends for account.                           |
-| query         | `getEmailSuggestions`                      | Recipient suggestions (e.g. for compose).                   |
-| query         | `getEmailBody`                             | Full body for an email (e.g. for display).                  |
-| query         | `getEmailOpenByMessageId`                  | Open-tracking record for a sent message.                    |
-
-**Example (getThreads)**
-
-```json
-// Input
-{ "accountId": "...", "tab": "inbox", "important": false, "unread": false, "limit": 15, "cursor": null }
-
-// Response (shape)
-{ "threads": [...], "nextCursor": "..." | undefined, "syncStatus": { "success": true, "count": 0 }, "source": "database" }
-```
-
-**Cron (scheduled sends) & Inngest**
-
-- **Cron auth:** `Authorization: Bearer <CRON_SECRET>` or header `x-cron-secret: <CRON_SECRET>`.
-- **Cron route:** `GET` or `POST` `/api/cron/process-scheduled-sends`.
-- **Cron behavior:** Fetches pending `ScheduledSend` rows where `scheduledAt <= now`, **enqueues one Inngest job per row**, returns `{ enqueued, due }`. The job handler runs the existing send logic (REST or tRPC payload), updates status; on final failure the row is set to `failed`. Requires `ENABLE_EMAIL_SEND=true` and `CRON_SECRET` set.
-- **Inngest:** `GET|POST|PUT /api/inngest` serves Inngest (register + run). No separate worker; Inngest Cloud or dev server invokes your app. Jobs: `email/analyze`, `scheduled-send/process`, optional `email/analyze-account`.
-- **Backfill embeddings:** `GET|POST /api/admin/backfill-embeddings` - auth: same as cron/admin (e.g. `Authorization: Bearer <ADMIN_STATS_SECRET>` or `x-cron-secret`). **GET** returns `{ count }` of emails with `embedding IS NULL` (optional `?accountId=`). **POST** selects up to `limit` (default 50, max 200) emails missing embeddings (optional `accountId`, `summaryNullOnly`), enqueues one Inngest job per email with deterministic id for deduplication; returns `{ enqueued, requested }`. Job handler is idempotent (skips if embedding already set); 5 retries with exponential backoff. Do not trigger from sync or getThreads.
-
----
-
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/                # aurinko/callback, cron, trpc, inngest, chat, email/send, email/search,
-│   │                       # generate-reply, track/open, health, create-checkout, backfill-analysis, admin/*, etc.
-│   ├── mail/               # Inbox app (ThreadList, ThreadDisplay)
-│   └── buddy/              # AI chat-with-inbox
-├── components/
-│   ├── mail/               # ThreadList, ReplyBox, SnoozeMenu, RemindMenu, ComposeEmailGmail,
-│   │                       # ForwardEmailDialog, MailKeyboardShortcuts, ShortcutHelpModal,
-│   │                       # AccountSwitcher, editor/, search/
-│   ├── ui/                 # shadcn-style primitives (select, time-input-24, etc.)
-│   └── landing/            # Marketing/landing pages
-├── server/api/             # tRPC: trpc.ts, routers/account.ts
-├── lib/                    # accounts, sync-to-db, vector-search, embedding, aurinko,
-│                           # email-open-tracking, undo-send, snooze-presets, remind-presets,
-│                           # intent-detection, conversational-summary, send-email-rest,
-│                           # inngest (client + functions), jobs (run-email-analysis, run-scheduled-send, enqueue)
-├── hooks/                  # useThreads, use-inbox, use-mobile
-├── contexts/               # PendingSendContext (undo send)
-├── provider/               # ThemeProvider (next-themes)
-└── env.js                  # T3 env schema
-```
-
----
-
-## Testing
-
-| Command             | Description              |
-| ------------------- | ------------------------ |
-| `npm run test`      | Jest unit tests (watch). |
-| `npm run test:ci`   | Jest with coverage.      |
-| `npm run test:e2e`  | Playwright E2E.          |
-| `npm run typecheck` | `tsc --noEmit`.          |
-| `npm run lint`      | Next.js ESLint.          |
-
-Tests: `src/__tests__/` (components, lib); E2E in repo root (e.g. `e2e/`).
-
----
-
-## Deployment
-
-**Vercel (recommended)**  
-Connect the repo, set env vars, deploy. Use Vercel Cron or an external scheduler to hit `/api/cron/process-scheduled-sends` every minute if you use scheduled sends; set `CRON_SECRET` and match it in the scheduler.
-
-**Docker**
-
-```bash
-docker-compose up -d
-```
-
-Runs the app and PostgreSQL (with pgvector). Configure env via `.env` or Docker env.
-
----
-
-## Security
-
-- **Auth:** Clerk; protected routes and tRPC `protectedProcedure`; no anonymous access to mail data.
-- **Scoping:** All thread/email access is gated by `authoriseAccountAccess(accountId, ctx.auth.userId)`.
-- **Headers:** Middleware sets X-Frame-Options, X-Content-Type-Options, Referrer-Policy, CSP, HSTS.
-- **Cron:** Scheduled-send route requires `CRON_SECRET`; no user token.
-- **Validation:** Inputs validated with Zod on tRPC; no raw user input in SQL.
-
----
-
-## Performance
-
-| Concern     | Approach                                                                |
-| ----------- | ----------------------------------------------------------------------- |
-| Thread list | Infinite query (cursor), React Query cache; refetch on sync invalidate. |
-| Search      | pgvector index on `Email.embedding`; limit top-k; fallback to text.     |
-| Sync        | One sync at a time per account (in-process lock); delta when possible.  |
-| AI          | Optional; no RSC streaming in README scope; at scale we’d cache/queue.  |
-
-Indexes (Prisma): `Thread` (accountId, lastMessageDate, inboxStatus, snoozedUntil, remindAt); `Email` (threadId, emailLabel, sentAt). pgvector uses distance index for `<=>`.
-
----
-
-## Performance benchmarks
-
-This section describes what to measure for production performance (sync, embeddings, search, scheduled sends) and how to interpret the numbers. Use it for capacity planning and SLA expectations; re-check after major changes. No new instrumentation is required. Observe via existing logs, admin stats, or one-off tests.
-
-**Sync: ~1k emails**
-
-Measure the time from the start of a full sync (or a delta run that fetches on the order of 1k emails) until the sync mutation returns. Duration depends on Aurinko latency, network, and DB write throughput. Where to see it: structured logs that record sync duration per account (e.g. from the sync mutation or account router), or a one-off test that triggers sync and times the response. Expectation: typically tens of seconds to a few minutes for ~1k emails; measure and document your baseline for your environment.
-
-**Embedding: ~1k emails**
-
-Measure the time to generate embeddings (and optionally summaries) for about 1k emails, e.g. via the backfill job or batch analysis (`email/analyze` with multiple `emailIds`). This depends on Gemini/LLM rate limits and job concurrency. How to run it: trigger the backfill API (e.g. `POST /api/admin/backfill-embeddings` with a limit or account that yields ~1k unprocessed emails), or enqueue a batch and observe job completion in the Inngest dashboard. Expectation: often several minutes to tens of minutes at safe concurrency; measure and document your baseline.
-
-**Vector search: ~10k rows**
-
-Measure the latency of a single vector search when the account (or DB) has on the order of 10k emails with embeddings (e.g. p95 or average of search request duration). This depends on the pgvector index and DB load. Where to see it: the search route returns timing; admin stats (`GET /api/admin/stats`) exposes `averageSearchTimeMs`; or run one-off requests against an account with ~10k embedded emails. Expectation: sub-second for 10k rows with a proper pgvector index is typical; measure and document your baseline.
-
-**Scheduled send throughput**
-
-Measure how many scheduled sends are processed per minute (or per cron run) when cron is firing regularly (e.g. every minute). This depends on Inngest concurrency and send API (Aurinko) latency. How to observe: count `ScheduledSend` rows that move from `pending` to `sent` in a time window (e.g. via DB query or logs), or use the Inngest dashboard to see job throughput. Expectation: dozens per minute at default concurrency is typical; measure and document your baseline.
-
----
-
-## AI cost modeling
-
-This section explains how AI usage translates into cost and how the app limits it. VectorMail uses OpenRouter (chat, compose, summaries) and Gemini (embeddings); cost depends on tokens and provider pricing.
-
-**Approximate tokens per email (embeddings and summaries)**
-
-Embeddings use Gemini (model `gemini-embedding-001`): one request per email, 768 dimensions. Gemini embedding is typically billed per request or per 1k input characters, not “tokens” in the same way as chat. Treat it as one embedding request per email and see [Gemini pricing](https://ai.google.dev/pricing) for current rates. Summaries use OpenRouter: each summary is one chat completion (a few hundred input + output tokens per email depending on email length and model). Exact numbers depend on email length and the model chosen.
-
-**Estimated cost per 1k emails**
-
-Embedding 1k emails ≈ 1k Gemini embedding requests. Summarizing 1k emails ≈ on the order of a few hundred thousand OpenRouter tokens (in + out). At typical list prices, expect on the order of low single-digit dollars for embedding + summary per 1k emails. Adjust for your region and current [OpenRouter](https://openrouter.ai/docs#models) and [Gemini](https://ai.google.dev/pricing) pricing. If the project does not publish exact numbers, measure with your usage and provider pricing.
-
-**Typical daily AI usage per active user**
-
-An “active” user here is one who opens mail, runs search, or uses chat/compose. Daily usage varies: e.g. N chat/buddy requests, M compose or summary calls, and optionally P embedding requests (from backfill or on-demand analysis). The app stores per-user, per-operation token counts in the `AiUsage` table (operations: chat, compose, summary, embedding, buddy). Use that table for actuals, or measure from logs; baseline depends on usage patterns.
-
-**How AI_DAILY_CAP_TOKENS limits cost**
-
-When `AI_DAILY_CAP_TOKENS` is set in env, the app sums that user’s **input + output tokens** for the current day from `AiUsage`. Once the user exceeds the cap, further LLM requests that are subject to the cap (chat, compose, summary, buddy) return 429 “Daily AI limit reached” and are not sent to the provider. Embeddings are recorded in `AiUsage` but may contribute zero to the token sum in the current implementation; provider billing for embeddings is usually per request or per dimensions. The cap prevents a single user or bug from burning unbounded chat/compose/summary spend in one day; operators can set it to a safe ceiling per user.
-
----
-
-## Production Lessons
-
-**First sync and empty inbox:** Users often saw “0 conversations” after connecting because the OAuth callback did a lightweight sync (e.g. delta only) and new accounts had no token. We added an automatic first sync on the client when the thread list loads empty (once per account/session) and a clear “Syncing your inbox…” state so users know sync is in progress.
-
-**Hooks order:** We had a “Rendered more hooks than during the previous render” error when a `useCallback` (e.g. for keyboard shortcut) was defined after early returns (loading, scheduled tab, no account). We moved all hooks above any conditional return so the hook count is stable every render.
-
-**Thread status consistency:** getThreads and sync both derive inbox/sent/draft from emails and labels. We had edge cases where thread flags were out of sync with email sysLabels. We added `recalculateAllThreadStatuses` after sync and defensive fixes in getThreads (e.g. fallback when zero inbox threads but total threads exist).
-
-**Sync lock:** Sync uses a distributed lock (Redis when `REDIS_URL` is set, else in-memory per process) so only one sync runs per account at a time across instances. Concurrent callers wait (retry until lock acquired, up to 30 min) then run sync after release. Set `REDIS_URL` for multi-instance deployments.
-
----
-
-## Concurrency & idempotency
-
-This section summarizes how VectorMail stays correct under concurrency and retries: duplicate prevention, idempotent writes, and where uniqueness is enforced.
-
-**Email duplicate prevention**
-
-Each email is uniquely identified by `internetMessageId` in the database (`Email.internetMessageId` has a unique constraint). Sync and email writes use this id so the same message from the provider never creates duplicate rows; repeated syncs of the same data are safe.
-
-**Idempotent upserts**
-
-Writing emails from sync is done via upsert (create-or-update by `internetMessageId`). Re-running sync for the same window or re-processing the same delta does not duplicate or corrupt data; existing rows are updated when the same message is seen again.
-
-**Scheduled sends**
-
-Scheduled sends are stored in the `ScheduledSend` table with a unique `id` and `status` (e.g. pending, sent, failed). Cron and Inngest process sends by `scheduledSendId`, so each row is processed at most once and the same send is not applied twice.
-
-**Job uniqueness per resource**
-
-Background jobs (e.g. email analysis, scheduled-send execution) are keyed by resource id (`emailId`, `scheduledSendId`, or `accountId` for backfill). This allows idempotent processing and clear deduplication: for example, the DLQ (`FailedJob`) stores at most one row per logical job via a unique constraint on `(jobType, resourceId)`.
-
-**Sync lock**
-
-Only one sync runs per account at a time. The app uses a lock in `lib/sync-lock` (Redis when Upstash or `REDIS_URL` is configured, otherwise in-memory per process). Concurrent sync requests for the same account wait until the lock is acquired or time out; two full syncs for the same account do not run in parallel.
-
----
-
-## If Running at Scale
-
-**Sync:** With `REDIS_URL` set, sync already uses a Redis-based distributed lock (one sync per account across instances). Optionally add a job queue (e.g. Bull, Inngest) for scheduling; one worker per account (or per shard) to avoid thundering herd.
-
-**Search:** Keep pgvector; add read replicas for search-heavy traffic. Consider partitioning `Email` by `accountId` or time if a single table grows very large.
-
-**AI:** Queue summarization and embedding backfill; use a worker pool and rate limits per provider. Cache idempotent LLM responses where safe.
-
-**Observability:** Add tracing (e.g. OpenTelemetry) on tRPC and Aurinko calls; log sync duration and error rates per account. Alert on `needsReconnection` spikes or cron failures.
-
-**Cost:** Monitor OpenRouter/Gemini usage; cap per-user or per-tenant if needed. Sync and embedding jobs are the main levers.
-
----
-
-## Scaling phases
-
-The table below is a planning guide: it maps approximate user scale to a typical or recommended architecture. Actual limits depend on usage patterns, instance size, and DB capacity.
-
-| Approximate scale | Recommended architecture                                                                                                                                                                                                                                                            |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **~1k users**     | Single instance (one app + Postgres). No Redis or queue required for correctness; optional for sync lock and background jobs.                                                                                                                                                       |
-| **~10k users**    | Redis + queue. Use Redis for the distributed sync lock (multi-instance); use Inngest (or equivalent) for scheduled sends and embedding jobs so the app stays responsive.                                                                                                            |
-| **~100k users**   | Add read replicas. Postgres read replicas for read-heavy paths (e.g. getThreads, search); write to primary. Tune connection pooling and Inngest concurrency.                                                                                                                        |
-| **~1M users**     | Sharded workers. Consider dedicated workers or sharding for sync and embedding jobs (e.g. by account id or tenant); keep API and inbox on separate scaling from heavy background work. Optionally partition tables or use multi-tenant DB if the dataset outgrows a single primary. |
-
----
+A request flows in one direction. Gmail is reached only through Aurinko, so OAuth, delta sync, send, and labels are one integration surface. Sync acquires the per-account lock, then writes threads and emails into Postgres; analysis jobs attach summaries and the `vector(768)` embedding out of band via Inngest. Every read past this point — `getThreads`, search, Buddy context — goes through `authoriseAccountAccess`, so tenancy is resolved once, server-side. The three surfaces sit on top of the same tables: AI Search queries embeddings, Buddy drafts against thread context then passes the moderation gate, and Automation writes `ActionExecution` rows the worker drains. Labels and filter rules are persisted per account (user-defined filing), and calendar events are extracted from mail into `SavedCalendarEvent` for the "Upcoming" view — both are stored artifacts off the same Email rows, not separate services.
+
+## Why this is hard
+
+- **Sync correctness is the whole game.** The lock (`withLock`, up to a 30-minute wait/TTL, Upstash → ioredis → in-memory) is the easy part. The subtle part: backfill completion was originally inferred from "has a delta token," so an account whose token was set early would stall with months of mail missing. Completion is now an explicit `inboxBackfilledAt` timestamp, set only when the list walk reaches the oldest message — and an inbox that isn't backfilled yet is *not* delegated to the background worker, because the worker returns `background: true` with no continuation token and the client can't drive the walk. That single missing fallback was the difference between "syncs" and "silently stops at last week."
+- **Idempotent ingestion.** Every email upserts by `Email.internetMessageId @unique`. Provider redeliveries, retried syncs, and overlapping delta windows converge on one row instead of duplicating threads.
+- **Automation that cannot double-fire.** `ActionExecution.idempotencyKey @unique` plus per-execution Inngest concurrency of 1 means a retry storm produces a uniqueness violation, not three sent emails. Permanent failures land in a `FailedJob` DLQ keyed by `(jobType, resourceId)`.
+- **Search that degrades instead of erroring.** `vector-search.ts` falls back to text search on three conditions: a zero query embedding, zero vector hits, or any pgvector error. Search returning weaker results beats search throwing.
+- **Bounded AI spend.** Per-user limiters (`SEARCH_LIMIT_PER_MINUTE = 60`, `AI_LIMIT_PER_MINUTE = 100`) cap rate; `AI_DAILY_CAP_TOKENS` caps daily cost by summing input+output tokens from the `AiUsage` table before each call. One user or one bug can't run up an unbounded bill.
+- **Gmail mangles plaintext.** Buddy drafts are plain text; sent naively, Gmail collapses them into one unbroken block. Before send, the body is converted to inline-styled HTML — `\n\n` → `<p>`, numbered lines → `<ol>`, `**bold**` → `<strong>` — so a drafted email actually arrives as a structured email.
+
+## Design decisions & tradeoffs
+
+- **pgvector over a dedicated vector DB.** *Why:* one consistency domain; tenancy is a `WHERE` clause. *Tradeoff:* not billion-vector ANN — acceptable at per-account scale.
+- **Sync on user action, no background polling.** *Why:* stays inside Aurinko/Gmail rate limits, no idle load. *Tradeoff:* not live; relies on first-sync plus manual sync.
+- **AI is optional.** *Why:* the default deploy runs with zero AI keys — connect, sync, list, send all work. *Tradeoff:* without keys, search degrades to text and compose/summaries are off.
+- **In-memory lock fallback.** *Why:* single instance runs with no Redis dependency. *Tradeoff:* multi-instance coordination requires Redis; the in-memory lock is per-process only.
+- **Dry-run automation by default.** *Why:* safety over autonomy. *Tradeoff:* real autosend needs explicit opt-in and a running worker — there is no one-click "let it rip."
 
 ## Failure modes
 
-This section describes how VectorMail behaves when key dependencies are down or failing. It is a reference for operators and support, not a full runbook.
+- **Redis down or unreachable.** Lock acquisition retries for up to 30 minutes, then throws. Once Redis is selected there is no silent downgrade to the in-memory lock — failing loud beats running two syncs.
+- **Inngest down or unconfigured.** Sync and inbox reads are unaffected; scheduled sends and embedding/summary jobs queue until it returns.
+- **LLM provider down.** Compose and summaries surface errors; search falls back to text so the read path keeps working.
+- **Aurinko rate limit / auth error.** The account's `needsReconnection` flag is set and the UI prompts a reconnect; sync resumes after re-auth or limit reset.
+- **Cron not firing.** Due `ScheduledSend` rows stay `pending` until the next successful tick — no send is lost, just delayed.
+- **Embedding job fails repeatedly.** 5 retries with exponential backoff, then a `FailedJob` DLQ entry keyed by `(jobType, resourceId)`; the email stays unembedded (and text-searchable) until re-enqueued.
 
-**Redis is down or unreachable**
+## Security model
 
-The sync lock uses Redis (Upstash or `REDIS_URL`) when configured; otherwise it uses an in-memory lock per process. If Redis is not configured, only one sync per account per process runs, and multi-instance sync is not coordinated. If Redis is configured but down or unreachable, lock acquire fails: sync requests retry for up to 30 minutes then fail with an error; there is no automatic fallback to in-memory when Redis was previously selected.
+- **Auth:** Clerk; `protectedProcedure` on tRPC; middleware guards `/mail` and `/buddy`.
+- **Scoping:** every mail query passes through `authoriseAccountAccess(accountId, userId)` — no cross-tenant reads.
+- **Outbound safety:** Buddy topic gate on the pre-augmentation message + `containsOutgoingViolation()` before send.
+- **Cost/abuse:** per-user rate limits and `AI_DAILY_CAP_TOKENS`.
+- **Headers (`middleware.ts`):** X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, HSTS, and a CSP with `frame-ancestors 'none'`.
+- **Inputs/SQL:** Zod on every tRPC input; no raw SQL except the parameterized pgvector similarity query.
+- **Tokens at rest:** optional AES-256-GCM envelope encryption of stored account tokens (`token-crypto.ts`), enabled when `TOKEN_ENCRYPTION_KEY` is set; plaintext otherwise.
 
-**Queue (Inngest) is down or not configured**
+## Tech stack
 
-Scheduled sends and embedding/analysis jobs run as Inngest jobs. Sync and inbox loading do not depend on the queue: `getThreads`, `getThreadById`, and sync (Aurinko + DB) keep working. When Inngest is down or not configured, scheduled sends do not run (cron may still enqueue jobs that will only execute when Inngest is back), and embedding/summary jobs do not run. The cron route can run sends inline if enqueue fails, so some scheduled sends may still be processed when the queue is unavailable but cron is hitting the endpoint.
+Next.js 14.2 (App Router) · React 18 · TypeScript · tRPC 11 · Prisma 6 · PostgreSQL + pgvector · Clerk · Aurinko · OpenRouter + Gemini · Inngest.
 
-**LLM provider (OpenRouter/Gemini) fails or is unavailable**
+## What's intentionally not built yet
 
-Summaries, AI compose, and query/email embeddings depend on OpenRouter or Gemini. When the provider fails or is unavailable, those operations can fail; the user sees errors for compose and summaries. Search has a fallback: if the query embedding is missing, empty, or generation fails, the app falls back to text search over subject/body so search continues to work with reduced relevance.
+- **Background sync polling.** Today: sync on user action + one-time first sync. A backoff/queue poller lands when usage justifies the rate-limit budget.
+- **Automated embedding backfill.** Today: a manual admin route. Scheduled backfill lands when account growth makes the manual step a chore.
+- **Multi-account aggregated views.** Per-account today. Cross-account search and labels get designed when there's a real user running 3+ accounts to design against.
+- **Per-org / per-tenant cost caps.** `AI_DAILY_CAP_TOKENS` is per-user only; org-level caps are deferred until there's a tenant paying for one.
 
-**Aurinko rate limits or API errors**
-
-Sync and send operations call Aurinko. On rate limits or API errors (e.g. auth or provider errors), the app sets the account’s `needsReconnection` flag in the database. The UI shows a reconnection prompt when `needsReconnection` is true. The user may need to reconnect the account (OAuth) or retry later when limits reset.
-
-**Cron fails (scheduled-sends endpoint not called or errors)**
-
-Scheduled sends are processed when the cron job calls `GET` or `POST /api/cron/process-scheduled-sends` with a valid `CRON_SECRET`. If cron is not invoked or the route returns an error, due `ScheduledSend` rows stay in `pending` until a future successful cron run. There is no automatic retry aside from the next cron tick; operators must fix the scheduler or endpoint.
-
-**Embedding/analysis job fails repeatedly (e.g. after retries)**
-
-The `email/analyze` Inngest function has 5 retries. If the job still fails after retries, it ends in a failed state in Inngest; operators can see failed runs in the Inngest dashboard. There is no application-level failed-job table or dead-letter queue. The affected email(s) remain without embedding/summary until a new job is enqueued (e.g. via backfill or manual trigger).
-
----
-
-## Available Scripts
-
-| Command                       | Description                                     |
-| ----------------------------- | ----------------------------------------------- |
-| `npm run dev`                 | Start development server with Turbopack         |
-| `npm run build`               | Build for production                            |
-| `npm run start`               | Start production server                         |
-| `npm run lint`                | Run ESLint                                      |
-| `npm run typecheck`           | Run TypeScript type checking                    |
-| `npm run test`                | Run unit tests (watch mode)                     |
-| `npm run test:ci`             | Run tests with coverage                         |
-| `npm run test:ai-search-eval` | Deterministic AI Search intent/selection checks |
-| `npm run test:e2e`            | Run Playwright E2E tests                        |
-| `npm run db:studio`           | Open Prisma Studio                              |
-
----
-
-## License & cost
-
-VectorMail is open source and free to self-host. Bring your own Aurinko, Clerk, OpenRouter, and Gemini keys; you pay only the providers' usage. No subscription, no paywall, no feature gate.
-
----
-
-## Contributing
-
-We welcome contributions. VectorMail is open source and community-driven.
+## Run locally
 
 ```bash
-# 1. Fork the repo
-git clone https://github.com/YOUR_USERNAME/Vector-Mail.git
-
-# 2. Create a feature branch
-git checkout -b feature/amazing-feature
-
-# 3. Make your changes and commit
-git commit -m "feat: add amazing feature"
-
-# 4. Push and open a PR
-git push origin feature/amazing-feature
+git clone https://github.com/parbhatkapila4/Vector-Mail.git && cd Vector-Mail
+npm install
+cp .env.example .env   # Clerk + Aurinko + DATABASE_URL required; AI keys optional
+npm run db:push
+npm run dev
 ```
 
-Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and development process.
+Full environment and API reference: `docs/REFERENCE.md`.
 
----
+## Tests
 
-## Support
+Jest unit tests under `src/__tests__/` cover lib and component logic. `ai-search-eval` is a deterministic check of intent detection and result selection with no live LLM, so search behavior is testable in CI. Playwright drives end-to-end flows. `npm run test:ci` runs the suite with coverage.
 
-- **Documentation:** [Quick Start](#quick-start), [API Reference](#api-reference)
-- **Bug reports:** [GitHub Issues](https://github.com/parbhatkapila4/Vector-Mail/issues)
-- **Feature requests:** [GitHub Discussions](https://github.com/parbhatkapila4/Vector-Mail/issues)
-- **Email:** [parbhat@parbhat.dev](mailto:parbhat@parbhat.dev)
+## About
 
----
+Built by Parbhat Kapila — full-stack engineer focused on production AI systems. Other work: Sentinel (CRM revenue intelligence), CUTLINE (AI video pipeline), RepoDoc (codebase RAG). Portfolio: [parbhat.dev](https://parbhat.dev).
 
-## Acknowledgments
-
-- [T3 Stack](https://create.t3.gg/) - Full-stack TypeScript starter that seeded the auth/tRPC/Prisma wiring.
-- [shadcn/ui](https://ui.shadcn.com/) - Component primitives behind the inbox UI.
-- [Aurinko](https://www.aurinko.io/) - Unified email API (Gmail/M365 OAuth, delta sync, send).
-- [OpenRouter](https://openrouter.ai/) - Single client for the AI chat/compose models we use.
-- [Google Gemini](https://ai.google.dev/) - 768-dim embeddings (`gemini-embedding-001`).
-
----
-
-## License
-
-MIT. See [LICENSE](LICENSE).
-
----
-
-<div align="center">
-
-Built by [Parbhat Kapila](https://github.com/parbhatkapila4) · [Website](https://vectormail.space/) · [GitHub](https://github.com/parbhatkapila4/Vector-Mail) · [Twitter](https://x.com/Parbhat03)
-
-[![GitHub Stars](https://img.shields.io/github/stars/parbhatkapila4/Vector-Mail?style=flat-square&logo=github&color=yellow)](https://github.com/parbhatkapila4/Vector-Mail)
-
-</div>
+License: MIT.
