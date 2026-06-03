@@ -1,29 +1,105 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" width="920" height="320" role="img" aria-label="VectorMail — Inbox, indexed.">
-  <rect width="920" height="320" fill="#0a0a0c"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" width="920" height="320" role="img" aria-label="VectorMail — Inbox, indexed. A semantic Gmail client: emails are embedded as vector(768) beside the mail in Postgres and searched by meaning with pgvector cosine similarity. The query 'when did we set the deadline' surfaces the right thread at 0.94. Semantic search, daily briefs, AI drafts.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0c0c0f"/>
+      <stop offset="0.55" stop-color="#0a0a0c"/>
+      <stop offset="1" stop-color="#08080a"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fafafa"/>
+      <stop offset="1" stop-color="#d4d4d8"/>
+    </linearGradient>
+    <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#27272a" stop-opacity="0"/>
+      <stop offset="0.06" stop-color="#3f3f46"/>
+      <stop offset="0.94" stop-color="#3f3f46"/>
+      <stop offset="1" stop-color="#27272a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rowGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#818cf8" stop-opacity="0.20"/>
+      <stop offset="0.55" stop-color="#818cf8" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="periodGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366f1" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366f1" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <!-- ===================== CANVAS ===================== -->
+  <rect x="0" y="0" width="920" height="320" fill="url(#bg)"/>
   <rect x="0.5" y="0.5" width="919" height="319" fill="none" stroke="#1f1f23" stroke-width="1"/>
 
-  <!-- top rule -->
-  <line x1="42" y1="58" x2="878" y2="58" stroke="#27272a" stroke-width="1"/>
+  <!-- soft aura behind the live 0.94 match (ignorable if filter dropped) -->
+  <ellipse cx="792" cy="174" rx="170" ry="86" fill="url(#aura)"/>
+  <!-- indigo bloom centered on the accent period -->
+  <circle cx="438" cy="158" r="36" fill="url(#periodGlow)" filter="url(#soft)"/>
 
-  <!-- masthead -->
-  <text x="42" y="38" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="11" font-weight="700" letter-spacing="3.8" fill="#fafafa">VECTORMAIL</text>
-  <text x="878" y="38" text-anchor="end" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="11" font-weight="500" letter-spacing="3" fill="#71717a">EST. 2026</text>
+  <!-- ===================== MASTHEAD ===================== -->
+  <text x="42" y="52" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="5.5" fill="#fafafa">VECTORMAIL</text>
+  <text x="878" y="52" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" letter-spacing="2" fill="#71717a">EST.&#8201;2026&#160;&#160;&#8226;&#160;&#160;RELEASE&#8201;1.0</text>
+  <line x1="42" y1="64" x2="878" y2="64" stroke="url(#rule)" stroke-width="1"/>
 
-  <!-- hero: stacked two-word statement, left-aligned -->
-  <text x="42" y="160" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="96" font-weight="800" letter-spacing="-4.5" fill="#fafafa">Inbox,</text>
-  <text x="42" y="245" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="96" font-weight="800" letter-spacing="-4.5" fill="#fafafa">indexed.</text>
+  <!-- ===================== HERO (left) ===================== -->
+  <text x="42" y="100" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" letter-spacing="4" fill="#818cf8">THE&#160;SEMANTIC&#160;GMAIL&#160;CLIENT</text>
+  <text x="40" y="162" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="60" font-weight="700" letter-spacing="-2" fill="url(#hero)">Inbox, indexed<tspan fill="#818cf8">.</tspan></text>
+  <text x="42" y="200" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="15" letter-spacing="0.1" fill="#a1a1aa">Search your inbox by <tspan fill="#e4e4e7" font-weight="600">meaning</tspan>, not keywords &#8212; embeddings live beside the mail.</text>
 
-  <!-- descriptor: three user-action lines, each pointed at a real endpoint -->
-  <text x="540" y="148" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="15" font-weight="400" fill="#d4d4d8">
-    <tspan x="540" dy="0">Find emails by what they mean.</tspan>
-    <tspan x="540" dy="24">Read a brief, not your inbox.</tspan>
-    <tspan x="540" dy="24">Reply faster than you can type.</tspan>
-  </text>
+  <!-- ===================== CAPABILITIES (bottom-left, numbered) ===================== -->
+  <line x1="42" y1="240" x2="42" y2="287" stroke="#3f3f46" stroke-width="1"/>
+  <text x="58" y="249" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" letter-spacing="1.5" fill="#818cf8">01</text>
+  <text x="58" y="267" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="600" fill="#e4e4e7">Semantic search</text>
+  <text x="58" y="284" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" fill="#71717a">Find emails by what they mean.</text>
 
-  <!-- bottom rule -->
-  <line x1="42" y1="276" x2="878" y2="276" stroke="#27272a" stroke-width="1"/>
+  <text x="248" y="249" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" letter-spacing="1.5" fill="#52525b">02</text>
+  <text x="248" y="267" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="600" fill="#e4e4e7">Daily briefs</text>
+  <text x="248" y="284" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" fill="#71717a">Read a brief, not your inbox.</text>
 
-  <!-- bottom strip -->
-  <text x="42" y="300" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="10" font-weight="600" letter-spacing="2.6" fill="#71717a">SEMANTIC SEARCH   ·   AI DRAFTS   ·   DAILY BRIEFS</text>
-  <text x="878" y="300" text-anchor="end" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="10" font-weight="600" letter-spacing="2.6" fill="#71717a">RELEASE 1.0</text>
+  <text x="438" y="249" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" letter-spacing="1.5" fill="#52525b">03</text>
+  <text x="438" y="267" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="13.5" font-weight="600" fill="#e4e4e7">AI drafts</text>
+  <text x="438" y="284" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" fill="#71717a">Reply faster than you can type.</text>
+
+  <!-- ===================== THE INDEX (right ledger — the proof) ===================== -->
+  <line x1="596" y1="96" x2="596" y2="226" stroke="#27272a" stroke-width="1"/>
+  <text x="612" y="104" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="2" fill="#52525b">INDEX</text>
+  <text x="878" y="104" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="1" fill="#52525b">cosine&#160;&lt;=&gt;</text>
+
+  <line x1="596" y1="114" x2="878" y2="114" stroke="#1f1f23" stroke-width="1"/>
+  <text x="612" y="129" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0x1a</text>
+  <text x="660" y="129" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#71717a">re: q3 forecast revisions</text>
+  <text x="878" y="129" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0.41</text>
+
+  <line x1="596" y1="138" x2="878" y2="138" stroke="#1f1f23" stroke-width="1"/>
+  <text x="612" y="153" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0x2c</text>
+  <text x="660" y="153" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#71717a">renewal terms &amp; pricing</text>
+  <text x="878" y="153" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0.58</text>
+
+  <!-- THE INDEXED / ACTIVE ROW (accent focal point) -->
+  <rect x="596" y="162" width="282" height="24" fill="url(#rowGlow)"/>
+  <rect x="596" y="162" width="3" height="24" fill="#818cf8"/>
+  <line x1="599" y1="162" x2="878" y2="162" stroke="#3f3f46" stroke-width="1"/>
+  <text x="612" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" font-weight="600" fill="#a5b4fc">0x3f</text>
+  <text x="660" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#fafafa">when did we set the deadline</text>
+  <text x="878" y="178" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" font-weight="700" fill="#818cf8">0.94</text>
+
+  <line x1="596" y1="186" x2="878" y2="186" stroke="#1f1f23" stroke-width="1"/>
+  <text x="612" y="201" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0x4b</text>
+  <text x="660" y="201" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#71717a">invoice #2261 attached</text>
+  <text x="878" y="201" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0.33</text>
+
+  <line x1="596" y1="210" x2="878" y2="210" stroke="#27272a" stroke-width="1"/>
+  <text x="612" y="223" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="1.5" fill="#52525b">pgvector</text>
+  <text x="878" y="223" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="1" fill="#71717a">vector(768)</text>
+
+  <!-- ===================== FOOTER ===================== -->
+  <line x1="42" y1="298" x2="878" y2="298" stroke="url(#rule)" stroke-width="1"/>
+  <text x="42" y="313" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="2.5" fill="#52525b">SEMANTIC&#160;SEARCH&#160;&#160;·&#160;&#160;DAILY&#160;BRIEFS&#160;&#160;·&#160;&#160;AI&#160;DRAFTS</text>
+  <text x="878" y="313" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="1" fill="#52525b">POSTGRES&#160;·&#160;PGVECTOR&#160;·&#160;<tspan fill="#818cf8" fill-opacity="0.85">COSINE</tspan></text>
 </svg>

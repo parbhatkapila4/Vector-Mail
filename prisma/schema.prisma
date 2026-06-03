@@ -58,6 +58,7 @@ model Account {
   name                    String
   nextDeltaToken          String?
   lastInboxSyncAt         DateTime?
+  inboxBackfilledAt       DateTime?
   needsReconnection       Boolean           @default(false)
   tokenExpiresAt          DateTime?
   customFromName          String?
