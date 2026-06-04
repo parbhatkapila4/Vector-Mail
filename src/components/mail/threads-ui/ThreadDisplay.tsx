@@ -140,8 +140,8 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
   }
 
   const firstEmail = thread.emails[0];
-  const senderName = firstEmail?.from?.name ?? "Unknown";
   const senderEmail = firstEmail?.from?.address ?? "";
+  const senderName = firstEmail?.from?.name?.trim() || senderEmail || "Unknown";
   const originalSubject = firstEmail?.subject || "(No subject)";
   const originalBody = firstEmail?.body || firstEmail?.bodySnippet || "";
   const originalFrom = `${senderName} <${senderEmail}>`;
@@ -747,7 +747,7 @@ export function ThreadDisplay({ threadId: propThreadId, onClose }: ThreadDisplay
                       </Avatar>
                       <div className="flex-1">
                         <span className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#ffffff]">
-                          {email.from?.name ?? "Unknown"}
+                          {email.from?.name?.trim() || email.from?.address || "Unknown"}
                         </span>
                         {email.sentAt && (
                           <span className="ml-3 text-[12px] font-medium text-[#666666] dark:text-[#999999]">

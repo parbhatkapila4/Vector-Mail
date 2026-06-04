@@ -90,6 +90,7 @@ export function Navigation() {
   const [authFallbackReady, setAuthFallbackReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [signInChoiceOpen, setSignInChoiceOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const { navigateToMail, isNavigating } = useMailNavigation();
@@ -150,7 +151,8 @@ export function Navigation() {
   }, [accountMenuOpen]);
 
   const handleLogout = () => {
-    setAccountMenuOpen(false);
+    if (loggingOut) return;
+    setLoggingOut(true);
     void signOut({ redirectUrl: "/" });
   };
 
@@ -252,10 +254,15 @@ export function Navigation() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full rounded-[8px] px-3 py-2 text-left text-[13px] font-medium text-[#991b1b] transition-colors hover:bg-[#fef2f2]"
+                      disabled={loggingOut}
+                      aria-busy={loggingOut}
+                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-2 text-left text-[13px] font-medium text-[#991b1b] transition-colors hover:bg-[#fef2f2] disabled:cursor-wait disabled:hover:bg-transparent"
                       role="menuitem"
                     >
-                      Logout
+                      {loggingOut && (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      )}
+                      {loggingOut ? "Logging out…" : "Logout"}
                     </button>
                   </div>
                 )}

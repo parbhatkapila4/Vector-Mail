@@ -31,16 +31,38 @@
     <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
       <feGaussianBlur stdDeviation="10"/>
     </filter>
+    <!-- premium light sweep for the hero (invisible at rest: band parked off-canvas) -->
+    <linearGradient id="sheen" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="130" y2="0" gradientTransform="translate(-220,0)">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+      <animateTransform attributeName="gradientTransform" type="translate" values="-220 0; 560 0; 560 0" keyTimes="0;0.2;1" dur="9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.15 1; 0 0 1 1"/>
+    </linearGradient>
+    <!-- index scan: thin bright line + soft halo -->
+    <linearGradient id="scanLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a5b4fc" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#a5b4fc" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#a5b4fc" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="scanSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#818cf8" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#818cf8" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
   <!-- ===================== CANVAS ===================== -->
   <rect x="0" y="0" width="920" height="320" fill="url(#bg)"/>
   <rect x="0.5" y="0.5" width="919" height="319" fill="none" stroke="#1f1f23" stroke-width="1"/>
 
-  <!-- soft aura behind the live 0.94 match (ignorable if filter dropped) -->
-  <ellipse cx="792" cy="174" rx="170" ry="86" fill="url(#aura)"/>
-  <!-- indigo bloom centered on the accent period -->
-  <circle cx="438" cy="158" r="36" fill="url(#periodGlow)" filter="url(#soft)"/>
+  <!-- soft aura behind the live 0.94 match (gently breathes) -->
+  <ellipse cx="792" cy="174" rx="170" ry="86" fill="url(#aura)">
+    <animate attributeName="opacity" values="1;0.5;1" dur="3.6s" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
+  </ellipse>
+  <!-- indigo bloom centered on the accent period (gently breathes) -->
+  <circle cx="438" cy="158" r="36" fill="url(#periodGlow)" filter="url(#soft)">
+    <animate attributeName="opacity" values="1;0.55;1" dur="4.2s" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
+  </circle>
 
   <!-- ===================== MASTHEAD ===================== -->
   <text x="42" y="52" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="5.5" fill="#fafafa">VECTORMAIL</text>
@@ -50,6 +72,8 @@
   <!-- ===================== HERO (left) ===================== -->
   <text x="42" y="100" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" letter-spacing="4" fill="#818cf8">THE&#160;SEMANTIC&#160;GMAIL&#160;CLIENT</text>
   <text x="40" y="162" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="60" font-weight="700" letter-spacing="-2" fill="url(#hero)">Inbox, indexed<tspan fill="#818cf8">.</tspan></text>
+  <!-- sheen overlay (only shows where the moving white band is; transparent at rest) -->
+  <text x="40" y="162" aria-hidden="true" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="60" font-weight="700" letter-spacing="-2" fill="url(#sheen)">Inbox, indexed.</text>
   <text x="42" y="200" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="15" letter-spacing="0.1" fill="#a1a1aa">Search your inbox by <tspan fill="#e4e4e7" font-weight="600">meaning</tspan>, not keywords &#8212; embeddings live beside the mail.</text>
 
   <!-- ===================== CAPABILITIES (bottom-left, numbered) ===================== -->
@@ -81,13 +105,17 @@
   <text x="660" y="153" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#71717a">renewal terms &amp; pricing</text>
   <text x="878" y="153" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0.58</text>
 
-  <!-- THE INDEXED / ACTIVE ROW (accent focal point) -->
-  <rect x="596" y="162" width="282" height="24" fill="url(#rowGlow)"/>
-  <rect x="596" y="162" width="3" height="24" fill="#818cf8"/>
+  <!-- THE INDEXED / ACTIVE ROW (accent focal point — breathes) -->
+  <rect x="596" y="162" width="282" height="24" fill="url(#rowGlow)">
+    <animate attributeName="opacity" values="1;0.45;1" dur="3.6s" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
+  </rect>
+  <rect x="596" y="162" width="3" height="24" fill="#818cf8">
+    <animate attributeName="opacity" values="1;0.6;1" dur="3.6s" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
+  </rect>
   <line x1="599" y1="162" x2="878" y2="162" stroke="#3f3f46" stroke-width="1"/>
   <text x="612" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" font-weight="600" fill="#a5b4fc">0x3f</text>
   <text x="660" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#fafafa">when did we set the deadline</text>
-  <text x="878" y="178" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" font-weight="700" fill="#818cf8">0.94</text>
+  <text x="878" y="178" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" font-weight="700" fill="#818cf8">0.94<animate attributeName="opacity" values="1;0.78;1" dur="3.6s" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/></text>
 
   <line x1="596" y1="186" x2="878" y2="186" stroke="#1f1f23" stroke-width="1"/>
   <text x="612" y="201" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="#52525b">0x4b</text>
@@ -97,6 +125,14 @@
   <line x1="596" y1="210" x2="878" y2="210" stroke="#27272a" stroke-width="1"/>
   <text x="612" y="223" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="1.5" fill="#52525b">pgvector</text>
   <text x="878" y="223" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" letter-spacing="1" fill="#71717a">vector(768)</text>
+
+  <!-- index scan sweep (invisible at rest; sweeps the rows once per cycle) -->
+  <g opacity="0">
+    <rect x="600" y="-8" width="274" height="16" fill="url(#scanSoft)"/>
+    <rect x="600" y="-0.75" width="274" height="1.5" fill="url(#scanLine)"/>
+    <animateTransform attributeName="transform" type="translate" values="0 119; 0 207; 0 207" keyTimes="0;0.34;1" dur="6s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.15 1; 0 0 1 1"/>
+    <animate attributeName="opacity" values="0; 0.85; 0.85; 0; 0" keyTimes="0;0.05;0.30;0.36;1" dur="6s" repeatCount="indefinite"/>
+  </g>
 
   <!-- ===================== FOOTER ===================== -->
   <line x1="42" y1="298" x2="878" y2="298" stroke="url(#rule)" stroke-width="1"/>

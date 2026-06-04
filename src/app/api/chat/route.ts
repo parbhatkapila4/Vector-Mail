@@ -306,7 +306,17 @@ async function chatPostHandler(req: Request) {
       /\b(orders?|flights?|meetings?|payments?|receipts?|bookings?|invoices?|confirmations?)\b/i.test(
         userQuery,
       ) ||
-      /\b(emails?|mail|messages?)\s+from\s+/i.test(userQuery);
+      /\b(emails?|mail|messages?)\s+from\s+/i.test(userQuery) ||
+      /\b(is|are)\s+there\s+(any|some|a|an)\b/i.test(userQuery) ||
+      /\bdo\s+i\s+have\s+(any|some|a|an)?\s*(emails?|mails?|messages?)\b/i.test(
+        userQuery,
+      ) ||
+      /\b(any|some)\s+(?:\w+\s+){0,3}(emails?|mails?|messages?)\b/i.test(
+        userQuery,
+      ) ||
+      /\b(emails?|mails?|messages?)\s+(?:that\s+)?(?:mention(?:s|ing|ed)?|regarding|concerning|related\s+to|relating\s+to|talking\s+about|containing|contains?)\b/i.test(
+        userQuery,
+      );
 
     let shouldUseStoredResults = hasStoredResults;
     if (isNewSearchQuery && hasStoredResults) {
@@ -335,7 +345,10 @@ async function chatPostHandler(req: Request) {
         intent === "SELECT" ||
         (hasDateReference && !isNewSearchQuery) ||
         (hasConversationalRef && !isNewSearchQuery) ||
-        (userQuery.toLowerCase().includes("about") && !isNewSearchQuery) ||
+        (/\babout\s+(?:it|that|this|them|those|the\s+(?:first|second|third|fourth|fifth|last|one|email|thread|message|previous|above)|that\s+(?:one|email|thread|message)|this\s+(?:one|email|thread|message))\b/i.test(
+          userQuery,
+        ) &&
+          !isNewSearchQuery) ||
         userQuery.toLowerCase().includes("what was") ||
         userQuery.toLowerCase().includes("what is"));
 

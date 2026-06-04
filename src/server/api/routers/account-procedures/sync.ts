@@ -256,6 +256,7 @@ export const syncProcedures = {
             name: true,
             token: true,
             nextDeltaToken: true,
+            inboxBackfilledAt: true,
             needsReconnection: true,
             tokenExpiresAt: true,
           },
@@ -318,6 +319,7 @@ export const syncProcedures = {
         !shouldForceFullSync &&
         !input.continueToken &&
         folder === "inbox" &&
+        !!account.inboxBackfilledAt &&
         ctx.auth.userId !== DEMO_USER_ID
       ) {
         const { enqueueAccountMailSync } = await import("@/lib/jobs/enqueue");
@@ -406,13 +408,19 @@ export const syncProcedures = {
             });
             const hasMore =
               !!result.nextPageToken &&
-              !account.nextDeltaToken &&
+              !account.inboxBackfilledAt &&
               threadCount < INBOX_BACKFILL_SAFETY_CAP;
             const continueToken = hasMore
               ? encodeContinueToken(result.nextPageToken!, false, false, false, false, false)
               : undefined;
-            if (!hasMore && !account.nextDeltaToken) {
-              void emailAccount.establishInboxDeltaToken();
+            if (!hasMore && !account.inboxBackfilledAt) {
+              if (!account.nextDeltaToken) void emailAccount.establishInboxDeltaToken();
+              await ctx.db.account
+                .update({
+                  where: { id: account.id },
+                  data: { inboxBackfilledAt: new Date() },
+                })
+                .catch(() => { });
             }
             ctx.log?.info(
               {
@@ -524,10 +532,20 @@ export const syncProcedures = {
               const reachedOldest = !page.nextPageToken;
               const hasMore =
                 !reachedOldest && threadCount < INBOX_BACKFILL_SAFETY_CAP;
-              if (!hasMore && !account.nextDeltaToken) {
+              if (!hasMore) {
                 const { recalculateAllThreadStatuses } = await import("@/lib/sync-to-db");
                 await recalculateAllThreadStatuses(account.id);
-                await emailAccount.establishInboxDeltaToken();
+                if (!account.nextDeltaToken) {
+                  await emailAccount.establishInboxDeltaToken();
+                }
+                if (!account.inboxBackfilledAt) {
+                  await ctx.db.account
+                    .update({
+                      where: { id: account.id },
+                      data: { inboxBackfilledAt: new Date() },
+                    })
+                    .catch(() => { });
+                }
               }
               const nextContinueToken = hasMore
                 ? encodeContinueToken(page.nextPageToken!, false, false, false, false, false)

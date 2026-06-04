@@ -362,6 +362,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     refetch,
     selectedLabelId,
     account: validatedAccount,
+    backfillComplete,
   } = useThreads();
   const threads = rawThreads as (RouterThread & { accountEmail?: string; accountName?: string })[] | undefined;
   const [isSearching] = useAtom(isSearchingAtom);
@@ -665,7 +666,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           scheduleSafe(() => setRefreshingAfterSync(false), 2000);
           return;
         }
-        
+
         if (autoContinueSyncCountRef.current >= MAX_AUTO_CONTINUE_SYNC_PAGES) {
           autoContinueSyncCountRef.current = 0;
           lastContinueTokenRef.current = null;
@@ -808,6 +809,23 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const syncEmailsPendingRef = useRef(false);
   syncEmailsPendingRef.current = syncEmailsMutation.isPending;
+
+  const lastBackfillBridgeAtRef = useRef(0);
+  const maybeTriggerBackfill = useCallback(() => {
+    if (currentTab !== "inbox") return;
+    if (backfillComplete) return;
+    if (!accountId?.trim() || accountId === UNIFIED_INBOX_ACCOUNT_ID) return;
+    if (syncEmailsPendingRef.current) return;
+    const now = Date.now();
+    if (now - lastBackfillBridgeAtRef.current < 12_000) return;
+    lastBackfillBridgeAtRef.current = now;
+    syncEmailsMutation.mutate({
+      accountId: accountId.trim(),
+      forceFullSync: false,
+      syncAllFolders: false,
+      folder: "inbox",
+    });
+  }, [currentTab, backfillComplete, accountId, syncEmailsMutation]);
 
   const invalidateAndClearSelection = useCallback(async () => {
     await utils.account.getThreads.invalidate();
@@ -1104,12 +1122,16 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       if (observerRef.current) observerRef.current.disconnect();
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          if (entries[0]?.isIntersecting && hasNextPage) {
+          if (!entries[0]?.isIntersecting) return;
+          if (hasNextPage) {
             setLoadingMoreAtListEnd(true);
             void fetchNextPage().finally(() => {
               setLoadingMoreAtListEnd(false);
             });
+            return;
           }
+
+          maybeTriggerBackfill();
         },
         {
           root: listContainerRef.current,
@@ -1119,7 +1141,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       );
       if (node) observerRef.current.observe(node);
     },
-    [isFetchingNextPage, loadingMoreAtListEnd, hasNextPage, fetchNextPage],
+    [isFetchingNextPage, loadingMoreAtListEnd, hasNextPage, fetchNextPage, maybeTriggerBackfill],
   );
 
   useEffect(() => {
@@ -1141,7 +1163,10 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     [threadId, toggleSelection],
   );
 
-  const threadsToRender = useMemo(() => threads ?? [], [threads]);
+  const threadsToRender = useMemo(
+    () => (threads ?? []).filter((t) => (t.emails?.[0] ?? null) !== null),
+    [threads],
+  );
 
   useEffect(() => {
     if (prefetchedNextPageRef.current) return;
@@ -1612,8 +1637,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
   const renderThreadItem = (thread: Thread, isLast: boolean, readOnlyPreview = false) => {
     const latestEmail = thread.emails?.[0] ?? null;
-    const fromName = latestEmail?.from?.name ?? "Unknown";
     const fromAddress = latestEmail?.from?.address ?? null;
+    const fromName =
+      latestEmail?.from?.name?.trim() || fromAddress || "Unknown";
     const subject = thread.subject || "(No subject)";
     const date = thread.lastMessageDate ?? new Date();
     const bodySnippet = latestEmail?.bodySnippet ?? null;
@@ -2132,7 +2158,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           !isFetchingNextPage &&
           !loadingMoreAtListEnd &&
           allThreads.length >= 50 &&
-          (isSyncActive ? (
+          (isSyncActive || (currentTab === "inbox" && !backfillComplete) ? (
             <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-[#5f6368] dark:text-[#9aa0a6]">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e5e7eb] border-t-[#1e2a4a] dark:border-[#ffffff] dark:border-t-[#1e2a4a]" />
               <span>Syncing older emails…</span>

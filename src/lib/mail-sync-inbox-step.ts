@@ -54,6 +54,22 @@ const WORKER_GET_MS = 5_500;
 const INBOX_LIST_PAGE_SIZE = 50;
 const INBOX_BACKFILL_SAFETY_CAP = 2000;
 
+async function markInboxBackfillComplete(
+  accountId: string,
+  hasDeltaToken: boolean,
+  emailAccount: Account,
+): Promise<void> {
+  if (!hasDeltaToken) {
+    await emailAccount.establishInboxDeltaToken();
+  }
+  await db.account
+    .update({
+      where: { id: accountId },
+      data: { inboxBackfilledAt: new Date() },
+    })
+    .catch(() => { });
+}
+
 export async function runInboxSyncOneStep(
   accountId: string,
   continueToken?: string,
@@ -64,6 +80,7 @@ export async function runInboxSyncOneStep(
       id: true,
       token: true,
       nextDeltaToken: true,
+      inboxBackfilledAt: true,
       needsReconnection: true,
     },
   });
@@ -113,11 +130,17 @@ export async function runInboxSyncOneStep(
     const threadCount = await db.thread.count({
       where: { accountId, inboxStatus: true },
     });
-    const reachedOldest = !page.nextPageToken;
+    const stalledOnSamePage =
+      page.fetched === 0 && !!page.nextPageToken && page.nextPageToken === pageToken;
+    const reachedOldest = !page.nextPageToken || stalledOnSamePage;
     const hasMore =
       !reachedOldest && threadCount < INBOX_BACKFILL_SAFETY_CAP;
-    if (!hasMore && !accountRow.nextDeltaToken) {
-      await emailAccount.establishInboxDeltaToken();
+    if (!hasMore) {
+      await markInboxBackfillComplete(
+        accountId,
+        !!accountRow.nextDeltaToken,
+        emailAccount,
+      );
     }
     return {
       ok: true,
@@ -137,7 +160,7 @@ export async function runInboxSyncOneStep(
   });
   const inboxStale =
     !latestInbox?.lastMessageDate || latestInbox.lastMessageDate < oneDayAgo;
-  const backfillComplete = !!accountRow.nextDeltaToken;
+  const backfillComplete = !!accountRow.inboxBackfilledAt;
 
   if (backfillComplete && !inboxStale && accountRow.nextDeltaToken) {
     try {
@@ -168,7 +191,11 @@ export async function runInboxSyncOneStep(
   const hasMore =
     !reachedOldest && !backfillComplete && newThreadCount < INBOX_BACKFILL_SAFETY_CAP;
   if (!hasMore && !backfillComplete) {
-    await emailAccount.establishInboxDeltaToken();
+    await markInboxBackfillComplete(
+      accountId,
+      !!accountRow.nextDeltaToken,
+      emailAccount,
+    );
   }
   return {
     ok: true,

@@ -6,6 +6,7 @@ export interface AccountAccess {
   name: string;
   token: string;
   nextDeltaToken: string | null;
+  inboxBackfilledAt: Date | null;
   needsReconnection: boolean;
   tokenExpiresAt: Date | null;
 }
@@ -26,6 +27,7 @@ export const authoriseAccountAccess = async (
         name: true,
         token: true,
         nextDeltaToken: true,
+        inboxBackfilledAt: true,
         needsReconnection: true,
         tokenExpiresAt: true,
       },

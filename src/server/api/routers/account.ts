@@ -58,6 +58,7 @@ export const accountRouter = createTRPCRouter({
           nextCursor: undefined,
           syncStatus: { success: true, count: 0 },
           source: "database" as const,
+          backfillComplete: true,
         };
       }
       if (isDemoCall(ctx, input.accountId)) {
@@ -72,6 +73,7 @@ export const accountRouter = createTRPCRouter({
           nextCursor,
           syncStatus: { success: true, count: 0 },
           source: "database" as const,
+          backfillComplete: true,
         };
       }
       const account = await authoriseAccountAccess(
@@ -81,6 +83,7 @@ export const accountRouter = createTRPCRouter({
 
       const { cursor } = input;
       const syncResult = { success: true, count: 0 };
+      const backfillComplete = !!account.inboxBackfilledAt;
 
       if (input.tab === "inbox" && !cursor && !input.labelId) {
         try {
@@ -98,18 +101,14 @@ export const accountRouter = createTRPCRouter({
             isFirstLoad || latestInboxThread.lastMessageDate < staleCutoff;
           if (shouldRefreshLatest && account.token) {
             const emailAccount = new Account(account.id, account.token);
-            if (isFirstLoad) {
-              await emailAccount.fetchAndSyncLatestInboxPage();
-            } else {
-              void emailAccount
-                .fetchAndSyncLatestInboxPage()
-                .catch((bgErr) =>
-                  routerLog.warn(
-                    "[getThreads] Background inbox refresh failed:",
-                    bgErr,
-                  ),
-                );
-            }
+            void emailAccount
+              .fetchAndSyncLatestInboxPage()
+              .catch((bgErr) =>
+                routerLog.warn(
+                  "[getThreads] Background inbox refresh failed:",
+                  bgErr,
+                ),
+              );
           }
         } catch (refreshErr) {
           routerLog.warn(
@@ -412,7 +411,7 @@ export const accountRouter = createTRPCRouter({
         threads = await ctx.db.thread.findMany({
           take: limit + 1,
           where: whereClause,
-          cursor: cursor ? { id: cursor } : undefined,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           orderBy: [
             { lastMessageDate: "desc" },
             { id: "desc" },
@@ -522,6 +521,7 @@ export const accountRouter = createTRPCRouter({
               nextCursor: retryNextCursor,
               syncStatus: syncResult,
               source: "database" as const,
+              backfillComplete,
             };
           }
 
@@ -558,6 +558,7 @@ export const accountRouter = createTRPCRouter({
               nextCursor: allThreadsNextCursor,
               syncStatus: syncResult,
               source: "database" as const,
+              backfillComplete,
             };
           }
         } catch (fixError) {
@@ -601,6 +602,7 @@ export const accountRouter = createTRPCRouter({
                 nextCursor: emergencyNextCursor,
                 syncStatus: syncResult,
                 source: "database" as const,
+                backfillComplete,
               };
             }
           } catch (emergencyError) {
@@ -653,6 +655,7 @@ export const accountRouter = createTRPCRouter({
             nextCursor: finalNextCursor,
             syncStatus: syncResult,
             source: "database" as const,
+            backfillComplete,
           };
         }
       }
@@ -662,6 +665,7 @@ export const accountRouter = createTRPCRouter({
         nextCursor,
         syncStatus: syncResult,
         source: "database" as const,
+        backfillComplete,
       };
     }),
 

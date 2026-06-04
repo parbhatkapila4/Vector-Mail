@@ -45,28 +45,121 @@ function scoreReplyIntent(text: string): { score: number; label: string | null }
 const briefingLog = makeTagLogger("account-router.briefing");
 
 type ThreadBrainEmailRow = {
+  subject: string;
   summary: string | null;
   bodySnippet: string | null;
   from: { address: string; name: string | null };
   sentAt: Date;
+  sysClassifications: string[];
+  sysLabels: string[];
 };
+
+type ReplyPriority = "High" | "Medium" | "Low";
+
+type ThreadBrainResult = {
+  about: string;
+  expectedFromMe: string;
+  expectedReason: string;
+  expectedPriority: ReplyPriority;
+};
+
+const REPLY_PRIORITY_RANK: Record<ReplyPriority, number> = {
+  Low: 0,
+  Medium: 1,
+  High: 2,
+};
+
+function minReplyPriority(a: ReplyPriority, b: ReplyPriority): ReplyPriority {
+  return REPLY_PRIORITY_RANK[a] <= REPLY_PRIORITY_RANK[b] ? a : b;
+}
+
+const MARKETING_LOCALPART_RE =
+  /(^|[._-])(marketing|promo|promos|promotions?|promotional|sales|campaigns?|rewards?|deals?|offers?|loyalty|newsletters?|news)([._-]|$)/i;
+
+
+const MARKETING_TEXT_RE =
+  /\b(\d+%\s*off|% off|on sale|flash sale|clearance|coupon|promo code|shop now|buy now|order now|limited[- ]time|exclusive offer|best deals?|new arrivals?|new collection|free shipping|save (up to )?\$?\d|unsubscribe|view (this )?(email )?in (your )?browser|sale (ends|is live|now on))\b/i;
+
+
+
+function senderIsAutomatedOrMarketing(
+  addr: string,
+  subject: string,
+  snippet: string,
+): boolean {
+  if (
+    isNonRepliable({ senderAddress: addr, subject, bodySnippet: snippet }).skip
+  ) {
+    return true;
+  }
+  const at = addr.toLowerCase().indexOf("@");
+  const localpart = at > 0 ? addr.toLowerCase().slice(0, at) : addr.toLowerCase();
+  return MARKETING_LOCALPART_RE.test(localpart);
+}
+
+function maxReplyPriority(
+  emails: ThreadBrainEmailRow[],
+  accountEmailLower: string,
+): ReplyPriority {
+  if (emails.length === 0) return "Low";
+  const last = emails[emails.length - 1]!;
+  if (last.from.address.toLowerCase() === accountEmailLower) return "Medium"; // you replied last
+
+  let latestInbound: ThreadBrainEmailRow | null = null;
+  for (let i = emails.length - 1; i >= 0; i--) {
+    if (emails[i]!.from.address.toLowerCase() !== accountEmailLower) {
+      latestInbound = emails[i]!;
+      break;
+    }
+  }
+  if (!latestInbound) return "Medium";
+
+  const addr = (latestInbound.from.address ?? "").toLowerCase();
+  const subject = latestInbound.subject ?? "";
+  const snippet =
+    latestInbound.summary?.trim() || latestInbound.bodySnippet?.trim() || "";
+  const text = `${subject} ${snippet}`;
+  const cls = (latestInbound.sysClassifications ?? []).map((s) => s.toLowerCase());
+  const labels = (latestInbound.sysLabels ?? []).map((s) => s.toLowerCase());
+  const hasAsk = scoreReplyIntent(text).score >= 6;
+
+
+  if (labels.includes("spam") || labels.includes("junk")) return "Low";
+
+
+
+
+  if (
+    senderIsAutomatedOrMarketing(addr, subject, snippet) ||
+    MARKETING_TEXT_RE.test(text)
+  ) {
+    return hasAsk ? "Medium" : "Low";
+  }
+
+
+
+  if (hasAsk) return "High";
+
+
+  if (cls.includes("promotions") || cls.includes("social")) return "Low";
+  if (cls.includes("updates") || cls.includes("forums")) return "Medium";
+
+
+
+  return "High";
+}
 
 function buildThreadBrainFallback(
   subject: string,
   emails: ThreadBrainEmailRow[],
   accountEmailLower: string,
-): {
-  about: string;
-  expectedFromMe: string;
-  expectedReason: string;
-  expectedConfidence: "High" | "Medium" | "Low";
-} {
+): ThreadBrainResult {
   if (emails.length === 0) {
     return {
       about: subject.slice(0, 400),
       expectedFromMe: "Open the messages below to see what might be needed from you.",
       expectedReason: "No message history available yet in this thread.",
-      expectedConfidence: "Low",
+      expectedPriority: "Low",
     };
   }
   let lastInbound: ThreadBrainEmailRow | null = null;
@@ -97,11 +190,15 @@ function buildThreadBrainFallback(
   const expectedReason = lastIsInbound
     ? `Last message is from an external sender ${daysAgo}d ago.`
     : `Latest message was sent by you ${daysAgo}d ago.`;
+  const rawPriority: ReplyPriority = lastIsInbound ? "High" : "Medium";
   return {
     about,
     expectedFromMe,
     expectedReason,
-    expectedConfidence: lastIsInbound ? "High" : "Medium",
+    expectedPriority: minReplyPriority(
+      rawPriority,
+      maxReplyPriority(emails, accountEmailLower),
+    ),
   };
 }
 
@@ -875,9 +972,12 @@ export const briefingProcedures = {
           emails: {
             orderBy: { sentAt: "asc" },
             select: {
+              subject: true,
               summary: true,
               bodySnippet: true,
               sentAt: true,
+              sysClassifications: true,
+              sysLabels: true,
               from: { select: { address: true, name: true } },
             },
           },
@@ -891,7 +991,7 @@ export const briefingProcedures = {
             "Try selecting another thread, or refresh the inbox if this was just synced.",
           expectedReason:
             "The thread may have moved accounts or is still loading from sync.",
-          expectedConfidence: "Low" as const,
+          expectedPriority: "Low" as const,
         };
       }
 
@@ -939,7 +1039,12 @@ Messages in chronological order (oldest to newest):
 ${lines.join("\n")}
 
 Return JSON only with this shape:
-{"about":"1-2 sentences: what this thread is about","expectedFromMe":"1-2 sentences: what the mailbox owner should do next (reply, wait, archive, or say if unclear)","expectedReason":"short plain-English why this recommendation matters","expectedConfidence":"High|Medium|Low"}`;
+{"about":"1-2 sentences: what this thread is about","expectedFromMe":"1-2 sentences: what the mailbox owner should do next (reply, wait, archive, or say if unclear)","expectedReason":"short plain-English why this matters","expectedPriority":"High|Medium|Low"}
+
+expectedPriority = how urgently the mailbox owner must PERSONALLY reply or act (it is NOT your confidence):
+- "High": a real person is waiting on a reply or decision, there is a deadline, or a direct question/request is addressed to the owner.
+- "Medium": worth a look but optional or not time-sensitive (an FYI that might need action, or the owner already replied and is waiting on the other side).
+- "Low": no response needed. Promotions, marketing, sales, newsletters, receipts, order/shipping updates, and automated notifications are ALWAYS "Low" even when clearly written.`;
 
         const completion = await openai.chat.completions.create({
           model: "anthropic/claude-3.5-haiku",
@@ -970,7 +1075,7 @@ Return JSON only with this shape:
           about?: string;
           expectedFromMe?: string;
           expectedReason?: string;
-          expectedConfidence?: string;
+          expectedPriority?: string;
         };
         const about = typeof parsed.about === "string" ? parsed.about.trim() : "";
         const expectedFromMe =
@@ -981,22 +1086,27 @@ Return JSON only with this shape:
           typeof parsed.expectedReason === "string"
             ? parsed.expectedReason.trim()
             : fallback.expectedReason;
-        const expectedConfidenceRaw =
-          typeof parsed.expectedConfidence === "string"
-            ? parsed.expectedConfidence.trim()
-            : fallback.expectedConfidence;
-        const expectedConfidence: "High" | "Medium" | "Low" =
-          expectedConfidenceRaw === "High" ||
-            expectedConfidenceRaw === "Medium" ||
-            expectedConfidenceRaw === "Low"
-            ? expectedConfidenceRaw
-            : fallback.expectedConfidence;
+        const expectedPriorityRaw =
+          typeof parsed.expectedPriority === "string"
+            ? parsed.expectedPriority.trim()
+            : fallback.expectedPriority;
+        const llmPriority: ReplyPriority =
+          expectedPriorityRaw === "High" ||
+            expectedPriorityRaw === "Medium" ||
+            expectedPriorityRaw === "Low"
+            ? expectedPriorityRaw
+            : fallback.expectedPriority;
+
+        const expectedPriority = minReplyPriority(
+          llmPriority,
+          maxReplyPriority(thread.emails, accountEmailLower),
+        );
         if (about.length > 0 && expectedFromMe.length > 0) {
           return {
             about: about.slice(0, 800),
             expectedFromMe: expectedFromMe.slice(0, 800),
             expectedReason: expectedReason.slice(0, 240),
-            expectedConfidence,
+            expectedPriority,
           };
         }
       } catch (e) {

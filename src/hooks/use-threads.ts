@@ -260,6 +260,12 @@ function useThreads() {
     };
   }, [currentTab, canFetchSingleAccount, isUnified, isFetching, threadsFromQuery.length, accountId, refetch]);
 
+  const backfillComplete = isUnified
+    ? true
+    : ((data?.pages?.[data.pages.length - 1] as
+      | { backfillComplete?: boolean }
+      | undefined)?.backfillComplete ?? true);
+
   const effectiveAccountId = useMemo(() => {
     if (!threadId || !threads?.length) return isUnified ? firstAccountId : accountId;
     const openThread = threads.find((t) => t.id === threadId) as (Thread | UnifiedThread) | undefined;
@@ -279,6 +285,7 @@ function useThreads() {
     account: myAccount,
     threadId,
     setThreadId,
+    backfillComplete,
     isPlaceholderData: !!isPlaceholderData,
     selectedLabelId: currentTab === "label" ? selectedLabelId : null,
     setSelectedLabelId,

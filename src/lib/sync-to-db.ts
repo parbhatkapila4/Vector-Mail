@@ -352,8 +352,8 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
 
     const effectiveLastMessageDate: Date =
       candidateDate &&
-      (!existingThread?.lastMessageDate ||
-        candidateDate > existingThread.lastMessageDate)
+        (!existingThread?.lastMessageDate ||
+          candidateDate > existingThread.lastMessageDate)
         ? candidateDate
         : existingThread?.lastMessageDate ?? candidateDate ?? new Date(0);
 
@@ -363,8 +363,8 @@ async function upsertEmail(email: EmailMessage, accountId: string) {
         subject: email.subject,
         accountId,
         ...(candidateDate &&
-        (!existingThread?.lastMessageDate ||
-          candidateDate > existingThread.lastMessageDate)
+          (!existingThread?.lastMessageDate ||
+            candidateDate > existingThread.lastMessageDate)
           ? { lastMessageDate: candidateDate }
           : {}),
         done: false,
@@ -591,6 +591,8 @@ async function upsertAttachment(emailId: string, attachment: EmailAttachment) {
 async function upsertEmailAddress(address: EmailAddress, accountId: string) {
   const addr = normalizeEmailAddressString(address?.address ?? "", address?.raw);
   if (!addr || !addr.includes("@")) return null;
+  const cleanName = address?.name?.trim() ? address.name.trim() : undefined;
+  const cleanRaw = address?.raw?.trim() ? address.raw : undefined;
   try {
     return await db.emailAddress.upsert({
       where: {
@@ -601,13 +603,13 @@ async function upsertEmailAddress(address: EmailAddress, accountId: string) {
       },
       create: {
         address: addr,
-        name: address.name ?? undefined,
-        raw: address.raw ?? undefined,
+        name: cleanName,
+        raw: cleanRaw,
         accountId,
       },
       update: {
-        name: address.name ?? undefined,
-        raw: address.raw ?? undefined,
+        name: cleanName,
+        raw: cleanRaw,
       },
     });
   } catch (error: unknown) {

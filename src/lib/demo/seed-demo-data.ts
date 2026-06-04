@@ -10910,7 +10910,7 @@ export function getDemoThreadBrain(threadId: string): {
   about: string;
   expectedFromMe: string;
   expectedReason: string;
-  expectedConfidence: "High" | "Medium" | "Low";
+  expectedPriority: "High" | "Medium" | "Low";
 } {
   const byId: Record<
     string,
@@ -10918,7 +10918,7 @@ export function getDemoThreadBrain(threadId: string): {
       about: string;
       expectedFromMe: string;
       expectedReason: string;
-      expectedConfidence: "High" | "Medium" | "Low";
+      expectedPriority: "High" | "Medium" | "Low";
     }
   > = {
     "demo-thread-1": {
@@ -10926,22 +10926,22 @@ export function getDemoThreadBrain(threadId: string): {
         "A founder is asking about pilot access, AI summaries, search, and your API for integrations.",
       expectedFromMe:
         "Reply with architecture or pilot details, or share a scheduling link if you want to continue.",
-      expectedReason: "Latest inbound message asks for specific next steps.",
-      expectedConfidence: "High",
+      expectedReason: "A real person is waiting on a reply with specific next steps.",
+      expectedPriority: "High",
     },
     "demo-thread-4": {
       about: "Product feedback on search UX and interest in what’s on the roadmap.",
       expectedFromMe:
         "Acknowledge the feedback and clarify whether search improvements are planned.",
-      expectedReason: "External sender asked roadmap questions in the latest message.",
-      expectedConfidence: "High",
+      expectedReason: "External sender asked roadmap questions awaiting your answer.",
+      expectedPriority: "High",
     },
     "demo-thread-8": {
       about: "Promotional or bulk mail-style thread in the demo inbox.",
       expectedFromMe:
         "No reply needed unless you want to engage; fine to archive.",
-      expectedReason: "Newsletter-like content with no direct ask.",
-      expectedConfidence: "Medium",
+      expectedReason: "Newsletter-like content with no direct ask — nothing to reply to.",
+      expectedPriority: "Low",
     },
   };
   return (
@@ -10951,7 +10951,7 @@ export function getDemoThreadBrain(threadId: string): {
       expectedFromMe:
         "Request access when you’re ready to use inbox intelligence on your own mail.",
       expectedReason: "Demo placeholder without real thread intent signals.",
-      expectedConfidence: "Low",
+      expectedPriority: "Low",
     }
   );
 }

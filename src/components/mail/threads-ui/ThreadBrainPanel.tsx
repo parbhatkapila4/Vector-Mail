@@ -101,11 +101,12 @@ export function ThreadBrainPanel({
                   Why this? {data.expectedReason}{" "}
                   <span
                     className={cn(
-                      "ai-brief-confidence",
-                      `ai-brief-confidence-${data.expectedConfidence.toLowerCase()}`,
+                      "ai-brief-priority",
+                      `ai-brief-priority-${data.expectedPriority.toLowerCase()}`,
                     )}
+                    title="How urgently this needs your reply"
                   >
-                    {data.expectedConfidence}
+                    {data.expectedPriority}
                   </span>
                 </div>
               )}
