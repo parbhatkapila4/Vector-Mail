@@ -29,16 +29,6 @@ export const accountRouter = createTRPCRouter({
   ...threadReadingProcedures,
   ...threadActionProcedures,
   ...syncProcedures,
-
-
-
-
-
-
-
-
-
-
   getThreads: protectedProcedure
     .input(
       z.object({
@@ -101,11 +91,11 @@ export const accountRouter = createTRPCRouter({
             isFirstLoad || latestInboxThread.lastMessageDate < staleCutoff;
           if (shouldRefreshLatest && account.token) {
             const emailAccount = new Account(account.id, account.token);
-            void emailAccount
+            await emailAccount
               .fetchAndSyncLatestInboxPage()
               .catch((bgErr) =>
                 routerLog.warn(
-                  "[getThreads] Background inbox refresh failed:",
+                  "[getThreads] Latest inbox refresh failed, continuing with DB:",
                   bgErr,
                 ),
               );
@@ -668,15 +658,6 @@ export const accountRouter = createTRPCRouter({
         backfillComplete,
       };
     }),
-
-
-
-
   ...eventProcedures,
-
-
-
-
-
   ...labelProcedures,
 });

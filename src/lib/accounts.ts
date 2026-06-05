@@ -697,7 +697,7 @@ export class Account {
     pageToken?: string,
     listTimeoutMs: number = FAST_FIRST_LIST_TIMEOUT_MS,
     getTimeoutMs: number = FAST_FIRST_FETCH_TIMEOUT_MS,
-  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string; listed: number; fetched: number }> {
+  ): Promise<{ emails: EmailMessage[]; nextPageToken?: string; listed: number; fetched: number; newCount: number }> {
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
     const params: Record<string, string | number> = {
       maxResults: maxIds,
@@ -749,7 +749,13 @@ export class Account {
         skipRecalculate: true,
       });
     }
-    return { emails, nextPageToken, listed: messageIds.length, fetched: emails.length };
+    return {
+      emails,
+      nextPageToken,
+      listed: messageIds.length,
+      fetched: emails.length,
+      newCount: idsToFetch.length,
+    };
   }
 
   async establishInboxDeltaToken(): Promise<void> {
@@ -1755,27 +1761,26 @@ export class Account {
   }
 
   async fetchAndSyncLatestInboxPage(): Promise<{ count: number }> {
+    const MAX_PAGES = 8;
+    const BUDGET_MS = 35_000;
+    const startedAt = Date.now();
+    let pageToken: string | undefined = undefined;
+    let total = 0;
     try {
-      const result = await this.fetchEmailsByFolderOnePage(
-        "inbox",
-        undefined,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        100,
-      );
-      if (result.emails.length === 0) return { count: 0 };
-      await syncEmailsToDatabase(result.emails, this.id);
+      for (let i = 0; i < MAX_PAGES; i++) {
+        const page = await this.fetchInboxPageViaList(50, pageToken, 12_000, 7_000);
+        total += page.fetched;
+        if (!page.nextPageToken || page.newCount === 0) break;
+        if (Date.now() - startedAt > BUDGET_MS) break;
+        pageToken = page.nextPageToken;
+      }
       debugLog(
-        `[fetchAndSyncLatestInboxPage] Synced ${result.emails.length} latest inbox emails for account ${this.id}`,
+        `[fetchAndSyncLatestInboxPage] caught up inbox - synced ${total} new email(s) for account ${this.id}`,
       );
-      return { count: result.emails.length };
+      return { count: total };
     } catch (error) {
       accountsLog.warn("[fetchAndSyncLatestInboxPage] Failed (inbox will use existing DB):", error);
-      return { count: 0 };
+      return { count: total };
     }
   }
 

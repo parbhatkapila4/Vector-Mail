@@ -137,37 +137,39 @@
   .vm-toast {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    width: var(--width, 356px);
-    padding: 12px 14px;
-    border-radius: 12px;
+    gap: 11px;
+    width: var(--width, 360px);
+    padding: 13px 15px;
+    border-radius: 13px;
     font-family: inherit;
     font-size: 13px;
     line-height: 1.45;
     pointer-events: auto;
-    background: hsl(0 0% 8% / 0.92);
-    border: 1px solid hsl(0 0% 100% / 0.08);
-    color: hsl(0 0% 94%);
+    background: hsl(0 0% 7% / 0.85);
+    border: 1px solid hsl(0 0% 100% / 0.09);
+    color: hsl(0 0% 95%);
     box-shadow:
-      0 1px 2px hsl(0 0% 0% / 0.25),
-      0 8px 24px -4px hsl(0 0% 0% / 0.5);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      0 1px 2px hsl(0 0% 0% / 0.3),
+      0 18px 44px -14px hsl(0 0% 0% / 0.62);
+    backdrop-filter: blur(22px) saturate(1.7);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
   }
 
   .vm-toast-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
-    margin-top: 1px;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    margin-top: 0.5px;
+    background: hsl(0 0% 100% / 0.07);
+    border: 1px solid hsl(0 0% 100% / 0.06);
   }
 
   .vm-toast-icon svg {
-    width: 16px;
-    height: 16px;
+    width: 13px;
+    height: 13px;
   }
 
   .vm-toast-content {
@@ -179,7 +181,7 @@
   }
 
   .vm-toast-title {
-    font-weight: 500;
+    font-weight: 600;
     font-size: 13px;
     letter-spacing: -0.01em;
     color: hsl(0 0% 96%);
@@ -228,79 +230,45 @@
     background: hsl(0 0% 100% / 0.06);
   }
 
-  .vm-toast--success {
-    background: hsl(145 30% 8% / 0.94);
-    border-color: hsl(152 28% 18% / 0.7);
-  }
 
-  .vm-toast--success .vm-toast-title {
-    color: hsl(152 60% 70%);
+  .vm-toast--success .vm-toast-icon {
+    background: hsl(152 44% 13%);
+    border-color: hsl(152 38% 26% / 0.7);
   }
-
-  .vm-toast--success .vm-toast-desc {
-    color: hsl(152 16% 54%);
-  }
-
   .vm-toast--success .vm-toast-icon svg {
-    color: hsl(152 60% 56%);
+    color: hsl(150 68% 60%);
   }
 
-  .vm-toast--error {
-    background: hsl(350 30% 9% / 0.94);
-    border-color: hsl(350 28% 20% / 0.7);
+  .vm-toast--error .vm-toast-icon {
+    background: hsl(350 48% 14%);
+    border-color: hsl(350 42% 30% / 0.7);
   }
-
-  .vm-toast--error .vm-toast-title {
-    color: hsl(350 80% 76%);
-  }
-
-  .vm-toast--error .vm-toast-desc {
-    color: hsl(350 16% 56%);
-  }
-
   .vm-toast--error .vm-toast-icon svg {
-    color: hsl(350 70% 60%);
+    color: hsl(352 82% 68%);
   }
 
-
-  .vm-toast--info {
-    background: hsl(220 30% 9% / 0.94);
-    border-color: hsl(218 22% 20% / 0.7);
+  .vm-toast--info .vm-toast-icon {
+    background: hsl(245 42% 18%);
+    border-color: hsl(245 45% 36% / 0.7);
   }
-
-  .vm-toast--info .vm-toast-title {
-    color: hsl(210 70% 75%);
-  }
-
-  .vm-toast--info .vm-toast-desc {
-    color: hsl(215 14% 56%);
-  }
-
   .vm-toast--info .vm-toast-icon svg {
-    color: hsl(210 60% 62%);
+    color: hsl(244 84% 78%);
   }
 
-
-  .vm-toast--warning {
-    background: hsl(36 30% 9% / 0.94);
-    border-color: hsl(34 22% 20% / 0.7);
+  .vm-toast--warning .vm-toast-icon {
+    background: hsl(38 48% 14%);
+    border-color: hsl(38 44% 30% / 0.7);
   }
-
-  .vm-toast--warning .vm-toast-title {
-    color: hsl(42 80% 68%);
-  }
-
-  .vm-toast--warning .vm-toast-desc {
-    color: hsl(38 14% 56%);
-  }
-
   .vm-toast--warning .vm-toast-icon svg {
-    color: hsl(42 70% 56%);
+    color: hsl(42 86% 62%);
   }
 
-
+  .vm-toast--loading .vm-toast-icon {
+    background: hsl(245 42% 18%);
+    border-color: hsl(245 45% 36% / 0.7);
+  }
   .vm-toast--loading .vm-toast-icon svg {
-    color: hsl(0 0% 56%);
+    color: hsl(244 84% 78%);
   }
 
 
@@ -964,6 +932,20 @@
 
   75% {
     clip-path: polygon(0 60%, 100% 60%, 100% 68%, 0 68%);
+  }
+}
+
+@keyframes vmx-loadbar {
+  0% {
+    transform: translateX(0%);
+  }
+
+  50% {
+    transform: translateX(257%);
+  }
+
+  100% {
+    transform: translateX(0%);
   }
 }
 

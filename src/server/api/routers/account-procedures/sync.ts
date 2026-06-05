@@ -977,6 +977,13 @@ export const syncProcedures = {
           );
           incrementSyncFailure();
           syncLog.error("[syncEmails mutation] Email sync failed:", error);
+          if (input.continueToken) {
+            return {
+              success: false as const,
+              message: "Couldn't fetch the next page of mail right now.",
+              hasMore: false as const,
+            };
+          }
 
           if (error instanceof TRPCError) {
             throw error;

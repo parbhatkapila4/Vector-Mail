@@ -249,21 +249,40 @@ export function Navigation() {
                 {accountMenuOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[140px] rounded-[10px] border border-[#e5e0ee] bg-white p-1 shadow-[0_8px_20px_rgba(0,0,0,0.08)]"
+                    className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[150px] overflow-hidden rounded-[10px] border border-[#e5e0ee] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)]"
                   >
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      disabled={loggingOut}
-                      aria-busy={loggingOut}
-                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-2 text-left text-[13px] font-medium text-[#991b1b] transition-colors hover:bg-[#fef2f2] disabled:cursor-wait disabled:hover:bg-transparent"
-                      role="menuitem"
-                    >
-                      {loggingOut && (
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                      )}
-                      {loggingOut ? "Logging out…" : "Logout"}
-                    </button>
+                    {loggingOut && (
+                      <div className="h-[2px] w-full overflow-hidden bg-[#f4eaea]">
+                        <span className="block h-full w-[28%] rounded-full bg-[#b91c1c] [animation:vmx-loadbar_1.15s_ease-in-out_infinite]" />
+                      </div>
+                    )}
+                    <div className="p-1">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={loggingOut}
+                        aria-busy={loggingOut}
+                        className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-[13px] font-medium text-[#991b1b] transition-colors hover:bg-[#fef2f2] disabled:cursor-wait disabled:hover:bg-transparent"
+                        role="menuitem"
+                      >
+                        {loggingOut ? (
+                          <>
+                            <svg
+                              className="h-4 w-4 shrink-0 animate-spin [animation-duration:0.9s]"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              aria-hidden="true"
+                            >
+                              <circle cx="8" cy="8" r="6" stroke="#efd6d6" strokeWidth="2" />
+                              <path d="M14 8a6 6 0 0 0-6-6" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                            Signing out…
+                          </>
+                        ) : (
+                          "Logout"
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -115,25 +115,26 @@ function getAvatarStyle(
   };
 }
 
-const MAIL_SUBDOMAIN_PREFIX =
-  /^(mail|mailer|mailing|email|e|m|news|newsletter|marketing|mktg|promo|promos|promotions?|notification[s]?|notify|alert[s]?|no-?reply|do-?not-?reply|info|hello|hi|support|contact|reply|update[s]?|billing|invoice[s]?|sales|account[s]?|offers?|deals?|smtp|relay|mta|rmp)\./i;
+const MULTI_LEVEL_TLDS: ReadonlySet<string> = new Set([
+  "co.in", "org.in", "net.in", "ac.in", "gov.in", "edu.in", "firm.in", "gen.in", "ind.in",
+  "co.uk", "org.uk", "gov.uk", "ac.uk", "me.uk", "ltd.uk", "plc.uk",
+  "com.au", "net.au", "org.au", "edu.au", "gov.au",
+  "co.jp", "or.jp", "ne.jp", "co.nz", "com.br", "com.mx", "com.sg", "com.my",
+  "co.id", "com.tr", "co.kr", "co.za", "com.cn", "com.hk", "com.tw",
+]);
 
-function stripMailSubdomain(domain: string): string {
-  const stripped = domain.replace(MAIL_SUBDOMAIN_PREFIX, "");
-  return stripped.includes(".") ? stripped : domain;
+function registrableDomain(domain: string): string {
+  const parts = domain.split(".").filter(Boolean);
+  if (parts.length <= 2) return domain;
+  const lastTwo = parts.slice(-2).join(".");
+  return MULTI_LEVEL_TLDS.has(lastTwo) ? parts.slice(-3).join(".") : lastTwo;
 }
 
 function getLogoProviders(domain: string): ReadonlyArray<string> {
-  const root = stripMailSubdomain(domain);
-  const encFull = encodeURIComponent(domain);
-  const encRoot = encodeURIComponent(root);
-  const list: string[] = [];
-  if (root !== domain) {
-    list.push(`https://icons.duckduckgo.com/ip3/${encRoot}.ico`);
-  }
-  list.push(`https://icons.duckduckgo.com/ip3/${encFull}.ico`);
-  list.push(`https://www.google.com/s2/favicons?domain=${encFull}&sz=128`);
-  return list;
+  const enc = (d: string) =>
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=128`;
+  const root = registrableDomain(domain);
+  return root !== domain ? [enc(root), enc(domain)] : [enc(domain)];
 }
 
 const PERSONAL_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
@@ -435,6 +436,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       firstBatchTriggeredRef.current = false;
       backgroundSyncTriggeredRef.current = false;
       toast.success("Account reconnected", {
+        id: "account-reconnected",
         description: "Your email is connected again. Syncing now.",
         duration: 4000,
       });
@@ -452,6 +454,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       firstBatchTriggeredRef.current = false;
       backgroundSyncTriggeredRef.current = false;
       toast.error("Reconnect didn’t complete", {
+        id: "reconnect-failed",
         description: "Auth failed right after connecting. Please try reconnecting again or check your Google account.",
         duration: 5000,
       });
@@ -462,6 +465,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     const errorParam = searchParams.get("error");
     if (errorParam === "account_mismatch") {
       toast.error("Use the same Google account", {
+        id: "account-error",
         description: "Please connect the same Google account you used to sign in. Sign out and sign in with the correct account if needed.",
         duration: 8000,
       });
@@ -470,6 +474,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       window.history.replaceState({}, "", url.pathname + url.search);
     } else if (errorParam === "one_account_only") {
       toast.error("One account per user", {
+        id: "account-error",
         description: "You already have a connected account. We use a single Google account per user.",
         duration: 6000,
       });
@@ -512,10 +517,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   }, [utils.account.getAccounts]);
   useEffect(() => {
     wasUnmountedRef.current = false;
+    const timeouts = pendingTimeoutsRef.current;
     return () => {
       wasUnmountedRef.current = true;
-      pendingTimeoutsRef.current.forEach((id) => clearTimeout(id));
-      pendingTimeoutsRef.current.clear();
+      timeouts.forEach((id) => clearTimeout(id));
+      timeouts.clear();
     };
   }, []);
 
@@ -539,7 +545,6 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       scheduleSafe(() => void refetch(), 800);
     },
     onError: (error) => {
-      console.warn("[ThreadList] Quick first sync:", error.message);
       if (/timed out|Initial mail fetch/i.test(error.message)) {
         toast.info("Still reaching your mail provider…", {
           description: "Tap Sync if threads don’t show up in a minute.",
@@ -601,13 +606,8 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         lastContinueTokenRef.current = null;
         return;
       }
-      if (data.needsReconnection || data.success === false) {
-        console.warn("[ThreadList] Sync finished with issues", data);
-      } else {
-        console.log("[ThreadList] Sync completed", data);
-      }
-
       if (data.needsReconnection) {
+        toast.dismiss("sync-status");
         autoContinueSyncCountRef.current = 0;
         void utils.account.getAccounts.invalidate();
         if (isReconnectUiMuted()) return;
@@ -625,15 +625,22 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         return;
       }
       if (data.success === false) {
+        const wasBackfill = autoContinueSyncCountRef.current > 0;
         autoContinueSyncCountRef.current = 0;
-        toast.error("Sync failed. Try again.", { duration: 3000 });
+        lastContinueTokenRef.current = null;
+        if (!wasBackfill) {
+          toast.error("Sync failed. Try again.", { id: "sync-status", duration: 3000 });
+        } else {
+          toast.dismiss("sync-status");
+        }
         void forceThreadListRefresh();
         return;
       }
 
       if ("background" in data && data.background) {
         autoContinueSyncCountRef.current = 0;
-        toast.info("Syncing in the background…", {
+        toast.info("Syncing in the background", {
+          id: "sync-status",
           description: "New mail will show up as it’s fetched. You can keep using the app.",
           duration: 5000,
         });
@@ -660,7 +667,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         if (lastContinueTokenRef.current === continueToken) {
           autoContinueSyncCountRef.current = 0;
           lastContinueTokenRef.current = null;
-          console.warn("[ThreadList] Sync stopped — continueToken repeated.");
+          toast.success("Inbox up to date", {
+            id: "sync-status",
+            description: "You’re all caught up.",
+            duration: 2500,
+          });
           setRefreshingAfterSync(true);
           scheduleSafe(() => void forceThreadListRefresh(), 1200);
           scheduleSafe(() => setRefreshingAfterSync(false), 2000);
@@ -671,6 +682,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           autoContinueSyncCountRef.current = 0;
           lastContinueTokenRef.current = null;
           toast.info("Paused inbox sync", {
+            id: "sync-status",
             description:
               "Loaded a lot of mail in this session. Tap Sync again to keep going from where it left off.",
             duration: 6000,
@@ -710,11 +722,13 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
       scheduleSafe(() => void forceThreadListRefresh(), 1200);
 
       if (data.success) {
-        toast.success("Sync complete", {
-          description: (data as { syncAllFolders?: boolean }).syncAllFolders
-            ? "Inbox, Sent, and Trash synced."
-            : (data.message ?? "Emails synced"),
-          duration: 2000,
+        const isAll = (data as { syncAllFolders?: boolean }).syncAllFolders === true;
+        toast.success(isAll ? "Everything synced" : "Inbox up to date", {
+          id: "sync-status",
+          description: isAll
+            ? "Inbox, Sent, and Trash are all up to date."
+            : "You’re all caught up.",
+          duration: 2500,
         });
       }
     },
@@ -735,12 +749,25 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
         /the user aborted|aborted a request|signal is aborted/i.test(rawMessage);
 
       if (wasAborted) {
+        toast.dismiss("sync-status");
         autoContinueSyncCountRef.current = 0;
         lastContinueTokenRef.current = null;
         return;
       }
 
-      console.error("[ThreadList] ❌ Sync failed:", error);
+      if (autoContinueSyncCountRef.current > 0) {
+        toast.dismiss("sync-status");
+        autoContinueSyncCountRef.current = 0;
+        lastContinueTokenRef.current = null;
+        setRefreshingAfterSync(false);
+        void forceThreadListRefresh();
+        return;
+      }
+
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[ThreadList] Sync failed:", error);
+      }
+      toast.dismiss("sync-status");
 
       const errorMessage =
         rawMessage.trim() && !/unknown\s*error/i.test(rawMessage)
@@ -796,8 +823,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
           duration: 5000,
         });
       } else {
+        const looksTechnical =
+          /status code\s*\d|request failed|network error|ECONN|fetch failed|socket hang up/i.test(
+            errorMessage,
+          );
         toast.error("Sync failed", {
-          description: errorMessage.length > 100 ? "An error occurred while syncing. Please try again." : errorMessage,
+          description:
+            looksTechnical || errorMessage.length > 100
+              ? "We couldn’t reach the mail server. Please try again in a moment."
+              : errorMessage,
           duration: 4000,
         });
       }
@@ -936,7 +970,11 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     if (syncEmailsMutation.isPending) {
       syncCancelledRef.current = true;
       syncEmailsMutation.reset();
-      toast.info("Sync stopped");
+      toast.info("Sync paused", {
+        id: "sync-status",
+        description: "Your inbox is unchanged - tap Sync to pick up where it left off.",
+        duration: 3000,
+      });
       return;
     }
     if (!accountId) {
@@ -954,10 +992,18 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     autoContinueSyncCountRef.current = 0;
     const noThreadsYet = (threads?.length ?? 0) === 0;
     if (noThreadsYet && !syncFirstBatchQuickMutation.isPending) {
-      toast.info("Fetching your first emails…", { duration: 2500 });
+      toast.loading("Fetching your inbox", {
+        id: "sync-status",
+        description: "Pulling your first batch of mail - this only takes a moment.",
+        duration: 20000,
+      });
       syncFirstBatchQuickMutation.mutate({ accountId: accountId.trim() });
     } else {
-      toast.info("Checking for new emails…");
+      toast.loading("Checking for new mail", {
+        id: "sync-status",
+        description: "Looking for anything that's arrived since you were last here.",
+        duration: 20000,
+      });
     }
 
     syncEmailsMutation.mutate({
@@ -997,6 +1043,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
 
     firstBatchTriggeredRef.current = true;
     toast.info("Fetching your latest emails…", {
+      id: "fetching-latest",
       description: "Getting your first batch so your inbox appears quickly.",
       duration: 3500,
     });
