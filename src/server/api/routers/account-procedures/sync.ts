@@ -107,6 +107,43 @@ export const syncProcedures = {
       }
     }),
 
+  warmInboxDepth: protectedProcedure
+    .input(z.object({ accountId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      if (isDemoCall(ctx, input.accountId)) return { count: 0 };
+      if (!ctx.auth.userId) return { count: 0 };
+      let account: AccountAccess;
+      try {
+        account = await authoriseAccountAccess(input.accountId, ctx.auth.userId);
+      } catch {
+        return { count: 0 };
+      }
+      if (!account.token?.trim()) return { count: 0 };
+      let emailAccount = new Account(account.id, account.token);
+      const tokenExpiredOrExpiringSoon =
+        account.tokenExpiresAt &&
+        account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+      if (account.needsReconnection || tokenExpiredOrExpiringSoon) {
+        const refreshed = await emailAccount.refreshTokenIfPossible();
+        if (refreshed) {
+          const updated = await ctx.db.account.findUnique({
+            where: { id: account.id },
+            select: { token: true },
+          });
+          if (updated?.token) {
+            account = { ...account, token: updated.token, needsReconnection: false };
+            emailAccount = new Account(account.id, account.token);
+          }
+        }
+      }
+      try {
+        const result = await emailAccount.ensureInboxDepth();
+        return { count: result.count };
+      } catch (error) {
+        syncLog.warn("[warmInboxDepth] background warm-up failed (non-fatal):", error);
+        return { count: 0 };
+      }
+    }),
 
   getInboxPreview: protectedProcedure
     .input(

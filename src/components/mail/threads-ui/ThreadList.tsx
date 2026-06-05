@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api, type RouterOutputs } from "@/trpc/react";
 import useThreads from "@/hooks/use-threads";
+import { getThreadTimestamp } from "@/lib/thread-merge";
 import { UNIFIED_INBOX_ACCOUNT_ID } from "../AccountSwitcher";
 import { isSearchingAtom, searchValueAtom } from "../search/SearchBar";
 import { SearchResults } from "../search/SearchResults";
@@ -404,6 +405,7 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const quickSyncTriggeredRef = useRef(false);
   const firstBatchTriggeredRef = useRef(false);
   const backgroundSyncTriggeredRef = useRef(false);
+  const warmedAccountIdRef = useRef<string | null>(null);
   const autoContinueSyncCountRef = useRef(0);
   const reconnectUiMutedUntilRef = useRef(0);
   const muteReconnectUi = useCallback((durationMs: number = RECONNECT_UI_MUTE_MS) => {
@@ -568,6 +570,14 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
             onClick: () => window.location.assign("/api/connect/google"),
           },
         });
+      }
+    },
+  });
+
+  const warmInboxDepthMutation = api.account.warmInboxDepth.useMutation({
+    onSuccess: (data) => {
+      if (data?.count && data.count > 0) {
+        void utils.account.getNumThreads.invalidate();
       }
     },
   });
@@ -1055,6 +1065,33 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     isDemo,
     syncFirstBatchQuickMutation,
     threads?.length,
+  ]);
+
+  useEffect(() => {
+    if (
+      accountsLoading ||
+      !accountId?.trim() ||
+      accountId === UNIFIED_INBOX_ACCOUNT_ID ||
+      isDemo ||
+      !isAccountValid ||
+      currentTab !== "inbox" ||
+      backfillComplete
+    )
+      return;
+    if (warmedAccountIdRef.current === accountId) return;
+    if ((threads?.length ?? 0) === 0) return;
+    if (warmInboxDepthMutation.isPending) return;
+    warmedAccountIdRef.current = accountId;
+    warmInboxDepthMutation.mutate({ accountId: accountId.trim() });
+  }, [
+    accountId,
+    accountsLoading,
+    isAccountValid,
+    isDemo,
+    currentTab,
+    backfillComplete,
+    threads?.length,
+    warmInboxDepthMutation,
   ]);
   useEffect(() => {
     if (
@@ -1575,7 +1612,12 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
   const groupedThreads = useMemo(() => {
     if (!threadsForDisplay || threadsForDisplay.length === 0) return {};
     return threadsForDisplay.reduce((acc: GroupedThreads, thread: Thread) => {
-      const date = format(thread.lastMessageDate ?? new Date(), "yyyy-MM-dd");
+      // Group by the SAME timestamp the list is sorted by (getThreadTimestamp),
+      // not lastMessageDate alone. If these two ever disagree (e.g. a thread is
+      // mid-sync with a stale lastMessageDate), grouping by a different key than
+      // the sort key drags an old date-group above a newer one — the scramble.
+      // Sharing one timestamp source makes group order == sort order, always.
+      const date = format(new Date(getThreadTimestamp(thread)), "yyyy-MM-dd");
       if (!acc[date]) acc[date] = [];
       acc[date].push(thread);
       return acc;
@@ -1688,7 +1730,9 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     const fromName =
       latestEmail?.from?.name?.trim() || fromAddress || "Unknown";
     const subject = thread.subject || "(No subject)";
-    const date = thread.lastMessageDate ?? new Date();
+    // Match the grouping/sort key so the row's date badge agrees with the
+    // group header it sits under (see groupedThreads).
+    const date = new Date(getThreadTimestamp(thread));
     const bodySnippet = latestEmail?.bodySnippet ?? null;
     const sysLabels = latestEmail?.sysLabels ?? [];
     const sysClassifications = latestEmail?.sysClassifications ?? [];

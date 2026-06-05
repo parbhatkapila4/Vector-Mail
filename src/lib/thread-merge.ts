@@ -4,6 +4,7 @@ export type ThreadLike = {
   emails?: Array<{
     sentAt?: Date | string | null;
     receivedAt?: Date | string | null;
+    [key: string]: unknown;
   }>;
 };
 

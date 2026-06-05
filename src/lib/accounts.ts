@@ -1784,6 +1784,30 @@ export class Account {
     }
   }
 
+  async ensureInboxDepth(): Promise<{ count: number }> {
+    const MAX_PAGES = 5;
+    const BUDGET_MS = 30_000;
+    const startedAt = Date.now();
+    let pageToken: string | undefined = undefined;
+    let total = 0;
+    try {
+      for (let i = 0; i < MAX_PAGES; i++) {
+        const page = await this.fetchInboxPageViaList(50, pageToken, 12_000, 7_000);
+        total += page.fetched;
+        if (!page.nextPageToken) break;
+        if (Date.now() - startedAt > BUDGET_MS) break;
+        pageToken = page.nextPageToken;
+      }
+      debugLog(
+        `[ensureInboxDepth] warmed inbox depth - synced ${total} message(s) for account ${this.id}`,
+      );
+      return { count: total };
+    } catch (error) {
+      accountsLog.warn("[ensureInboxDepth] Failed (inbox will use existing DB):", error);
+      return { count: total };
+    }
+  }
+
   async syncFirstBatchQuick(): Promise<{ count: number }> {
     const start = Date.now();
     const newerThanQuery = `newer_than:${SYNC_WINDOW_DAYS}d`;
