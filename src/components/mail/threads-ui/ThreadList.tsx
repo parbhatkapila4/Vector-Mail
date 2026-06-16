@@ -1081,8 +1081,15 @@ export const ThreadList = forwardRef<ThreadListRef, ThreadListProps>(function Th
     if (warmedAccountIdRef.current === accountId) return;
     if ((threads?.length ?? 0) === 0) return;
     if (warmInboxDepthMutation.isPending) return;
-    warmedAccountIdRef.current = accountId;
-    warmInboxDepthMutation.mutate({ accountId: accountId.trim() });
+    if (syncEmailsPendingRef.current) return;
+    const acct = accountId.trim();
+    const timer = setTimeout(() => {
+      if (warmedAccountIdRef.current === acct) return;
+      if (syncEmailsPendingRef.current || warmInboxDepthMutation.isPending) return;
+      warmedAccountIdRef.current = acct;
+      warmInboxDepthMutation.mutate({ accountId: acct });
+    }, 6000);
+    return () => clearTimeout(timer);
   }, [
     accountId,
     accountsLoading,

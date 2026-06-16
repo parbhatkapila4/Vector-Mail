@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const VIDEO_SRC = "/vectormail-walkthrough.mp4";
+const VIDEO_SRC = "/Loom-Vectormail.mp4";
 
 export function FinalCTA() {
   const [open, setOpen] = useState(false);
@@ -175,13 +175,20 @@ function VideoModal({ onClose }: { onClose: () => void }) {
             <span
               aria-hidden
               className="grid h-4 w-4 place-items-center rounded-full"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                fontSize: 10,
-                lineHeight: 1,
-              }}
+              style={{ background: "rgba(255,255,255,0.12)" }}
             >
-              ×
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 10 10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.4}
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M2.6 2.6 7.4 7.4M7.4 2.6 2.6 7.4" />
+              </svg>
             </span>
             Close
             <span
@@ -230,7 +237,7 @@ function VideoModal({ onClose }: { onClose: () => void }) {
               preload="metadata"
               disablePictureInPicture
               className="block h-full w-full"
-              style={{ background: "#000", outline: "none" }}
+              style={{ background: "#000", outline: "none", objectFit: "contain" }}
             />
           </div>
         </div>

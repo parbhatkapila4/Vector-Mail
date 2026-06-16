@@ -97,7 +97,14 @@ export function isInvalidAurinkoSyncTokenError(error: unknown): boolean {
 export function isTransientMailProviderError(error: unknown): boolean {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504) {
+    if (
+      status === 408 ||
+      status === 429 ||
+      status === 500 ||
+      status === 502 ||
+      status === 503 ||
+      status === 504
+    ) {
       return true;
     }
     const code = error.code;
