@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 export const SEARCH_LIMIT_PER_MINUTE = 60;
 export const AI_LIMIT_PER_MINUTE = 100;
+export const HEALTH_LIMIT_PER_MINUTE = 240;
+export const ACCESS_CHECK_LIMIT_PER_MINUTE = 5;
+export const WAITLIST_LIMIT_PER_MINUTE = 5;
 
 const WINDOW_MS = 60 * 1000;
 
@@ -67,6 +70,9 @@ const PER_IP_LIMITS = {
   api: 100,
   auth: 5,
   emailSend: 10,
+  health: HEALTH_LIMIT_PER_MINUTE,
+  accessCheck: ACCESS_CHECK_LIMIT_PER_MINUTE,
+  waitlist: WAITLIST_LIMIT_PER_MINUTE,
 } as const;
 
 const limiters = {
@@ -75,6 +81,18 @@ const limiters = {
   emailSend: new RateLimiter({
     interval: 60 * 1000,
     uniqueTokenPerInterval: PER_IP_LIMITS.emailSend,
+  }),
+  health: new RateLimiter({
+    interval: 60 * 1000,
+    uniqueTokenPerInterval: PER_IP_LIMITS.health,
+  }),
+  accessCheck: new RateLimiter({
+    interval: 60 * 1000,
+    uniqueTokenPerInterval: PER_IP_LIMITS.accessCheck,
+  }),
+  waitlist: new RateLimiter({
+    interval: 60 * 1000,
+    uniqueTokenPerInterval: PER_IP_LIMITS.waitlist,
   }),
 };
 

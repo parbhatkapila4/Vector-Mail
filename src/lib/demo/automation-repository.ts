@@ -78,9 +78,9 @@ export function getDemoPendingExecutions() {
       type: AUTO_FOLLOW_UP_ACTION_TYPE,
       status: "awaiting_approval" as const,
       modeSnapshot: "assist" as const,
-      confidence: 0.92,
+      confidence: 0.9,
       reason:
-        "Founder said you'd reply by Tuesday; thread has gone two days quiet.",
+        "Reminder you set is due - you said you'd reply by Tuesday, and the thread has gone two days quiet.",
       createdAt: MINS_AGO(35),
       thread: {
         id: "demo-thread-1",
@@ -94,9 +94,9 @@ export function getDemoPendingExecutions() {
       type: AUTO_FOLLOW_UP_ACTION_TYPE,
       status: "awaiting_approval" as const,
       modeSnapshot: "assist" as const,
-      confidence: 0.87,
+      confidence: 0.9,
       reason:
-        "Partnership lead waiting; their quarterly plan locks Friday.",
+        "Reminder you set is due - partnership lead waiting, their quarterly plan locks Friday.",
       createdAt: MINS_AGO(70),
       thread: {
         id: "demo-thread-11",
@@ -110,9 +110,9 @@ export function getDemoPendingExecutions() {
       type: AUTO_FOLLOW_UP_ACTION_TYPE,
       status: "awaiting_approval" as const,
       modeSnapshot: "assist" as const,
-      confidence: 0.81,
+      confidence: 0.78,
       reason:
-        "Conference deadline tomorrow; speaker slot will lapse otherwise.",
+        "No reply from you yet - last message was from the conference organiser, and the speaker slot lapses tomorrow.",
       createdAt: MINS_AGO(110),
       thread: {
         id: "demo-thread-19",

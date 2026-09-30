@@ -2,17 +2,28 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { isDemoMode } from "@/lib/demo/is-demo-mode";
 import { DEMO_COOKIE } from "@/lib/demo/constants";
+import {
+  SESSION_COOKIE,
+  sessionCookieOptions,
+  signSessionCookieValue,
+  verifySessionCookieValue,
+} from "@/lib/session-cookie";
 
 const REQUEST_ID_HEADER = "x-request-id";
-const SESSION_COOKIE = "vectormail_session_user";
 const DEMO_SESSION_USER = "demo-user";
 
 const isProtectedRoute = createRouteMatcher(["/mail(.*)", "/buddy(.*)"]);
 const isWebhookRoute = createRouteMatcher(["/api/webhook(.*)"]);
-
-function hasSessionCookie(req: NextRequest): boolean {
+const isClerkAuthEntrance = createRouteMatcher([
+  "/sign-in",
+  "/sign-in/(.*)",
+  "/sign-up",
+  "/sign-up/(.*)",
+]);
+const isClerkAuthCompletion = createRouteMatcher(["/sign-in/sso-callback"]);
+async function hasValidSessionCookie(req: NextRequest): Promise<boolean> {
   const cookie = req.cookies.get(SESSION_COOKIE)?.value;
-  return Boolean(cookie?.trim());
+  return (await verifySessionCookieValue(cookie)) !== null;
 }
 
 function applySecurityHeaders(response: NextResponse) {
@@ -59,19 +70,31 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
+  if (isClerkAuthEntrance(req) && !isClerkAuthCompletion(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      const response = NextResponse.redirect(new URL("/", req.url));
+      const requestId = req.headers.get(REQUEST_ID_HEADER);
+      if (requestId?.trim()) response.headers.set(REQUEST_ID_HEADER, requestId.trim());
+      applySecurityHeaders(response);
+      return response;
+    }
+  }
+
   if (isProtectedRoute(req)) {
     const { userId } = await auth();
     const isClerkSignedIn = Boolean(userId);
     if (isClerkSignedIn && userId) {
       const response = NextResponse.next();
       response.cookies.delete(DEMO_COOKIE);
-      response.cookies.set(SESSION_COOKIE, userId, {
-        path: "/",
-        maxAge: 60 * 60 * 24,
-        httpOnly: true,
-        secure: req.nextUrl.protocol === "https:",
-        sameSite: "lax",
-      });
+      const signed = await signSessionCookieValue(userId);
+      if (signed) {
+        response.cookies.set(
+          SESSION_COOKIE,
+          signed,
+          sessionCookieOptions(req.nextUrl.protocol === "https:"),
+        );
+      }
       const requestId = req.headers.get(REQUEST_ID_HEADER);
       if (requestId?.trim()) response.headers.set(REQUEST_ID_HEADER, requestId.trim());
       applySecurityHeaders(response);
@@ -80,15 +103,22 @@ export default clerkMiddleware(async (auth, req) => {
     if (isDemoMode(req)) {
       const response = NextResponse.next();
       response.cookies.set(DEMO_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 });
-      response.cookies.set(SESSION_COOKIE, DEMO_SESSION_USER, { path: "/", maxAge: 60 * 60 * 24 });
+      const signedDemo = await signSessionCookieValue(DEMO_SESSION_USER);
+      if (signedDemo) {
+        response.cookies.set(
+          SESSION_COOKIE,
+          signedDemo,
+          sessionCookieOptions(req.nextUrl.protocol === "https:"),
+        );
+      }
       const requestId = req.headers.get(REQUEST_ID_HEADER);
       if (requestId?.trim()) response.headers.set(REQUEST_ID_HEADER, requestId.trim());
       applySecurityHeaders(response);
       return response;
     }
-    if (!hasSessionCookie(req)) {
-      const signInUrl = new URL("/sign-in", req.url).toString();
-      await auth.protect({ unauthenticatedUrl: signInUrl });
+    if (!(await hasValidSessionCookie(req))) {
+      const landingUrl = new URL("/", req.url).toString();
+      await auth.protect({ unauthenticatedUrl: landingUrl });
     }
   }
 
@@ -107,6 +137,8 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   matcher: [
     "/next/(.*)",
+    "/sign-in(.*)",
+    "/sign-up(.*)",
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
   ],

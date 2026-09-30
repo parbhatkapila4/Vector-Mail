@@ -1117,9 +1117,11 @@ export default function TermsPage() {
                   >
                     Google account settings
                   </a>{" "}
-                  or by disconnecting your Gmail account in VectorMail. Upon
-                  account deletion, all Gmail data will be permanently
-                  deleted. VectorMail complies with the{" "}
+                  or by disconnecting your Gmail account in VectorMail.
+                  Disconnecting stops further syncing; mail, embeddings, and
+                  summaries already stored are retained until you ask us to
+                  delete them. To request deletion, contact support.
+                  VectorMail complies with the{" "}
                   <span
                     style={{
                       background:

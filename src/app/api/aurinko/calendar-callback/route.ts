@@ -11,7 +11,10 @@ import {
 } from "@/lib/oauth-state";
 import { encryptToken } from "@/lib/token-crypto";
 
-const SESSION_COOKIE = "vectormail_session_user";
+import {
+  SESSION_COOKIE,
+  verifySessionCookieValue,
+} from "@/lib/session-cookie";
 
 function getBaseUrl(req: NextRequest): string {
   try {
@@ -41,7 +44,9 @@ export async function GET(req: NextRequest) {
   let userId: string | null = null;
   try {
     const { userId: clerkUserId } = await auth();
-    const cookieUserId = req.cookies.get(SESSION_COOKIE)?.value?.trim() ?? null;
+    const cookieUserId = await verifySessionCookieValue(
+      req.cookies.get(SESSION_COOKIE)?.value,
+    );
     userId = clerkUserId ?? cookieUserId;
   } catch (e) {
     calCbLog.error("[calendar-callback] auth() failed:", e);

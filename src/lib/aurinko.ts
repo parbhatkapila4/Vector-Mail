@@ -16,6 +16,7 @@ function requireAurinkoCredentials(): { id: string; secret: string } {
 export function buildAurinkoAuthUrlForService(
   serviceType: "Google" | "Office365",
   state?: string,
+  loginHint?: string,
 ): string {
   const baseUrl = env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
   const { id } = requireAurinkoCredentials();
@@ -28,11 +29,15 @@ export function buildAurinkoAuthUrlForService(
     scopes: AURINKO_SCOPES,
   });
   if (state) params.set("state", state);
+  if (loginHint) params.set("loginHint", loginHint);
   return `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`;
 }
 
-export async function buildAurinkoGoogleAuthUrl(state?: string): Promise<string> {
-  return buildAurinkoAuthUrlForService("Google", state);
+export async function buildAurinkoGoogleAuthUrl(
+  state?: string,
+  loginHint?: string,
+): Promise<string> {
+  return buildAurinkoAuthUrlForService("Google", state, loginHint);
 }
 
 export const getAurinkoAuthUrl = async (
@@ -237,6 +242,8 @@ export async function getAccountInfo(accessToken: string, accountId: string) {
     return response.data as {
       email: string;
       name: string;
+      tokenStatus?: "active" | "invalid" | "dead";
+      authScopes?: string[];
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {

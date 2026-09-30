@@ -1,5 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/server/db";
+import { env } from "@/env";
+import { anySafeSecretEqual } from "@/lib/timing-safe-secret";
+import {
+  getIdentifier,
+  limiters,
+  HEALTH_LIMIT_PER_MINUTE,
+} from "@/lib/rate-limit";
 import {
   getEmbeddingP95Ms,
   getEmbeddingCallsCount,
@@ -15,6 +22,23 @@ export const dynamic = "force-dynamic";
 
 const CHECK_TIMEOUT_MS = 4000;
 const STALE_SYNC_THRESHOLD_MIN = 60;
+const VERSION = process.env.npm_package_version ?? "0.1.0";
+
+function getHealthSecret(): string | undefined {
+  return env.ADMIN_STATS_SECRET ?? env.CRON_SECRET;
+}
+
+function isAuthorized(req: NextRequest): boolean {
+  const secret = getHealthSecret();
+  if (!secret) return false;
+  const authHeader = req.headers.get("authorization");
+  const bearer = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : undefined;
+  const headerSecret = req.headers.get("x-admin-secret")?.trim();
+  const cronSecret = req.headers.get("x-cron-secret")?.trim();
+  return anySafeSecretEqual([bearer, headerSecret, cronSecret], secret);
+}
 
 type ComponentStatus = "ok" | "down" | "unconfigured";
 type OverallStatus = "ok" | "degraded" | "down";
@@ -148,8 +172,36 @@ function deriveStatus(
   }
   return "ok";
 }
+function publicHealth(req: NextRequest): NextResponse {
+  const { success, remaining } = limiters.health.check(getIdentifier(req));
+  if (!success) {
+    return NextResponse.json(
+      {
+        error: "Rate limit exceeded",
+        message: "Too many requests. Please try again later.",
+      },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": String(HEALTH_LIMIT_PER_MINUTE),
+          "X-RateLimit-Remaining": String(remaining),
+          "Retry-After": "60",
+        },
+      },
+    );
+  }
 
-export async function GET() {
+  return NextResponse.json({ status: "ok", version: VERSION }, { status: 200 });
+}
+
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return publicHealth(req);
+  }
+  return detailedHealth();
+}
+
+async function detailedHealth(): Promise<NextResponse> {
   const [database, redis, staleSyncMinutes] = await Promise.all([
     checkDatabase(),
     checkRedis(),
@@ -171,7 +223,7 @@ export async function GET() {
   const body = {
     status,
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version ?? "0.1.0",
+    version: VERSION,
     components: {
       database,
       redis,

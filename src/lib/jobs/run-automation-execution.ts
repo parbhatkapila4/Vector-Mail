@@ -1,7 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import axios from "axios";
 
-import { transitionActionExecution } from "@/lib/automation";
+import {
+  InvalidActionExecutionTransitionError,
+  transitionActionExecution,
+} from "@/lib/automation";
 import {
   automationRealSendEnabled,
   canAutomationExecutionRealSend,
@@ -82,8 +85,10 @@ export function isTransientAutomationError(error: unknown): boolean {
   if (!error) return false;
   if (typeof error === "object") {
     const e = error as { name?: string; code?: string; message?: string };
+    if (e.name === "AutomationSendPermanentError") return false;
     if (e.name === "TransientAutomationExecutionError") return true;
-    if (typeof e.code === "string" && TRANSIENT_ERROR_CODES.has(e.code)) return true;
+    if (typeof e.code === "string" && TRANSIENT_ERROR_CODES.has(e.code))
+      return true;
     if (
       typeof e.message === "string" &&
       /timed out|timeout|temporar|rate limit|try again|network/i.test(e.message)
@@ -92,7 +97,8 @@ export function isTransientAutomationError(error: unknown): boolean {
     }
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
-      if (status === 429 || status === 502 || status === 503 || status === 504) return true;
+      if (status === 429 || status === 502 || status === 503 || status === 504)
+        return true;
     }
   }
   return false;
@@ -111,15 +117,46 @@ export class AutomationSendPermanentError extends Error {
     this.name = "AutomationSendPermanentError";
   }
 }
+export const SEND_OUTCOME_UNKNOWN_REASON = "send_outcome_unknown";
+export type AutomationStepRunner = <T>(
+  name: string,
+  fn: () => Promise<T>,
+) => Promise<T>;
+
+const inlineStepRunner: AutomationStepRunner = async (_name, fn) => fn();
 
 function startOfTodayUtc(): Date {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+}
+async function transitionToFailedIfPossible(params: {
+  id: string;
+  userId: string;
+  lastError: string;
+}): Promise<void> {
+  try {
+    await transitionActionExecution({
+      id: params.id,
+      userId: params.userId,
+      to: "failed",
+      lastError: params.lastError.slice(0, 1900),
+    });
+  } catch (err) {
+    if (err instanceof InvalidActionExecutionTransitionError) return;
+    throw err;
+  }
 }
 
-export async function runAutomationExecutionDryRun(executionId: string): Promise<{
-  state: "noop_terminal" | "success" | "cancelled";
+export async function runAutomationExecutionDryRun(
+  executionId: string,
+  options: { stepRun?: AutomationStepRunner } = {},
+): Promise<{
+  state: "noop_terminal" | "success" | "cancelled" | "unknown_outcome";
 }> {
+  const stepRun = options.stepRun ?? inlineStepRunner;
+
   let execution = await withDbRetry(() =>
     db.actionExecution.findUnique({
       where: { id: executionId },
@@ -143,8 +180,35 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
     });
     return { state: "success" };
   }
+  if (
+    execution.status === "running" &&
+    execution.sendAttemptedAt !== null &&
+    execution.providerMessageId === null
+  ) {
+    await transitionActionExecution({
+      id: execution.id,
+      userId: execution.userId,
+      to: "failed",
+      lastError: `${SEND_OUTCOME_UNKNOWN_REASON}: provider send was attempted but no message id was recorded`,
+    });
+    auditLog({
+      userId: execution.userId,
+      action: "automation_follow_up_send_outcome_unknown",
+      resourceId: execution.id,
+      metadata: {
+        accountId: execution.accountId,
+        threadId: execution.threadId,
+        sendAttemptedAt: execution.sendAttemptedAt.toISOString(),
+        detectedBy: "execution_entry_guard",
+      },
+    });
+    return { state: "unknown_outcome" };
+  }
 
-  if (execution.status === "pending" || execution.status === "awaiting_approval") {
+  if (
+    execution.status === "pending" ||
+    execution.status === "awaiting_approval"
+  ) {
     await transitionActionExecution({
       id: execution.id,
       userId: execution.userId,
@@ -164,7 +228,9 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
     throw new Error(`ActionExecution not found: ${executionId}`);
   }
 
-  const transientFailureBudget = extractTransientFailureBudget(execution.payload);
+  const transientFailureBudget = extractTransientFailureBudget(
+    execution.payload,
+  );
   if (execution.retryCount < transientFailureBudget) {
     throw new TransientAutomationExecutionError(
       `Simulated transient dry-run failure ${execution.retryCount + 1}/${transientFailureBudget}`,
@@ -174,12 +240,17 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
   let payloadWithDraft: Prisma.InputJsonValue;
   if (hasCompleteAutomationDraft(execution.payload)) {
     const p = execution.payload;
-    payloadWithDraft = (isObject(p) ? p : { value: p }) as Prisma.InputJsonValue;
+    payloadWithDraft = (
+      isObject(p) ? p : { value: p }
+    ) as Prisma.InputJsonValue;
   } else {
     try {
       const execRow = execution;
       const draftFields = await generateAutomationDraftFields(execRow);
-      payloadWithDraft = mergeDraftFieldsIntoPayload(execRow.payload, draftFields);
+      payloadWithDraft = mergeDraftFieldsIntoPayload(
+        execRow.payload,
+        draftFields,
+      );
       await withDbRetry(() =>
         db.actionExecution.update({
           where: { id: execRow.id },
@@ -248,9 +319,13 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       to: "failed",
       lastError: "Account not found for automation execution",
     });
-    throw new AutomationSendPermanentError("Account not found for automation execution");
+    throw new AutomationSendPermanentError(
+      "Account not found for automation execution",
+    );
   }
-  const guardrails = normalizeAutomationGuardrails(account.automationGuardrails);
+  const guardrails = normalizeAutomationGuardrails(
+    account.automationGuardrails,
+  );
   if (guardrails.paused) {
     await transitionActionExecution({
       id: execution.id,
@@ -287,7 +362,8 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       executionId: execution.id,
     };
     if (!automationRealSendEnabled()) {
-      simulatedMeta.realSendDisabledReason = "AUTOMATION_REAL_SEND_ENABLED=false";
+      simulatedMeta.realSendDisabledReason =
+        "AUTOMATION_REAL_SEND_ENABLED=false";
     }
 
     await withDbRetry(() =>
@@ -332,11 +408,15 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       to: "failed",
       lastError: "Missing draft fields for real send",
     });
-    throw new AutomationSendPermanentError("Missing draft fields for real send");
+    throw new AutomationSendPermanentError(
+      "Missing draft fields for real send",
+    );
   }
 
   const expectedLastExternalEmailId = String(draftMeta.lastExternalEmailId);
-  const expectedInReplyToInternetMessageId = String(draftMeta.inReplyToInternetMessageId);
+  const expectedInReplyToInternetMessageId = String(
+    draftMeta.inReplyToInternetMessageId,
+  );
 
   const execPayload = execution.payload;
   const detectorReasonCode =
@@ -434,10 +514,13 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       to: "failed",
       lastError: "Account needs reconnection before send",
     });
-    throw new AutomationSendPermanentError("Account needs reconnection before send");
+    throw new AutomationSendPermanentError(
+      "Account needs reconnection before send",
+    );
   }
 
-  const toAddress = eligibility.lastExternal.replyTo?.[0] ?? eligibility.lastExternal.from;
+  const toAddress =
+    eligibility.lastExternal.replyTo?.[0] ?? eligibility.lastExternal.from;
   const to = [
     {
       name: toAddress.name ?? toAddress.address,
@@ -458,29 +541,54 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
   const bodyWithSignature = appendVectorMailSignature(draftBody.trim(), true);
 
   const emailAccount = new Account(execution.accountId, account.token);
-  let sendResult: unknown;
+  const executionIdForSend = execution.id;
+
+  let providerId: string;
   try {
-    sendResult = await emailAccount.sendEmail({
-      from,
-      to,
-      subject: draftSubject.trim(),
-      body: bodyWithSignature,
-      inReplyTo: expectedInReplyToInternetMessageId,
-      threadId: threadIdForSend,
+    providerId = await stepRun("provider-send", async () => {
+      const attemptClaim = await withDbRetry(() =>
+        db.actionExecution.updateMany({
+          where: { id: executionIdForSend, sendAttemptedAt: null },
+          data: { sendAttemptedAt: new Date() },
+        }),
+      );
+      if (attemptClaim.count === 0) {
+        throw new AutomationSendPermanentError(
+          `${SEND_OUTCOME_UNKNOWN_REASON}: send marker was already claimed by an earlier attempt`,
+        );
+      }
+
+      const sendResult = await emailAccount.sendEmail({
+        from,
+        to,
+        subject: draftSubject.trim(),
+        body: bodyWithSignature,
+        inReplyTo: expectedInReplyToInternetMessageId,
+        threadId: threadIdForSend,
+      });
+
+      const sentId = extractAurinkoMessageId(sendResult);
+      if (!sentId) {
+        throw new AutomationSendPermanentError(
+          "Provider did not return a message id",
+        );
+      }
+      return sentId;
     });
   } catch (err) {
-    if (isTransientAutomationError(err)) {
-      throw new TransientAutomationExecutionError(
-        err instanceof Error ? err.message : String(err),
-      );
-    }
     const msg = err instanceof Error ? err.message : String(err);
     const policyBlocked = isOutgoingContentBlockedError(err);
-    await transitionActionExecution({
+    const outcomeUnknown =
+      !policyBlocked &&
+      !(err instanceof AutomationSendPermanentError) &&
+      isTransientAutomationError(err);
+
+    await transitionToFailedIfPossible({
       id: execution.id,
       userId: execution.userId,
-      to: "failed",
-      lastError: msg.slice(0, 1900),
+      lastError: outcomeUnknown
+        ? `${SEND_OUTCOME_UNKNOWN_REASON}: ${msg}`
+        : msg,
     });
     auditLog({
       userId: execution.userId,
@@ -491,25 +599,16 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       metadata: {
         accountId: execution.accountId,
         threadId: threadIdForSend,
-        transient: false,
+        transient: outcomeUnknown,
+        outcomeUnknown,
         ...(policyBlocked
           ? { policyField: err.field, policyReason: err.reason }
           : {}),
       },
     });
-    throw new AutomationSendPermanentError(msg);
-  }
-
-  const providerId = extractAurinkoMessageId(sendResult);
-  if (!providerId) {
-    const msg = "Provider did not return a message id";
-    await transitionActionExecution({
-      id: execution.id,
-      userId: execution.userId,
-      to: "failed",
-      lastError: msg,
-    });
-    throw new AutomationSendPermanentError(msg);
+    throw err instanceof AutomationSendPermanentError
+      ? err
+      : new AutomationSendPermanentError(msg);
   }
 
   const claim = await withDbRetry(() =>
@@ -543,7 +642,9 @@ export async function runAutomationExecutionDryRun(executionId: string): Promise
       to: "failed",
       lastError: "Could not record provider message id (race)",
     });
-    throw new AutomationSendPermanentError("Could not record provider message id (race)");
+    throw new AutomationSendPermanentError(
+      "Could not record provider message id (race)",
+    );
   }
 
   const nowIso = new Date().toISOString();

@@ -1,18 +1,40 @@
 "use client";
 
 import { useAuth, useSignIn } from "@clerk/nextjs";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import {
+  AuthHandoffFailure,
+  AuthHandoffLoading,
+  useHandoffTimeout,
+  type HandoffFailure,
+} from "../AuthHandoff";
+
+const MISSING_TICKET: HandoffFailure = {
+  heading: "That sign-in link is incomplete",
+  body: "It's missing the one-time code that signs you in. Start again from the home page.",
+};
+
+const TIMED_OUT: HandoffFailure = {
+  heading: "Signing in is taking too long",
+  body: "We couldn't confirm your sign-in, so we stopped waiting. Start again from the home page.",
+};
+
+const rejected = (detail?: string): HandoffFailure => ({
+  heading: "We couldn't finish signing you in",
+  body: "Google approved you, but the one-time sign-in link didn't go through. These links expire quickly and only work once, so start again from the home page.",
+  detail,
+});
 
 function AuthCallbackContent() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isSignedIn, getToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<"loading" | "redirecting">("loading");
+  const [failure, setFailure] = useState<HandoffFailure | null>(null);
   const redeemedRef = useRef(false);
+  const timedOut = useHandoffTimeout(status === "loading" && !failure);
 
   useEffect(() => {
     if (!isLoaded || !signIn || !setActive) return;
@@ -20,8 +42,7 @@ function AuthCallbackContent() {
     const ticket = searchParams.get("ticket");
     const accountId = searchParams.get("accountId");
     if (!ticket) {
-      setStatus("error");
-      setErrorMessage("Missing sign-in link. Please try signing in again.");
+      setFailure(MISSING_TICKET);
       return;
     }
 
@@ -41,7 +62,6 @@ function AuthCallbackContent() {
         if (cancelled) return;
 
         if (res.status === "complete" && res.createdSessionId) {
-          if (!cancelled) setStatus("done");
           await setActiveFn({
             session: res.createdSessionId,
           });
@@ -61,27 +81,28 @@ function AuthCallbackContent() {
                 token = (await getToken?.({ skipCache: true })) ?? null;
               }
               if (token) {
+                setStatus("redirecting");
                 window.location.replace(
                   `/api/auth/dev-session?token=${encodeURIComponent(token)}&redirectTo=${encodeURIComponent(redirectTo)}`,
                 );
                 return;
               }
             }
+            setStatus("redirecting");
             window.location.replace(redirectTo);
           }
         } else {
-          setStatus("error");
-          setErrorMessage("Sign-in could not be completed. Please try again.");
+          setFailure(rejected());
         }
       } catch (err) {
         if (!cancelled) {
-          setStatus("error");
-          setErrorMessage(err instanceof Error ? err.message : "Something went wrong. Please try signing in again.");
+          setFailure(rejected(err instanceof Error ? err.message : undefined));
         }
       }
     }
 
     if (isSignedIn) {
+      setStatus("redirecting");
       if (typeof window !== "undefined") {
         window.location.replace("/mail");
       } else {
@@ -100,38 +121,18 @@ function AuthCallbackContent() {
     };
   }, [isLoaded, signIn, setActive, isSignedIn, searchParams, router, getToken]);
 
-  if (status === "error") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a] text-white">
-        <p className="text-center text-zinc-400">{errorMessage}</p>
-        <Link
-          href="/sign-in"
-          className="rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Back to sign in
-        </Link>
-      </div>
-    );
+  if (status === "redirecting") {
+    return <AuthHandoffLoading status="Taking you to your inbox…" />;
   }
+  if (failure) return <AuthHandoffFailure {...failure} />;
+  if (timedOut) return <AuthHandoffFailure {...TIMED_OUT} />;
 
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a] text-white">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
-      <p className="text-sm text-zinc-400">Signing you in…</p>
-    </div>
-  );
+  return <AuthHandoffLoading status="Signing you in…" />;
 }
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a] text-white">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
-          <p className="text-sm text-zinc-400">Signing you in…</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<AuthHandoffLoading status="Signing you in…" />}>
       <AuthCallbackContent />
     </Suspense>
   );

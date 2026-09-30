@@ -331,6 +331,7 @@ model ActionExecution {
   retryCount        Int                   @default(0)
   lastError         String?
   dryRun            Boolean               @default(true)
+  sendAttemptedAt   DateTime?
   providerMessageId String?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
@@ -341,6 +342,7 @@ model ActionExecution {
   @@index([accountId, createdAt])
   @@index([accountId, updatedAt])
   @@index([threadId])
+  @@index([status, updatedAt])
 }
 
 enum Role {
@@ -367,4 +369,13 @@ enum MeetingMessageMethod {
   cancel
   counter
   other
+}
+
+model WaitlistEntry {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  inboxAnswer String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
 }

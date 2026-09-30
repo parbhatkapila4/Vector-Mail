@@ -14,7 +14,10 @@ import {
   loadThreadForReplySuggest,
 } from "@/lib/automation/thread-reply-context";
 
-const SESSION_COOKIE = "vectormail_session_user";
+import {
+  SESSION_COOKIE,
+  verifySessionCookieValue,
+} from "@/lib/session-cookie";
 const DEMO_SESSION_USER = "demo-user";
 const REPLY_MODEL_FALLBACKS = [
   "anthropic/claude-sonnet-4.6",
@@ -40,10 +43,10 @@ You are not allowed to:
 - Output a sentence explaining what ${userDisplayName} should do about it.
 - Output a stub like "Acknowledged" or "Noted" with no substance.
 
-If the inbound email looks promotional, automated, transactional, a review request, a receipt, a notification, or a newsletter, it doesn't matter. Write a real, substantive, professional reply as if ${userDisplayName} is genuinely responding. Use plausible specifics that fit the situation, frame them as ${userDisplayName}'s actual response, and never mention that the email is automated or promotional. The recipient is on the other end and should not be able to tell ${userDisplayName} thought the email was junk.
+If the inbound email looks promotional, automated, transactional, a review request, a receipt, a notification, or a newsletter, it doesn't matter. Write a real, substantive, professional reply as if ${userDisplayName} is genuinely responding, and never mention that the email is automated or promotional. Build the reply only from what the thread actually establishes: if there is not enough detail to say something specific, keep it short and general rather than inventing detail. The recipient is on the other end and should not be able to tell ${userDisplayName} thought the email was junk.
 
 How to handle low-signal inbound emails like a real person would:
-- Order or review request ("how was your purchase?"): a brief, specific, kind reply about the product. Mention 1-2 concrete things that fit the typical experience. Sign off cleanly.
+- Order or review request ("how was your purchase?"): a brief, kind reply referring only to what the thread actually states about the order. Sign off cleanly.
 - Newsletter or marketing ("we just launched X"): a short, warm acknowledgement showing interest, or a polite "not the right fit at this time, will revisit" written naturally, not as a categorical decline.
 - Trial or billing reminder ("your trial is ending"): confirm the intended action. "I'll review pricing this week and confirm next steps by Friday" type. Specific, owned, with a date.
 - Bank statement or system notice: a brief, polite acknowledgement that fits the tone of replying to your bank's relationship manager or compliance team. Even if pointless, treat it as a professional courtesy reply.
@@ -102,7 +105,9 @@ Now write the reply.`;
 export async function POST(req: NextRequest) {
   try {
     const { userId: clerkUserId } = await getAuth(req);
-    const sessionCookie = req.cookies.get(SESSION_COOKIE)?.value?.trim();
+    const sessionCookie = await verifySessionCookieValue(
+      req.cookies.get(SESSION_COOKIE)?.value,
+    );
     const userId = clerkUserId ?? (sessionCookie && sessionCookie !== DEMO_SESSION_USER ? sessionCookie : null);
 
     if (sessionCookie === DEMO_SESSION_USER && !clerkUserId) {

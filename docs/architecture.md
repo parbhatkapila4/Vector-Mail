@@ -66,6 +66,7 @@ Single deployment. Single Postgres with pgvector. One auth (Clerk). One email ga
 - **Correlation IDs**: `src/lib/correlation.ts`; every tRPC call carries a `requestId` into structured logs.
 - **Structured logs**: `src/lib/logging/server-logger.ts` (pino). `console.*` is the wrong call - use `serverLog`.
 - **Idempotency**: action executions deduplicate within a window via `idempotencyKey` so re-running the detector doesn't double-queue.
+- **Send-once**: `idempotencyKey` does not cover retries, which reuse the existing row. `ActionExecution.sendAttemptedAt` is claimed atomically before the provider call; a row holding the marker with no `providerMessageId` is parked as `send_outcome_unknown` rather than re-sent. The provider call takes its own Inngest checkpoint, and `automation-sweep-stalled` reclaims rows abandoned in `running`.
 
 ## Decisions worth knowing
 

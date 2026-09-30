@@ -4,7 +4,6 @@ import { CheckCircle2, ChevronLeft, ChevronRight, PlayCircle, X } from "lucide-r
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CONFIDENCE_THRESHOLDS } from "@/lib/automation/policy";
 
 const WALKTHROUGH_STEPS = [
   {
@@ -15,14 +14,14 @@ const WALKTHROUGH_STEPS = [
   },
   {
     eyebrow: "Frame 02",
-    title: "Drafted, scored, queued",
+    title: "Matched, banded, queued",
     body:
-      "Autopilot writes a reply privately, scores it against your guardrails, and queues it here. The thread, the reasoning, and the confidence are all visible before anything leaves.",
+      "Autopilot matches a thread by rule, assigns a confidence band from why it matched, then writes the reply privately and queues it here. The thread, the reason it matched, and the band are all visible before anything leaves.",
   },
   {
     eyebrow: "Frame 03",
     title: "One click. Or zero.",
-    body: `In Assist, you approve every send. In Auto, anything above ${Math.round(CONFIDENCE_THRESHOLDS.HIGH * 100)}% confidence ships within your daily cap - the rest still ask. You stay in control of the line.`,
+    body: `In Assist, you approve every send. In Auto, only the high band sends on its own, within your daily cap - everything else still asks. The band comes from why the thread matched, not from a model scoring the draft: a reminder you set that has come due is high; a thread that is merely unanswered is not. You stay in control of the line.`,
   },
   {
     eyebrow: "Frame 04",

@@ -7,6 +7,7 @@ import { appendVectorMailSignature } from "@/lib/vectormail-signature";
 import { withRequestId } from "@/lib/logging/with-request-id";
 import { checkDailyCap, recordUsage } from "@/lib/ai-usage";
 import { checkUserRateLimit } from "@/lib/rate-limit";
+import { hasConnectedAccount } from "@/lib/connected-account";
 import {
   containsOutgoingViolation,
   isOutgoingContentBlockedError,
@@ -711,6 +712,15 @@ async function buddyPostHandler(req: Request) {
           status: 401,
           headers: { "Content-Type": "application/json" },
         }
+      );
+    }
+    if (!(await hasConnectedAccount(userId))) {
+      return new Response(
+        JSON.stringify({
+          error: "No connected mailbox",
+          message: "Connect a mailbox before using Buddy.",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
       );
     }
 

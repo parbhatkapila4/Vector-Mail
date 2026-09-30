@@ -17,7 +17,16 @@ export function automationRealSendEnabled(): boolean {
 export function canAutomationExecutionRealSend(params: {
   execution: Pick<
     ActionExecution,
-    "type" | "dryRun" | "status" | "modeSnapshot" | "confidence" | "userId" | "accountId" | "payload"
+    | "type"
+    | "dryRun"
+    | "status"
+    | "modeSnapshot"
+    | "confidence"
+    | "userId"
+    | "accountId"
+    | "payload"
+    | "sendAttemptedAt"
+    | "providerMessageId"
   >;
   accountAutomationMode: AutomationMode;
   guardrails: AutomationGuardrails;
@@ -27,8 +36,17 @@ export function canAutomationExecutionRealSend(params: {
   if (guardrails.paused) return false;
   if (execution.dryRun !== false) return false;
   if (execution.status !== "running") return false;
+  if (
+    execution.sendAttemptedAt !== null &&
+    execution.providerMessageId === null
+  ) {
+    return false;
+  }
   if (execution.type !== AUTO_FOLLOW_UP_ACTION_TYPE) return false;
-  if (execution.userId === DEMO_USER_ID || execution.accountId === DEMO_ACCOUNT_ID) {
+  if (
+    execution.userId === DEMO_USER_ID ||
+    execution.accountId === DEMO_ACCOUNT_ID
+  ) {
     return false;
   }
 

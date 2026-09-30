@@ -14,6 +14,7 @@ export const env = createEnv({
     AURINKO_CLIENT_SECRET: z.string().min(1).optional(),
     OAUTH_STATE_ENFORCED: z.string().optional(),
     TOKEN_ENCRYPTION_KEY: z.string().optional(),
+    SESSION_COOKIE_SECRET: z.string().optional(),
 
     ENABLE_EMAIL_SEND: z
       .string()
@@ -35,6 +36,9 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
     INNGEST_EVENT_KEY: z.string().optional(),
     INNGEST_SIGNING_KEY: z.string().optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    ADMIN_EMAIL: z.string().email().optional(),
+    RESEND_FROM_EMAIL: z.string().email().optional(),
   },
 
   client: {
@@ -55,6 +59,7 @@ export const env = createEnv({
     AURINKO_CLIENT_SECRET: process.env.AURINKO_CLIENT_SECRET,
     OAUTH_STATE_ENFORCED: process.env.OAUTH_STATE_ENFORCED,
     TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY,
+    SESSION_COOKIE_SECRET: process.env.SESSION_COOKIE_SECRET,
     ENABLE_EMAIL_SEND: process.env.ENABLE_EMAIL_SEND,
     AUTOMATION_REAL_SEND_ENABLED: process.env.AUTOMATION_REAL_SEND_ENABLED,
     CRON_SECRET: process.env.CRON_SECRET,
@@ -65,6 +70,9 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     NEXT_PUBLIC_ANALYTICS_ENABLED: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED,
     NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,
   },

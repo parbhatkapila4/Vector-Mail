@@ -5,8 +5,10 @@ import {
   generateOAuthState,
   setOAuthStateCookie,
 } from "@/lib/oauth-state";
-
-const SESSION_COOKIE = "vectormail_session_user";
+import {
+  SESSION_COOKIE,
+  verifySessionCookieValue,
+} from "@/lib/session-cookie";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,9 @@ export async function GET(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
   try {
     const { userId: clerkUserId } = await getAuth(req);
-    const cookieUserId = req.cookies.get(SESSION_COOKIE)?.value?.trim() ?? null;
+    const cookieUserId = await verifySessionCookieValue(
+      req.cookies.get(SESSION_COOKIE)?.value,
+    );
     const userId = clerkUserId ?? cookieUserId;
     if (!userId) {
       return NextResponse.redirect(new URL("/sign-in", baseUrl));

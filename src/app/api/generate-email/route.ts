@@ -7,6 +7,7 @@ import {
   rateLimit429Response,
 } from "@/lib/rate-limit";
 import { env } from "@/env.js";
+import { hasConnectedAccount } from "@/lib/connected-account";
 
 const COMPLETE_SYSTEM = (context: string, prompt: string) =>
   `You are an advanced AI email writing assistant that provides intelligent autocomplete and enhancement suggestions for professional emails.
@@ -98,6 +99,20 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Signed in is not enough: without a connected mailbox there is nothing to
+    // compose against, and the OpenRouter call would be billed to us for a user
+    // who never came through the invite-gated connect flow.
+    if (!(await hasConnectedAccount(userId))) {
+      return NextResponse.json(
+        {
+          error: "No connected mailbox",
+          message:
+            "Connect a mailbox before using AI email generation.",
+        },
+        { status: 403 },
+      );
     }
 
     const aiLimit = await checkUserRateLimit(userId, "ai");

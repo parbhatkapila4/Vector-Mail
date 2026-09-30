@@ -92,6 +92,7 @@ export function Navigation() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [signInChoiceOpen, setSignInChoiceOpen] = useState(false);
+  const [signInDirect, setSignInDirect] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const { navigateToMail, isNavigating } = useMailNavigation();
   const userLabel = user?.firstName || user?.fullName || "User";
@@ -103,6 +104,13 @@ export function Navigation() {
       if (signOut) void signOut();
     }
   }, [searchParams, signOut, router]);
+  useEffect(() => {
+    if (searchParams.get("signin") === "1") {
+      setSignInDirect(true);
+      setSignInChoiceOpen(true);
+      router.replace("/", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn) return;
@@ -414,7 +422,13 @@ export function Navigation() {
 
       <SignInChoiceModal
         open={signInChoiceOpen}
-        onOpenChange={setSignInChoiceOpen}
+        onOpenChange={(next) => {
+          setSignInChoiceOpen(next);
+          // Closing drops the "came here to sign in" flag, so opening the modal
+          // again from the nav button starts on the waitlist as it should.
+          if (!next) setSignInDirect(false);
+        }}
+        initialView={signInDirect ? "signin" : "waitlist"}
       />
     </header>
   );

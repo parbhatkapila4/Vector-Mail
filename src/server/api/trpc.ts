@@ -9,14 +9,17 @@ import { auth, getAuth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { getDemoCookie } from "@/lib/demo/is-demo-mode";
 import { DEMO_USER_ID } from "@/lib/demo/constants";
-
-const SESSION_COOKIE = "vectormail_session_user";
-
-function getSessionCookieUserId(req: Request | undefined): string | null {
+import {
+  SESSION_COOKIE,
+  verifySessionCookieValue,
+} from "@/lib/session-cookie";
+async function getSessionCookieUserId(
+  req: Request | undefined,
+): Promise<string | null> {
   if (!req) return null;
   const nextReq = req as NextRequest;
   const cookie = nextReq.cookies?.get?.(SESSION_COOKIE)?.value;
-  return cookie?.trim() ?? null;
+  return verifySessionCookieValue(cookie);
 }
 
 export const createTRPCContext = async (opts: {
@@ -26,7 +29,7 @@ export const createTRPCContext = async (opts: {
   const user = opts.req
     ? await getAuth(opts.req as Parameters<typeof getAuth>[0])
     : await auth();
-  const cookieUserId = getSessionCookieUserId(opts.req);
+  const cookieUserId = await getSessionCookieUserId(opts.req);
   const demoCookie = getDemoCookie(opts.req);
   const isDemo = demoCookie === "1" || cookieUserId === DEMO_USER_ID;
   const effectiveAuth =

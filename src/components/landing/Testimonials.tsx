@@ -50,7 +50,7 @@ const techStack = [
     icon: Lock,
     title: "Account-scoped access",
     description:
-      "Authorization on every tRPC call. Tokens stored encrypted, revocable from Google. Hard delete on account removal.",
+      "Authorization on every tRPC call. Tokens stored encrypted, revocable from Google. Stored data deleted on request.",
     preview: "privacy",
   },
 ];

@@ -3,12 +3,18 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import {
+  AuthHandoffFailure,
+  AuthHandoffLoading,
+  useHandoffTimeout,
+} from "../AuthHandoff";
 
 export default function SetSessionPage() {
   const { getToken, isLoaded } = useAuth();
   const router = useRouter();
-  const [, setStatus] = useState<"loading" | "done" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "done">("loading");
   const doneRef = useRef(false);
+  const timedOut = useHandoffTimeout(status === "loading");
 
   useEffect(() => {
     if (!isLoaded || doneRef.current) return;
@@ -35,16 +41,21 @@ export default function SetSessionPage() {
         router.replace("/mail");
       } finally {
         doneRef.current = true;
+        setStatus("done");
       }
     }
 
     setSessionAndRedirect();
   }, [isLoaded, getToken, router]);
 
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a]">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
-      <p className="text-sm text-zinc-400">Taking you to your inbox…</p>
-    </div>
-  );
+  if (timedOut) {
+    return (
+      <AuthHandoffFailure
+        heading="Opening your inbox is taking too long"
+        body="We couldn't confirm your session, so we stopped waiting. Start again from the home page."
+      />
+    );
+  }
+
+  return <AuthHandoffLoading status="Taking you to your inbox…" />;
 }

@@ -1,9 +1,16 @@
 import { verifyToken } from "@clerk/backend";
 import { NextRequest, NextResponse } from "next/server";
-
-const SESSION_COOKIE = "vectormail_session_user";
+import {
+  SESSION_COOKIE,
+  sessionCookieOptions,
+  signSessionCookieValue,
+} from "@/lib/session-cookie";
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV !== "development") {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   const token = req.nextUrl.searchParams.get("token");
   const redirectToParam = req.nextUrl.searchParams.get("redirectTo");
   const safeRedirectTo =
@@ -35,14 +42,12 @@ export async function GET(req: NextRequest) {
     }
   }
   if (!userId) return NextResponse.redirect(new URL("/sign-in", req.url));
+  const signed = await signSessionCookieValue(userId);
+  if (!signed) {
+    return NextResponse.redirect(new URL("/sign-in", req.url));
+  }
 
   const res = NextResponse.redirect(new URL(safeRedirectTo, req.url));
-  res.cookies.set(SESSION_COOKIE, userId, {
-    path: "/",
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24,
-  });
+  res.cookies.set(SESSION_COOKIE, signed, sessionCookieOptions(isSecure));
   return res;
 }

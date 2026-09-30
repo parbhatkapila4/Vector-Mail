@@ -98,7 +98,7 @@ const SECTIONS: Section[] = [
       "Mail and embeddings are stored in account-scoped tables",
       "Tokens are encrypted at rest and revocable from Google",
       "We isolate user data so embeddings never cross between accounts",
-      "On account deletion, mail, embeddings, and summaries are removed",
+      "Mail, embeddings, and summaries are retained until you request deletion",
     ],
   },
   {

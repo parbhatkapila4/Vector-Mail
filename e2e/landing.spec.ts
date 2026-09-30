@@ -47,10 +47,19 @@ test.describe("Features Page", () => {
 });
 
 test.describe("Authentication", () => {
-  test("should redirect to sign-in when accessing protected route", async ({
+  test("should redirect signed-out visitors away from a protected route", async ({
     page,
   }) => {
     await page.goto("/mail");
-    await expect(page).toHaveURL(/sign-in/);
+    expect(new URL(page.url()).pathname).toBe("/");
+  });
+
+  test("signed-out visitors cannot reach a Clerk sign-in entrance", async ({
+    page,
+  }) => {
+    for (const path of ["/sign-in", "/sign-up", "/sign-in/x.js"]) {
+      await page.goto(path);
+      expect(new URL(page.url()).pathname).toBe("/");
+    }
   });
 });

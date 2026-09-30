@@ -588,7 +588,7 @@ export function AutopilotSection({ accountId, isDemo = false }: { accountId: str
             )}
           </div>
           <p className="mt-0.5 text-[10px] leading-snug text-[#4a5572]">
-            Candidate follow-ups are scored by confidence. Assist asks you first; Auto can send high-confidence follow-ups within your daily cap.
+            Candidate follow-ups get a confidence band from why they matched - a reminder you set that has come due counts as high. Assist asks you first; Auto can send high-band follow-ups within your daily cap.
           </p>
         </div>
 

@@ -107,13 +107,13 @@ const SECTIONS: Section[] = [
     tint: "rgba(21,128,61,0.10)",
     icon: Lock,
     title: "How we handle your data",
-    accent: "account-scoped, encrypted, deletable.",
+    accent: "account-scoped, encrypted, revocable.",
     lead:
-      "Your mail is yours. Nothing crosses accounts, nothing trains shared models, and hard-deletes are real.",
+      "Your mail is yours. Nothing crosses accounts, nothing trains shared models, and you can revoke access at any time.",
     bullets: [
       "Mail is account-scoped; nothing crosses between users",
       "Tokens are stored encrypted and revocable from Google",
-      "Embeddings and summaries are deleted when the account is removed",
+      "Embeddings and summaries are deleted on request",
       "We do not use your mail to train shared or public models",
     ],
   },

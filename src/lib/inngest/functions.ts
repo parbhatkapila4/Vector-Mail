@@ -1,11 +1,15 @@
 import { inngest } from "./client";
 import { serverLog } from "@/lib/logging/server-logger";
-import { runEmailAnalysisForOne, runEmailAnalysisForMany } from "@/lib/jobs/run-email-analysis";
+import {
+  runEmailAnalysisForOne,
+  runEmailAnalysisForMany,
+} from "@/lib/jobs/run-email-analysis";
 import { runScheduledSend } from "@/lib/jobs/run-scheduled-send";
 import {
   isTransientAutomationError,
   runAutomationExecutionDryRun,
 } from "@/lib/jobs/run-automation-execution";
+import { sweepStalledAutomationExecutions } from "@/lib/jobs/sweep-stalled-automation-executions";
 import { detectAndCreateFollowUpExecutionsForAccount } from "@/lib/automation/detect";
 import { backfillEmailAnalysis } from "@/lib/backfill-email-analysis";
 import { recordFailedJob } from "@/lib/jobs/failed-job";
@@ -30,6 +34,7 @@ const AUTOMATION_EXECUTE_MAX_RETRIES = 3;
 //Just a reminder telling that this limit is according to the vercel hobby plan - To all who clone this repo - Author Parbhat kapila
 const CRON_STALE_INBOX_SYNC = "30 4 * * *";
 const CRON_AUTOMATION_DETECT_FOLLOWUPS = "0 5 * * *";
+const CRON_AUTOMATION_SWEEP_STALLED = "15 * * * *";
 
 async function recordAndRethrow(
   jobType: string,
@@ -47,7 +52,11 @@ async function recordAndRethrow(
     });
   } catch (recordErr) {
     serverLog.error(
-      { err: recordErr instanceof Error ? recordErr.message : String(recordErr), jobType, resourceId },
+      {
+        err: recordErr instanceof Error ? recordErr.message : String(recordErr),
+        jobType,
+        resourceId,
+      },
       "inngest: recordFailedJob persistence error",
     );
   }
@@ -68,9 +77,7 @@ export const emailAnalyzeFunction = inngest.createFunction(
     event: { data: { emailId?: string; emailIds?: string[] } };
     step: { run: <T>(name: string, fn: () => Promise<T>) => Promise<T> };
   }) => {
-    const data = event.data as
-      | { emailId: string }
-      | { emailIds: string[] };
+    const data = event.data as { emailId: string } | { emailIds: string[] };
 
     try {
       if ("emailIds" in data && Array.isArray(data.emailIds)) {
@@ -106,9 +113,9 @@ export const emailAnalyzeFunction = inngest.createFunction(
       const resourceId =
         "emailIds" in data && Array.isArray(data.emailIds)
           ? `batch:${data.emailIds.slice(0, 20).join(",")}${data.emailIds.length > 20 ? "..." : ""}`
-          : ("emailId" in data && typeof data.emailId === "string"
+          : "emailId" in data && typeof data.emailId === "string"
             ? data.emailId
-            : (data as { emailIds?: string[] }).emailIds?.[0] ?? "unknown");
+            : ((data as { emailIds?: string[] }).emailIds?.[0] ?? "unknown");
       await recordAndRethrow(jobType, resourceId, data, err);
     }
   },
@@ -226,8 +233,10 @@ export const mailSyncAccountFunction = inngest.createFunction(
         where: { id: accountId.trim(), userId: userId.trim() },
         select: { id: true, token: true, needsReconnection: true },
       });
-      if (!row?.token?.trim()) return { ok: false as const, reason: "no_token" };
-      if (row.needsReconnection) return { ok: false as const, reason: "reconnect" };
+      if (!row?.token?.trim())
+        return { ok: false as const, reason: "no_token" };
+      if (row.needsReconnection)
+        return { ok: false as const, reason: "reconnect" };
       return { ok: true as const };
     });
     if (!gate.ok) {
@@ -332,9 +341,9 @@ export const automationExecuteFunction = inngest.createFunction(
     }
 
     try {
-      const result = await step.run("run-dry-execution", async () =>
-        runAutomationExecutionDryRun(executionId),
-      );
+      const result = await runAutomationExecutionDryRun(executionId, {
+        stepRun: (name, fn) => step.run(name, fn),
+      });
       return { ok: true, executionId, state: result.state };
     } catch (err) {
       const exec = await step.run("load-exec-on-error", async () =>
@@ -386,7 +395,10 @@ export const automationExecuteFunction = inngest.createFunction(
         };
       }
 
-      const delayMs = Math.min(30_000, 1000 * Math.pow(2, Math.max(0, nextRetryCount - 1)));
+      const delayMs = Math.min(
+        30_000,
+        1000 * Math.pow(2, Math.max(0, nextRetryCount - 1)),
+      );
       await step.sleep(`retry-backoff-${nextRetryCount}`, `${delayMs}ms`);
       throw err;
     }
@@ -415,7 +427,13 @@ export const automationDetectFollowUpsFunction = inngest.createFunction(
     });
 
     if (accounts.length === 0) {
-      return { ok: true, scannedAccounts: 0, created: 0, duplicates: 0, enqueued: 0 };
+      return {
+        ok: true,
+        scannedAccounts: 0,
+        created: 0,
+        duplicates: 0,
+        enqueued: 0,
+      };
     }
 
     const totals = await step.run("detect-and-create", async () => {
@@ -437,6 +455,21 @@ export const automationDetectFollowUpsFunction = inngest.createFunction(
   },
 );
 
+export const automationSweepStalledFunction = inngest.createFunction(
+  {
+    id: "automation-sweep-stalled",
+    name: "Automation sweeper (stalled executions)",
+    retries: 1,
+  },
+  { cron: CRON_AUTOMATION_SWEEP_STALLED },
+  async ({ step }) => {
+    const result = await step.run("sweep-stalled-executions", async () =>
+      sweepStalledAutomationExecutions(),
+    );
+    return { ok: true, ...result };
+  },
+);
+
 export const inngestFunctions = [
   emailAnalyzeFunction,
   scheduledSendProcessFunction,
@@ -445,4 +478,5 @@ export const inngestFunctions = [
   mailSyncStaleAccountsFunction,
   automationExecuteFunction,
   automationDetectFollowUpsFunction,
+  automationSweepStalledFunction,
 ];

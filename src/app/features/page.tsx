@@ -199,7 +199,7 @@ const STACK: StackItem[] = [
       "Account-scoped authorization on every tRPC call",
       "Tokens stored encrypted; revocable from Google at any time",
       "No shared embeddings or summaries across accounts",
-      "Hard delete on account removal, no retention",
+      "Stored mail, embeddings, and summaries deleted on request",
     ],
   },
 ];
